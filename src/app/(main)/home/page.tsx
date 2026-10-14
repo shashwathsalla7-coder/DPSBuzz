@@ -24,6 +24,7 @@ import { NoticeStrip } from '@/components/home/NoticeStrip';
 import { FeedTabs } from '@/components/home/FeedTabs';
 import { PostCard } from '@/components/home/PostCard';
 import { StarBoardTeaser } from '@/components/home/StarBoardTeaser';
+import { GetAppWidget } from '@/components/home/GetAppWidget';
 import { HomeFeedSkeleton } from '@/components/home/HomeFeedSkeleton';
 
 export default function HomePage() {
@@ -327,6 +328,9 @@ function HomeContent() {
 
       {/* 3. Story row: horizontal snap scroll, hidden scrollbar, 64px avatars with neon ring */}
       <StoriesRow />
+
+      {/* Small Get App Widget */}
+      <GetAppWidget />
 
       {/* 4. Feed tabs "Following" and "Whole School" as segmented control */}
       <FeedTabs activeTab={activeTab} onChange={setActiveTab} />
