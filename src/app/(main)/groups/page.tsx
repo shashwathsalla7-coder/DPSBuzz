@@ -1,0 +1,860 @@
+'use client';
+
+import { useState, useMemo, useEffect } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import {
+  ArrowLeft,
+  Users,
+  MessageSquare,
+  Newspaper,
+  Lock,
+  X,
+  Check,
+  Clock,
+  Sparkles,
+  ShieldAlert,
+  UserPlus,
+} from 'lucide-react';
+import { school } from '@/config/school';
+import {
+  DataStore,
+  type Profile,
+  type GroupJoinRequest,
+  type Group,
+} from '@/lib/dataStore';
+import { getAvatarColorPair } from '@/config/tokens';
+
+export interface GroupStudentContact {
+  id: string;
+  name: string;
+  username: string;
+  studentClass: string;
+  avatarUrl?: string | null;
+}
+
+export default function GroupsPage() {
+  const router = useRouter();
+  const [selectedGroup, setSelectedGroup] = useState<any | null>(null);
+  const [activeTab, setActiveTab] = useState<'feed' | 'chat' | 'members'>('feed');
+
+  // Create Group State
+  const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false);
+  const [newGroupName, setNewGroupName] = useState('');
+  const [selectedGroupMembers, setSelectedGroupMembers] = useState<string[]>([]);
+
+  // Join Requests and Groups State
+  const [joinRequests, setJoinRequests] = useState<GroupJoinRequest[]>([]);
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [tick, setTick] = useState(0);
+
+  const currentUser = useMemo(() => DataStore.getCurrentUser(), []);
+
+  // Reload team join requests and groups
+  const reloadData = () => {
+    setJoinRequests(DataStore.getGroupJoinRequests());
+    setGroups(DataStore.getGroups());
+    setTick((prev) => prev + 1);
+  };
+
+  useEffect(() => {
+    reloadData();
+    const handleUpdate = () => reloadData();
+    window.addEventListener('dpsbuzz:content_updated', handleUpdate);
+    return () => window.removeEventListener('dpsbuzz:content_updated', handleUpdate);
+  }, []);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage(null);
+    }, 3200);
+  };
+
+  // Classmates followed by current user
+  const liveFollowing = useMemo<GroupStudentContact[]>(() => {
+    const current = DataStore.getCurrentUser();
+    const profiles = DataStore.getProfiles().filter(
+      (p) => p.username.toLowerCase() !== current.username.toLowerCase() && p.role === 'student'
+    );
+    const following = profiles.filter((p) => DataStore.isFollowing(current.username, p.username));
+    return following.map((p) => ({
+      id: p.id || p.username,
+      name: p.fullName,
+      username: p.username,
+      studentClass: p.class ? `Class ${p.class}-${p.section || ''}` : 'DPS Student',
+      avatarUrl: p.avatar,
+    }));
+  }, [tick]);
+
+  const handleToggleGroupMember = (username: string) => {
+    setSelectedGroupMembers((prev) =>
+      prev.includes(username) ? prev.filter((u) => u !== username) : [...prev, username]
+    );
+  };
+
+  const handleSelectAllFollowing = () => {
+    if (selectedGroupMembers.length === liveFollowing.length && liveFollowing.length > 0) {
+      setSelectedGroupMembers([]);
+    } else {
+      setSelectedGroupMembers(liveFollowing.map((s) => s.username));
+    }
+  };
+
+  const handleCreateGroupSubmit = () => {
+    const name = newGroupName.trim() || 'New Study Group';
+    if (selectedGroupMembers.length === 0) {
+      showToast('Please select at least one student to add to the group.');
+      return;
+    }
+
+    // 1. Create real Group in DataStore
+    const createdGroup = DataStore.createGroup({
+      name,
+      description: `Student study group created by @${currentUser.username}`,
+      category: 'Study Group',
+      members: selectedGroupMembers,
+    });
+
+    const groupId = `conv-${createdGroup.id}`;
+    const initials =
+      name
+        .split(' ')
+        .map((w) => w[0])
+        .filter(Boolean)
+        .slice(0, 2)
+        .join('')
+        .toUpperCase() || 'GP';
+
+    const newGroupConv = {
+      id: groupId,
+      name,
+      username: name.toLowerCase().replace(/\s+/g, '_'),
+      isGroup: true,
+      groupInitials: initials,
+      lastMessage: `Group created with ${selectedGroupMembers.length} classmate${
+        selectedGroupMembers.length > 1 ? 's' : ''
+      }`,
+      timeAgo: 'Just now',
+      isUnread: false,
+    };
+
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('dpsbuzz_conversations_v1');
+        const existing = stored ? JSON.parse(stored) : [];
+        const updated = [newGroupConv, ...existing];
+        localStorage.setItem('dpsbuzz_conversations_v1', JSON.stringify(updated));
+
+        const storedMsgs = localStorage.getItem('dpsbuzz_chat_messages_v1');
+        const existingMsgs = storedMsgs ? JSON.parse(storedMsgs) : {};
+        existingMsgs[groupId] = [
+          {
+            id: `msg-group-welcome-${Date.now()}`,
+            text: `🎉 Welcome to "${name}"! Members: You and ${selectedGroupMembers
+              .map((u) => `@${u}`)
+              .join(', ')}`,
+            sender: 'them',
+            time: 'Just now',
+            status: 'seen',
+          },
+        ];
+        localStorage.setItem('dpsbuzz_chat_messages_v1', JSON.stringify(existingMsgs));
+      } catch {}
+    }
+
+    setIsCreateGroupOpen(false);
+    setNewGroupName('');
+    setSelectedGroupMembers([]);
+    reloadData();
+    showToast(`Created group "${name}" successfully! 🎉`);
+    router.push('/chats');
+  };
+
+  // Team Join Approval Handlers
+  const handleAcceptRequest = (request: GroupJoinRequest) => {
+    const res = DataStore.acceptGroupJoinRequest(request.id, currentUser.username);
+    if (res.success) {
+      showToast(`Accepted @${request.username} into ${request.groupName}! 🎉`);
+      reloadData();
+    }
+  };
+
+  const handleDeclineRequest = (request: GroupJoinRequest) => {
+    const res = DataStore.declineGroupJoinRequest(request.id);
+    if (res.success) {
+      showToast(`Declined request from @${request.username}.`);
+      reloadData();
+    }
+  };
+
+  const handleRequestToJoinTeam = (groupId: string, groupName: string) => {
+    DataStore.requestToJoinGroup(groupId, currentUser.username);
+    showToast(`Join request submitted to ${groupName}! Team members must accept. ⏳`);
+    reloadData();
+  };
+
+  return (
+    <div className="min-h-dvh pb-24 select-none">
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-full bg-black/90 text-white text-xs font-semibold shadow-xl border border-white/20 backdrop-blur-md animate-fade-in flex items-center gap-2">
+          <span>{toastMessage}</span>
+        </div>
+      )}
+
+      {/* If viewing a single group hub */}
+      {selectedGroup ? (
+        <div className="space-y-4 max-w-[480px] mx-auto">
+          {/* Top Bar with Apple Rounded Back Button */}
+          <div
+            className="flex items-center justify-between px-4 h-14 border-b sticky top-0 z-20 backdrop-blur-md"
+            style={{
+              backgroundColor: 'var(--surface)',
+              borderColor: 'var(--line)',
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => setSelectedGroup(null)}
+              className="w-9 h-9 rounded-full flex items-center justify-center btn-press hover:bg-[var(--surface-sunken)] transition-colors"
+              style={{ color: 'var(--text)' }}
+              aria-label="Back to groups"
+            >
+              <ArrowLeft size={20} />
+            </button>
+            <div className="text-xs font-bold truncate" style={{ color: 'var(--text)' }}>
+              {selectedGroup.name} Hub
+            </div>
+            <div className="w-9" />
+          </div>
+
+          <div className="p-4 space-y-4">
+            {/* Apple Squircle Header Card */}
+            <div
+              className="rounded-[22px] border overflow-hidden shadow-sm"
+              style={{
+                backgroundColor: 'var(--surface)',
+                borderColor: 'var(--line)',
+              }}
+            >
+              <div
+                className="h-24 w-full"
+                style={{ backgroundColor: selectedGroup.color || 'var(--primary)' }}
+              />
+              <div className="p-4 -mt-10 space-y-3">
+                <div className="flex items-end justify-between">
+                  <div
+                    className="w-16 h-16 rounded-[18px] flex items-center justify-center font-bold text-base text-white border-2 shadow-md"
+                    style={{
+                      backgroundColor: selectedGroup.color || 'var(--primary)',
+                      borderColor: 'var(--surface)',
+                    }}
+                  >
+                    {selectedGroup.name.slice(0, 2).toUpperCase()}
+                  </div>
+                  <span
+                    className="text-xs font-semibold px-3 py-1 rounded-full border shadow-xs"
+                    style={{
+                      backgroundColor: 'var(--surface-sunken)',
+                      borderColor: 'var(--line)',
+                      color: 'var(--text-muted)',
+                    }}
+                  >
+                    {(Array.isArray(selectedGroup.members) ? selectedGroup.members.length : selectedGroup.members) || selectedGroup.memberCount || 1} Enrolled Members
+                  </span>
+                </div>
+
+                <div>
+                  <h2
+                    className="text-lg font-bold tracking-[-0.02em] leading-[1.15]"
+                    style={{ fontFamily: "var(--font-cabinet), 'Cabinet Grotesk', sans-serif", color: 'var(--text)' }}
+                  >
+                    {selectedGroup.name}
+                  </h2>
+                  <p className="text-xs mt-0.5 leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+                    {selectedGroup.description ||
+                      'Official community for homework updates, project planning, and timetable announcements.'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* iOS Pill Segmented Control */}
+            <div
+              className="p-1 rounded-full border flex gap-1"
+              style={{
+                backgroundColor: 'var(--surface-sunken)',
+                borderColor: 'var(--line)',
+              }}
+            >
+              {[
+                { id: 'feed', label: 'Feed' },
+                { id: 'chat', label: 'Chat' },
+                { id: 'members', label: 'Members' },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id as any)}
+                  className="flex-1 py-1.5 rounded-full text-xs font-bold transition-all btn-press cursor-pointer"
+                  style={{
+                    backgroundColor: activeTab === tab.id ? 'var(--surface)' : 'transparent',
+                    color: activeTab === tab.id ? 'var(--primary)' : 'var(--text-muted)',
+                    boxShadow: activeTab === tab.id ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                  }}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Hub Tab Content */}
+            <div
+              className="p-6 rounded-[20px] border text-center space-y-2 shadow-xs"
+              style={{
+                backgroundColor: 'var(--surface)',
+                borderColor: 'var(--line)',
+              }}
+            >
+              <p className="text-xs font-bold" style={{ color: 'var(--text)' }}>
+                {activeTab === 'feed'
+                  ? 'No posts shared yet.'
+                  : activeTab === 'chat'
+                  ? 'Group chat is active and protected.'
+                  : `Members enrolled in ${selectedGroup.name}.`}
+              </p>
+              <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                Only verified members of {selectedGroup.name} can participate.
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : (
+        /* Groups Directory View */
+        <div className="space-y-4">
+          {/* Top Bar with Apple Rounded Corners */}
+          <div
+            className="flex items-center justify-between px-4 h-14 border-b sticky top-0 z-20 backdrop-blur-md"
+            style={{
+              backgroundColor: 'var(--surface)',
+              borderColor: 'var(--line)',
+            }}
+          >
+            <div className="flex items-center gap-3">
+              <Link
+                href="/home"
+                className="w-9 h-9 rounded-full flex items-center justify-center btn-press hover:bg-[var(--surface-sunken)] transition-colors"
+                style={{ color: 'var(--text)' }}
+                aria-label="Back to home"
+              >
+                <ArrowLeft size={20} />
+              </Link>
+              <h1
+                className="text-lg font-bold tracking-[-0.02em] leading-[1.15]"
+                style={{
+                  fontFamily: "var(--font-cabinet), 'Cabinet Grotesk', sans-serif",
+                  color: 'var(--text)',
+                }}
+              >
+                School Groups & Teams
+              </h1>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsCreateGroupOpen(true)}
+              className="px-3.5 py-1.5 rounded-full text-xs font-bold btn-press cursor-pointer flex items-center gap-1.5 transition-all bg-[var(--primary)] text-[var(--on-primary)] hover:opacity-90 shadow-sm"
+              title="Create a study group with classmates you follow"
+            >
+              <Users size={14} />
+              <span>+ Create Group</span>
+            </button>
+          </div>
+
+          <div className="p-4 max-w-[480px] mx-auto space-y-4">
+            {/* ======================================================== */}
+            {/* REQUIREMENT #1: TEAM JOIN REQUESTS (WAITING FOR APPROVAL) */}
+            {/* "if anyone want to join it should accepted by the members of the team" */}
+            {/* ======================================================== */}
+            <section
+              className="p-4 rounded-[22px] border space-y-3 shadow-sm"
+              style={{
+                backgroundColor: 'var(--surface)',
+                borderColor: 'var(--line)',
+              }}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-full bg-amber-500/15 text-amber-500 flex items-center justify-center shrink-0">
+                    <UserPlus size={15} />
+                  </div>
+                  <div>
+                    <h2 className="text-xs font-bold" style={{ color: 'var(--text)' }}>
+                      Pending Team Join Requests 👥
+                    </h2>
+                    <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
+                      Students requesting to join teams • Must be accepted by team members
+                    </p>
+                  </div>
+                </div>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-600 border border-amber-500/30">
+                  {joinRequests.length} pending
+                </span>
+              </div>
+
+              {joinRequests.length === 0 ? (
+                <div
+                  className="p-4 rounded-[16px] text-center text-xs border"
+                  style={{
+                    backgroundColor: 'var(--surface-sunken)',
+                    borderColor: 'var(--line)',
+                    color: 'var(--text-muted)',
+                  }}
+                >
+                  No pending team join requests at the moment. When classmates request to join a team, their request appears here for members to approve.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {joinRequests.map((req) => {
+                    const colors = getAvatarColorPair(req.username);
+                    return (
+                      <div
+                        key={req.id}
+                        className="p-3 rounded-[18px] border flex flex-col gap-2.5 transition-all hover:border-[var(--primary)]"
+                        style={{
+                          backgroundColor: 'var(--surface-sunken)',
+                          borderColor: 'var(--line)',
+                        }}
+                      >
+                        <div className="flex items-start justify-between gap-2.5">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            {req.avatar ? (
+                              <img
+                                src={req.avatar}
+                                alt={req.fullName}
+                                className="w-9 h-9 rounded-full object-cover shrink-0 border"
+                                style={{ borderColor: 'var(--line)' }}
+                              />
+                            ) : (
+                              <div
+                                className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs shrink-0 shadow-xs"
+                                style={{
+                                  backgroundColor: colors.bg,
+                                  color: colors.text,
+                                }}
+                              >
+                                {req.fullName.slice(0, 2).toUpperCase()}
+                              </div>
+                            )}
+
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="text-xs font-bold truncate" style={{ color: 'var(--text)' }}>
+                                  {req.fullName}
+                                </span>
+                                <span className="text-[10px] text-[var(--text-muted)]">
+                                  @{req.username}
+                                </span>
+                              </div>
+                              <p className="text-[11px] font-medium truncate" style={{ color: 'var(--text-muted)' }}>
+                                {req.studentClass} • Wants to join <span className="font-bold text-[var(--primary)]">{req.groupName}</span>
+                              </p>
+                              <span className="text-[10px] flex items-center gap-1 text-[var(--text-muted)] mt-0.5">
+                                <Clock size={11} />
+                                {req.requestedAt}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Action Buttons: Accept / Decline with Apple Rounded Corners */}
+                        <div className="flex items-center gap-2 pt-1 border-t" style={{ borderColor: 'var(--line)' }}>
+                          <button
+                            type="button"
+                            onClick={() => handleAcceptRequest(req)}
+                            className="flex-1 py-1.5 px-3 rounded-full text-xs font-bold transition-all btn-press cursor-pointer flex items-center justify-center gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700 shadow-xs"
+                          >
+                            <Check size={14} />
+                            <span>Accept Member ✓</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeclineRequest(req)}
+                            className="py-1.5 px-3 rounded-full text-xs font-semibold transition-all btn-press cursor-pointer flex items-center justify-center gap-1 border hover:bg-red-500/10 text-red-500"
+                            style={{
+                              borderColor: 'var(--line)',
+                              backgroundColor: 'var(--surface)',
+                            }}
+                          >
+                            <X size={14} />
+                            <span>Decline</span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+
+            {/* Create Custom Group Banner with Apple Rounded Corners */}
+            <div
+              className="p-4 border rounded-[22px] flex items-center justify-between shadow-sm"
+              style={{
+                backgroundColor: 'var(--surface)',
+                borderColor: 'var(--line)',
+              }}
+            >
+              <div className="space-y-0.5">
+                <h2 className="text-xs font-bold" style={{ color: 'var(--text)' }}>
+                  Create Study & Project Group 🐝
+                </h2>
+                <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                  Start a group with classmates you are following.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsCreateGroupOpen(true)}
+                className="px-3.5 py-1.5 rounded-full bg-[var(--primary)] text-[var(--on-primary)] text-xs font-bold btn-press shrink-0 cursor-pointer hover:opacity-90 flex items-center gap-1.5 shadow-sm"
+              >
+                <Users size={14} />
+                <span>+ Create</span>
+              </button>
+            </div>
+
+            {/* ======================================================== */}
+            {/* REAL STUDENT GROUPS & CLUBS */}
+            {/* ======================================================== */}
+            <section className="space-y-3">
+              <div className="flex items-center justify-between px-1">
+                <h2 className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+                  Student Groups ({groups.length})
+                </h2>
+                <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
+                  Real student-created clubs & study squads
+                </span>
+              </div>
+
+              {groups.length === 0 ? (
+                <div
+                  className="p-8 rounded-[22px] border text-center space-y-3"
+                  style={{
+                    backgroundColor: 'var(--surface)',
+                    borderColor: 'var(--line)',
+                  }}
+                >
+                  <div className="w-12 h-12 rounded-full mx-auto flex items-center justify-center bg-[var(--primary)]/10 text-[var(--primary)] text-xl">
+                    👥
+                  </div>
+                  <h3 className="text-sm font-bold" style={{ color: 'var(--text)' }}>
+                    No Student Groups Created Yet
+                  </h3>
+                  <p className="text-xs max-w-xs mx-auto" style={{ color: 'var(--text-muted)' }}>
+                    Be the first to start a study group, house squad, or project club with classmates you follow!
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setIsCreateGroupOpen(true)}
+                    className="px-4 py-2 rounded-full text-xs font-bold text-white bg-[var(--primary)] hover:opacity-90 transition-opacity inline-flex items-center gap-1.5 cursor-pointer shadow-sm"
+                  >
+                    <Users size={14} />
+                    <span>+ Create First Group</span>
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2.5">
+                  {groups.map((group) => {
+                    const isMember = DataStore.isGroupMember(group.id, currentUser.username);
+                    const hasRequested = DataStore.hasRequestedToJoinGroup(group.id, currentUser.username);
+                    const memberCount = (Array.isArray(group.members) ? group.members.length : 0) || group.memberCount || 1;
+                    const initials = group.name.slice(0, 2).toUpperCase();
+
+                    return (
+                      <div
+                        key={group.id}
+                        className="p-3.5 rounded-[20px] border shadow-xs space-y-2.5 transition-all"
+                        style={{
+                          backgroundColor: 'var(--surface)',
+                          borderColor: 'var(--line)',
+                        }}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div
+                              className="w-11 h-11 rounded-[16px] flex items-center justify-center font-bold text-sm text-white shrink-0 shadow-xs"
+                              style={{ backgroundColor: 'var(--primary)' }}
+                            >
+                              {initials}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <h3 className="text-xs font-bold truncate" style={{ color: 'var(--text)' }}>
+                                  {group.name}
+                                </h3>
+                                <span
+                                  className="text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase"
+                                  style={{
+                                    backgroundColor: 'var(--surface-sunken)',
+                                    color: 'var(--text-muted)',
+                                    border: '1px solid var(--line)',
+                                  }}
+                                >
+                                  {group.category || 'Group'}
+                                </span>
+                              </div>
+                              <p className="text-[11px] line-clamp-1 mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                                {group.description}
+                              </p>
+                              <p className="text-[10px] text-[var(--text-muted)] mt-0.5">
+                                {memberCount} member{memberCount === 1 ? '' : 's'}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Action status */}
+                        <div className="flex items-center justify-between pt-1 border-t" style={{ borderColor: 'var(--line)' }}>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedGroup(group)}
+                            className="text-[11px] font-semibold text-[var(--primary)] hover:underline btn-press cursor-pointer"
+                          >
+                            View Group Hub →
+                          </button>
+
+                          {isMember ? (
+                            <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-600 border border-emerald-500/30 flex items-center gap-1">
+                              <Check size={13} />
+                              <span>Member ✓</span>
+                            </span>
+                          ) : hasRequested ? (
+                            <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-500/15 text-amber-600 border border-amber-500/30 flex items-center gap-1">
+                              <Clock size={13} />
+                              <span>Requested ⏳</span>
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleRequestToJoinTeam(group.id, group.name)}
+                              className="px-3.5 py-1.5 rounded-full text-xs font-bold bg-[var(--primary)] text-[var(--on-primary)] btn-press cursor-pointer hover:opacity-90 transition-all shadow-xs flex items-center gap-1"
+                            >
+                              <UserPlus size={13} />
+                              <span>Request to Join</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+          </div>
+        </div>
+      )}
+
+      {/* Create Group Modal with Apple Rounded Corners */}
+      {isCreateGroupOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 select-none animate-fade-in"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Create new group"
+        >
+          <div
+            className="w-full max-w-md rounded-[26px] border shadow-2xl flex flex-col max-h-[85vh] overflow-hidden"
+            style={{
+              backgroundColor: 'var(--surface)',
+              borderColor: 'var(--line)',
+            }}
+          >
+            {/* Header */}
+            <div
+              className="p-4 border-b flex items-center justify-between shrink-0"
+              style={{ borderColor: 'var(--line)' }}
+            >
+              <div>
+                <h3 className="text-base font-extrabold" style={{ color: 'var(--text)' }}>
+                  Create New Group
+                </h3>
+                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                  Add classmates you are following
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsCreateGroupOpen(false);
+                  setNewGroupName('');
+                  setSelectedGroupMembers([]);
+                }}
+                className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-[var(--surface-sunken)] cursor-pointer transition-colors"
+                style={{ color: 'var(--text-muted)' }}
+                aria-label="Close modal"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-4 space-y-4 overflow-y-auto flex-1">
+              {/* Group Name Input */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold block" style={{ color: 'var(--text)' }}>
+                  Group Name
+                </label>
+                <input
+                  type="text"
+                  maxLength={40}
+                  value={newGroupName}
+                  onChange={(e) => setNewGroupName(e.target.value)}
+                  placeholder="e.g. Science Project Warriors 🔬"
+                  className="w-full h-11 px-3.5 rounded-[14px] text-xs border outline-none focus:ring-2 focus:ring-[var(--primary)] transition-all"
+                  style={{
+                    backgroundColor: 'var(--surface-sunken)',
+                    borderColor: 'var(--line)',
+                    color: 'var(--text)',
+                  }}
+                />
+              </div>
+
+              {/* Add All Students Button with Apple Pill */}
+              <div className="pt-1">
+                <button
+                  type="button"
+                  onClick={handleSelectAllFollowing}
+                  className="w-full py-2.5 px-3 rounded-full text-xs font-bold border btn-press cursor-pointer flex items-center justify-center gap-2 transition-all shadow-xs"
+                  style={{
+                    backgroundColor:
+                      selectedGroupMembers.length === liveFollowing.length && liveFollowing.length > 0
+                        ? 'var(--primary)'
+                        : 'var(--surface-sunken)',
+                    borderColor: 'var(--line)',
+                    color:
+                      selectedGroupMembers.length === liveFollowing.length && liveFollowing.length > 0
+                        ? 'var(--on-primary)'
+                        : 'var(--text)',
+                  }}
+                >
+                  <Users size={16} />
+                  <span>
+                    {selectedGroupMembers.length === liveFollowing.length && liveFollowing.length > 0
+                      ? `Deselect All Following (${liveFollowing.length})`
+                      : `Add All Students I Follow (${liveFollowing.length}) 🐝`}
+                  </span>
+                </button>
+              </div>
+
+              {/* Following Students List */}
+              <div className="space-y-1">
+                <div
+                  className="flex items-center justify-between text-xs font-semibold pb-1"
+                  style={{ color: 'var(--text-muted)' }}
+                >
+                  <span>Following Students</span>
+                  <span>{selectedGroupMembers.length} selected</span>
+                </div>
+
+                {liveFollowing.length === 0 ? (
+                  <div
+                    className="p-4 text-center rounded-[16px] border text-xs"
+                    style={{ borderColor: 'var(--line)', color: 'var(--text-muted)' }}
+                  >
+                    You are not following any students yet. Follow classmates from Search or Star Board to add them to groups.
+                  </div>
+                ) : (
+                  <div
+                    className="divide-y border rounded-[18px] max-h-56 overflow-y-auto"
+                    style={{ borderColor: 'var(--line)' }}
+                  >
+                    {liveFollowing.map((student) => {
+                      const isSelected = selectedGroupMembers.includes(student.username);
+                      const colors = getAvatarColorPair(student.username);
+                      return (
+                        <div
+                          key={student.id}
+                          onClick={() => handleToggleGroupMember(student.username)}
+                          className="p-2.5 flex items-center gap-3 hover:bg-[var(--surface-sunken)] cursor-pointer transition-colors"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => handleToggleGroupMember(student.username)}
+                            className="rounded accent-[var(--primary)] cursor-pointer w-4 h-4"
+                            aria-label={`Select ${student.name}`}
+                          />
+                          {student.avatarUrl ? (
+                            <img
+                              src={student.avatarUrl}
+                              alt={student.name}
+                              className="w-8 h-8 rounded-full object-cover shrink-0"
+                            />
+                          ) : (
+                            <div
+                              className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0"
+                              style={{
+                                backgroundColor: colors.bg,
+                                color: colors.text,
+                              }}
+                            >
+                              {student.name.slice(0, 2).toUpperCase()}
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-semibold truncate" style={{ color: 'var(--text)' }}>
+                              {student.name}
+                            </p>
+                            <p className="text-[11px] truncate" style={{ color: 'var(--text-muted)' }}>
+                              @{student.username} • {student.studentClass}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Footer with Apple Rounded Buttons */}
+            <div
+              className="p-4 border-t flex items-center justify-end gap-2.5 shrink-0"
+              style={{ borderColor: 'var(--line)' }}
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  setIsCreateGroupOpen(false);
+                  setNewGroupName('');
+                  setSelectedGroupMembers([]);
+                }}
+                className="px-4 py-2 rounded-full text-xs font-semibold border btn-press cursor-pointer hover:bg-[var(--surface-sunken)] transition-colors"
+                style={{
+                  backgroundColor: 'var(--surface-sunken)',
+                  borderColor: 'var(--line)',
+                  color: 'var(--text)',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleCreateGroupSubmit}
+                disabled={selectedGroupMembers.length === 0}
+                className="px-5 py-2 rounded-full text-xs font-bold btn-press cursor-pointer transition-all disabled:opacity-50 shadow-sm"
+                style={{
+                  backgroundColor: 'var(--primary)',
+                  color: 'var(--on-primary)',
+                }}
+              >
+                Create Group ({selectedGroupMembers.length}) ✨
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

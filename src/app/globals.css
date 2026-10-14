@@ -1,0 +1,759 @@
+@import "tailwindcss";
+
+/* ===== DESIGN SYSTEM TOKENS (Tailwind v4 @theme inline) ===== */
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-sunken: var(--surface-sunken);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-text: var(--text);
+  --color-muted: var(--text-muted);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-tint: var(--primary-tint);
+  --color-on-primary: var(--on-primary);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-tint: var(--accent-tint);
+  --color-accent-cta: var(--accent-cta);
+  --color-accent-cta-hover: var(--accent-cta-hover);
+  --color-on-accent-cta: var(--on-accent-cta);
+  --color-gold-cta: var(--gold-cta);
+  --color-on-gold-cta: var(--on-gold-cta);
+  --color-like: var(--like);
+  --color-gold: var(--gold);
+  --color-silver: var(--silver);
+  --color-bronze: var(--bronze);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+
+  --font-display: var(--font-cabinet), 'Cabinet Grotesk', -apple-system, sans-serif;
+  --font-body: var(--font-satoshi), 'Satoshi', system-ui, -apple-system, sans-serif;
+  --font-hand: var(--font-kalam), 'Kalam', cursive;
+  --font-mono: var(--font-ibm-mono), 'IBM Plex Mono', monospace;
+  --font-gambetta: var(--font-gambetta), 'Gambetta', serif;
+
+  --radius-xs: 0px;
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-bubble: 6px;
+  --radius-sheet: 0px;
+  --radius-full: 9999px;
+}
+
+/* ==========================================================================
+   60-30-10 COLOR RULE & WCAG CONTRAST SPECIFICATION
+   - 60% White (#FFFFFF): Canvas, card background, generous negative space.
+   - 30% Blue (#1E3A8A): Secondary elements, headers, cards, navigation.
+     * WCAG Contrast: 10.31:1 against white (Exceeds WCAG AAA 7:1 standard).
+   - 10% Bright Accent (Coral #D9480F / Gold #F59E0B): Conversion CTA buttons.
+     * WCAG Contrast: 4.65:1 (Coral w/ white text, meets WCAG AA 4.5:1).
+     * WCAG Contrast: 8.03:1 (Gold w/ dark blue text, exceeds WCAG AAA 7:1).
+   ========================================================================== */
+
+/* Light Theme Tokens */
+:root {
+  --bg: #F6F8FB;
+  --surface: #FFFFFF;
+  --surface-sunken: #EDF0F5;
+  --line: #DFE4EC;
+  --line-strong: #C4CCD8;
+  --text: #121620;
+  --text-muted: #596275;
+
+  --primary: #2B4BFF;
+  --primary-hover: #2139D6;
+  --primary-tint: #E8EDFF;
+  --on-primary: #FFFFFF;
+  --tabbar-bg: rgba(255, 255, 255, 0.82);
+  --tabbar-border: rgba(223, 228, 236, 0.75);
+  --tabbar-shadow: 0 8px 32px rgba(18, 22, 32, 0.08);
+  --blue-header: #2B4BFF;
+  --blue-card-bg: #EDF0F5;
+  --blue-card-border: #DFE4EC;
+
+  --accent: #0B9DB0;
+  --accent-hover: #088495;
+  --accent-tint: #E0F6F9;
+  --accent-cta: #2B4BFF;
+  --accent-cta-hover: #2139D6;
+  --on-accent-cta: #FFFFFF;
+
+  --like: #E5365F;
+  --danger: #C62828;
+  --success: #15803D;
+  --warning: #0B9DB0;
+
+  --gold: #0B9DB0;
+  --gold-hover: #088495;
+  --gold-tint: #E0F6F9;
+  --gold-cta: #2B4BFF;
+  --on-gold-cta: #FFFFFF;
+  --silver: #C4CCD8;
+  --bronze: #596275;
+
+  --dur-fast: 120ms;
+  --dur-base: 180ms;
+  --dur-slow: 280ms;
+  --ease-out: cubic-bezier(.2,.8,.2,1);
+  --ease-spring: cubic-bezier(.34,1.56,.64,1);
+
+  --elev-tabbar: 0 8px 24px rgba(18,22,32,0.12);
+  --elev-1: 0 4px 16px rgba(18,22,32,0.08);
+  --elev-sticker: 2px 2px 0 var(--text);
+
+  /* Corner radius tokens (Redesign Specification) */
+  --r-pill: 9999px;
+  --r-input: 14px;
+  --r-btn: 14px;
+  --r-photo: 20px;
+  --r-hero: 20px;
+  --r-grid: 16px;
+  --r-tabbar: 24px;
+  --r-sheet: 24px;
+  --r-group-avatar: 14px;
+  --r-chat-bubble: 18px;
+  --r-notice: 6px;
+  --r-circle: 9999px;
+
+  /* Legacy compatibility aliases */
+  --r-xs: 6px;
+  --r-sm: 9999px;
+  --r-md: 14px;
+  --r-lg: 20px;
+  --r-bubble: 18px;
+  --r-full: 9999px;
+
+  color-scheme: light;
+}
+
+/* Dark Theme Tokens */
+:root[data-theme="dark"], body[data-theme="dark"], [data-theme="dark"] {
+  --bg: #0F131B;
+  --surface: #171C26;
+  --surface-sunken: #0B0E14;
+  --line: #262D3B;
+  --line-strong: #3A4357;
+  --text: #EEF1F6;
+  --text-muted: #98A2B6;
+
+  --primary: #7C9BFF;
+  --primary-hover: #9DB4FF;
+  --primary-tint: #1B2548;
+  --on-primary: #0E1530;
+  --tabbar-bg: rgba(23, 28, 38, 0.85);
+  --tabbar-border: rgba(38, 45, 59, 0.75);
+  --tabbar-shadow: 0 8px 32px rgba(0, 0, 0, 0.40);
+  --blue-header: #171C26;
+  --blue-card-bg: #0B0E14;
+  --blue-card-border: #262D3B;
+
+  --accent: #3CC8DA;
+  --accent-hover: #62D6E6;
+  --accent-tint: #0E2830;
+  --accent-cta: #7C9BFF;
+  --accent-cta-hover: #9DB4FF;
+  --on-accent-cta: #0E1530;
+
+  --like: #FF5C85;
+  --danger: #FF6B6B;
+  --success: #22C55E;
+  --warning: #3CC8DA;
+
+  --gold: #3CC8DA;
+  --gold-hover: #62D6E6;
+  --gold-tint: #0E2830;
+  --gold-cta: #7C9BFF;
+  --on-gold-cta: #0E1530;
+  --silver: #3A4357;
+  --bronze: #98A2B6;
+
+  --elev-tabbar: 0 8px 24px rgba(0,0,0,0.5);
+  --elev-1: 0 4px 20px rgba(0,0,0,0.5);
+  --elev-sticker: 2px 2px 0 #000000;
+
+  color-scheme: dark;
+}
+
+/* Base resets & typography */
+html {
+  font-family: var(--font-satoshi), 'Satoshi', system-ui, -apple-system, sans-serif;
+  background-color: var(--bg);
+  color: var(--text);
+  -webkit-tap-highlight-color: transparent;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-satoshi), 'Satoshi', system-ui, -apple-system, sans-serif;
+  font-size: 16px;
+  line-height: 24px;
+  background-color: var(--bg);
+  color: var(--text);
+  min-height: 100dvh;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Headings: Cabinet Grotesk, letter-spacing -0.02em, line-height 1.1 to 1.2 */
+h1, h2, h3, h4, .font-display {
+  font-family: var(--font-cabinet), 'Cabinet Grotesk', -apple-system, sans-serif;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+/* Tabular nums for numbers, timestamps & counts (works in Satoshi via tnum) */
+.tabular-nums, [data-tabular] {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* Monospace & Tabular counters (admission number & leaderboard counters via IBM Plex Mono) */
+.font-mono, .tabular-counter, [data-mono-num] {
+  font-family: var(--font-ibm-mono), 'IBM Plex Mono', monospace;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* Handwritten accent: Kalam 400 (strictly maximum 1 use per screen) */
+.font-hand {
+  font-family: var(--font-kalam), 'Kalam', cursive;
+}
+
+/* Optional Gambetta for notice titles */
+.font-gambetta {
+  font-family: var(--font-gambetta), 'Gambetta', serif;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+/* Chips: strictly 6px radius, not pills */
+.chip, [data-chip], .chip-radius {
+  border-radius: 6px !important;
+}
+
+/* Minimum text size: nothing under 12px anywhere */
+[class*="text-[10px]"],
+[class*="text-[11px]"],
+[class*="text-[9px]"],
+[class*="text-[8px]"] {
+  font-size: 12px !important;
+  line-height: 16px !important;
+}
+
+/* Hide scrollbar utility */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Focus styles (Section 13: 2px primary, 2px offset) */
+*:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* ==========================================================================
+   STORY RINGS & STORIES SPECIFICATION (Section 3 & 9.3 Override)
+   - Warm orange is allowed ONLY in story rings and text-story backgrounds.
+   - Unseen ring: 62px outer, 3px gradient (orange→pink→purple→blue, 135deg),
+     2px WHITE inner ring in both modes, slow spinning gradient (Instagram-style),
+     dark-mode-only glow: 0 0 10px rgba(255,70,150,.45).
+   - Seen ring: flat #C4CCD8 light / #3A4357 dark. Inner ring is bg in dark.
+   - Your story: dashed ring, primary plus badge with bg-aware border.
+   - New story: one 1s pulse then still. Respects prefers-reduced-motion.
+   ========================================================================== */
+
+/* --- Gradient spin animation (Instagram-style rotating ring) --- */
+@keyframes story-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* Outer Ring Container */
+.story-ring-container {
+  width: 62px;
+  height: 62px;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+/* --- Unseen Story Ring (spinning gradient) ---
+   Uses a conic-gradient pseudo-element technique:
+   The outer button is position:relative; overflow:hidden is NOT set so the
+   inner ring gap is visible. We achieve the rotating gradient via a
+   ::before pseudo-element that's a 200%x200% conic-gradient spun behind the avatar.
+   Because the gradient background approach is simpler and already works, we keep the
+   linear-gradient padding approach but add animation on the background-image
+   via a wrapper with transform:rotate on a pseudo that we can't do in plain CSS
+   without JS. Instead we use the proven Instagram approach: animate the outer
+   element's background via a spinning square trick.
+   Simplest cross-browser: rotate the entire ring element (it's a circle, so
+   rotating it has no visual effect on the border shape, only the gradient rotates). */
+.story-ring-unseen {
+  width: 62px;
+  height: 62px;
+  border-radius: 9999px;
+  background: linear-gradient(135deg, #FF8A1F 0%, #FF2E93 35%, #A855F7 68%, #3B82F6 100%);
+  padding: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  animation: story-spin 4s linear infinite;
+}
+
+/* Counter-rotate the inner content so avatar stays upright */
+.story-ring-unseen .story-ring-inner {
+  animation: story-spin 4s linear infinite reverse;
+}
+
+/* Dark mode only: soft glow on unseen rings */
+:root[data-theme="dark"] .story-ring-unseen,
+body[data-theme="dark"] .story-ring-unseen,
+[data-theme="dark"] .story-ring-unseen {
+  box-shadow: 0 0 10px rgba(255, 70, 150, 0.45);
+}
+
+/* Unseen inner ring: 2px WHITE gap in BOTH light and dark */
+.story-ring-unseen .story-ring-inner {
+  width: 100%;
+  height: 100%;
+  border-radius: 9999px;
+  background-color: #FFFFFF;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+/* --- Seen Story Ring --- */
+.story-ring-seen {
+  width: 62px;
+  height: 62px;
+  border-radius: 9999px;
+  background: #C4CCD8;
+  padding: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+:root[data-theme="dark"] .story-ring-seen,
+body[data-theme="dark"] .story-ring-seen,
+[data-theme="dark"] .story-ring-seen {
+  background: #3A4357;
+}
+
+/* Seen inner ring: white in light, page-bg in dark */
+.story-ring-seen .story-ring-inner {
+  width: 100%;
+  height: 100%;
+  border-radius: 9999px;
+  background-color: #FFFFFF;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+:root[data-theme="dark"] .story-ring-seen .story-ring-inner,
+body[data-theme="dark"] .story-ring-seen .story-ring-inner,
+[data-theme="dark"] .story-ring-seen .story-ring-inner {
+  background-color: var(--bg);
+}
+
+/* --- Reward Story Ring (Gold) --- */
+.story-ring-reward {
+  width: 62px;
+  height: 62px;
+  border-radius: 9999px;
+  background: var(--gold);
+  padding: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+.story-ring-reward .story-ring-inner {
+  width: 100%;
+  height: 100%;
+  border-radius: 9999px;
+  background-color: #FFFFFF;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+:root[data-theme="dark"] .story-ring-reward .story-ring-inner,
+body[data-theme="dark"] .story-ring-reward .story-ring-inner,
+[data-theme="dark"] .story-ring-reward .story-ring-inner {
+  background-color: var(--bg);
+}
+
+/* --- Your Story Ring: dashed ring, wider dash gap for clarity --- */
+.story-ring-your-story {
+  width: 62px;
+  height: 62px;
+  border-radius: 9999px;
+  /* Instagram uses roughly 5px dash, 4px gap at this size */
+  border: 2px dashed var(--line-strong);
+  /* Increase dash/gap density with outline trick — no outline needed */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  background: transparent;
+}
+
+/* --- Plus badge: primary circle, bg-aware white border --- */
+.story-plus-badge {
+  position: absolute;
+  bottom: 0px;
+  right: 0px;
+  width: 20px;
+  height: 20px;
+  border-radius: 9999px;
+  background-color: var(--primary);
+  color: var(--on-primary);
+  /* Use var(--surface) so badge edge matches the card/surface behind it,
+     not a hardcoded white that looks broken in dark mode */
+  border: 2px solid var(--surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  box-sizing: border-box;
+}
+
+/* --- Enlarged Story Ring (size="lg", 88px outer for Instagram-proportioned circles) --- */
+.story-ring-lg.story-ring-unseen,
+.story-ring-lg.story-ring-seen,
+.story-ring-lg.story-ring-reward,
+.story-ring-lg.story-ring-your-story {
+  width: 88px !important;
+  height: 88px !important;
+}
+
+.story-ring-lg .story-ring-inner {
+  padding: 3.5px !important;
+}
+
+.story-plus-badge-lg {
+  width: 26px !important;
+  height: 26px !important;
+  font-size: 16px !important;
+  bottom: 2px !important;
+  right: 2px !important;
+}
+
+/* --- New story pulse: one 1s pulse then still --- */
+@keyframes story-pulse {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.04); }
+  100% { transform: scale(1); }
+}
+
+/* Pulse overrides the spin for one cycle — use both by chaining */
+.story-ring-pulse {
+  animation: story-pulse 1s ease-in-out 1 forwards, story-spin 4s linear infinite;
+}
+
+/* For seen/reward rings that can also pulse without spin */
+.story-ring-seen.story-ring-pulse,
+.story-ring-reward.story-ring-pulse {
+  animation: story-pulse 1s ease-in-out 1 forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .story-ring-unseen {
+    animation: none !important;
+  }
+  .story-ring-unseen .story-ring-inner {
+    animation: none !important;
+  }
+  .story-ring-pulse {
+    animation: none !important;
+    transform: none !important;
+  }
+}
+
+/* ==========================================================================
+   APPLE-STYLE UI BUTTON PHYSICS & HAPTIC TACTILE ANIMATIONS
+   - Spring-like scale on press (0.952 scale with fluid spring return)
+   - Subtle tactile brightness feedback
+   - High-responsiveness with zero tap lag on mobile touchscreens
+   ========================================================================== */
+button, .btn-apple, .btn-press, [role="button"] {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  user-select: none;
+}
+
+button:not([disabled]):not([data-no-apple="true"]),
+.btn-apple,
+.btn-press {
+  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.15s ease, background-color 0.15s ease;
+  will-change: transform;
+}
+
+button:not([disabled]):not([data-no-apple="true"]):active,
+.btn-apple:active,
+.btn-press:active {
+  transform: scale(0.952) translateZ(0);
+  filter: brightness(0.92);
+  transition: transform 0.08s cubic-bezier(0.2, 0.8, 0.2, 1), filter 0.08s ease;
+}
+
+/* ==========================================================================
+   PROFILE DIAGONAL LIGHT BEAM ANIMATION
+   - Radiant diagonal ray of light passing across profile on load
+   ========================================================================== */
+@keyframes diagonal-light-sweep {
+  0% {
+    transform: translate3d(-100%, -100%, 0) rotate(32deg);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.95;
+  }
+  65% {
+    opacity: 0.95;
+  }
+  100% {
+    transform: translate3d(220%, 220%, 0) rotate(32deg);
+    opacity: 0;
+  }
+}
+
+.profile-light-sweep {
+  position: relative;
+  overflow: hidden;
+}
+
+.profile-light-sweep::after {
+  content: '';
+  position: absolute;
+  top: -100%;
+  left: -100%;
+  width: 300%;
+  height: 300%;
+  background: linear-gradient(
+    122deg,
+    transparent 38%,
+    rgba(255, 255, 255, 0.04) 44%,
+    rgba(255, 255, 255, 0.75) 50%,
+    rgba(255, 255, 255, 0.04) 56%,
+    transparent 62%
+  );
+  pointer-events: none;
+  animation: diagonal-light-sweep 2s cubic-bezier(0.22, 1, 0.36, 1) 0.3s forwards;
+  z-index: 30;
+}
+
+/* ==========================================================================
+   NOTES SONG MARQUEE TICKER ANIMATION
+   ========================================================================== */
+@keyframes notes-marquee {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-notes-marquee {
+  display: inline-flex;
+  white-space: nowrap;
+  animation: notes-marquee 8s linear infinite;
+  will-change: transform;
+}
+.animate-notes-marquee:hover {
+  animation-play-state: paused;
+}
+
+/* Sticker / Badge Elevation */
+.sticker-badge {
+  box-shadow: var(--elev-sticker);
+  border: 1.5px solid var(--text);
+}
+
+/* Folded Corner Notice Clip (Section 9.5) */
+.notice-folded-corner {
+  position: relative;
+}
+.notice-folded-corner::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 10px;
+  height: 10px;
+  background: linear-gradient(135deg, transparent 50%, var(--line) 50%);
+  border-bottom-left-radius: 2px;
+}
+
+/* --- Mascot & Streak Animations --- */
+@keyframes flame-pulse {
+  0%, 100% {
+    transform: scale(1) rotate(0deg);
+    filter: drop-shadow(0 0 2px rgba(245, 158, 11, 0.4));
+  }
+  25% {
+    transform: scale(1.1) rotate(-4deg);
+    filter: drop-shadow(0 0 5px rgba(245, 158, 11, 0.7));
+  }
+  50% {
+    transform: scale(0.96) rotate(3deg);
+    filter: drop-shadow(0 0 3px rgba(239, 68, 68, 0.5));
+  }
+  75% {
+    transform: scale(1.06) rotate(-2deg);
+    filter: drop-shadow(0 0 6px rgba(245, 158, 11, 0.8));
+  }
+}
+
+.animate-flame {
+  display: inline-block;
+  animation: flame-pulse 2.2s ease-in-out infinite;
+  transform-origin: center bottom;
+}
+
+@keyframes gold-shimmer {
+  0% {
+    box-shadow: 0 0 0 rgba(242, 183, 5, 0);
+  }
+  50% {
+    box-shadow: 0 0 14px rgba(242, 183, 5, 0.35);
+  }
+  100% {
+    box-shadow: 0 0 0 rgba(242, 183, 5, 0);
+  }
+}
+
+.animate-gold-podium {
+  animation: gold-shimmer 3s ease-in-out infinite;
+}
+
+@keyframes bounce-in {
+  0% { transform: scale(0.85); opacity: 0; }
+  60% { transform: scale(1.04); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.animate-bounce-in {
+  animation: bounce-in 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+/* Chat Micro-Animations */
+@keyframes chat-bubble-pop {
+  0% { transform: scale(0.93) translateY(6px); opacity: 0; }
+  65% { transform: scale(1.015) translateY(-1px); opacity: 0.95; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+.animate-chat-bubble {
+  animation: chat-bubble-pop 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes pulse-radar {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+  70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(34, 197, 94, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+}
+
+.animate-pulse-radar {
+  animation: pulse-radar 2s infinite ease-out;
+}
+
+@keyframes typing-dot {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30% { transform: translateY(-5px); opacity: 1; }
+}
+
+.animate-typing-dot-1 { animation: typing-dot 1.2s infinite ease-in-out; }
+.animate-typing-dot-2 { animation: typing-dot 1.2s infinite ease-in-out 0.2s; }
+.animate-typing-dot-3 { animation: typing-dot 1.2s infinite ease-in-out 0.4s; }
+
+/* Apple-style Hello Stroke Keyframes */
+@keyframes apple-stroke-draw {
+  0% { stroke-dashoffset: 950; opacity: 0; }
+  10% { opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 1; }
+}
+
+@keyframes apple-fade-up {
+  0% { transform: translateY(18px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+.animate-apple-stroke {
+  stroke-dasharray: 950;
+  stroke-dashoffset: 950;
+  animation: apple-stroke-draw 1.7s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
+.animate-apple-fade-up {
+  animation: apple-fade-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Respect Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ==========================================================================
+   Logo Theme Switching: White "DPS" in Dark Mode, Black "DPS" in Light Mode
+   ========================================================================== */
+.logo-dark-img {
+  display: none !important;
+}
+.logo-light-img {
+  display: inline-block !important;
+}
+
+:root[data-theme="dark"] .logo-dark-img,
+body[data-theme="dark"] .logo-dark-img,
+[data-theme="dark"] .logo-dark-img {
+  display: inline-block !important;
+}
+
+:root[data-theme="dark"] .logo-light-img,
+body[data-theme="dark"] .logo-light-img,
+[data-theme="dark"] .logo-light-img {
+  display: none !important;
+}

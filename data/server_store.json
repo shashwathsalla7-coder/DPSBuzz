@@ -1,0 +1,46 @@
+﻿{
+    "posts":  [
+
+              ],
+    "stories":  [
+
+                ],
+    "profiles":  [
+                     {
+                         "id":  "admin-shashwath-id",
+                         "username":  "shashwath71845",
+                         "fullName":  "Shashwath (Admin)",
+                         "role":  "admin",
+                         "isVerified":  true,
+                         "isApproved":  true,
+                         "avatar":  null,
+                         "bio":  "DPS Buzz Super Administrator ðŸ›¡ï¸ â€¢ Full Systems \u0026 Moderation Access",
+                         "class":  "Staff",
+                         "section":  "Admin",
+                         "followerCount":  0,
+                         "followingCount":  0,
+                         "postCount":  0,
+                         "spiritPoints":  0,
+                         "createdAt":  "2026-10-01T00:00:00.000Z"
+                     }
+                 ],
+    "chatNotes":  [
+
+                  ],
+    "chatMessages":  {
+
+                     },
+    "comments":  {
+
+                 },
+    "likes":  {
+
+              },
+    "notices":  [
+
+                ],
+    "lastUpdated":  1791973151762,
+    "deletedPostIds":  [
+
+                       ]
+}
