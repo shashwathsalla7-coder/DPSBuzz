@@ -545,16 +545,26 @@ export const STARTER_NOTICES: Notice[] = [];
 export const STARTER_CALENDAR: CalendarEvent[] = [];
 
 let lastServerSyncTime = 0;
+let activeSyncPromise: Promise<boolean> | null = null;
 
 export const DataStore = {
   // Cross-device synchronization between Web and Android App
   async syncWithServer(): Promise<boolean> {
     if (typeof window === 'undefined') return false;
-    try {
-      const res = await fetch('/api/sync');
-      if (!res.ok) return false;
-      const data = await res.json();
-      if (!data.success) return false;
+    if (activeSyncPromise) {
+      return activeSyncPromise;
+    }
+    if (Date.now() - lastServerSyncTime < 1200) {
+      return true;
+    }
+
+    activeSyncPromise = (async () => {
+      try {
+        lastServerSyncTime = Date.now();
+        const res = await fetch('/api/sync?t=' + Date.now());
+        if (!res.ok) return false;
+        const data = await res.json();
+        if (!data.success) return false;
 
       // Push active user to cloud if not already registered on server
       const activeUser = this.getCurrentUser();
@@ -772,11 +782,16 @@ export const DataStore = {
       if (changed) {
         window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated'));
       }
-      return true;
-    } catch (e) {
-      console.warn('Sync error:', e);
-      return false;
-    }
+        return true;
+      } catch (e) {
+        console.warn('Sync error:', e);
+        return false;
+      } finally {
+        activeSyncPromise = null;
+      }
+    })();
+
+    return activeSyncPromise;
   },
 
   // Profiles (Only real registered students and admins - with strictly accurate real follower counts)

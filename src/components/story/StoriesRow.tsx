@@ -52,10 +52,10 @@ export const StoriesRow: React.FC<StoriesRowProps> = ({ currentUser }) => {
     window.addEventListener('dpsbuzz:content_updated', handleUpdate);
     window.addEventListener('dpsbuzz:open_stories', handleOpenStoriesSwipe);
 
-    // Live background polling to automatically sync stories between Web and Android App
+    // Background polling fallback to sync stories between Web and App
     const syncInterval = setInterval(() => {
       DataStore.syncWithServer().then(() => loadStoryGroups());
-    }, 4000);
+    }, 10000);
 
     return () => {
       window.removeEventListener('dpsbuzz:content_updated', handleUpdate);

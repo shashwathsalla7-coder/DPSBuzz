@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect, Suspense } from 'react';
+import React, { useState, useMemo, useEffect, useRef, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import {
@@ -651,6 +651,78 @@ function ChatsContent() {
     setRequests((prev) => prev.filter((r) => r.id !== req.id));
   };
 
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = (smooth = true) => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto' });
+    }
+  };
+
+  useEffect(() => {
+    if (activeConversation) {
+      const timer = setTimeout(() => scrollToBottom(false), 60);
+      return () => clearTimeout(timer);
+    }
+  }, [activeConversation?.id]);
+
+  useEffect(() => {
+    if (activeConversation) {
+      scrollToBottom(true);
+    }
+  }, [chatMessages]);
+
+  const handleSendHeart = () => {
+    if (isMaintenanceActive) {
+      alert('Chat messaging is disabled during scheduled maintenance.');
+      return;
+    }
+    if (!activeConversation) return;
+
+    const rawId = activeConversation.id;
+    const canonicalId = getCanonicalConvId(activeConversation);
+
+    const newMsg: ChatMessage = {
+      id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      text: '❤️',
+      sender: 'me',
+      senderUsername: currentUsername,
+      time: new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date()),
+    };
+
+    setChatMessages((prev) => {
+      const currentList = prev[rawId] || prev[canonicalId] || [];
+      const updated = [...currentList, newMsg];
+      const nextMap = {
+        ...prev,
+        [rawId]: updated,
+        [canonicalId]: updated,
+      };
+      try {
+        localStorage.setItem('dpsbuzz_chat_messages_v1', JSON.stringify(nextMap));
+      } catch {}
+      return nextMap;
+    });
+
+    setConversations((prev) =>
+      prev.map((c) =>
+        c.id === rawId || c.id === canonicalId
+          ? { ...c, lastMessage: 'You: ❤️', timeAgo: 'Just now' }
+          : c
+      )
+    );
+
+    // Dispatch to server endpoint for instant cross-device delivery
+    fetch('/api/chats', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        conversationId: canonicalId,
+        message: newMsg,
+      }),
+    }).catch((err) => console.warn('Failed to sync chat message:', err));
+  };
+
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     if (isMaintenanceActive) {
@@ -820,7 +892,13 @@ function ChatsContent() {
                         </Link>
                       </div>
                     )}
-                    {msg.text}
+                    {msg.text === '❤️' && !msg.sharedPost ? (
+                      <span className="text-3xl inline-block animate-heart-pop py-0.5 select-none leading-none">
+                        ❤️
+                      </span>
+                    ) : (
+                      msg.text
+                    )}
                   </div>
                   <span className="text-[10px] text-[var(--text-muted)] mt-1 px-1 tabular-nums">
                     {msg.time}
@@ -829,6 +907,7 @@ function ChatsContent() {
               );
             })
           )}
+          <div ref={messagesEndRef} />
         </div>
 
         {/* Maintenance Notice Banner */}
@@ -857,18 +936,30 @@ function ChatsContent() {
             className="flex-1 h-11 px-4 rounded-full bg-[var(--surface-sunken)] text-sm outline-none border border-[var(--line)] placeholder:text-[var(--text-muted)] disabled:opacity-50"
             style={{ color: 'var(--text)' }}
           />
-          <button
-            type="submit"
-            disabled={isMaintenanceActive || !messageInput.trim()}
-            className="w-11 h-11 rounded-full flex items-center justify-center cursor-pointer transition-transform active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
-            style={{
-              backgroundColor: 'var(--primary)',
-              color: 'var(--on-primary)',
-            }}
-            aria-label="Send message"
-          >
-            <Send size={18} />
-          </button>
+          {messageInput.trim() ? (
+            <button
+              type="submit"
+              disabled={isMaintenanceActive}
+              className="w-11 h-11 rounded-full flex items-center justify-center cursor-pointer transition-transform active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+              style={{
+                backgroundColor: 'var(--primary)',
+                color: 'var(--on-primary)',
+              }}
+              aria-label="Send message"
+            >
+              <Send size={18} />
+            </button>
+          ) : (
+            <button
+              type="button"
+              disabled={isMaintenanceActive}
+              onClick={handleSendHeart}
+              className="w-11 h-11 rounded-full flex items-center justify-center cursor-pointer transition-transform active:scale-75 hover:scale-110 text-rose-500 shrink-0 disabled:opacity-40"
+              aria-label="Send heart"
+            >
+              <Heart size={22} className="fill-rose-500" />
+            </button>
+          )}
         </form>
       </div>
     );

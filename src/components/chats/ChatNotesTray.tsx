@@ -53,7 +53,7 @@ export const ChatNotesTray: React.FC<ChatNotesTrayProps> = ({ onReplyToNote }) =
 
     const syncInterval = setInterval(() => {
       DataStore.syncWithServer().then(() => loadData());
-    }, 4000);
+    }, 10000);
 
     return () => {
       window.removeEventListener('dpsbuzz:content_updated', loadData);

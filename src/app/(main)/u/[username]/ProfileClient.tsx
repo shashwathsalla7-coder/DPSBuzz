@@ -357,11 +357,35 @@ export default function ProfileClient({ username }: { username: string }) {
   };
 
   const handleCopyProfileLink = () => {
-    if (typeof navigator !== 'undefined' && navigator.clipboard) {
-      navigator.clipboard.writeText(`https://dpsbuzz.internal/u/${profile.username}`);
+    if (typeof window !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(`${window.location.origin}/u/${profile.username}`);
     }
     setShowProfileOptions(false);
-    showToast('Profile link copied! 📋');
+    showToast('Profile link copied to clipboard! 📋');
+  };
+
+  const handleShareProfile = async () => {
+    setShowProfileOptions(false);
+    const profileUrl = typeof window !== 'undefined' ? `${window.location.origin}/u/${profile.username}` : '';
+    const shareData = {
+      title: `${profile.fullName} (@${profile.username}) • DPS Buzz`,
+      text: `Connect with ${profile.fullName} on DPS Buzz 🐝`,
+      url: profileUrl,
+    };
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share(shareData);
+        showToast('Profile shared successfully! 🚀');
+      } catch (err: any) {
+        if (err.name !== 'AbortError') {
+          if (navigator.clipboard) await navigator.clipboard.writeText(profileUrl);
+          showToast('Profile link copied to clipboard! 📋');
+        }
+      }
+    } else if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      await navigator.clipboard.writeText(profileUrl);
+      showToast('Profile link copied to clipboard! 📋');
+    }
   };
 
   return (
@@ -1300,10 +1324,7 @@ export default function ProfileClient({ username }: { username: string }) {
               <span>Copy Profile Link</span>
             </button>
             <button
-              onClick={() => {
-                setShowProfileOptions(false);
-                showToast(`Shared @${profile.username}'s profile in chat!`);
-              }}
+              onClick={handleShareProfile}
               className="w-full py-3.5 px-4 text-xs font-semibold text-left flex items-center gap-3 hover:bg-[var(--surface-sunken)] transition-colors cursor-pointer"
               style={{ color: 'var(--text)' }}
             >
