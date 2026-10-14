@@ -1,46 +1,40 @@
-﻿{
-    "posts":  [
-
-              ],
-    "stories":  [
-
-                ],
-    "profiles":  [
-                     {
-                         "id":  "admin-shashwath-id",
-                         "username":  "shashwath71845",
-                         "fullName":  "Shashwath (Admin)",
-                         "role":  "admin",
-                         "isVerified":  true,
-                         "isApproved":  true,
-                         "avatar":  null,
-                         "bio":  "DPS Buzz Super Administrator ðŸ›¡ï¸ â€¢ Full Systems \u0026 Moderation Access",
-                         "class":  "Staff",
-                         "section":  "Admin",
-                         "followerCount":  0,
-                         "followingCount":  0,
-                         "postCount":  0,
-                         "spiritPoints":  0,
-                         "createdAt":  "2026-10-01T00:00:00.000Z"
-                     }
-                 ],
-    "chatNotes":  [
-
-                  ],
-    "chatMessages":  {
-
-                     },
-    "comments":  {
-
-                 },
-    "likes":  {
-
-              },
-    "notices":  [
-
-                ],
-    "lastUpdated":  1791973151762,
-    "deletedPostIds":  [
-
-                       ]
+{
+  "posts": [],
+  "stories": [],
+  "profiles": [
+    {
+      "id": "admin-shashwath-id",
+      "username": "shashwath71845",
+      "fullName": "Shashwath (Admin)",
+      "role": "admin",
+      "isVerified": true,
+      "isApproved": true,
+      "avatar": null,
+      "bio": "DPS Buzz Super Administrator 🛡️ • Full Systems & Moderation Access",
+      "class": "Staff",
+      "section": "Admin",
+      "followerCount": 0,
+      "followingCount": 0,
+      "postCount": 0,
+      "spiritPoints": 0,
+      "createdAt": "2026-10-01T00:00:00.000Z"
+    }
+  ],
+  "chatNotes": [],
+  "chatMessages": {
+    "conv-shashwath71845": [
+      {
+        "id": "msg-1791975484816-2up8",
+        "text": "Hi",
+        "sender": "me",
+        "senderUsername": "shashwath71845",
+        "time": "4:28 PM"
+      }
+    ]
+  },
+  "comments": {},
+  "likes": {},
+  "notices": [],
+  "deletedPostIds": [],
+  "lastUpdated": 1791975361922
 }
