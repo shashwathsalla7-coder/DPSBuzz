@@ -32,6 +32,7 @@ import {
   ArrowUp,
   ArrowDown,
   GripVertical,
+  Tag,
 } from 'lucide-react';
 import Link from 'next/link';
 import { DataStore, type Profile, type HabitStreak, type SongTrack, type Post } from '@/lib/dataStore';
@@ -65,7 +66,7 @@ export default function ProfileClient({ username }: { username: string }) {
   }, [username]);
 
   const [profile, setProfile] = useState<Profile>(initialProfile);
-  const [activeTab, setActiveTab] = useState<'posts' | 'reposts' | 'saved'>('posts');
+  const [activeTab, setActiveTab] = useState<'posts' | 'reposts' | 'tagged' | 'saved'>('posts');
   const [isFollowing, setIsFollowing] = useState(false);
   const [postsVersion, setPostsVersion] = useState(0);
 
@@ -77,6 +78,8 @@ export default function ProfileClient({ username }: { username: string }) {
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [showSongPickerModal, setShowSongPickerModal] = useState(false);
   const [showNoteSongPickerModal, setShowNoteSongPickerModal] = useState(false);
+  const [showPostSongPickerModal, setShowPostSongPickerModal] = useState(false);
+  const [detailSlideIndex, setDetailSlideIndex] = useState(0);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Post Detail & Repost Modals
@@ -317,6 +320,20 @@ export default function ProfileClient({ username }: { username: string }) {
   const savedPosts = useMemo(() => {
     return DataStore.getSavedPosts(profile.username);
   }, [profile.username, postsVersion]);
+
+  const taggedPosts = useMemo(() => {
+    return DataStore.getTaggedPosts(profile.username);
+  }, [profile.username, postsVersion]);
+
+  const handleToggleTaggedOnGrid = (postId: string) => {
+    const isOnGrid = DataStore.toggleTaggedPostOnGrid(profile.username, postId);
+    setPostsVersion((v) => v + 1);
+    showToast(
+      isOnGrid
+        ? 'Tagged photo added to your main profile grid! 🏷️✨'
+        : 'Removed from your main grid ❌'
+    );
+  };
 
   const userPosts = useMemo(() => {
     return [...originalPosts, ...repostPosts];
@@ -894,6 +911,23 @@ export default function ProfileClient({ username }: { username: string }) {
             )}
           </button>
           <button
+            onClick={() => setActiveTab('tagged')}
+            className="flex-1 py-3 flex items-center justify-center btn-press border-b-2 cursor-pointer gap-1.5"
+            style={{
+              borderColor: activeTab === 'tagged' ? 'var(--primary)' : 'transparent',
+              color: activeTab === 'tagged' ? 'var(--primary)' : 'var(--text-muted)',
+            }}
+            aria-label="Tagged tab"
+          >
+            <Tag size={17} />
+            <span className="text-[11px] font-semibold">Tagged</span>
+            {taggedPosts.length > 0 && (
+              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-blue-500/20 text-blue-400 font-bold tabular-nums">
+                {taggedPosts.length}
+              </span>
+            )}
+          </button>
+          <button
             onClick={() => setActiveTab('saved')}
             className="flex-1 py-3 flex items-center justify-center btn-press border-b-2 cursor-pointer gap-1.5"
             style={{
@@ -1050,6 +1084,16 @@ export default function ProfileClient({ username }: { username: string }) {
                         <Pin size={11} className="fill-white rotate-45 text-white" />
                       </div>
                     )}
+                    {/* Tagged post on main grid badge */}
+                    {post.isTaggedOnGrid && (
+                      <div
+                        className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-full bg-black/65 backdrop-blur-xs flex items-center gap-1 text-white shadow-xs z-10 text-[9px] font-bold"
+                        title="Tagged photo pushed to your main grid"
+                      >
+                        <Tag size={10} className="text-pink-400" />
+                        <span>Tagged</span>
+                      </div>
+                    )}
                     {displayImg ? (
                       <img
                         src={displayImg}
@@ -1130,6 +1174,75 @@ export default function ProfileClient({ username }: { username: string }) {
               </p>
               <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
                 Posts that @{profile.username} reposts will appear here.
+              </p>
+            </div>
+          )
+        ) : activeTab === 'tagged' ? (
+          taggedPosts.length > 0 ? (
+            <div className="grid grid-cols-3 gap-1.5">
+              {taggedPosts.map((post) => {
+                const displayImg = post.imageUrl || (post.images && post.images.length > 0 ? post.images[0] : null);
+                const isOnGrid = DataStore.isTaggedPostOnGrid(profile.username, post.id);
+                return (
+                  <div
+                    key={post.id}
+                    onClick={() => {
+                      setSelectedPostDetail(post);
+                      setDetailSlideIndex(0);
+                    }}
+                    className="aspect-square relative overflow-hidden rounded-[16px] bg-[var(--surface-sunken)] cursor-pointer group border border-[var(--line)] shadow-2xs"
+                  >
+                    {displayImg ? (
+                      <img
+                        src={displayImg}
+                        alt={post.caption}
+                        className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex flex-col items-center justify-center text-xs text-[var(--text-muted)] p-2 text-center bg-gradient-to-br from-blue-500/10 to-indigo-500/10">
+                        <span className="font-semibold text-[11px] line-clamp-2">{post.caption.slice(0, 30)}</span>
+                      </div>
+                    )}
+                    {/* Tagged by badge */}
+                    <div className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-full bg-black/60 text-white text-[9px] font-bold flex items-center gap-1 backdrop-blur-xs">
+                      <Tag size={10} className="text-pink-400" />
+                      <span>@{post.username}</span>
+                    </div>
+
+                    {/* Push to Main Grid Toggle Button for Profile Owner */}
+                    {isOwnProfile && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleTaggedOnGrid(post.id);
+                        }}
+                        className={`absolute bottom-1.5 inset-x-1.5 py-1 px-1.5 rounded-xl text-[10px] font-bold flex items-center justify-center gap-1 transition-all shadow-md ${
+                          isOnGrid
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-black/75 hover:bg-black text-white/90'
+                        }`}
+                        title={isOnGrid ? 'Remove from main profile grid' : 'Push photo to main profile grid'}
+                      >
+                        <Tag size={10} />
+                        <span>{isOnGrid ? 'On Grid ✓' : '+ Add to Grid'}</span>
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="py-16 text-center space-y-2">
+              <div className="w-12 h-12 mx-auto rounded-full bg-[var(--surface-sunken)] flex items-center justify-center text-[var(--text-muted)]">
+                <Tag size={24} />
+              </div>
+              <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
+                No tagged photos yet
+              </p>
+              <p className="text-xs max-w-xs mx-auto" style={{ color: 'var(--text-muted)' }}>
+                When classmates tag @{profile.username} in photos, they will appear here. You can then push them straight to your main profile grid!
               </p>
             </div>
           )
@@ -1248,6 +1361,40 @@ export default function ProfileClient({ username }: { username: string }) {
                 </div>
               </div>
               <div className="flex items-center gap-1">
+                {/* Push to Main Grid button if user is tagged in this post */}
+                {isOwnProfile && selectedPostDetail.username.toLowerCase() !== profile.username.toLowerCase() && (
+                  <button
+                    type="button"
+                    onClick={() => handleToggleTaggedOnGrid(selectedPostDetail.id)}
+                    className={`px-2 py-1 rounded-full text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer ${
+                      DataStore.isTaggedPostOnGrid(profile.username, selectedPostDetail.id)
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'bg-[var(--surface-sunken)] text-[var(--text-muted)] hover:text-blue-500 border border-[var(--line)]'
+                    }`}
+                    title={DataStore.isTaggedPostOnGrid(profile.username, selectedPostDetail.id) ? 'Remove from main profile grid' : 'Push photo to main profile grid'}
+                  >
+                    <Tag size={12} />
+                    <span>{DataStore.isTaggedPostOnGrid(profile.username, selectedPostDetail.id) ? 'On Grid ✓' : '+ Main Grid'}</span>
+                  </button>
+                )}
+
+                {/* Edit / Change Music button for post owner */}
+                {isOwnProfile && !selectedPostDetail.isRepost && (
+                  <button
+                    type="button"
+                    onClick={() => setShowPostSongPickerModal(true)}
+                    className={`p-1.5 rounded-full transition-colors cursor-pointer ${
+                      selectedPostDetail.song
+                        ? 'text-pink-500 bg-pink-500/10 hover:bg-pink-500/20'
+                        : 'text-[var(--text-muted)] hover:text-pink-500 hover:bg-[var(--surface-sunken)]'
+                    }`}
+                    title={selectedPostDetail.song ? `Change music ("${selectedPostDetail.song.title}") 🎵` : 'Add background music 🎵'}
+                    aria-label="Change music"
+                  >
+                    <Music size={17} />
+                  </button>
+                )}
+
                 {/* Pin / Unpin button for profile owner (regular posts only) */}
                 {isOwnProfile && !selectedPostDetail.isRepost && (
                   <button
@@ -1331,16 +1478,51 @@ export default function ProfileClient({ username }: { username: string }) {
               </div>
             )}
 
-            {/* Post Image */}
-            {(selectedPostDetail.imageUrl || (selectedPostDetail.images && selectedPostDetail.images.length > 0)) && (
-              <div className="w-full aspect-square bg-black relative flex items-center justify-center overflow-hidden">
-                <img
-                  src={selectedPostDetail.imageUrl || selectedPostDetail.images[0]}
-                  alt={selectedPostDetail.caption}
-                  className="w-full h-full object-contain"
-                />
-              </div>
-            )}
+            {/* Post Image & Carousel Navigation */}
+            {(() => {
+              const allImgs = (selectedPostDetail.images && selectedPostDetail.images.length > 0)
+                ? selectedPostDetail.images
+                : (selectedPostDetail.imageUrl ? [selectedPostDetail.imageUrl] : []);
+              if (allImgs.length === 0) return null;
+              const curImg = allImgs[detailSlideIndex] || allImgs[0];
+              return (
+                <div className="w-full aspect-square bg-black relative flex items-center justify-center overflow-hidden select-none">
+                  <img
+                    src={curImg}
+                    alt={selectedPostDetail.caption}
+                    className="w-full h-full object-contain"
+                  />
+                  {allImgs.length > 1 && (
+                    <>
+                      {/* Prev button */}
+                      {detailSlideIndex > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setDetailSlideIndex((i) => Math.max(0, i - 1))}
+                          className="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 hover:bg-black text-white flex items-center justify-center text-sm font-bold shadow-md cursor-pointer z-10"
+                        >
+                          ◀
+                        </button>
+                      )}
+                      {/* Next button */}
+                      {detailSlideIndex < allImgs.length - 1 && (
+                        <button
+                          type="button"
+                          onClick={() => setDetailSlideIndex((i) => Math.min(allImgs.length - 1, i + 1))}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 hover:bg-black text-white flex items-center justify-center text-sm font-bold shadow-md cursor-pointer z-10"
+                        >
+                          ▶
+                        </button>
+                      )}
+                      {/* Slide Indicator Badge */}
+                      <div className="absolute top-2.5 right-2.5 px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-xs text-white text-[10px] font-bold z-10">
+                        {detailSlideIndex + 1}/{allImgs.length}
+                      </div>
+                    </>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Action Row */}
             <div className="px-4 py-2.5 flex items-center justify-between border-b" style={{ borderColor: 'var(--line)' }}>
@@ -1417,13 +1599,38 @@ export default function ProfileClient({ username }: { username: string }) {
               </div>
             </div>
 
-            {/* Caption */}
-            <div className="p-4 space-y-2">
-              <p className="text-xs leading-relaxed" style={{ color: 'var(--text)' }}>
-                <span className="font-bold mr-1.5">@{selectedPostDetail.username}</span>
-                <span>{selectedPostDetail.caption}</span>
-              </p>
-            </div>
+            {/* Attached Audio Track Pill */}
+            {selectedPostDetail.song && (
+              <div className="px-4 pt-2.5 pb-1">
+                <MusicTrackPill song={selectedPostDetail.song} compact />
+              </div>
+            )}
+
+            {/* Caption with Per-Slide Caption Support */}
+            {(() => {
+              const allImgs = (selectedPostDetail.images && selectedPostDetail.images.length > 0)
+                ? selectedPostDetail.images
+                : (selectedPostDetail.imageUrl ? [selectedPostDetail.imageUrl] : []);
+              const currentDetailCaption =
+                (selectedPostDetail.slideCaptions && selectedPostDetail.slideCaptions[detailSlideIndex]?.trim()) ||
+                selectedPostDetail.caption;
+              const hasSlideCaptions = Boolean(
+                selectedPostDetail.slideCaptions && selectedPostDetail.slideCaptions.some((c) => c && c.trim())
+              );
+              return (
+                <div className="p-4 space-y-1.5">
+                  {hasSlideCaptions && allImgs.length > 1 && (
+                    <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full bg-pink-500/10 text-pink-500 border border-pink-500/20">
+                      📸 Slide {detailSlideIndex + 1} of {allImgs.length}
+                    </span>
+                  )}
+                  <p className="text-xs leading-relaxed" style={{ color: 'var(--text)' }}>
+                    <span className="font-bold mr-1.5">@{selectedPostDetail.username}</span>
+                    <span>{currentDetailCaption}</span>
+                  </p>
+                </div>
+              );
+            })()}
 
             {/* Repost Options Bottom Sheet */}
             {showDetailRepostSheet && (
@@ -2244,6 +2451,22 @@ export default function ProfileClient({ username }: { username: string }) {
           setShowNoteSongPickerModal(false);
         }}
         title="Add Song to Note 🎵"
+      />
+
+      {/* Post Song Picker Modal for Post-Upload Music Changes */}
+      <SongPickerModal
+        isOpen={showPostSongPickerModal}
+        onClose={() => setShowPostSongPickerModal(false)}
+        onSelectSong={(song) => {
+          if (selectedPostDetail) {
+            DataStore.updatePostSong(selectedPostDetail.id, song);
+            setSelectedPostDetail((prev) => (prev ? { ...prev, song } : null));
+            setPostsVersion((v) => v + 1);
+            showToast('Post background music updated! 🎵✨');
+          }
+          setShowPostSongPickerModal(false);
+        }}
+        title="Change Post Music 🎵"
       />
     </div>
   );

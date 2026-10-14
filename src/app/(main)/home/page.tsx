@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, Suspense } from 'react';
+import { useState, useEffect, useMemo, useRef, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -72,7 +72,7 @@ function HomeContent() {
   const [followsVersion, setFollowsVersion] = useState(0);
 
   // Comments map with localStorage persistence
-  const [commentsMap, setCommentsMap] = useState<Record<string, Array<{ id: string; username: string; text: string; timeAgo: string }>>>(() => {
+  const [commentsMap, setCommentsMap] = useState<Record<string, Array<{ id: string; username: string; text: string; timeAgo: string; image?: string }>>>(() => {
     if (typeof window !== 'undefined') {
       try {
         const saved = localStorage.getItem('dpsbuzz_comments_v1');
@@ -82,6 +82,39 @@ function HomeContent() {
     return {};
   });
   const [newCommentText, setNewCommentText] = useState('');
+  const [commentImage, setCommentImage] = useState<string | null>(null);
+  const commentFileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleCommentImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      showToast('Please select a valid photo file');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 500;
+        const scale = Math.min(1, MAX_WIDTH / img.width);
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          const compressed = canvas.toDataURL('image/jpeg', 0.75);
+          setCommentImage(compressed);
+        } else {
+          setCommentImage(event.target?.result as string);
+        }
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+    if (e.target) e.target.value = '';
+  };
 
   const currentUser = DataStore.getCurrentUser();
 
@@ -162,11 +195,12 @@ function HomeContent() {
 
   const handleAddComment = (postId: string) => {
     const trimmed = newCommentText.trim();
-    if (!trimmed) return;
+    if (!trimmed && !commentImage) return;
     const newComment = {
       id: 'c-' + Date.now(),
       username: currentUser.username || 'student',
       text: trimmed,
+      image: commentImage || undefined,
       timeAgo: 'Just now',
     };
     setCommentsMap((prev) => {
@@ -180,10 +214,11 @@ function HomeContent() {
       return updated;
     });
     setNewCommentText('');
+    setCommentImage(null);
     setPosts((prev) =>
       prev.map((p) => (p.id === postId ? { ...p, comments: (p.comments || 0) + 1 } : p))
     );
-    showToast('Comment posted');
+    showToast(newComment.image ? 'Photo comment posted! 📸' : 'Comment posted');
 
     // Sync comment to server
     fetch(`/api/posts/${postId}/comment`, {
@@ -619,12 +654,49 @@ function HomeContent() {
                   </div>
                   <div className="flex-1">
                     <span className="font-bold text-[var(--text)] mr-1.5">@{c.username}</span>
-                    <span className="text-[var(--text)] leading-relaxed">{c.text}</span>
+                    {c.text && <span className="text-[var(--text)] leading-relaxed">{c.text}</span>}
+                    {c.image && (
+                      <div className="mt-2 max-w-[200px] rounded-2xl overflow-hidden border border-[var(--line)] shadow-xs bg-black/5">
+                        <img
+                          src={c.image}
+                          alt="Photo attachment in comment"
+                          className="w-full max-h-48 object-cover rounded-2xl cursor-pointer hover:opacity-95 transition-opacity"
+                          onClick={() => window.open(c.image, '_blank')}
+                          loading="lazy"
+                        />
+                      </div>
+                    )}
                     <p className="text-[10px] text-[var(--text-muted)] mt-1">{c.timeAgo}</p>
                   </div>
                 </div>
               ))}
             </div>
+
+            {/* Photo Attached Preview Bar */}
+            {commentImage && (
+              <div className="px-4 py-2 border-t border-[var(--line)] flex items-center justify-between bg-[var(--surface-sunken)] animate-fade-in">
+                <div className="flex items-center gap-2.5">
+                  <img
+                    src={commentImage}
+                    alt="Comment upload preview"
+                    className="w-10 h-10 rounded-xl object-cover border border-[var(--line)] shadow-xs"
+                  />
+                  <div className="text-[11px]">
+                    <span className="font-bold text-[var(--text)] block">Photo attached 📸</span>
+                    <span className="text-[var(--text-muted)] text-[10px]">Direct photo reply (no heavy GIFs)</span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCommentImage(null)}
+                  className="w-6 h-6 rounded-full bg-black/10 dark:bg-white/10 hover:bg-red-500/20 hover:text-red-500 flex items-center justify-center transition-colors text-xs cursor-pointer"
+                  title="Remove photo"
+                  aria-label="Remove photo"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            )}
 
             <form
               onSubmit={(e) => {
@@ -634,9 +706,29 @@ function HomeContent() {
               className="p-3 px-4 border-t border-[var(--line)] flex items-center gap-2 bg-[var(--surface)]"
             >
               <input
+                ref={commentFileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleCommentImageUpload}
+              />
+              <button
+                type="button"
+                onClick={() => commentFileInputRef.current?.click()}
+                className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors cursor-pointer shrink-0 border ${
+                  commentImage
+                    ? 'bg-pink-500/10 text-pink-500 border-pink-500/30'
+                    : 'bg-[var(--surface-sunken)] border-[var(--line)] text-[var(--text-muted)] hover:text-pink-500 hover:border-pink-500/30'
+                }`}
+                title="Add photo to comment 📸"
+                aria-label="Add photo to comment"
+              >
+                <ImageIcon size={18} />
+              </button>
+              <input
                 type="text"
                 autoFocus
-                placeholder="Add a comment as a classmate..."
+                placeholder="Add a comment or photo..."
                 value={newCommentText}
                 onChange={(e) => setNewCommentText(e.target.value)}
                 className="flex-1 h-11 px-4 rounded-full text-xs border outline-none font-medium transition-all"
@@ -648,7 +740,7 @@ function HomeContent() {
               />
               <button
                 type="submit"
-                disabled={!newCommentText.trim()}
+                disabled={!newCommentText.trim() && !commentImage}
                 className="h-11 px-5 rounded-full text-xs font-bold text-white transition-opacity disabled:opacity-40 shadow-xs cursor-pointer flex items-center justify-center"
                 style={{ backgroundColor: 'var(--primary)' }}
               >

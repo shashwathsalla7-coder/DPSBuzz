@@ -10,8 +10,8 @@ export async function POST(
     const body = await req.json();
     const { comment } = body;
 
-    if (!comment || !comment.text || !comment.username) {
-      return NextResponse.json({ success: false, error: 'Invalid comment object' }, { status: 400 });
+    if (!comment || (!comment.text && !comment.image) || !comment.username) {
+      return NextResponse.json({ success: false, error: 'Comment must contain text or an image' }, { status: 400 });
     }
 
     const updated = await addServerComment(id, comment);

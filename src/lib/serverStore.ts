@@ -9,7 +9,7 @@ export interface ServerStoreData {
   profiles: Profile[];
   chatNotes: ChatNote[];
   chatMessages: Record<string, Array<{ id: string; conversationId?: string; text: string; sender: 'me' | 'them'; senderUsername?: string; time: string; createdAt?: string }>>;
-  comments: Record<string, Array<{ id: string; username: string; text: string; timeAgo: string }>>;
+  comments: Record<string, Array<{ id: string; username: string; text: string; timeAgo: string; image?: string; userAvatar?: string | null }>>;
   likes: Record<string, string[]>; // postId -> array of usernames who liked
   notices: Notice[];
   deletedPostIds?: string[]; // IDs of posts deleted permanently
@@ -305,7 +305,7 @@ export async function toggleServerLike(postId: string, username: string): Promis
 
 export async function addServerComment(
   postId: string,
-  comment: { id: string; username: string; text: string; timeAgo: string }
+  comment: { id: string; username: string; text: string; timeAgo: string; image?: string; userAvatar?: string | null }
 ): Promise<ServerStoreData> {
   const current = await getServerStore({ forceRefresh: true });
   const existingComments = current.comments[postId] || [];

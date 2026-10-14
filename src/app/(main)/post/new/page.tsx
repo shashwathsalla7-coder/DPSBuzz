@@ -68,6 +68,15 @@ export default function NewPostPage() {
   const [showSongPicker, setShowSongPicker] = useState(false);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 
+  // Feature 2: Different Captions per Carousel Slide
+  const [slideCaptions, setSlideCaptions] = useState<string[]>(['', '', '', '']);
+  const [enablePerSlideCaptions, setEnablePerSlideCaptions] = useState(false);
+  const [activeSlideTab, setActiveSlideTab] = useState(0);
+
+  // Feature 3: Tagged Classmates (pushed to Main Grid)
+  const [taggedUsers, setTaggedUsers] = useState<string[]>([]);
+  const [tagUserInput, setTagUserInput] = useState('');
+
   // User streak tracking & Cloudflare R2 Storage Lock state
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [currentStreak, setCurrentStreak] = useState<HabitStreak | null>(null);
@@ -264,7 +273,11 @@ export default function NewPostPage() {
 
     setSubmitting(true);
     const user = currentUser || DataStore.getCurrentUser();
-    const finalCaption = caption.trim() || 'Studying and building good habits today! 🐝📚';
+    const finalCaption = caption.trim();
+    const finalSlideCaptions =
+      enablePerSlideCaptions && selectedPhotos.length > 1
+        ? slideCaptions.slice(0, selectedPhotos.length).map((c) => c.trim() || finalCaption)
+        : undefined;
 
     const newPost = DataStore.addPost({
       userId: user.id || 'user-me',
@@ -274,6 +287,8 @@ export default function NewPostPage() {
       avatar: user.avatar || null,
       caption: finalCaption,
       images: selectedPhotos,
+      slideCaptions: finalSlideCaptions,
+      taggedUsers: taggedUsers.length > 0 ? taggedUsers : undefined,
       habitCategory: habitCategory !== 'none' ? habitCategory : undefined,
       song: selectedSong || undefined,
     });
@@ -618,23 +633,80 @@ export default function NewPostPage() {
 
         {/* Caption Field with Live Moderation */}
         <div className="bg-[var(--surface)] border border-[var(--line)] rounded-[24px] p-4 space-y-3">
-          <label
-            htmlFor="caption-input"
-            className="block text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider"
-          >
-            Caption & Thoughts
-          </label>
-          <textarea
-            id="caption-input"
-            value={caption}
-            onChange={(e) => {
-              setCaption(e.target.value);
-              checkModeration(e.target.value);
-            }}
-            placeholder="Share what you are studying or doing today..."
-            rows={4}
-            className="w-full text-sm text-[var(--text)] bg-transparent resize-none placeholder:text-[var(--text-muted)] focus:outline-none"
-          />
+          <div className="flex items-center justify-between">
+            <label
+              htmlFor="caption-input"
+              className="block text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider"
+            >
+              Caption & Thoughts
+            </label>
+            {selectedPhotos.length > 1 && (
+              <button
+                type="button"
+                onClick={() => setEnablePerSlideCaptions(!enablePerSlideCaptions)}
+                className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                  enablePerSlideCaptions
+                    ? 'bg-pink-500/15 text-pink-500 border border-pink-500/30'
+                    : 'bg-[var(--surface-sunken)] text-[var(--text-muted)] border border-[var(--line)] hover:text-[var(--text)]'
+                }`}
+              >
+                <span>{enablePerSlideCaptions ? 'Per-Slide Captions On ✓' : '+ Per-Slide Captions 📸'}</span>
+              </button>
+            )}
+          </div>
+
+          {/* If per-slide captions are enabled for multi-photo post */}
+          {enablePerSlideCaptions && selectedPhotos.length > 1 ? (
+            <div className="space-y-2.5 pt-1">
+              <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-1">
+                {selectedPhotos.map((_, sIdx) => (
+                  <button
+                    key={sIdx}
+                    type="button"
+                    onClick={() => setActiveSlideTab(sIdx)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                      activeSlideTab === sIdx
+                        ? 'bg-[var(--primary)] text-white shadow-xs'
+                        : 'bg-[var(--surface-sunken)] border border-[var(--line)] text-[var(--text-muted)]'
+                    }`}
+                  >
+                    <span>Photo #{sIdx + 1}</span>
+                    {slideCaptions[sIdx]?.trim() && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />}
+                  </button>
+                ))}
+              </div>
+
+              <div className="rounded-2xl p-3 bg-[var(--surface-sunken)] border border-[var(--line)] space-y-1">
+                <span className="text-[11px] font-bold text-[var(--text)] block">
+                  Caption for Photo #{activeSlideTab + 1}:
+                </span>
+                <textarea
+                  value={slideCaptions[activeSlideTab] || ''}
+                  onChange={(e) => {
+                    const next = [...slideCaptions];
+                    next[activeSlideTab] = e.target.value;
+                    setSlideCaptions(next);
+                    checkModeration(e.target.value);
+                  }}
+                  placeholder={`Write unique caption for Photo #${activeSlideTab + 1}...`}
+                  rows={3}
+                  className="w-full text-sm text-[var(--text)] bg-transparent resize-none placeholder:text-[var(--text-muted)] focus:outline-none"
+                />
+              </div>
+            </div>
+          ) : (
+            <textarea
+              id="caption-input"
+              value={caption}
+              onChange={(e) => {
+                setCaption(e.target.value);
+                checkModeration(e.target.value);
+              }}
+              placeholder="Share what you are studying or doing today..."
+              rows={4}
+              className="w-full text-sm text-[var(--text)] bg-transparent resize-none placeholder:text-[var(--text-muted)] focus:outline-none"
+            />
+          )}
 
           {/* Add Tag & Create Tag Tabs */}
           <div className="pt-3 border-t border-[var(--line)] space-y-2.5">
@@ -723,6 +795,106 @@ export default function NewPostPage() {
                 </button>
               </div>
             )}
+          </div>
+        </div>
+
+        {/* Tag Classmates (Tagged Posts to Main Grid) */}
+        <div className="bg-[var(--surface)] border border-[var(--line)] rounded-[24px] p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-pink-500/10 text-pink-500 flex items-center justify-center font-bold">
+                <Tag size={15} />
+              </div>
+              <div>
+                <span className="text-xs font-bold text-[var(--text)] uppercase tracking-wider block">
+                  Tag Classmates 🏷️
+                </span>
+                <span className="text-[11px] text-[var(--text-muted)]">
+                  Tagged classmates can push this photo directly to their primary profile grid
+                </span>
+              </div>
+            </div>
+            {taggedUsers.length > 0 && (
+              <span className="text-xs font-bold text-[var(--primary)]">
+                {taggedUsers.length} tagged
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[var(--text-muted)]">
+                @
+              </span>
+              <input
+                type="text"
+                value={tagUserInput}
+                onChange={(e) => setTagUserInput(e.target.value.toLowerCase().replace(/[^a-z0-9_.]/g, ''))}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const clean = tagUserInput.trim();
+                    if (clean && !taggedUsers.includes(clean)) {
+                      setTaggedUsers((prev) => [...prev, clean]);
+                      setTagUserInput('');
+                    }
+                  }
+                }}
+                placeholder="Type classmate username (e.g. priya_7b)..."
+                className="w-full h-10 pl-7 pr-3 rounded-xl bg-[var(--surface-sunken)] border border-[var(--line)] text-xs text-[var(--text)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--primary)]"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                const clean = tagUserInput.trim();
+                if (clean && !taggedUsers.includes(clean)) {
+                  setTaggedUsers((prev) => [...prev, clean]);
+                  setTagUserInput('');
+                }
+              }}
+              disabled={!tagUserInput.trim()}
+              className="px-3.5 h-10 rounded-xl gradient-bg text-white text-xs font-bold shadow-xs hover:opacity-90 disabled:opacity-40 transition cursor-pointer"
+            >
+              Tag
+            </button>
+          </div>
+
+          {taggedUsers.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 pt-1">
+              {taggedUsers.map((u) => (
+                <span
+                  key={u}
+                  className="px-2.5 py-1 rounded-full text-xs font-semibold bg-pink-500/10 text-pink-500 border border-pink-500/20 flex items-center gap-1.5"
+                >
+                  <span>@{u}</span>
+                  <button
+                    type="button"
+                    onClick={() => setTaggedUsers((prev) => prev.filter((item) => item !== u))}
+                    className="hover:text-red-500 cursor-pointer"
+                    aria-label={`Remove @${u}`}
+                  >
+                    <X size={12} />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* Quick suggestions from school */}
+          <div className="flex flex-wrap gap-1.5 pt-1">
+            {['priya_7b', 'rahul_9a', 'sneha_10c', 'karthik_6a']
+              .filter((suggested) => !taggedUsers.includes(suggested))
+              .map((suggested) => (
+                <button
+                  key={suggested}
+                  type="button"
+                  onClick={() => setTaggedUsers((prev) => [...prev, suggested])}
+                  className="px-2.5 py-1 rounded-full text-[11px] font-medium bg-[var(--surface-sunken)] text-[var(--text-muted)] hover:text-[var(--text)] border border-[var(--line)] cursor-pointer transition-colors"
+                >
+                  + @{suggested}
+                </button>
+              ))}
           </div>
         </div>
 

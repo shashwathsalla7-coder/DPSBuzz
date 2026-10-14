@@ -9,11 +9,13 @@ import {
   Bookmark,
   CheckCircle2,
   Repeat2,
+  Music,
 } from 'lucide-react';
 import { type Post, DataStore } from '@/lib/dataStore';
 import { PostImage } from './PostImage';
 import { getAvatarColorPair } from '@/config/tokens';
 import { MusicTrackPill } from '@/components/music/MusicTrackPill';
+import { SongPickerModal } from '@/components/music/SongPickerModal';
 
 export interface PostCardProps {
   post: Post;
@@ -40,8 +42,19 @@ export const PostCard: React.FC<PostCardProps> = ({
   const [isCaptionExpanded, setIsCaptionExpanded] = useState(false);
   const [showRepostSheet, setShowRepostSheet] = useState(false);
   const [repostToast, setRepostToast] = useState<string | null>(null);
+  const [activeSlide, setActiveSlide] = useState(0);
+  const [showSongPicker, setShowSongPicker] = useState(false);
 
   const currentUser = DataStore.getCurrentUser();
+  const isAuthor = Boolean(
+    currentUser &&
+      (currentUser.username.toLowerCase() === post.username.toLowerCase() ||
+        currentUser.role === 'admin' ||
+        currentUser.username.toLowerCase() === 'shashwath71845')
+  );
+  const currentCaption = (post.slideCaptions && post.slideCaptions[activeSlide]?.trim()) || post.caption;
+  const totalImages = (post.images && post.images.length > 0 ? post.images : (post.imageUrl ? [post.imageUrl] : [])).length;
+  const hasPerSlideCaptions = Boolean(post.slideCaptions && post.slideCaptions.some((c) => c && c.trim()));
   const hasReposted = DataStore.hasUserReposted(post.id, currentUser.username) || (Boolean(post.isRepost) && post.username.toLowerCase() === currentUser.username.toLowerCase());
 
   const handleUnrepost = () => {
@@ -137,14 +150,41 @@ export const PostCard: React.FC<PostCardProps> = ({
         onDoubleTapLike={handleDoubleTap}
         onOptionsClick={() => onOptionsClick(post)}
         showHeartPop={showHeartPop}
+        onSlideChange={setActiveSlide}
       />
 
-      {/* 1.5 Attached Song Preview Pill */}
-      {post.song && (
-        <div className="px-3 pt-2">
-          <MusicTrackPill song={post.song} compact />
-        </div>
-      )}
+      {/* 1.5 Attached Song Preview Pill with Post-Upload Change Option */}
+      <div className="px-3 pt-2 flex items-center justify-between gap-2">
+        {post.song ? (
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <div className="flex-1 min-w-0">
+              <MusicTrackPill song={post.song} compact />
+            </div>
+            {isAuthor && (
+              <button
+                type="button"
+                onClick={() => setShowSongPicker(true)}
+                className="text-[10px] font-bold px-2 py-1 rounded-full bg-[var(--surface-sunken)] border border-[var(--line)] text-[var(--text-muted)] hover:text-pink-400 hover:border-pink-500/30 flex items-center gap-1 transition-colors cursor-pointer shrink-0"
+                title="Change background music for this post 🎵"
+              >
+                <Music size={11} />
+                <span>Change 🎵</span>
+              </button>
+            )}
+          </div>
+        ) : (
+          isAuthor && (
+            <button
+              type="button"
+              onClick={() => setShowSongPicker(true)}
+              className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-[var(--surface-sunken)] border border-dashed border-[var(--line)] text-[var(--text-muted)] hover:text-pink-400 hover:border-pink-500/30 flex items-center gap-1.5 transition-colors cursor-pointer"
+            >
+              <Music size={12} className="text-pink-400" />
+              <span>+ Add Background Music 🎵</span>
+            </button>
+          )
+        )}
+      </div>
 
       {/* 2. Action Row (44px tap areas) */}
       <div className="px-3 pt-2.5 flex items-center justify-between">
@@ -239,30 +279,39 @@ export const PostCard: React.FC<PostCardProps> = ({
           {post.timeAgo}
         </p>
 
-        {/* Caption (username + text, 2-line clamp, "more") */}
-        {post.caption && (
-          <div className="text-sm leading-relaxed text-[var(--text)] pt-0.5">
-            <Link
-              href={`/u/${post.username}`}
-              className="font-bold mr-1.5 inline-flex items-center gap-0.5 hover:underline"
-            >
-              <span>{post.username}</span>
-              {isOfficial && (
-                <CheckCircle2 size={13} className="text-blue-500 fill-white" />
-              )}
-            </Link>
-            <span className={isCaptionExpanded ? '' : 'line-clamp-2 inline'}>
-              {renderCaption(post.caption)}
-            </span>
-            {post.caption.length > 80 && !isCaptionExpanded && (
-              <button
-                type="button"
-                onClick={() => setIsCaptionExpanded(true)}
-                className="text-xs text-[var(--text-muted)] font-semibold ml-1 hover:underline cursor-pointer"
-              >
-                more
-              </button>
+        {/* Caption (username + text, 2-line clamp, "more") with Per-Slide Captions */}
+        {currentCaption && (
+          <div className="text-sm leading-relaxed text-[var(--text)] pt-0.5 space-y-1">
+            {hasPerSlideCaptions && totalImages > 1 && (
+              <div className="flex items-center gap-1.5 pb-0.5">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-pink-500/10 text-pink-500 border border-pink-500/20">
+                  📸 Slide {activeSlide + 1} of {totalImages}
+                </span>
+              </div>
             )}
+            <div>
+              <Link
+                href={`/u/${post.username}`}
+                className="font-bold mr-1.5 inline-flex items-center gap-0.5 hover:underline"
+              >
+                <span>{post.username}</span>
+                {isOfficial && (
+                  <CheckCircle2 size={13} className="text-blue-500 fill-white" />
+                )}
+              </Link>
+              <span className={isCaptionExpanded ? '' : 'line-clamp-2 inline'}>
+                {renderCaption(currentCaption)}
+              </span>
+              {currentCaption.length > 80 && !isCaptionExpanded && (
+                <button
+                  type="button"
+                  onClick={() => setIsCaptionExpanded(true)}
+                  className="text-xs text-[var(--text-muted)] font-semibold ml-1 hover:underline cursor-pointer"
+                >
+                  more
+                </button>
+              )}
+            </div>
           </div>
         )}
 
@@ -361,6 +410,20 @@ export const PostCard: React.FC<PostCardProps> = ({
           </div>
         </div>
       )}
+
+      {/* Song Picker Modal for Post-Upload Music Changes */}
+      <SongPickerModal
+        isOpen={showSongPicker}
+        onClose={() => setShowSongPicker(false)}
+        onSelectSong={(song) => {
+          DataStore.updatePostSong(post.id, song);
+          post.song = song;
+          setShowSongPicker(false);
+          setRepostToast('Post background music updated! 🎵✨');
+          setTimeout(() => setRepostToast(null), 2500);
+        }}
+        title="Change Post Music 🎵"
+      />
     </article>
   );
 };

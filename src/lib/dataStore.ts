@@ -91,6 +91,9 @@ export interface Post {
   };
   isPinned?: boolean;
   pinnedIndex?: number;
+  slideCaptions?: string[];
+  taggedUsers?: string[];
+  isTaggedOnGrid?: boolean;
 }
 
 export interface HabitStreak {
@@ -389,6 +392,7 @@ const STORAGE_KEYS = {
   SAVED_POSTS: 'dpsbuzz_saved_posts_v1',
   PINNED_POSTS: 'dpsbuzz_pinned_posts_v1',
   GRID_ORDER: 'dpsbuzz_grid_order_v1',
+  TAGGED_GRID_POSTS: 'dpsbuzz_tagged_grid_posts_v1',
 };
 
 function getStorage<T>(key: string, defaultValue: T): T {
@@ -1353,7 +1357,23 @@ export const DataStore = {
 
   getOrderedUserPosts(username: string, basePosts: Post[]): Post[] {
     const clean = (username || '').toLowerCase().trim();
-    if (!clean || !basePosts || basePosts.length === 0) return basePosts || [];
+    if (!clean) return basePosts || [];
+
+    // Also include any tagged posts that the user chose to show on their main grid
+    const taggedGridIds = this.getTaggedGridPostIds(clean);
+    const taggedPostsOnGrid: Post[] = [];
+    if (taggedGridIds.length > 0) {
+      const allPosts = this.getPosts(true);
+      taggedGridIds.forEach((tgId) => {
+        const found = allPosts.find((p) => p.id === tgId);
+        if (found && !(basePosts || []).some((bp) => bp.id === tgId)) {
+          taggedPostsOnGrid.push({ ...found, isTaggedOnGrid: true });
+        }
+      });
+    }
+
+    const combinedPosts = [...(basePosts || []), ...taggedPostsOnGrid];
+    if (combinedPosts.length === 0) return [];
 
     const pinnedIds = this.getPinnedPostIds(clean);
     const customOrder = this.getProfileGridOrder(clean);
@@ -1363,7 +1383,7 @@ export const DataStore = {
     const unpinnedPosts: Post[] = [];
 
     const postMap = new Map<string, Post>();
-    basePosts.forEach((p) => postMap.set(p.id, p));
+    combinedPosts.forEach((p) => postMap.set(p.id, p));
 
     pinnedIds.forEach((pid, idx) => {
       const found = postMap.get(pid);
@@ -1397,6 +1417,115 @@ export const DataStore = {
     });
 
     return [...pinnedPosts, ...unpinnedPosts, ...leftovers];
+  },
+
+  // ==========================================
+  // TAGGED POSTS & MAIN GRID INTEGRATION
+  // ==========================================
+  getTaggedGridPostIds(username: string): string[] {
+    const clean = (username || '').toLowerCase().trim();
+    if (!clean) return [];
+    const map = getStorage<Record<string, string[]>>(STORAGE_KEYS.TAGGED_GRID_POSTS, {});
+    return Array.isArray(map[clean]) ? map[clean] : [];
+  },
+
+  isTaggedPostOnGrid(username: string, postId: string): boolean {
+    return this.getTaggedGridPostIds(username).includes(postId);
+  },
+
+  toggleTaggedPostOnGrid(username: string, postId: string): boolean {
+    const clean = (username || '').toLowerCase().trim();
+    if (!clean || !postId) return false;
+    const map = getStorage<Record<string, string[]>>(STORAGE_KEYS.TAGGED_GRID_POSTS, {});
+    const currentList = Array.isArray(map[clean]) ? [...map[clean]] : [];
+    const idx = currentList.indexOf(postId);
+    let isOnGrid = false;
+    if (idx !== -1) {
+      currentList.splice(idx, 1);
+      isOnGrid = false;
+    } else {
+      currentList.push(postId);
+      isOnGrid = true;
+    }
+    map[clean] = currentList;
+    setStorage(STORAGE_KEYS.TAGGED_GRID_POSTS, map);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated'));
+    }
+    return isOnGrid;
+  },
+
+  getTaggedPosts(username: string): Post[] {
+    const clean = (username || '').toLowerCase().trim();
+    if (!clean) return [];
+    const allPosts = this.getPosts(true);
+    return allPosts.filter((p) => {
+      if (p.username.toLowerCase() === clean) return false;
+      const explicitlyTagged = Array.isArray(p.taggedUsers) && p.taggedUsers.some((u) => u.toLowerCase() === clean);
+      const mentionTagged = (p.caption || '').toLowerCase().includes(`@${clean}`);
+      return explicitlyTagged || mentionTagged;
+    });
+  },
+
+  // ==========================================
+  // POST-UPLOAD MUSIC & SLIDE CAPTIONS UPDATES
+  // ==========================================
+  updatePostSong(postId: string, song: SongTrack | undefined): boolean {
+    const posts = this.getPosts(true);
+    let found = false;
+    const nextPosts = posts.map((p) => {
+      if (p.id === postId) {
+        found = true;
+        return { ...p, song };
+      }
+      return p;
+    });
+    if (found) {
+      setStorage(STORAGE_KEYS.POSTS, nextPosts);
+      const updatedPost = nextPosts.find((p) => p.id === postId);
+      if (typeof window !== 'undefined' && updatedPost) {
+        fetch('/api/posts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ post: updatedPost }),
+        }).catch((err) => console.warn('Failed to sync updated post song:', err));
+        window.dispatchEvent(
+          new CustomEvent('dpsbuzz:content_updated', {
+            detail: { type: 'post_song_updated', postId, song },
+          })
+        );
+      }
+    }
+    return found;
+  },
+
+  updatePostSlideCaptions(postId: string, slideCaptions: string[]): boolean {
+    const posts = this.getPosts(true);
+    let found = false;
+    const nextPosts = posts.map((p) => {
+      if (p.id === postId) {
+        found = true;
+        return { ...p, slideCaptions };
+      }
+      return p;
+    });
+    if (found) {
+      setStorage(STORAGE_KEYS.POSTS, nextPosts);
+      const updatedPost = nextPosts.find((p) => p.id === postId);
+      if (typeof window !== 'undefined' && updatedPost) {
+        fetch('/api/posts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ post: updatedPost }),
+        }).catch(() => {});
+        window.dispatchEvent(
+          new CustomEvent('dpsbuzz:content_updated', {
+            detail: { type: 'post_slide_captions_updated', postId, slideCaptions },
+          })
+        );
+      }
+    }
+    return found;
   },
 
   // Stories

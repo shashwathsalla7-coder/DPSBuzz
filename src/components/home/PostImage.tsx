@@ -12,6 +12,7 @@ export interface PostImageProps {
   onDoubleTapLike: () => void;
   onOptionsClick: () => void;
   showHeartPop?: boolean;
+  onSlideChange?: (index: number) => void;
 }
 
 export const PostImage: React.FC<PostImageProps> = ({
@@ -19,6 +20,7 @@ export const PostImage: React.FC<PostImageProps> = ({
   onDoubleTapLike,
   onOptionsClick,
   showHeartPop = false,
+  onSlideChange,
 }) => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [hasError, setHasError] = useState(false);
@@ -65,6 +67,7 @@ export const PostImage: React.FC<PostImageProps> = ({
     const index = Math.round(el.scrollLeft / el.clientWidth);
     if (index !== currentSlide && index >= 0 && index < totalImages) {
       setCurrentSlide(index);
+      onSlideChange?.(index);
     }
   };
 
