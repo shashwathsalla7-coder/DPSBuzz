@@ -83,7 +83,7 @@ export default function AdminPage() {
     'users' | 'chats' | 'notices' | 'calendar' | 'moderation' | 'system'
   >('users');
   const [counts, setCounts] = useState<Record<string, number>>({});
-  const [inviteCode, setInviteCode] = useState('DPSBUZZ2026');
+  const [inviteCode, setInviteCode] = useState('DPS71845');
   const [isWiping, setIsWiping] = useState(false);
   const [showWipeModal, setShowWipeModal] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{

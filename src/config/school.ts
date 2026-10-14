@@ -10,6 +10,7 @@ export const school = {
   siteName: 'DPS Buzz',
   schoolName: 'Dilsukhnagar Public School',
   shortCode: 'DPS',
+  schoolCode: 'DPS71845',
 
   // Logo / Crest: Text wordmark only, no invented crest
   logo: {
