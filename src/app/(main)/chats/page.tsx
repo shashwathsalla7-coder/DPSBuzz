@@ -16,6 +16,8 @@ import {
   Users,
   Check,
   X,
+  Phone,
+  Video,
 } from 'lucide-react';
 import { ChatsHeader } from '@/components/chats/ChatsHeader';
 import { ChatSearch } from '@/components/chats/ChatSearch';
@@ -36,6 +38,7 @@ interface ChatMessage {
   senderUsername?: string;
   time: string;
   reaction?: string;
+  isCallLog?: boolean;
   sharedPost?: {
     id: string;
     username: string;
@@ -896,6 +899,51 @@ function ChatsContent() {
           </div>
 
           <div className="flex items-center gap-1">
+            {!activeConversation.isGroup && activeConversation.username && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    window.dispatchEvent(
+                      new CustomEvent('dpsbuzz:start_call', {
+                        detail: {
+                          receiverUsername: activeConversation.username,
+                          receiverName: activeConversation.name,
+                          receiverAvatar: activeConversation.avatar,
+                          isVideo: false,
+                        },
+                      })
+                    );
+                  }}
+                  className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-[var(--surface-sunken)] cursor-pointer text-[var(--text-muted)] hover:text-[#007AFF] transition-colors"
+                  aria-label="Voice Call"
+                  title="Voice Call"
+                >
+                  <Phone size={18} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    window.dispatchEvent(
+                      new CustomEvent('dpsbuzz:start_call', {
+                        detail: {
+                          receiverUsername: activeConversation.username,
+                          receiverName: activeConversation.name,
+                          receiverAvatar: activeConversation.avatar,
+                          isVideo: true,
+                        },
+                      })
+                    );
+                  }}
+                  className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-[var(--surface-sunken)] cursor-pointer text-[var(--text-muted)] hover:text-[#007AFF] transition-colors"
+                  aria-label="Video Call"
+                  title="Video Call"
+                >
+                  <Video size={19} />
+                </button>
+              </>
+            )}
+
             <button
               type="button"
               onClick={() => setLongPressConv(activeConversation)}
@@ -998,7 +1046,34 @@ function ChatsContent() {
                         </div>
                       )}
 
-                      {msg.text === '❤️' && !msg.sharedPost ? (
+                      {msg.isCallLog || msg.text.startsWith('📞') || msg.text.startsWith('📹') ? (
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{msg.text}</span>
+                          {!activeConversation.isGroup && activeConversation.username && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                window.dispatchEvent(
+                                  new CustomEvent('dpsbuzz:start_call', {
+                                    detail: {
+                                      receiverUsername: activeConversation.username,
+                                      receiverName: activeConversation.name,
+                                      receiverAvatar: activeConversation.avatar,
+                                      isVideo: msg.text.includes('Video'),
+                                    },
+                                  })
+                                );
+                              }}
+                              className={`text-[12px] font-bold underline cursor-pointer ml-1.5 ${
+                                isMe ? 'text-white/95 hover:text-white' : 'text-blue-600 hover:text-blue-700'
+                              }`}
+                            >
+                              Call back
+                            </button>
+                          )}
+                        </div>
+                      ) : msg.text === '❤️' && !msg.sharedPost ? (
                         <span className="text-3xl inline-block animate-heart-pop py-0.5 select-none leading-none">
                           ❤️
                         </span>

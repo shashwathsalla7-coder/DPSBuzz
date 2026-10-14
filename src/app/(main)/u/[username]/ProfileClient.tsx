@@ -26,6 +26,8 @@ import {
   MessageCircle,
   Send,
   Trash2,
+  Phone,
+  Video,
 } from 'lucide-react';
 import Link from 'next/link';
 import { DataStore, type Profile, type HabitStreak, type SongTrack, type Post } from '@/lib/dataStore';
@@ -650,6 +652,54 @@ export default function ProfileClient({ username }: { username: string }) {
               >
                 Message
               </Link>
+              <button
+                type="button"
+                onClick={() => {
+                  window.dispatchEvent(
+                    new CustomEvent('dpsbuzz:start_call', {
+                      detail: {
+                        receiverUsername: profile.username,
+                        receiverName: profile.fullName,
+                        receiverAvatar: profile.avatar,
+                        isVideo: false,
+                      },
+                    })
+                  );
+                }}
+                className="w-9 h-9 rounded-full border flex items-center justify-center btn-press cursor-pointer text-[var(--text-muted)] hover:text-[#007AFF] transition-colors"
+                style={{
+                  backgroundColor: 'var(--surface-sunken)',
+                  borderColor: 'var(--line)',
+                }}
+                title="Voice Call"
+                aria-label="Voice Call"
+              >
+                <Phone size={15} />
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  window.dispatchEvent(
+                    new CustomEvent('dpsbuzz:start_call', {
+                      detail: {
+                        receiverUsername: profile.username,
+                        receiverName: profile.fullName,
+                        receiverAvatar: profile.avatar,
+                        isVideo: true,
+                      },
+                    })
+                  );
+                }}
+                className="w-9 h-9 rounded-full border flex items-center justify-center btn-press cursor-pointer text-[var(--text-muted)] hover:text-[#007AFF] transition-colors"
+                style={{
+                  backgroundColor: 'var(--surface-sunken)',
+                  borderColor: 'var(--line)',
+                }}
+                title="Video Call"
+                aria-label="Video Call"
+              >
+                <Video size={16} />
+              </button>
             </>
           )}
         </div>
