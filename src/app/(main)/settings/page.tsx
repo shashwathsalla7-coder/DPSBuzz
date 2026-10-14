@@ -697,6 +697,31 @@ export default function SettingsPage() {
           </div>
         </section>
 
+        {/* Mobile App Download Card */}
+        <section className="space-y-2">
+          <h2 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">
+            Mobile App
+          </h2>
+          <div className="bg-[var(--surface)] border border-[var(--line)] rounded-[16px] overflow-hidden">
+            <Link
+              href="/download"
+              className="w-full p-3.5 flex items-center justify-between text-left hover:bg-[var(--surface-sunken)] transition-colors"
+            >
+              <div className="flex items-center gap-2.5">
+                <Smartphone size={18} className="text-[var(--primary)]" />
+                <div>
+                  <span className="text-sm font-semibold text-[var(--text)] flex items-center gap-1.5">
+                    Download Android App (APK)
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400">v1.3</span>
+                  </span>
+                  <p className="text-[11px] text-[var(--text-muted)]">Run DPS Buzz 24/7 on your phone with zero computer</p>
+                </div>
+              </div>
+              <ChevronRight size={18} className="text-[var(--text-muted)] shrink-0" />
+            </Link>
+          </div>
+        </section>
+
         {/* Account Actions */}
         <section className="space-y-2">
           <h2 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">
