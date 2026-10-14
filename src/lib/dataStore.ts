@@ -242,6 +242,7 @@ export interface NotificationItem {
   body: string;
   timeAgo: string;
   isRead: boolean;
+  link?: string;
 }
 
 export interface UserWarning {
@@ -1397,6 +1398,58 @@ export const DataStore = {
     };
     list.unshift(created);
     setStorage(STORAGE_KEYS.NOTICES, list);
+
+    // If marked as Urgent: dispatch instant alert messages and high-priority notifications to ALL students
+    if (created.isUrgent) {
+      const allProfiles = this.getProfiles();
+      const notifications = this.getNotifications();
+      const noticeBody = created.content ? created.content.slice(0, 160) : created.title;
+      const fullNoticeContent = created.content || created.title;
+
+      for (const p of allProfiles) {
+        notifications.unshift({
+          id: `notif-urgent-notice-${Date.now()}-${p.username}`,
+          userId: p.username,
+          type: 'notice',
+          title: `🚨 NOTICE URGENT: ${created.title}`,
+          body: noticeBody,
+          timeAgo: 'Just now',
+          isRead: false,
+          link: `/notices/${created.id}`,
+        });
+      }
+      setStorage(STORAGE_KEYS.NOTIFICATIONS, notifications);
+
+      // Pin an urgent top banner across home screen for all students
+      this.setBroadcastAlert({
+        title: `🚨 NOTICE URGENT: ${created.title}`,
+        text: fullNoticeContent,
+        isUrgent: true,
+      });
+
+      // Post urgent alert message into class chats
+      if (typeof window !== 'undefined') {
+        try {
+          const stored = localStorage.getItem('dpsbuzz_chat_messages_v1');
+          const chatMap: Record<string, any[]> = stored ? JSON.parse(stored) : {};
+          const urgentMsg = {
+            id: `msg-urgent-notice-${Date.now()}`,
+            text: `🚨 [NOTICE URGENT]: ${created.title}\n\n${fullNoticeContent}`,
+            sender: 'them' as const,
+            time: 'Just now',
+          };
+          for (const convId of Object.keys(chatMap)) {
+            if (Array.isArray(chatMap[convId])) {
+              chatMap[convId].push(urgentMsg);
+            }
+          }
+          if (!chatMap['conv-class-8a']) chatMap['conv-class-8a'] = [];
+          chatMap['conv-class-8a'].push(urgentMsg);
+          localStorage.setItem('dpsbuzz_chat_messages_v1', JSON.stringify(chatMap));
+        } catch {}
+      }
+    }
+
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated', { detail: { type: 'notice', notice: created } }));
     }

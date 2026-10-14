@@ -1895,6 +1895,28 @@ export default function AdminPage() {
                     <span>Attach PDF badge</span>
                   </label>
                 </div>
+
+                {/* Option: Urgent Notice */}
+                <label className="flex items-center gap-2 cursor-pointer p-2.5 bg-red-500/10 border border-red-500/40 rounded-xl">
+                  <input
+                    type="checkbox"
+                    checked={newNoticeIsUrgent}
+                    onChange={(e) => {
+                      setNewNoticeIsUrgent(e.target.checked);
+                      if (e.target.checked) setNewNoticeCategory('urgent');
+                    }}
+                    className="accent-red-500 w-4 h-4 rounded cursor-pointer"
+                  />
+                  <div>
+                    <span className="font-bold text-xs text-red-500 block flex items-center gap-1.5">
+                      🚨 Option: Urgent Notice
+                    </span>
+                    <span className="text-[10px] text-[var(--text-muted)] block">
+                      Sends high-priority alert &ldquo;Notice Urgent: [Title]&rdquo; to all students and chat feeds
+                    </span>
+                  </div>
+                </label>
+
                 <label className="flex items-center gap-2 cursor-pointer p-2 bg-[var(--surface-sunken)] border border-[var(--line)] rounded-none">
                   <input
                     type="checkbox"
