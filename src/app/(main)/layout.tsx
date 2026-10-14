@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { MobileTabBar, DesktopSidebar, TopBar, GlobalModerationGuard, SwipeNavigationWrapper } from '@/components/layout';
+import { MobileTabBar, DesktopSidebar, TopBar, GlobalModerationGuard } from '@/components/layout';
 import { AppleHelloSplash } from '@/components/ui';
 import InstallPromptBanner from '@/components/pwa/InstallPromptBanner';
 
@@ -24,10 +24,6 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
         <TopBar notificationCount={3} />
       </Suspense>
 
-      {/* Global mobile swipe gesture listener */}
-      <Suspense fallback={null}>
-        <SwipeNavigationWrapper />
-      </Suspense>
 
       {/* Main content area - offset for sidebar on desktop */}
       <main className="md:ml-[72px] lg:ml-[240px] pb-[104px] md:pb-6">
