@@ -207,13 +207,14 @@ function HomeContent() {
 
   // Classmates and friends they are following for share sheet
   const friendsToShare = useMemo(() => {
+    const isShashwath = currentUser.username.toLowerCase() === 'shashwath71845';
     const allProfiles = DataStore.getProfiles().filter(
       (p) =>
         p &&
         p.username &&
         p.username.toLowerCase() !== currentUser.username.toLowerCase() &&
         p.username.toLowerCase() !== 'admin' &&
-        p.role !== 'admin' &&
+        (p.username.toLowerCase() === 'shashwath71845' || p.role !== 'admin' || isShashwath) &&
         !DUMMY_TEST_USERNAMES.has(p.username.toLowerCase())
     );
     const following = allProfiles.filter((p) => followedUsernames.includes(p.username.toLowerCase()));
@@ -389,9 +390,9 @@ function HomeContent() {
                 Your following feed is quiet right now
               </h3>
               <p className="text-xs text-[var(--text-muted)] max-w-xs mx-auto leading-relaxed">
-                Follow classmates from Search to see their moments here.
+                Follow classmates and our official school leader to see moments here.
               </p>
-              <div className="pt-2">
+              <div className="pt-2 flex flex-col items-center gap-2">
                 <Link
                   href="/search"
                   className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full text-xs font-bold text-white shadow-sm"
@@ -400,6 +401,15 @@ function HomeContent() {
                   <Users size={14} />
                   <span>Find Classmates</span>
                 </Link>
+                {currentUser?.username?.toLowerCase() !== 'shashwath71845' && (
+                  <Link
+                    href="/u/shashwath71845"
+                    className="inline-flex items-center gap-1 text-[11px] text-[var(--text-muted)] hover:text-amber-400 transition-colors pt-1"
+                  >
+                    <span>Suggested:</span>
+                    <span className="font-semibold text-[var(--text)]">👑 Shashwath (Admin)</span>
+                  </Link>
+                )}
               </div>
             </>
           ) : (

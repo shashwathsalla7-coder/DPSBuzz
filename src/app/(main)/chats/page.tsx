@@ -227,12 +227,45 @@ function ChatsContent() {
     else if (viewParam === 'groups') setActiveChip('groups');
   }, [stateParam, viewParam]);
 
+  // Automatically open direct chat when navigated from a user's profile with ?user=...
+  useEffect(() => {
+    if (!userParam) return;
+    const targetUser = userParam.toLowerCase().trim();
+    if (!targetUser || (currentUsername && targetUser === currentUsername)) return;
+
+    const all = DataStore.getProfiles();
+    const prof = all.find((p) => p.username?.toLowerCase() === targetUser);
+    const displayName = prof ? prof.fullName : targetUser;
+    const displayClass = prof ? `Class ${prof.class}-${prof.section || 'G'}` : 'Student';
+
+    setConversations((prev) => {
+      const existing = prev.find((c) => c.username?.toLowerCase() === targetUser);
+      if (existing) {
+        setActiveConversation(existing);
+        return prev;
+      }
+      const newConv: ConversationItem = {
+        id: `conv-${targetUser}`,
+        name: displayName,
+        username: targetUser,
+        studentClass: displayClass,
+        lastMessage: 'Started new conversation',
+        timeAgo: 'Just now',
+        isUnread: false,
+      };
+      setActiveConversation(newConv);
+      return [newConv, ...prev];
+    });
+  }, [userParam, currentUsername]);
+
   // Student directory from DataStore for New Chat Sheet
   const [liveStudents, setLiveStudents] = useState<StudentContact[]>([]);
   useEffect(() => {
     try {
       const all = DataStore.getProfiles();
       const current = DataStore.getCurrentUser();
+      const isShashwath = current.username?.toLowerCase() === 'shashwath71845';
+
       const formatted: StudentContact[] = all
         .filter(
           (s) =>
@@ -240,17 +273,32 @@ function ChatsContent() {
             s.username &&
             s.username.toLowerCase() !== current.username.toLowerCase() &&
             s.username.toLowerCase() !== 'admin' &&
-            s.role !== 'admin' &&
+            // If the other user is shashwath71845, ALWAYS include him for all students!
+            (s.username.toLowerCase() === 'shashwath71845' || s.role !== 'admin' || isShashwath) &&
             !DUMMY_TEST_USERNAMES.has(s.username.toLowerCase())
         )
-        .map((s) => ({
-          id: s.id,
-          name: s.fullName,
-          username: s.username,
-          studentClass: `${s.class}-${s.section}`,
-          avatarUrl: s.avatar,
-          isFollowing: s.class === current.class,
-        }));
+        .map((s) => {
+          const isShash = s.username.toLowerCase() === 'shashwath71845';
+          return {
+            id: s.id,
+            name: isShash ? '👑 Shashwath (Admin)' : s.fullName,
+            username: s.username,
+            studentClass: isShash ? 'School Admin' : `${s.class}-${s.section || 'A'}`,
+            avatarUrl: s.avatar,
+            // If Shashwath is looking, he can message everyone. If student is looking, Shashwath is in following.
+            isFollowing: isShashwath || isShash || s.class === current.class,
+          };
+        });
+
+      // Pin Shashwath to the very top for students
+      if (!isShashwath) {
+        formatted.sort((a, b) => {
+          if (a.username.toLowerCase() === 'shashwath71845') return -1;
+          if (b.username.toLowerCase() === 'shashwath71845') return 1;
+          return 0;
+        });
+      }
+
       setLiveStudents(formatted);
     } catch {
       setLiveStudents([]);

@@ -95,11 +95,11 @@ export const TrendingGrid: React.FC<TrendingGridProps> = ({
                 className="text-sm font-bold tracking-tight text-[var(--text)] uppercase tracking-wider"
                 style={{ fontFamily: "var(--font-cabinet), 'Cabinet Grotesk', sans-serif" }}
               >
-                Suggested from your class
+                {currentUsername?.toLowerCase() === 'shashwath71845' ? 'All Students in School' : 'Suggested for you'}
               </h2>
             </div>
             <span className="text-[11px] text-[var(--text-muted)]">
-              Same class & section
+              {currentUsername?.toLowerCase() === 'shashwath71845' ? 'Whole School Directory' : 'Classmates & School Admin'}
             </span>
           </div>
 
@@ -109,13 +109,17 @@ export const TrendingGrid: React.FC<TrendingGridProps> = ({
               const pair = getAvatarColorPair(student.username);
               const initials = (student.fullName || student.username || 'ST').slice(0, 2).toUpperCase();
 
+              const isShashwathAdmin = student.username?.toLowerCase() === 'shashwath71845';
+
               return (
                 <div
                   key={student.id || student.username}
-                  className="w-36 shrink-0 p-3.5 rounded-[16px] border flex flex-col items-center text-center justify-between transition-colors shadow-xs"
+                  className={`w-36 shrink-0 p-3.5 rounded-[16px] border flex flex-col items-center text-center justify-between transition-colors shadow-xs ${
+                    isShashwathAdmin ? 'ring-1 ring-amber-400/50 bg-gradient-to-b from-amber-500/10 to-transparent' : ''
+                  }`}
                   style={{
                     backgroundColor: 'var(--surface)',
-                    borderColor: 'var(--line)',
+                    borderColor: isShashwathAdmin ? '#F2B705' : 'var(--line)',
                   }}
                 >
                   <Link
@@ -123,10 +127,12 @@ export const TrendingGrid: React.FC<TrendingGridProps> = ({
                     className="flex flex-col items-center w-full"
                   >
                     <div
-                      className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center font-bold text-sm mb-2 shadow-xs"
+                      className={`w-12 h-12 rounded-full overflow-hidden flex items-center justify-center font-bold text-sm mb-2 shadow-xs ${
+                        isShashwathAdmin ? 'border-2 border-amber-400' : ''
+                      }`}
                       style={{
-                        backgroundColor: pair.bg,
-                        color: pair.text,
+                        backgroundColor: isShashwathAdmin ? '#FFD700' : pair.bg,
+                        color: isShashwathAdmin ? '#000000' : pair.text,
                       }}
                     >
                       {student.avatar ? (
@@ -136,17 +142,24 @@ export const TrendingGrid: React.FC<TrendingGridProps> = ({
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <span>{initials}</span>
+                        <span>{isShashwathAdmin ? '👑' : initials}</span>
                       )}
                     </div>
-                    <p className="text-xs font-bold text-[var(--text)] truncate w-full hover:underline">
-                      {student.fullName}
+                    <p className="text-xs font-bold text-[var(--text)] truncate w-full hover:underline flex items-center justify-center gap-1">
+                      {isShashwathAdmin ? 'Shashwath' : student.fullName}
+                      {isShashwathAdmin && <span className="text-[10px]" title="Super Admin">🛡️</span>}
                     </p>
-                    <p className="text-[11px] text-[var(--text-muted)] truncate w-full">
+                    <p className="text-[11px] text-[var(--text-muted)] truncate w-full font-mono">
                       @{student.username}
                     </p>
-                    <span className="text-[10px] mt-1 text-[var(--primary)] font-semibold tabular-nums">
-                      Class {student.class}-{student.section || 'A'}
+                    <span
+                      className={`text-[10px] mt-1 font-semibold tabular-nums px-1.5 py-0.5 rounded-full ${
+                        isShashwathAdmin
+                          ? 'bg-amber-400/15 text-amber-500 font-bold'
+                          : 'text-[var(--primary)]'
+                      }`}
+                    >
+                      {isShashwathAdmin ? '👑 School Admin' : `Class ${student.class}-${student.section || 'A'}`}
                     </span>
                   </Link>
 

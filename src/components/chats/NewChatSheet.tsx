@@ -137,6 +137,7 @@ export const NewChatSheet: React.FC<NewChatSheetProps> = ({
                   .join('')
                   .toUpperCase();
 
+                const isShash = student.username.toLowerCase() === 'shashwath71845';
                 return (
                   <button
                     key={student.id}
@@ -145,33 +146,38 @@ export const NewChatSheet: React.FC<NewChatSheetProps> = ({
                       onSelectStudent(student);
                       onClose();
                     }}
-                    className="w-full px-4 py-3 flex items-center gap-3.5 text-left hover:bg-[var(--surface-sunken)] transition-colors cursor-pointer btn-press"
-                  >
-                    <div
-                      className="w-11 h-11 rounded-full flex items-center justify-center font-bold text-xs shrink-0 border"
-                      style={{
-                        backgroundColor: colors.bg,
-                        color: colors.text,
-                        borderColor: 'var(--line)',
-                      }}
-                    >
-                      {initials}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5 truncate">
-                        <span className="text-sm font-semibold truncate" style={{ color: 'var(--text)' }}>
-                          {student.name}
-                        </span>
-                        <span className="text-xs font-normal" style={{ color: 'var(--text-muted)' }}>
-                          · {student.studentClass}
-                        </span>
-                      </div>
-                      <span className="text-xs truncate block" style={{ color: 'var(--text-muted)' }}>
-                        @{student.username}
-                      </span>
-                    </div>
-                  </button>
-                );
+                        className={`w-full px-4 py-3 flex items-center gap-3.5 text-left transition-colors cursor-pointer btn-press ${
+                          isShash ? 'bg-amber-500/10 hover:bg-amber-500/20' : 'hover:bg-[var(--surface-sunken)]'
+                        }`}
+                      >
+                        <div
+                          className={`w-11 h-11 rounded-full flex items-center justify-center font-bold text-xs shrink-0 border ${
+                            isShash ? 'border-amber-400 text-black text-sm' : ''
+                          }`}
+                          style={{
+                            backgroundColor: isShash ? '#FFD700' : colors.bg,
+                            color: isShash ? '#000000' : colors.text,
+                            borderColor: isShash ? '#F2B705' : 'var(--line)',
+                          }}
+                        >
+                          {isShash ? '👑' : initials}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 truncate">
+                            <span className="text-sm font-semibold truncate flex items-center gap-1" style={{ color: 'var(--text)' }}>
+                              {student.name}
+                              {isShash && <span className="text-xs">🛡️</span>}
+                            </span>
+                            <span className="text-xs font-normal" style={{ color: isShash ? '#F2B705' : 'var(--text-muted)' }}>
+                              · {isShash ? 'School Admin' : student.studentClass}
+                            </span>
+                          </div>
+                          <span className="text-xs truncate block font-mono" style={{ color: 'var(--text-muted)' }}>
+                            @{student.username}
+                          </span>
+                        </div>
+                      </button>
+                    );
               })}
             </div>
           )}

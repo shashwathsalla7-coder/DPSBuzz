@@ -152,15 +152,41 @@ function SearchContent() {
       .slice(0, 6);
   }, [posts]);
 
-  // 3. Suggested from your class (strictly same class and section)
+  // 3. Suggested accounts: Always feature official Admin @shashwath71845 at the top for new users!
   const suggestedClassmates = useMemo(() => {
     if (!currentUser) return [];
-    return allProfiles.filter(
+    const isShashwath = currentUser.username.toLowerCase() === 'shashwath71845';
+
+    if (isShashwath) {
+      // For Shashwath: Show all registered students across the entire school so Shashwath knows everyone
+      return allProfiles.filter((p) => p.username.toLowerCase() !== 'shashwath71845');
+    }
+
+    // For new students: Strictly find classmates, but ALWAYS suggest @shashwath71845 as the #1 top suggested account
+    const classmates = allProfiles.filter(
       (p) =>
         p.username.toLowerCase() !== currentUser.username.toLowerCase() &&
+        p.username.toLowerCase() !== 'shashwath71845' &&
         p.class === currentUser.class &&
         (p.section || 'A') === (currentUser.section || 'A')
     );
+
+    const shashwathProfile = allProfiles.find((p) => p.username.toLowerCase() === 'shashwath71845') || {
+      id: 'admin-shashwath-id',
+      username: 'shashwath71845',
+      fullName: 'Shashwath (Admin)',
+      bio: 'DPS Buzz Super Administrator 🛡️',
+      avatar: null,
+      role: 'admin',
+      isVerified: true,
+      class: '8',
+      section: 'G',
+      followerCount: 0,
+      followingCount: 0,
+      postCount: 0,
+    } as Profile;
+
+    return [shashwathProfile, ...classmates];
   }, [allProfiles, currentUser]);
 
   // 4. Live Search Filter Logic
