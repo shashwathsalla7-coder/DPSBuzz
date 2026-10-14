@@ -16,20 +16,20 @@ export function GlobalModerationGuard() {
 
   const checkStatus = () => {
     const user = DataStore.getCurrentUser();
+    if (!user || !user.username || user.username.toLowerCase() === 'guest') {
+      router.replace('/login');
+      return;
+    }
+
     setCurrentUser(user);
 
-    if (user && user.username) {
-      const banned = DataStore.isUserBanned(user.username);
-      setIsBanned(banned);
-      if (banned) {
-        setBanReason(DataStore.getBanReason(user.username));
-      } else {
-        const warning = DataStore.getUnacknowledgedWarning(user.username);
-        setActiveWarning(warning);
-      }
+    const banned = DataStore.isUserBanned(user.username);
+    setIsBanned(banned);
+    if (banned) {
+      setBanReason(DataStore.getBanReason(user.username));
     } else {
-      setIsBanned(false);
-      setActiveWarning(null);
+      const warning = DataStore.getUnacknowledgedWarning(user.username);
+      setActiveWarning(warning);
     }
   };
 
@@ -43,6 +43,8 @@ export function GlobalModerationGuard() {
   const handleLogout = () => {
     if (typeof window !== 'undefined') {
       localStorage.removeItem('dpsbuzz_user');
+      localStorage.removeItem('dpsbuzz_shashwath_authenticated');
+      document.cookie = 'dpsbuzz_user=; path=/; max-age=0; SameSite=Lax';
     }
     router.push('/login');
   };

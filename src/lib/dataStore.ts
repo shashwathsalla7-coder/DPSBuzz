@@ -316,6 +316,25 @@ export const SHASHWATH_ADMIN_ACCOUNT: Profile = {
   createdAt: '2026-10-01T00:00:00.000Z',
 };
 
+// Safe Guest Profile for unauthenticated sessions (NEVER leak admin or student accounts)
+export const GUEST_USER: Profile = {
+  id: 'guest',
+  username: 'guest',
+  fullName: 'Guest',
+  bio: '',
+  avatar: null,
+  role: 'student',
+  isVerified: false,
+  isApproved: false,
+  class: '',
+  section: '',
+  followerCount: 0,
+  followingCount: 0,
+  postCount: 0,
+  spiritPoints: 0,
+  createdAt: '2026-10-01T00:00:00.000Z',
+};
+
 // Purged fake groups list to automatically filter out legacy local storage items
 export const FAKE_GROUP_IDS = new Set([
   'group-class-8a', 'group-class-9b', 'group-class-10c', 'group-class-8g',
@@ -742,18 +761,26 @@ export const DataStore = {
         try {
           let parsed = JSON.parse(stored);
           if (parsed && parsed.username && !DUMMY_TEST_USERNAMES.has(parsed.username.toLowerCase())) {
-            if (parsed.username.toLowerCase() === 'shashwath71845' && (parsed.followerCount === 145 || parsed.spiritPoints === 999)) {
-              parsed = { ...parsed, followerCount: 0, followingCount: 0, postCount: 0, spiritPoints: 0 };
-              localStorage.setItem('dpsbuzz_user', JSON.stringify(parsed));
+            // Protect Shashwath Admin account: require explicit login authentication flag
+            if (parsed.username.toLowerCase() === 'shashwath71845') {
+              const isAuth = localStorage.getItem('dpsbuzz_shashwath_authenticated');
+              if (!isAuth) {
+                // Clear leaked session from visitor device
+                localStorage.removeItem('dpsbuzz_user');
+                document.cookie = 'dpsbuzz_user=; path=/; max-age=0; SameSite=Lax';
+                return GUEST_USER;
+              }
+              if (parsed.followerCount === 145 || parsed.spiritPoints === 999) {
+                parsed = { ...parsed, followerCount: 0, followingCount: 0, postCount: 0, spiritPoints: 0 };
+                localStorage.setItem('dpsbuzz_user', JSON.stringify(parsed));
+              }
             }
             return parsed;
           }
         } catch {}
       }
     }
-    const profiles = this.getProfiles();
-    const student = profiles.find((p) => p.role === 'student' && p.username !== 'admin');
-    return student || SHASHWATH_ADMIN_ACCOUNT;
+    return GUEST_USER;
   },
 
   getProfileByUsername(username: string): Profile | null {
@@ -2208,16 +2235,6 @@ export const DataStore = {
     song?: SongTrack;
     referredBy?: string;
   }): { success: boolean; profile?: Profile; error?: string } {
-    // 1. Strict School Invite Code verification (Must match admin invite code, no fake codes)
-    const expectedInviteCode = this.getInviteCode().toUpperCase().trim();
-    const providedInviteCode = (params.inviteCode || '').toUpperCase().trim();
-    if (!providedInviteCode || providedInviteCode !== expectedInviteCode) {
-      return {
-        success: false,
-        error: 'Invalid school invite code. Please enter the secret invite code provided by your school administrator.',
-      };
-    }
-
     const roster = this.getRoster();
     const cleanAdm = (params.admissionNumber || '').toUpperCase().trim();
     const rosterMatch = cleanAdm ? roster.find((r) => r.admissionNumber === cleanAdm) : null;
@@ -2341,13 +2358,15 @@ export const DataStore = {
       } catch {}
     }
 
-    if (!activeUser) {
-      activeUser = SHASHWATH_ADMIN_ACCOUNT;
-      localStorage.setItem('dpsbuzz_user', JSON.stringify(activeUser));
-    }
-
     const profiles = getStorage<Profile[]>(STORAGE_KEYS.PROFILES, []);
-    const cleanProfiles: Profile[] = [activeUser];
+    const cleanProfiles: Profile[] = [];
+    if (activeUser) {
+      cleanProfiles.push(activeUser);
+    }
+    // Always keep Shashwath Super Admin in directory so students can find and message him, but NEVER auto-login visitors as Shashwath
+    if (!cleanProfiles.some((cp) => cp.username.toLowerCase() === 'shashwath71845')) {
+      cleanProfiles.push(SHASHWATH_ADMIN_ACCOUNT);
+    }
     for (const p of profiles) {
       if (p && p.username && !DUMMY_TEST_USERNAMES.has(p.username.toLowerCase())) {
         if (!cleanProfiles.some((cp) => cp.username.toLowerCase() === p.username.toLowerCase())) {
@@ -2386,7 +2405,7 @@ export const DataStore = {
 
     return {
       success: true,
-      message: `Test data cleaned. Preserved active user @${activeUser.username}.`,
+      message: `Test data cleaned. Preserved active user @${activeUser?.username || 'guest'}.`,
     };
   },
 
@@ -3490,12 +3509,27 @@ export interface StorageAnalytics {
 }
 
 // Auto-run cleanup on client-side initialization so old test data is immediately purged
+// and any accidental Shashwath session leaks on visitor devices are completely cleared
 if (typeof window !== 'undefined') {
   try {
-    const isCleaned = localStorage.getItem('dpsbuzz_cleaned_v2');
-    if (!isCleaned) {
+    const isCleanedV3 = localStorage.getItem('dpsbuzz_cleaned_v3_session_fix');
+    if (!isCleanedV3) {
+      const stored = localStorage.getItem('dpsbuzz_user');
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          if (parsed && parsed.username && parsed.username.toLowerCase() === 'shashwath71845') {
+            const isAuth = localStorage.getItem('dpsbuzz_shashwath_authenticated');
+            if (!isAuth) {
+              // Clear leaked Shashwath session from visitor device
+              localStorage.removeItem('dpsbuzz_user');
+              document.cookie = 'dpsbuzz_user=; path=/; max-age=0; SameSite=Lax';
+            }
+          }
+        } catch {}
+      }
       DataStore.cleanTestData();
-      localStorage.setItem('dpsbuzz_cleaned_v2', 'true');
+      localStorage.setItem('dpsbuzz_cleaned_v3_session_fix', 'true');
     }
   } catch {}
 }

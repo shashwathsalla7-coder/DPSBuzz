@@ -8,7 +8,7 @@ import { DataStore, type SongTrack } from '@/lib/dataStore';
 import Logo from '@/components/ui/Logo';
 import { SongPickerModal } from '@/components/music/SongPickerModal';
 import { MusicTrackPill } from '@/components/music/MusicTrackPill';
-import { Music, KeyRound, Gift, Shield, CheckCircle2 } from 'lucide-react';
+import { Music, Gift, Shield, CheckCircle2 } from 'lucide-react';
 
 type Step = 1 | 2 | 3;
 
@@ -23,7 +23,6 @@ export default function SignupPage() {
   const [className, setClassName] = useState('8');
   const [section, setSection] = useState('A');
   const [isPrivate, setIsPrivate] = useState(false);
-  const [inviteCode, setInviteCode] = useState('');
   const [referredBy, setReferredBy] = useState('');
 
   // Step 2: Credentials & Favorite Song (Optional)
@@ -53,18 +52,6 @@ export default function SignupPage() {
 
     if (!fullName.trim()) {
       setError('Please enter your full name to continue.');
-      return;
-    }
-
-    if (!inviteCode.trim()) {
-      setError('Please enter the school invite code provided by your administrator.');
-      return;
-    }
-
-    // Verify school invite code against administrator invite code
-    const validInviteCode = DataStore.getInviteCode().toUpperCase().trim();
-    if (inviteCode.trim().toUpperCase() !== validInviteCode) {
-      setError('Invalid school invite code. Please enter the invite code provided by your administrator.');
       return;
     }
 
@@ -110,7 +97,6 @@ export default function SignupPage() {
       className,
       section,
       username: username.trim(),
-      inviteCode: inviteCode.trim(),
       isPrivate,
       song: favoriteSong || undefined,
       referredBy: referredBy.trim() || undefined,
@@ -273,32 +259,6 @@ export default function SignupPage() {
               </div>
             </div>
 
-            {/* School Invite Code (Required - Strictly no fake/default code) */}
-            <div className="space-y-1.5 pt-1">
-              <div className="flex items-center justify-between">
-                <label htmlFor="inv" className="block text-xs font-semibold flex items-center gap-1.5" style={{ color: 'var(--text)' }}>
-                  <KeyRound size={13} style={{ color: 'var(--primary)' }} />
-                  <span>School Invite Code</span>
-                </label>
-                <span className="text-[10px] text-amber-500 font-bold">*Required</span>
-              </div>
-              <input
-                id="inv"
-                type="text"
-                placeholder="Enter school invite code"
-                value={inviteCode}
-                onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
-                className="w-full h-12 px-3.5 rounded-xl border text-sm transition outline-none uppercase font-mono tracking-wider"
-                style={{
-                  backgroundColor: 'var(--surface)',
-                  borderColor: 'var(--line)',
-                  color: 'var(--text)',
-                }}
-              />
-              <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
-                Enter the secret invite code provided by your school administrator.
-              </p>
-            </div>
 
             {/* Referral Username (Optional: +25 Points Bonus) */}
             <div className="space-y-1.5 pt-1">

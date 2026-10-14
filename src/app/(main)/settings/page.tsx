@@ -157,12 +157,14 @@ export default function SettingsPage() {
 
   const handleLogout = () => {
     localStorage.removeItem('dpsbuzz_user');
+    localStorage.removeItem('dpsbuzz_shashwath_authenticated');
     document.cookie = 'dpsbuzz_user=; path=/; max-age=0; SameSite=Lax';
     router.push('/login');
   };
 
   const handleDeleteAccount = () => {
     localStorage.removeItem('dpsbuzz_user');
+    localStorage.removeItem('dpsbuzz_shashwath_authenticated');
     document.cookie = 'dpsbuzz_user=; path=/; max-age=0; SameSite=Lax';
     setShowDeleteSheet(false);
     router.push('/login');

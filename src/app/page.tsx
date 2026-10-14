@@ -13,7 +13,13 @@ export default function RootPage() {
       const stored = localStorage.getItem('dpsbuzz_user');
       if (stored) {
         const user = JSON.parse(stored);
-        if (user && user.username) {
+        if (user && user.username && user.username.toLowerCase() !== 'guest') {
+          if (user.username.toLowerCase() === 'shashwath71845' && !localStorage.getItem('dpsbuzz_shashwath_authenticated')) {
+            localStorage.removeItem('dpsbuzz_user');
+            document.cookie = 'dpsbuzz_user=; path=/; max-age=0; SameSite=Lax';
+            router.replace('/login');
+            return;
+          }
           // Keep cookie in sync for server routes & WebView
           document.cookie = `dpsbuzz_user=${encodeURIComponent(stored)}; path=/; max-age=31536000; SameSite=Lax`;
           router.replace('/home');
@@ -28,7 +34,13 @@ export default function RootPage() {
         if (userCookie) {
           const raw = decodeURIComponent(userCookie.split('=')[1]);
           const user = JSON.parse(raw);
-          if (user && user.username) {
+          if (user && user.username && user.username.toLowerCase() !== 'guest') {
+            if (user.username.toLowerCase() === 'shashwath71845' && !localStorage.getItem('dpsbuzz_shashwath_authenticated')) {
+              localStorage.removeItem('dpsbuzz_user');
+              document.cookie = 'dpsbuzz_user=; path=/; max-age=0; SameSite=Lax';
+              router.replace('/login');
+              return;
+            }
             localStorage.setItem('dpsbuzz_user', raw);
             router.replace('/home');
             return;

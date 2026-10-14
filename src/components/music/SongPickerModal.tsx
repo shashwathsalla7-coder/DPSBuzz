@@ -196,6 +196,7 @@ export const SongPickerModal: React.FC<SongPickerModalProps> = ({
   const [clipDurationMode, setClipDurationMode] = useState<'15' | '30' | 'full'>('15');
 
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const seekDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Subscribe to audio state
   useEffect(() => {
@@ -314,13 +315,18 @@ export const SongPickerModal: React.FC<SongPickerModalProps> = ({
     globalAudio.previewSegment(track, safeStart, dur);
   };
 
-  // Slider change in Trimmer
+  // Slider change in Trimmer with smooth 60ms debounce to eliminate stuttering
   const handleClipStartChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newStart = parseInt(e.target.value, 10);
     setClipStart(newStart);
-    if (trimmingTrack) {
-      globalAudio.previewSegment(trimmingTrack, newStart, clipDuration);
+    if (seekDebounceRef.current) {
+      clearTimeout(seekDebounceRef.current);
     }
+    seekDebounceRef.current = setTimeout(() => {
+      if (trimmingTrack) {
+        globalAudio.previewSegment(trimmingTrack, newStart, clipDuration);
+      }
+    }, 60);
   };
 
   // Preset button click in Trimmer

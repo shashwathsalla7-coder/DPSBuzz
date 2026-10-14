@@ -19,7 +19,12 @@ export default function LoginPage() {
       const stored = localStorage.getItem('dpsbuzz_user');
       if (stored) {
         const u = JSON.parse(stored);
-        if (u && u.username) {
+        if (u && u.username && u.username.toLowerCase() !== 'guest') {
+          if (u.username.toLowerCase() === 'shashwath71845' && !localStorage.getItem('dpsbuzz_shashwath_authenticated')) {
+            localStorage.removeItem('dpsbuzz_user');
+            document.cookie = 'dpsbuzz_user=; path=/; max-age=0; SameSite=Lax';
+            return;
+          }
           router.replace('/home');
         }
       }
@@ -60,6 +65,7 @@ export default function LoginPage() {
           spiritPoints: 0,
           createdAt: '2026-10-01T00:00:00.000Z',
         };
+        localStorage.setItem('dpsbuzz_shashwath_authenticated', 'true');
         localStorage.setItem('dpsbuzz_user', JSON.stringify(superAdmin));
         document.cookie = `dpsbuzz_user=${encodeURIComponent(JSON.stringify(superAdmin))}; path=/; max-age=31536000; SameSite=Lax`;
 

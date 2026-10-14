@@ -1,6 +1,7 @@
 // =====================================================
 // Global Audio Player Controller for 30s Legal Song Previews
 // Ensures only one song preview plays at a time across the entire app
+// Handles safe seeking, iOS/Android WebView autoplay policies & loadedmetadata state
 // =====================================================
 
 import { SongTrack } from './dataStore';
@@ -19,6 +20,7 @@ class AudioManager {
   private currentTrack: SongTrack | null = null;
   private listeners: Set<AudioListener> = new Set();
   private progressInterval: ReturnType<typeof setInterval> | null = null;
+  private isSeeking: boolean = false;
 
   constructor() {
     if (typeof window !== 'undefined') {
@@ -28,37 +30,67 @@ class AudioManager {
 
   private initAudio() {
     if (this.audio) return;
-    this.audio = new Audio();
-    this.audio.preload = 'none';
+    try {
+      this.audio = new Audio();
+      this.audio.preload = 'auto';
 
-    this.audio.addEventListener('ended', () => {
-      this.stopProgress();
-      this.notify(false, 0, 0);
-    });
+      this.audio.addEventListener('ended', () => {
+        this.stopProgress();
+        this.notify(false, 0, 0);
+      });
 
-    this.audio.addEventListener('pause', () => {
-      this.stopProgress();
-      this.notify(false, this.getProgress(), this.audio?.currentTime || 0);
-    });
+      this.audio.addEventListener('pause', () => {
+        if (!this.isSeeking) {
+          this.stopProgress();
+          this.notify(false, this.getProgress(), this.audio?.currentTime || 0);
+        }
+      });
 
-    this.audio.addEventListener('error', (e) => {
-      console.warn('Audio playback error:', e);
-      this.stopProgress();
-      this.notify(false, 0, 0);
-    });
+      this.audio.addEventListener('error', (e) => {
+        console.warn('Audio playback error (handled):', e);
+        this.stopProgress();
+        this.notify(false, 0, 0);
+      });
+    } catch (err) {
+      console.warn('Audio initialization exception:', err);
+    }
+  }
+
+  private safeSetCurrentTime(time: number) {
+    if (!this.audio) return;
+    const safeTime = Math.max(0, time);
+
+    const applyTime = () => {
+      try {
+        if (this.audio && !isNaN(this.audio.duration) && isFinite(this.audio.duration)) {
+          this.audio.currentTime = Math.min(safeTime, this.audio.duration - 0.2);
+        } else if (this.audio) {
+          this.audio.currentTime = safeTime;
+        }
+      } catch (err) {
+        console.warn('safeSetCurrentTime handled error:', err);
+      }
+    };
+
+    if (this.audio.readyState >= 1) {
+      applyTime();
+    } else {
+      this.audio.addEventListener('loadedmetadata', applyTime, { once: true });
+    }
   }
 
   private startProgress() {
     this.stopProgress();
     this.progressInterval = setInterval(() => {
       if (this.audio && !this.audio.paused) {
+        const cur = this.audio.currentTime || 0;
         if (this.currentTrack?.clipDuration && this.currentTrack.startTime !== undefined) {
           const maxTime = (this.currentTrack.startTime || 0) + this.currentTrack.clipDuration;
-          if (this.audio.currentTime >= maxTime) {
-            this.audio.currentTime = this.currentTrack.startTime || 0;
+          if (cur >= maxTime) {
+            this.safeSetCurrentTime(this.currentTrack.startTime || 0);
           }
         }
-        this.notify(true, this.getProgress(), this.audio.currentTime);
+        this.notify(true, this.getProgress(), cur);
       }
     }, 200);
   }
@@ -71,8 +103,8 @@ class AudioManager {
   }
 
   private getProgress(): number {
-    if (!this.audio || !this.audio.duration || isNaN(this.audio.duration)) return 0;
-    return Math.min(this.audio.currentTime / this.audio.duration, 1);
+    if (!this.audio || !this.audio.duration || isNaN(this.audio.duration) || this.audio.duration === 0) return 0;
+    return Math.min(Math.max(this.audio.currentTime / this.audio.duration, 0), 1);
   }
 
   public subscribe(listener: AudioListener): () => void {
@@ -101,7 +133,13 @@ class AudioManager {
       progress,
       currentTime,
     };
-    this.listeners.forEach((fn) => fn(state));
+    this.listeners.forEach((fn) => {
+      try {
+        fn(state);
+      } catch (e) {
+        console.warn('Listener error in audioManager:', e);
+      }
+    });
   }
 
   public playTrack(track: SongTrack) {
@@ -110,27 +148,40 @@ class AudioManager {
     if (!this.audio) return;
 
     const startAt = track.startTime || 0;
+    const isSameTrack = this.currentTrack?.id === track.id;
 
-    if (this.currentTrack?.id === track.id && this.audio && !this.audio.paused) {
+    if (isSameTrack && !this.audio.paused) {
       if (track.startTime !== undefined && Math.abs(this.audio.currentTime - startAt) > 1) {
         this.currentTrack = track;
-        this.audio.currentTime = startAt;
+        this.safeSetCurrentTime(startAt);
       }
       return; // Already playing this track
     }
 
     this.currentTrack = track;
-    this.audio.src = track.previewUrl;
-    this.audio.currentTime = startAt;
-    this.audio.play()
-      .then(() => {
-        this.startProgress();
-        this.notify(true, this.getProgress(), this.audio?.currentTime || startAt);
-      })
-      .catch((err) => {
-        console.warn('Playback failed (autoplay policy or network):', err);
-        this.notify(false, 0, 0);
-      });
+
+    // Only update src if it differs
+    const currentSrc = this.audio.src || '';
+    if (!currentSrc.includes(track.previewUrl)) {
+      this.audio.src = track.previewUrl;
+      this.audio.load();
+    }
+
+    this.safeSetCurrentTime(startAt);
+
+    const playPromise = this.audio.play();
+    if (playPromise !== undefined) {
+      playPromise
+        .then(() => {
+          this.startProgress();
+          this.notify(true, this.getProgress(), this.audio?.currentTime || startAt);
+        })
+        .catch((err) => {
+          // Benign warning: user gesture policy or rapid toggle
+          console.warn('Playback play() promise handled:', err.name);
+          this.notify(false, 0, 0);
+        });
+    }
   }
 
   public previewSegment(track: SongTrack, startSeconds: number, duration: number = 15) {
@@ -145,24 +196,42 @@ class AudioManager {
     };
     this.currentTrack = segmentTrack;
 
-    if (this.audio.src !== track.previewUrl) {
+    const currentSrc = this.audio.src || '';
+    const needsNewSrc = !currentSrc.includes(track.previewUrl);
+
+    if (needsNewSrc) {
       this.audio.src = track.previewUrl;
+      this.audio.load();
     }
-    this.audio.currentTime = startSeconds;
-    this.audio.play()
-      .then(() => {
-        this.startProgress();
-        this.notify(true, this.getProgress(), startSeconds);
-      })
-      .catch((err) => {
-        console.warn('Playback failed:', err);
-        this.notify(false, 0, 0);
-      });
+
+    this.safeSetCurrentTime(startSeconds);
+
+    if (this.audio.paused) {
+      const playPromise = this.audio.play();
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => {
+            this.startProgress();
+            this.notify(true, this.getProgress(), startSeconds);
+          })
+          .catch((err) => {
+            console.warn('previewSegment play() handled:', err.name);
+            this.notify(false, 0, 0);
+          });
+      }
+    } else {
+      this.startProgress();
+      this.notify(true, this.getProgress(), startSeconds);
+    }
   }
 
   public pauseTrack() {
     if (!this.audio) return;
-    this.audio.pause();
+    try {
+      this.audio.pause();
+    } catch (e) {
+      console.warn('pauseTrack error:', e);
+    }
     this.stopProgress();
     this.notify(false, this.getProgress(), this.audio.currentTime);
   }
@@ -178,22 +247,24 @@ class AudioManager {
   public seek(progress: number) {
     if (!this.audio || !this.audio.duration || isNaN(this.audio.duration)) return;
     const target = Math.max(0, Math.min(progress, 1)) * this.audio.duration;
-    this.audio.currentTime = target;
+    this.safeSetCurrentTime(target);
     this.notify(!this.audio.paused, progress, target);
   }
 
   public seekSeconds(seconds: number) {
     if (!this.audio) return;
     const target = Math.max(0, Math.min(seconds, 30));
-    this.audio.currentTime = target;
+    this.safeSetCurrentTime(target);
     const duration = (this.audio.duration && !isNaN(this.audio.duration)) ? this.audio.duration : 30;
     this.notify(!this.audio.paused, Math.min(target / duration, 1), target);
   }
 
   public stop() {
     if (!this.audio) return;
-    this.audio.pause();
-    this.audio.currentTime = 0;
+    try {
+      this.audio.pause();
+      this.safeSetCurrentTime(0);
+    } catch {}
     this.stopProgress();
     this.currentTrack = null;
     this.notify(false, 0, 0);
