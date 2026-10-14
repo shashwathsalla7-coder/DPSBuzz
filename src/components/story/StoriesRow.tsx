@@ -154,10 +154,12 @@ export const StoriesRow: React.FC<StoriesRowProps> = ({ currentUser }) => {
           </span>
         </div>
 
-        {/* 2. Each Classmate Profile with Stories (Grouped by Profile, 1 Ring per Profile) */}
-        {userGroups.peerGroups.map((group) => {
-          const isSeen = !group.hasUnseen;
-          const variant = isSeen ? 'seen' : 'unseen';
+        {/* 2. ONLY Classmate Profiles who have ACTUALLY created an active story — NEVER add accounts without active stories! */}
+        {userGroups.peerGroups
+          .filter((group) => Array.isArray(group.stories) && group.stories.length > 0)
+          .map((group) => {
+            const isSeen = !group.hasUnseen;
+            const variant = isSeen ? 'seen' : 'unseen';
 
           return (
             <div key={group.username} className="flex flex-col items-center gap-1.5 shrink-0">

@@ -8,13 +8,13 @@ import {
   X,
   History,
   Users,
-  Hash,
-  Megaphone,
-  UserCheck,
   AlertCircle,
   RotateCw,
+  Heart,
+  Image as ImageIcon,
+  Flame,
 } from 'lucide-react';
-import { DataStore, type Profile, type Post, type Group, type Notice } from '@/lib/dataStore';
+import { DataStore, type Profile, type Post, type Notice } from '@/lib/dataStore';
 import { HeroCard } from '@/components/search/HeroCard';
 import { TrendingGrid } from '@/components/search/TrendingGrid';
 import { SearchSkeletons } from '@/components/search/SearchSkeletons';
@@ -30,21 +30,18 @@ export default function SearchPage() {
 
 function SearchContent() {
   const [query, setQuery] = useState('');
-  const [activeChip, setActiveChip] = useState<'Top' | 'People' | 'Groups' | 'Hashtags' | 'Notices'>('Top');
+  const [activeChip, setActiveChip] = useState<'Accounts' | 'Posts'>('Accounts');
   const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
   const [selectedClass, setSelectedClass] = useState<string>('All');
   const [selectedSection, setSelectedSection] = useState<string>('All');
-  const [selectedNotice, setSelectedNotice] = useState<Notice | null>(null);
 
-  // Demo state for screenshot testing (?state=loading | ?state=error)
+  // Demo state for testing (?state=loading | ?state=error)
   const [demoState, setDemoState] = useState<'normal' | 'loading' | 'error'>('normal');
 
   // App data state
   const [currentUser, setCurrentUser] = useState<Profile | null>(null);
   const [allProfiles, setAllProfiles] = useState<Profile[]>([]);
   const [posts, setPosts] = useState<Post[]>([]);
-  const [groups, setGroups] = useState<Group[]>([]);
-  const [notices, setNotices] = useState<Notice[]>([]);
   const [follows, setFollows] = useState<Array<{ follower: string; following: string }>>([]);
   const [registeredUserCount, setRegisteredUserCount] = useState<number>(0);
 
@@ -72,8 +69,10 @@ function SearchContent() {
       if (qParam) setQuery(qParam);
 
       const chipParam = params.get('chip');
-      if (chipParam && ['Top', 'People', 'Groups', 'Hashtags', 'Notices'].includes(chipParam)) {
-        setActiveChip(chipParam as any);
+      if (chipParam && (chipParam.toLowerCase() === 'posts' || chipParam.toLowerCase() === 'post')) {
+        setActiveChip('Posts');
+      } else if (chipParam && (chipParam.toLowerCase() === 'accounts' || chipParam.toLowerCase() === 'people')) {
+        setActiveChip('Accounts');
       }
     }
 
@@ -81,8 +80,6 @@ function SearchContent() {
       setCurrentUser(DataStore.getCurrentUser());
       setAllProfiles(DataStore.getProfiles());
       setPosts(DataStore.getPosts());
-      setGroups(DataStore.getGroups());
-      setNotices(DataStore.getNotices());
       setFollows(DataStore.getFollows());
       setRegisteredUserCount(DataStore.getRegisteredUserCount());
     };
@@ -93,7 +90,7 @@ function SearchContent() {
     DataStore.syncWithServer().then(() => loadData()).catch(() => {});
     const syncInterval = setInterval(() => {
       DataStore.syncWithServer().then(() => loadData()).catch(() => {});
-    }, 4000);
+    }, 10000);
 
     window.addEventListener('dpsbuzz:content_updated', loadData);
     window.addEventListener('storage', loadData);
@@ -160,23 +157,28 @@ function SearchContent() {
       .slice(0, 6);
   }, [posts]);
 
-  // 3. Suggested accounts: Always feature official Admin @shashwath71845 at the top for new users!
+  // 3. Suggested accounts: Always feature official Admin @shashwath71845 and classmates
   const suggestedClassmates = useMemo(() => {
     if (!currentUser) return [];
     const isShashwath = currentUser.username.toLowerCase() === 'shashwath71845';
 
     if (isShashwath) {
-      // For Shashwath: Show all registered students across the entire school so Shashwath knows everyone
       return allProfiles.filter((p) => p.username.toLowerCase() !== 'shashwath71845');
     }
 
-    // For new students: Strictly find classmates, but ALWAYS suggest @shashwath71845 as the #1 top suggested account
     const classmates = allProfiles.filter(
       (p) =>
         p.username.toLowerCase() !== currentUser.username.toLowerCase() &&
         p.username.toLowerCase() !== 'shashwath71845' &&
         p.class === currentUser.class &&
         (p.section || 'A') === (currentUser.section || 'A')
+    );
+
+    const otherStudents = allProfiles.filter(
+      (p) =>
+        p.username.toLowerCase() !== currentUser.username.toLowerCase() &&
+        p.username.toLowerCase() !== 'shashwath71845' &&
+        (p.class !== currentUser.class || (p.section || 'A') !== (currentUser.section || 'A'))
     );
 
     const shashwathProfile = allProfiles.find((p) => p.username.toLowerCase() === 'shashwath71845') || {
@@ -187,74 +189,102 @@ function SearchContent() {
       avatar: null,
       role: 'admin',
       isVerified: true,
-      class: '8',
-      section: 'G',
+      class: 'Staff',
+      section: 'Admin',
       followerCount: 0,
       followingCount: 0,
       postCount: 0,
     } as Profile;
 
-    return [shashwathProfile, ...classmates];
+    return [shashwathProfile, ...classmates, ...otherStudents];
   }, [allProfiles, currentUser]);
 
-  // 4. Live Search Filter Logic
+  // 4. Comprehensive Live Search Matching Accounts & Posts by Keyword (including class numbers 6, 7, 8, 9, 10)
   const searchResults = useMemo(() => {
     const q = query.toLowerCase().trim();
-    if (!q && activeChip === 'Top') return null;
 
-    // Filter people
+    // Filter Accounts (matching name, username, class numbers like 6, 7, 8, 9, 10, section, bio)
     const matchedPeople = allProfiles.filter((p) => {
-      const matchText =
-        !q ||
-        p.username.toLowerCase().includes(q) ||
-        p.fullName.toLowerCase().includes(q);
+      if (!p || !p.username) return false;
+      const cleanUser = p.username.toLowerCase();
+      if (cleanUser === 'admin') return false;
+
+      if (!q) {
+        const matchClass = selectedClass === 'All' || p.class === selectedClass;
+        const matchSection = selectedSection === 'All' || (p.section || 'A') === selectedSection;
+        return matchClass && matchSection;
+      }
+
+      const u = cleanUser;
+      const n = (p.fullName || '').toLowerCase();
+      const c = (p.class || '').toLowerCase();
+      const s = (p.section || '').toLowerCase();
+      const bio = (p.bio || '').toLowerCase();
+      const fullClass = `class ${c}`;
+      const classSec = `${c}${s}`;
+      const classDashSec = `${c}-${s}`;
+
+      const matchKeyword =
+        u.includes(q) ||
+        n.includes(q) ||
+        c === q ||
+        c.includes(q) ||
+        fullClass.includes(q) ||
+        classSec.includes(q) ||
+        classDashSec.includes(q) ||
+        s === q ||
+        bio.includes(q);
+
       const matchClass = selectedClass === 'All' || p.class === selectedClass;
       const matchSection = selectedSection === 'All' || (p.section || 'A') === selectedSection;
-      return matchText && matchClass && matchSection;
+
+      return matchKeyword && matchClass && matchSection;
     });
 
-    // Filter groups
-    const matchedGroups = groups.filter((g) =>
-      !q || g.name.toLowerCase().includes(q) || g.description.toLowerCase().includes(q)
-    );
+    // Filter Posts (matching caption, author username, author full name, author class like 6, 7, 10, hashtags, songs)
+    const matchedPosts = posts.filter((p) => {
+      if (!p) return false;
+      if (!q) {
+        if (selectedClass === 'All') return true;
+        return (p.class || '').toLowerCase().includes(selectedClass.toLowerCase());
+      }
 
-    // Filter hashtags from posts
-    const allHashtags = new Set<string>();
-    posts.forEach((p) => {
-      const tags = p.caption?.match(/#[a-zA-Z0-9_]+/g) || [];
-      tags.forEach((t) => allHashtags.add(t));
+      const caption = (p.caption || '').toLowerCase();
+      const authorUser = (p.username || '').toLowerCase();
+      const authorName = (p.fullName || '').toLowerCase();
+      const authorClass = (p.class || '').toLowerCase();
+      const habit = (p.habitTag || p.habitCategory || '').toLowerCase();
+      const songTitle = (p.song?.title || '').toLowerCase();
+      const songArtist = (p.song?.artist || '').toLowerCase();
+
+      const matchKeyword =
+        caption.includes(q) ||
+        authorUser.includes(q) ||
+        authorName.includes(q) ||
+        authorClass === q ||
+        authorClass.includes(q) ||
+        `class ${authorClass}`.includes(q) ||
+        habit.includes(q) ||
+        songTitle.includes(q) ||
+        songArtist.includes(q);
+
+      const matchClass = selectedClass === 'All' || (p.class || '').toLowerCase().includes(selectedClass.toLowerCase());
+      return matchKeyword && matchClass;
     });
-    const matchedHashtags = Array.from(allHashtags).filter((t) =>
-      !q || t.toLowerCase().includes(q)
-    );
-
-    // Filter notices
-    const matchedNotices = notices.filter(
-      (n) =>
-        !q ||
-        n.title.toLowerCase().includes(q) ||
-        (n.content && n.content.toLowerCase().includes(q)) ||
-        n.category.toLowerCase().includes(q)
-    );
 
     return {
       people: matchedPeople,
-      groups: matchedGroups,
-      hashtags: matchedHashtags,
-      notices: matchedNotices,
-      totalCount:
-        matchedPeople.length +
-        matchedGroups.length +
-        matchedHashtags.length +
-        matchedNotices.length,
+      posts: matchedPosts,
+      totalCount: activeChip === 'Accounts' ? matchedPeople.length : matchedPosts.length,
     };
-  }, [query, activeChip, allProfiles, groups, posts, notices, selectedClass, selectedSection]);
+  }, [query, activeChip, allProfiles, posts, selectedClass, selectedSection]);
 
-  const chipTabs = ['Top', 'People', 'Groups', 'Hashtags', 'Notices'] as const;
+  // Keep ONLY 2 BARS as requested: Accounts & Posts
+  const chipTabs = ['Accounts', 'Posts'] as const;
 
   return (
     <div className="space-y-0 min-h-dvh max-w-[480px] mx-auto select-none">
-      {/* 1. Search Field 48px (sunken, pill radius) with search icon and filter icon button */}
+      {/* 1. Search Field 48px with clear button and filter sheet button */}
       <div
         className="px-4 pb-2 sticky top-0 z-30 bg-[var(--surface)] border-b transition-all"
         style={{
@@ -272,7 +302,7 @@ function SearchContent() {
           <SearchIcon size={19} className="text-[var(--text-muted)] shrink-0" />
           <input
             type="text"
-            placeholder="Search people, groups, hashtags"
+            placeholder="Search by class (6, 7, 8, 10), name, or keyword..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className="flex-1 bg-transparent text-xs text-[var(--text)] outline-none placeholder:text-[var(--text-muted)] font-medium h-full"
@@ -303,23 +333,63 @@ function SearchContent() {
         </div>
       </div>
 
-      {/* 2. Filter Chips (pill, 36px, horizontal scroll): Top, People, Groups, Hashtags, Notices */}
-      <div className="px-4 py-1.5 flex gap-2 overflow-x-auto no-scrollbar sticky top-[60px] z-20 bg-[var(--surface)] border-b border-[var(--line)]">
+      {/* 2. ONLY 2 BARS (TABS): Accounts & Posts */}
+      <div className="px-4 py-2 flex gap-2 sticky top-[60px] z-20 bg-[var(--surface)] border-b border-[var(--line)]">
         {chipTabs.map((chip) => {
           const isSelected = activeChip === chip;
+          const count = chip === 'Accounts' ? searchResults.people.length : searchResults.posts.length;
           return (
             <button
               key={chip}
               type="button"
               onClick={() => setActiveChip(chip)}
-              className="h-9 px-4.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all duration-150 cursor-pointer select-none"
+              className="flex-1 h-10 rounded-full text-xs font-bold transition-all duration-150 cursor-pointer flex items-center justify-center gap-2 select-none shadow-2xs"
               style={{
                 backgroundColor: isSelected ? 'var(--primary)' : 'var(--surface-sunken)',
                 color: isSelected ? 'var(--on-primary)' : 'var(--text-muted)',
                 border: isSelected ? '1px solid transparent' : '1px solid var(--line)',
               }}
             >
-              {chip}
+              <span>{chip === 'Accounts' ? '👤 Accounts' : '📸 Posts'}</span>
+              <span
+                className="text-[10px] px-2 py-0.5 rounded-full font-bold"
+                style={{
+                  backgroundColor: isSelected ? 'rgba(255,255,255,0.25)' : 'var(--surface)',
+                  color: isSelected ? 'var(--on-primary)' : 'var(--text-muted)',
+                }}
+              >
+                {count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Quick Class Shortcut Chips: 6, 7, 8, 9, 10, All */}
+      <div className="px-4 py-2 flex items-center gap-1.5 overflow-x-auto no-scrollbar border-b border-[var(--line)]/50 bg-[var(--surface)]">
+        <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase shrink-0 mr-1">Class:</span>
+        {['All', '6', '7', '8', '9', '10'].map((cls) => {
+          const isActive = cls === 'All' ? (!query && selectedClass === 'All') : (query === cls || selectedClass === cls);
+          return (
+            <button
+              key={cls}
+              type="button"
+              onClick={() => {
+                if (cls === 'All') {
+                  setSelectedClass('All');
+                  setQuery('');
+                } else {
+                  setQuery(cls);
+                  setSelectedClass('All');
+                }
+              }}
+              className={`h-7 px-3 rounded-full text-[11px] font-bold shrink-0 transition-all cursor-pointer ${
+                isActive
+                  ? 'bg-[var(--primary)] text-white shadow-xs'
+                  : 'bg-[var(--surface-sunken)] text-[var(--text-muted)] hover:text-[var(--text)] border border-[var(--line)]'
+              }`}
+            >
+              {cls === 'All' ? 'All Classes' : `Class ${cls}`}
             </button>
           );
         })}
@@ -347,7 +417,7 @@ function SearchContent() {
                 </span>
               </p>
               <p className="text-[10px] text-[var(--text-muted)]">
-                DPS Dilsukhnagar real student community
+                DPS Dilsukhnagar student community
               </p>
             </div>
           </div>
@@ -361,7 +431,7 @@ function SearchContent() {
         </div>
       </div>
 
-      {/* Loading state */}
+      {/* Loading & Error States */}
       {demoState === 'loading' ? (
         <SearchSkeletons />
       ) : demoState === 'error' ? (
@@ -374,16 +444,15 @@ function SearchContent() {
           <button
             type="button"
             onClick={() => setDemoState('normal')}
-            className="px-4 py-2 rounded-full text-xs font-bold text-white bg-[var(--primary)] inline-flex items-center gap-1.5"
+            className="px-4 py-2 rounded-full text-xs font-bold text-white bg-[var(--primary)] inline-flex items-center gap-1.5 cursor-pointer"
           >
             <RotateCw size={13} />
             <span>Retry</span>
           </button>
         </div>
-      ) : (!query && activeChip === 'Top') ? (
-        /* DEFAULT STATE: Recent searches (if any) + Star of Week Hero Card + Trending Grid + Classmates */
+      ) : !query && activeChip === 'Accounts' ? (
+        /* ACCOUNTS DEFAULT STATE: Recent searches + Star of the Week + Suggested Classmates */
         <div className="space-y-4">
-          {/* Recent searches row */}
           {recentSearches.length > 0 && (
             <div className="px-4 pt-2">
               <div className="flex items-center justify-between mb-2">
@@ -416,7 +485,7 @@ function SearchContent() {
             </div>
           )}
 
-          {/* 3. Hero Card: Star of the Week (top student on Star Board) */}
+          {/* Hero Card: Star of the Week */}
           <HeroCard
             winners={starWinner}
             onFollowToggle={handleFollowToggle}
@@ -424,239 +493,264 @@ function SearchContent() {
             currentUsername={currentUser?.username}
           />
 
-          {/* 4. "Trending this week" (2-col 4:5 grid with bottom scrim) + "Suggested from your class" */}
-          <TrendingGrid
-            trendingPosts={trendingPosts}
-            suggestedClassmates={suggestedClassmates}
-            onFollowToggle={handleFollowToggle}
-            isFollowing={isFollowing}
-            currentUsername={currentUser?.username}
-            onPostClick={(p) => setQuery(p.username)}
-          />
-        </div>
-      ) : (
-        /* LIVE RESULTS STATE (Grouped by active chip) */
-        <div className="px-4 py-4 space-y-4">
-          {searchResults && searchResults.totalCount === 0 ? (
-            activeChip === 'Groups' ? (
-              <div className="py-16 text-center space-y-3">
-                <div className="w-12 h-12 rounded-full mx-auto flex items-center justify-center bg-[var(--primary)]/10 text-[var(--primary)] text-xl">
-                  👥
-                </div>
-                <p className="text-sm font-bold text-[var(--text)]">
-                  {query ? `No groups found matching "${query}"` : 'No student groups created yet'}
-                </p>
-                <p className="text-xs text-[var(--text-muted)] max-w-xs mx-auto">
-                  {query
-                    ? 'Try searching with a different keyword or create a new student group.'
-                    : 'Be the first to start a study group, house squad, or project club!'}
-                </p>
-                <Link
-                  href="/groups"
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold text-white bg-[var(--primary)] hover:opacity-90 transition-opacity"
-                >
-                  <Users size={14} />
-                  <span>+ Create a Group</span>
-                </Link>
-              </div>
-            ) : activeChip === 'Notices' ? (
-              <div className="py-16 text-center space-y-2">
-                <div className="w-12 h-12 rounded-full mx-auto flex items-center justify-center bg-amber-500/10 text-amber-500 text-xl">
-                  📢
-                </div>
-                <p className="text-sm font-bold text-[var(--text)]">
-                  {query ? `No notices matching "${query}"` : 'No official school notices posted yet'}
-                </p>
-                <p className="text-xs text-[var(--text-muted)] max-w-xs mx-auto">
-                  Official circulars, exam schedules, and admin announcements will appear here once published.
-                </p>
-              </div>
-            ) : (
-              /* No Results state: "Nobody called that. Check the spelling." */
-              <div className="py-16 text-center space-y-2">
-                <p className="text-sm font-bold text-[var(--text)]">
-                  Nobody called that. Check the spelling.
-                </p>
-                <p className="text-xs text-[var(--text-muted)]">
-                  Try searching for a classmate&apos;s name, section, or school club.
-                </p>
-              </div>
-            )
-          ) : (
-            <>
-              {/* People Results */}
-              {(activeChip === 'Top' || activeChip === 'People') && searchResults && searchResults.people.length > 0 && (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                    <Users size={14} />
-                    <span>People ({searchResults.people.length})</span>
-                  </div>
-                  <div className="space-y-2">
-                    {searchResults.people.map((person) => {
-                      const following = isFollowing(person.username);
-                      const pair = getAvatarColorPair(person.username);
-                      return (
-                        <div
-                          key={person.id}
-                          className="p-3 rounded-[16px] border flex items-center justify-between gap-3 bg-[var(--surface)]"
-                          style={{ borderColor: 'var(--line)' }}
-                        >
-                          <Link
-                            href={`/u/${person.username}`}
-                            className="flex items-center gap-3 min-w-0"
-                          >
-                            <div
-                              className="w-11 h-11 rounded-full flex items-center justify-center font-bold text-xs shrink-0"
-                              style={{ backgroundColor: pair.bg, color: pair.text }}
-                            >
-                              {person.fullName.slice(0, 2).toUpperCase()}
-                            </div>
-                            <div className="min-w-0">
-                              <p className="text-xs font-bold text-[var(--text)] truncate">
-                                {person.fullName}
-                              </p>
-                              <p className="text-[11px] text-[var(--text-muted)] truncate">
-                                @{person.username} · Class {person.class}-{person.section || 'A'}
-                              </p>
-                            </div>
-                          </Link>
+          {/* Suggested Classmates List with Follow Buttons */}
+          <div className="px-4 space-y-3 pb-8">
+            <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
+              <Users size={14} className="text-[var(--primary)]" />
+              <span>Suggested Accounts for You</span>
+            </div>
 
-                          {currentUser?.username.toLowerCase().trim() !== person.username.toLowerCase().trim() && (
-                            <button
-                              type="button"
-                              onClick={() => handleFollowToggle(person.username)}
-                              className="px-4 py-1.5 rounded-full text-xs font-bold btn-press shrink-0 cursor-pointer"
-                              style={{
-                                backgroundColor: following ? 'var(--surface-sunken)' : 'var(--primary)',
-                                color: following ? 'var(--text)' : 'var(--on-primary)',
-                                border: following ? '1px solid var(--line)' : 'none',
-                              }}
-                            >
-                              {following ? 'Following' : 'Follow'}
-                            </button>
+            <div className="space-y-2">
+              {suggestedClassmates.slice(0, 15).map((person) => {
+                const following = isFollowing(person.username);
+                const pair = getAvatarColorPair(person.username);
+                const isShashwath = person.username.toLowerCase() === 'shashwath71845';
+
+                return (
+                  <div
+                    key={person.id}
+                    className="p-3 rounded-[16px] border flex items-center justify-between gap-3 bg-[var(--surface)] hover:border-[var(--line-strong)] transition-all"
+                    style={{ borderColor: 'var(--line)' }}
+                  >
+                    <Link
+                      href={`/u/${person.username}`}
+                      className="flex items-center gap-3 min-w-0 flex-1"
+                    >
+                      <div
+                        className="w-11 h-11 rounded-full flex items-center justify-center font-bold text-xs shrink-0 overflow-hidden border border-[var(--line)]"
+                        style={{ backgroundColor: isShashwath ? '#FF5A1F' : pair.bg, color: '#fff' }}
+                      >
+                        {person.avatar ? (
+                          <img src={person.avatar} alt={person.fullName} className="w-full h-full object-cover" />
+                        ) : (
+                          person.fullName.slice(0, 2).toUpperCase()
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-xs font-bold text-[var(--text)] truncate">
+                            {isShashwath ? '👑 Shashwath (Admin)' : person.fullName}
+                          </p>
+                          {person.isVerified && (
+                            <span className="text-blue-400 text-[10px]">✓</span>
                           )}
                         </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* Groups Results */}
-              {(activeChip === 'Top' || activeChip === 'Groups') && searchResults && searchResults.groups.length > 0 && (
-                <div className="space-y-2 pt-2">
-                  <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                    <Users size={14} />
-                    <span>Groups ({searchResults.groups.length})</span>
-                  </div>
-                  <div className="space-y-2">
-                    {searchResults.groups.map((group) => (
-                      <div
-                        key={group.id}
-                        className="p-3 rounded-[16px] border flex items-center justify-between gap-3 bg-[var(--surface)]"
-                        style={{ borderColor: 'var(--line)' }}
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          {/* Group avatar: 14px radius rounded square */}
-                          <div
-                            className="w-11 h-11 rounded-[14px] flex items-center justify-center font-bold text-xs shrink-0 text-white"
-                            style={{ backgroundColor: 'var(--primary)' }}
-                          >
-                            {group.name.slice(0, 2).toUpperCase()}
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-xs font-bold text-[var(--text)] truncate">
-                              {group.name}
-                            </p>
-                            <p className="text-[11px] text-[var(--text-muted)] truncate">
-                              {(group as any).membersCount || group.memberCount || (group.members?.length || 1)} members · {group.category}
-                            </p>
-                          </div>
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={() => showToast(`Requested to join ${group.name}`)}
-                          className="px-3.5 py-1.5 rounded-full text-xs font-bold btn-press shrink-0 cursor-pointer"
-                          style={{
-                            backgroundColor: 'var(--primary)',
-                            color: 'var(--on-primary)',
-                          }}
-                        >
-                          Join
-                        </button>
+                        <p className="text-[11px] text-[var(--text-muted)] truncate">
+                          @{person.username} · {isShashwath ? 'School Admin' : `Class ${person.class}-${person.section || 'A'}`}
+                        </p>
                       </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+                    </Link>
 
-              {/* Hashtag Results */}
-              {(activeChip === 'Top' || activeChip === 'Hashtags') && searchResults && searchResults.hashtags.length > 0 && (
-                <div className="space-y-2 pt-2">
-                  <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                    <Hash size={14} />
-                    <span>Hashtags ({searchResults.hashtags.length})</span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    {searchResults.hashtags.map((tag) => (
+                    {currentUser?.username.toLowerCase().trim() !== person.username.toLowerCase().trim() && (
                       <button
-                        key={tag}
                         type="button"
-                        onClick={() => setQuery(tag)}
-                        className="p-3 rounded-[14px] border flex items-center justify-between text-left bg-[var(--surface)] hover:bg-[var(--surface-sunken)] cursor-pointer"
-                        style={{ borderColor: 'var(--line)' }}
+                        onClick={() => handleFollowToggle(person.username)}
+                        className="px-4 py-1.5 rounded-full text-xs font-bold shrink-0 cursor-pointer transition-all active:scale-95 shadow-xs"
+                        style={{
+                          backgroundColor: following ? 'var(--surface-sunken)' : 'var(--primary)',
+                          color: following ? 'var(--text)' : 'var(--on-primary)',
+                          border: following ? '1px solid var(--line)' : 'none',
+                        }}
                       >
-                        <span className="text-xs font-bold text-[var(--primary)]">{tag}</span>
-                        <span className="text-[10px] text-[var(--text-muted)]">Post tag</span>
+                        {following ? 'Following' : 'Follow'}
                       </button>
-                    ))}
+                    )}
                   </div>
-                </div>
-              )}
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      ) : !query && activeChip === 'Posts' ? (
+        /* POSTS DEFAULT STATE: Trending school posts */
+        <div className="px-4 py-4 space-y-4">
+          <div className="flex items-center gap-2 select-none">
+            <Flame size={18} className="text-[var(--primary)]" />
+            <h2 className="text-xs font-bold uppercase tracking-wider text-[var(--text)]">
+              Trending School Posts
+            </h2>
+          </div>
 
-              {/* Notices Results */}
-              {(activeChip === 'Top' || activeChip === 'Notices') && searchResults && searchResults.notices.length > 0 && (
-                <div className="space-y-2 pt-2">
-                  <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                    <Megaphone size={14} />
-                    <span>Notices ({searchResults.notices.length})</span>
+          <div className="grid grid-cols-2 gap-2.5">
+            {trendingPosts.map((post) => {
+              const photo = post.imageUrl || (post.images && post.images[0]) || '';
+              return (
+                <Link
+                  key={post.id}
+                  href={`/home#post-${post.id}`}
+                  className="w-full aspect-[4/5] rounded-[16px] overflow-hidden relative group select-none shadow-xs border border-[var(--line)]"
+                  style={{ backgroundColor: 'var(--surface-sunken)' }}
+                >
+                  {photo ? (
+                    <img
+                      src={photo}
+                      alt={`Post by ${post.username}`}
+                      loading="lazy"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-xs text-[var(--text-muted)] p-3 text-center gradient-bg text-white">
+                      {post.caption?.slice(0, 40) || 'School Post'}
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-2.5 text-white">
+                    <p className="text-[11px] font-bold truncate">@{post.username}</p>
+                    <p className="text-[10px] text-white/80 flex items-center gap-1 mt-0.5">
+                      <Heart size={10} className="fill-rose-500 text-rose-500" />
+                      <span>{post.likes} likes</span>
+                    </p>
                   </div>
-                  <div className="space-y-2.5">
-                    {searchResults.notices.map((notice) => (
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      ) : activeChip === 'Accounts' ? (
+        /* ACTIVE SEARCH: ACCOUNTS RESULTS */
+        <div className="px-4 py-3 space-y-3">
+          {searchResults.people.length === 0 ? (
+            <div className="py-16 text-center space-y-2">
+              <div className="w-12 h-12 rounded-full mx-auto flex items-center justify-center bg-[var(--primary)]/10 text-[var(--primary)] text-xl">
+                👤
+              </div>
+              <p className="text-sm font-bold text-[var(--text)]">
+                {query ? `No student accounts found for "${query}"` : 'No accounts found in this class'}
+              </p>
+              <p className="text-xs text-[var(--text-muted)] max-w-xs mx-auto">
+                Try searching by class number like &quot;6&quot;, &quot;7&quot;, &quot;8&quot;, &quot;10&quot; or by a classmate&apos;s name.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                Found {searchResults.people.length} {searchResults.people.length === 1 ? 'Account' : 'Accounts'}
+              </p>
+
+              {searchResults.people.map((person) => {
+                const following = isFollowing(person.username);
+                const pair = getAvatarColorPair(person.username);
+                const isShashwath = person.username.toLowerCase() === 'shashwath71845';
+
+                return (
+                  <div
+                    key={person.id}
+                    className="p-3 rounded-[16px] border flex items-center justify-between gap-3 bg-[var(--surface)] hover:border-[var(--line-strong)] transition-all"
+                    style={{ borderColor: 'var(--line)' }}
+                  >
+                    <Link
+                      href={`/u/${person.username}`}
+                      className="flex items-center gap-3 min-w-0 flex-1"
+                    >
                       <div
-                        key={notice.id}
-                        onClick={() => setSelectedNotice(notice)}
-                        className="p-3.5 rounded-[18px] border block bg-[var(--surface)] hover:bg-[var(--surface-sunken)] transition-all cursor-pointer shadow-2xs"
-                        style={{ borderColor: 'var(--line)' }}
+                        className="w-11 h-11 rounded-full flex items-center justify-center font-bold text-xs shrink-0 overflow-hidden border border-[var(--line)]"
+                        style={{ backgroundColor: isShashwath ? '#FF5A1F' : pair.bg, color: '#fff' }}
                       >
-                        <div className="flex items-center justify-between mb-1.5">
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase bg-[var(--primary)] text-white shadow-2xs">
-                            {notice.category}
-                          </span>
-                          <span className="text-[11px] text-[var(--text-muted)] tabular-nums">{notice.date}</span>
+                        {person.avatar ? (
+                          <img src={person.avatar} alt={person.fullName} className="w-full h-full object-cover" />
+                        ) : (
+                          person.fullName.slice(0, 2).toUpperCase()
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-xs font-bold text-[var(--text)] truncate">
+                            {isShashwath ? '👑 Shashwath (Admin)' : person.fullName}
+                          </p>
+                          {person.isVerified && (
+                            <span className="text-blue-400 text-[10px]">✓</span>
+                          )}
                         </div>
-                        <p className="text-xs font-bold text-[var(--text)]">{notice.title}</p>
-                        {notice.content && (
-                          <p className="text-[11px] text-[var(--text-muted)] line-clamp-2 mt-1 leading-relaxed">
-                            {notice.content}
+                        <p className="text-[11px] text-[var(--text-muted)] truncate">
+                          @{person.username} · {isShashwath ? 'School Admin' : `Class ${person.class}-${person.section || 'A'}`}
+                        </p>
+                      </div>
+                    </Link>
+
+                    {currentUser?.username.toLowerCase().trim() !== person.username.toLowerCase().trim() && (
+                      <button
+                        type="button"
+                        onClick={() => handleFollowToggle(person.username)}
+                        className="px-4 py-1.5 rounded-full text-xs font-bold shrink-0 cursor-pointer transition-all active:scale-95 shadow-xs"
+                        style={{
+                          backgroundColor: following ? 'var(--surface-sunken)' : 'var(--primary)',
+                          color: following ? 'var(--text)' : 'var(--on-primary)',
+                          border: following ? '1px solid var(--line)' : 'none',
+                        }}
+                      >
+                        {following ? 'Following' : 'Follow'}
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      ) : (
+        /* ACTIVE SEARCH: POSTS RESULTS */
+        <div className="px-4 py-3 space-y-3">
+          {searchResults.posts.length === 0 ? (
+            <div className="py-16 text-center space-y-2">
+              <div className="w-12 h-12 rounded-full mx-auto flex items-center justify-center bg-[var(--primary)]/10 text-[var(--primary)] text-xl">
+                📸
+              </div>
+              <p className="text-sm font-bold text-[var(--text)]">
+                {query ? `No posts found matching "${query}"` : 'No posts in this class yet'}
+              </p>
+              <p className="text-xs text-[var(--text-muted)] max-w-xs mx-auto">
+                Be the first to share a moment, or try searching by class number like &quot;6&quot;, &quot;7&quot;, &quot;10&quot; or hashtags.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                Found {searchResults.posts.length} {searchResults.posts.length === 1 ? 'Post' : 'Posts'}
+              </p>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                {searchResults.posts.map((post) => {
+                  const photo = post.imageUrl || (post.images && post.images[0]) || '';
+                  return (
+                    <Link
+                      key={post.id}
+                      href={`/home#post-${post.id}`}
+                      className="w-full aspect-[4/5] rounded-[16px] overflow-hidden relative group select-none shadow-xs border border-[var(--line)]"
+                      style={{ backgroundColor: 'var(--surface-sunken)' }}
+                    >
+                      {photo ? (
+                        <img
+                          src={photo}
+                          alt={`Post by ${post.username}`}
+                          loading="lazy"
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-xs text-[var(--text-muted)] p-3 text-center gradient-bg text-white">
+                          {post.caption?.slice(0, 40) || 'School Post'}
+                        </div>
+                      )}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-2.5 text-white">
+                        <p className="text-[11px] font-bold truncate">@{post.username}</p>
+                        {post.caption && (
+                          <p className="text-[10px] text-white/80 line-clamp-1 italic">
+                            &ldquo;{post.caption}&rdquo;
                           </p>
                         )}
-                        <div className="mt-2 pt-2 border-t border-[var(--line)] flex items-center justify-between text-[11px] text-[var(--primary)] font-semibold">
-                          <span>Read full notice</span>
-                          <span>→</span>
-                        </div>
+                        <p className="text-[10px] text-white/90 flex items-center gap-1 mt-1 font-bold">
+                          <Heart size={10} className="fill-rose-500 text-rose-500" />
+                          <span>{post.likes} likes</span>
+                        </p>
                       </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
           )}
         </div>
       )}
 
-      {/* Class & Section Filter Bottom Sheet (24px top radius) */}
+      {/* Class & Section Filter Bottom Sheet */}
       {isFilterSheetOpen && (
         <div
           className="fixed inset-0 z-50 flex items-end justify-center select-none"
@@ -680,7 +774,7 @@ function SearchContent() {
               <button
                 type="button"
                 onClick={() => setIsFilterSheetOpen(false)}
-                className="p-1 text-[var(--text-muted)] hover:text-[var(--text)]"
+                className="p-1 text-[var(--text-muted)] hover:text-[var(--text)] cursor-pointer"
               >
                 <X size={18} />
               </button>
@@ -737,7 +831,7 @@ function SearchContent() {
                   setSelectedClass('All');
                   setSelectedSection('All');
                 }}
-                className="flex-1 py-2.5 rounded-full text-xs font-semibold border text-[var(--text)] hover:bg-[var(--surface-sunken)]"
+                className="flex-1 py-2.5 rounded-full text-xs font-semibold border text-[var(--text)] hover:bg-[var(--surface-sunken)] cursor-pointer"
                 style={{ borderColor: 'var(--line)' }}
               >
                 Reset
@@ -745,77 +839,11 @@ function SearchContent() {
               <button
                 type="button"
                 onClick={() => setIsFilterSheetOpen(false)}
-                className="flex-1 py-2.5 rounded-full text-xs font-bold text-white shadow-sm"
+                className="flex-1 py-2.5 rounded-full text-xs font-bold text-white shadow-sm cursor-pointer"
                 style={{ backgroundColor: 'var(--primary)' }}
               >
                 Apply Filters
               </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Notice Reading Modal (28px radius) */}
-      {selectedNotice && (
-        <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4 animate-fade-in"
-          onClick={() => setSelectedNotice(null)}
-        >
-          <div
-            className="relative w-full max-w-md rounded-t-[28px] sm:rounded-[28px] border p-5 shadow-2xl z-10 space-y-4 max-h-[85vh] overflow-y-auto"
-            style={{
-              backgroundColor: 'var(--surface)',
-              borderColor: 'var(--line)',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="w-9 h-1 rounded-full bg-[var(--line-strong)] mx-auto sm:hidden" />
-            <div className="flex items-center justify-between">
-              <span className="px-2.5 py-0.5 rounded-full bg-[var(--primary)] text-white text-[11px] font-bold uppercase shadow-2xs">
-                {selectedNotice.category}
-              </span>
-              <button
-                type="button"
-                onClick={() => setSelectedNotice(null)}
-                className="p-1 rounded-full text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--surface-sunken)] cursor-pointer"
-                aria-label="Close notice"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <div>
-              <h2 className="text-base font-bold text-[var(--text)] leading-snug">
-                {selectedNotice.title}
-              </h2>
-              <p className="text-[11px] text-[var(--text-muted)] mt-1 tabular-nums">
-                Official School Circular · {selectedNotice.date}
-              </p>
-            </div>
-
-            <div className="p-3.5 rounded-[18px] bg-[var(--surface-sunken)] border border-[var(--line)] text-xs text-[var(--text)] leading-relaxed whitespace-pre-line">
-              {selectedNotice.content || (selectedNotice as any).body || 'All students and staff must note the above instructions carefully.'}
-            </div>
-
-            <div className="flex gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => {
-                  DataStore.markNoticeAsRead(selectedNotice.id);
-                  setSelectedNotice(null);
-                  showToast('Notice marked as read! ✓');
-                }}
-                className="flex-1 py-2.5 rounded-full text-xs font-bold text-white bg-[var(--primary)] hover:opacity-90 transition-opacity cursor-pointer shadow-xs"
-              >
-                Mark as Read
-              </button>
-              <Link
-                href={`/notices/${selectedNotice.id}`}
-                onClick={() => setSelectedNotice(null)}
-                className="px-4 py-2.5 rounded-full text-xs font-bold text-[var(--text)] bg-[var(--surface-sunken)] border border-[var(--line)] hover:bg-[var(--surface)] transition-colors flex items-center justify-center cursor-pointer"
-              >
-                Open Details
-              </Link>
             </div>
           </div>
         </div>

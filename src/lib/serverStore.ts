@@ -80,9 +80,17 @@ function normalizeStore(parsed: any): ServerStoreData {
   if (!parsed || typeof parsed !== 'object') {
     return createInitialStore();
   }
+  const now = Date.now();
+  const activeStories = (Array.isArray(parsed.stories) ? parsed.stories : []).filter((s: Story) => {
+    if (!s || !s.username) return false;
+    if (s.expiresAt && new Date(s.expiresAt).getTime() <= now) return false;
+    if (s.createdAt && now - new Date(s.createdAt).getTime() > 24 * 60 * 60 * 1000) return false;
+    return true;
+  });
+
   return {
     posts: Array.isArray(parsed.posts) ? parsed.posts : [],
-    stories: Array.isArray(parsed.stories) ? parsed.stories : [],
+    stories: activeStories,
     profiles: Array.isArray(parsed.profiles) && parsed.profiles.length > 0 ? parsed.profiles : [DEFAULT_ADMIN],
     chatNotes: Array.isArray(parsed.chatNotes) ? parsed.chatNotes : [],
     chatMessages: parsed.chatMessages && typeof parsed.chatMessages === 'object' ? parsed.chatMessages : {},

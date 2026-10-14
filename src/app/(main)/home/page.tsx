@@ -17,8 +17,12 @@ import {
   Trash2,
   Bookmark,
   Repeat2,
+  Search as SearchIcon,
+  UserPlus,
+  ChevronRight,
 } from 'lucide-react';
 import { DataStore, type Post, type Notice, type BroadcastAlert, DUMMY_TEST_USERNAMES } from '@/lib/dataStore';
+import { getAvatarColorPair } from '@/config/tokens';
 import { StoriesRow } from '@/components/story/StoriesRow';
 import { NoticeStrip } from '@/components/home/NoticeStrip';
 import { FeedTabs } from '@/components/home/FeedTabs';
@@ -234,6 +238,43 @@ function HomeContent() {
     return list;
   }, [currentUser.username, followedUsernames, shareSearchQuery]);
 
+  // Suggested classmate accounts for new and existing users
+  const suggestedAccounts = useMemo(() => {
+    const isShashwath = currentUser.username.toLowerCase() === 'shashwath71845';
+    const all = DataStore.getProfiles().filter(
+      (p) =>
+        p &&
+        p.username &&
+        p.username.toLowerCase() !== currentUser.username.toLowerCase() &&
+        p.username.toLowerCase() !== 'admin' &&
+        (p.username.toLowerCase() === 'shashwath71845' || p.role !== 'admin' || isShashwath) &&
+        !DUMMY_TEST_USERNAMES.has(p.username.toLowerCase())
+    );
+
+    const unfollowed = all.filter((p) => !followedUsernames.includes(p.username.toLowerCase()));
+
+    unfollowed.sort((a, b) => {
+      if (a.username.toLowerCase() === 'shashwath71845') return -1;
+      if (b.username.toLowerCase() === 'shashwath71845') return 1;
+      if (a.class === currentUser.class && b.class !== currentUser.class) return -1;
+      if (b.class === currentUser.class && a.class !== currentUser.class) return 1;
+      return (b.followerCount || 0) - (a.followerCount || 0);
+    });
+
+    return unfollowed;
+  }, [currentUser, followedUsernames]);
+
+  const handleToggleFollow = (targetUsername: string) => {
+    if (!currentUser || !targetUsername) return;
+    if (currentUser.username.toLowerCase() === targetUsername.toLowerCase()) {
+      showToast('You cannot follow yourself! 🙅');
+      return;
+    }
+    const isNow = DataStore.toggleFollow(currentUser.username, targetUsername);
+    setFollowsVersion((v) => v + 1);
+    showToast(isNow ? `Following @${targetUsername}! 🤝` : `Unfollowed @${targetUsername}`);
+  };
+
   // Notice selection
   const displayNotice = useMemo(() => {
     if (DataStore.isMaintenanceActive()) {
@@ -377,64 +418,146 @@ function HomeContent() {
       {demoState === 'loading' ? (
         <HomeFeedSkeleton />
       ) : displayedPosts.length === 0 ? (
-        /* Empty State with exact copy from DESIGN.md */
-        <div className="mx-3 my-8 p-6 rounded-[20px] border text-center space-y-3"
-          style={{
-            backgroundColor: 'var(--surface)',
-            borderColor: 'var(--line)',
-          }}
-        >
-          <div className="w-12 h-12 rounded-full mx-auto flex items-center justify-center bg-[var(--surface-sunken)] text-[var(--primary)]">
-            <Sparkles size={24} />
+        /* QUIET FEED / NEW USER STATE: Prompt them to search & display suggested accounts */
+        <div className="space-y-4 px-3 py-4 max-w-[480px] mx-auto">
+          {/* 1. Prompt to Search & Discover Classmates */}
+          <div
+            className="p-5 rounded-[22px] border text-center space-y-3 shadow-xs"
+            style={{
+              backgroundColor: 'var(--surface)',
+              borderColor: 'var(--line)',
+            }}
+          >
+            <div className="w-12 h-12 rounded-full mx-auto flex items-center justify-center bg-[var(--primary)]/10 text-[var(--primary)] text-xl shadow-xs">
+              🔍
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-[var(--text)]">
+                Find Your School Classmates
+              </h3>
+              <p className="text-xs text-[var(--text-muted)] max-w-xs mx-auto leading-relaxed mt-1">
+                Search by class grade like <span className="font-bold text-[var(--text)]">&quot;6&quot;, &quot;7&quot;, &quot;8&quot;, &quot;10&quot;</span> or your friends&apos; names to follow them and see their moments!
+              </p>
+            </div>
+
+            {/* Quick search bar trigger */}
+            <Link
+              href="/search"
+              className="w-full h-11 px-4 rounded-full border flex items-center gap-2.5 text-xs text-[var(--text-muted)] bg-[var(--surface-sunken)] hover:border-[var(--primary)] transition-all shadow-xs"
+              style={{ borderColor: 'var(--line)' }}
+            >
+              <SearchIcon size={16} className="text-[var(--primary)]" />
+              <span>Search class 6, 7, 8, 10 or classmate name...</span>
+            </Link>
+
+            {/* Quick Class Shortcut Pills */}
+            <div className="flex items-center justify-center gap-1.5 flex-wrap pt-1">
+              <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase mr-1">Quick Class:</span>
+              {['6', '7', '8', '9', '10'].map((cls) => (
+                <Link
+                  key={cls}
+                  href={`/search?q=${cls}&chip=Accounts`}
+                  className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-[var(--surface-sunken)] hover:bg-[var(--primary)] hover:text-white text-[var(--text)] border transition-all"
+                  style={{ borderColor: 'var(--line)' }}
+                >
+                  Class {cls}
+                </Link>
+              ))}
+            </div>
           </div>
 
-          {activeTab === 'following' ? (
-            <>
-              <h3 className="text-base font-bold" style={{ color: 'var(--text)' }}>
-                Your following feed is quiet right now
-              </h3>
-              <p className="text-xs text-[var(--text-muted)] max-w-xs mx-auto leading-relaxed">
-                Follow classmates and our official school leader to see moments here.
-              </p>
-              <div className="pt-2 flex flex-col items-center gap-2">
+          {/* 2. Suggested Classmates List */}
+          {suggestedAccounts.length > 0 && (
+            <div
+              className="p-4 rounded-[22px] border space-y-3 shadow-xs"
+              style={{
+                backgroundColor: 'var(--surface)',
+                borderColor: 'var(--line)',
+              }}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-[var(--text)] uppercase tracking-wider">
+                  <Users size={14} className="text-[var(--primary)]" />
+                  <span>Suggested Accounts for You</span>
+                </div>
                 <Link
-                  href="/search"
-                  className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full text-xs font-bold text-white shadow-sm"
-                  style={{ backgroundColor: 'var(--primary)' }}
+                  href="/search?chip=Accounts"
+                  className="text-xs font-bold text-[var(--primary)] hover:underline"
                 >
-                  <Users size={14} />
-                  <span>Find Classmates</span>
-                </Link>
-                {currentUser?.username?.toLowerCase() !== 'shashwath71845' && (
-                  <Link
-                    href="/u/shashwath71845"
-                    className="inline-flex items-center gap-1 text-[11px] text-[var(--text-muted)] hover:text-amber-400 transition-colors pt-1"
-                  >
-                    <span>Suggested:</span>
-                    <span className="font-semibold text-[var(--text)]">👑 Shashwath (Admin)</span>
-                  </Link>
-                )}
-              </div>
-            </>
-          ) : (
-            <>
-              <h3 className="text-base font-bold" style={{ color: 'var(--text)' }}>
-                Nothing here yet. Be the first to post.
-              </h3>
-              <p className="text-xs text-[var(--text-muted)] max-w-xs mx-auto leading-relaxed">
-                Share a classroom moment, a club win, or a project photo with the school.
-              </p>
-              <div className="pt-2">
-                <Link
-                  href="/post/new"
-                  className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full text-xs font-bold text-white shadow-sm"
-                  style={{ backgroundColor: 'var(--primary)' }}
-                >
-                  <span>Create first post</span>
+                  See all →
                 </Link>
               </div>
-            </>
+
+              <div className="space-y-2">
+                {suggestedAccounts.slice(0, 6).map((person) => {
+                  const following = followedUsernames.includes(person.username.toLowerCase());
+                  const pair = getAvatarColorPair(person.username);
+                  const isShashwath = person.username.toLowerCase() === 'shashwath71845';
+
+                  return (
+                    <div
+                      key={person.id}
+                      className="p-3 rounded-[16px] border flex items-center justify-between gap-3 bg-[var(--surface-sunken)]/60 hover:border-[var(--line-strong)] transition-all"
+                      style={{ borderColor: 'var(--line)' }}
+                    >
+                      <Link
+                        href={`/u/${person.username}`}
+                        className="flex items-center gap-3 min-w-0 flex-1"
+                      >
+                        <div
+                          className="w-11 h-11 rounded-full flex items-center justify-center font-bold text-xs shrink-0 overflow-hidden border border-[var(--line)]"
+                          style={{ backgroundColor: isShashwath ? '#FF5A1F' : pair.bg, color: '#fff' }}
+                        >
+                          {person.avatar ? (
+                            <img src={person.avatar} alt={person.fullName} className="w-full h-full object-cover" />
+                          ) : (
+                            person.fullName.slice(0, 2).toUpperCase()
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-xs font-bold text-[var(--text)] truncate">
+                              {isShashwath ? '👑 Shashwath (Admin)' : person.fullName}
+                            </p>
+                            {person.isVerified && (
+                              <span className="text-blue-400 text-[10px]">✓</span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-[var(--text-muted)] truncate">
+                            @{person.username} · {isShashwath ? 'School Admin' : `Class ${person.class}-${person.section || 'A'}`}
+                          </p>
+                        </div>
+                      </Link>
+
+                      <button
+                        type="button"
+                        onClick={() => handleToggleFollow(person.username)}
+                        className="px-4 py-1.5 rounded-full text-xs font-bold shrink-0 cursor-pointer transition-all active:scale-95 shadow-xs"
+                        style={{
+                          backgroundColor: following ? 'var(--surface)' : 'var(--primary)',
+                          color: following ? 'var(--text)' : 'var(--on-primary)',
+                          border: following ? '1px solid var(--line)' : 'none',
+                        }}
+                      >
+                        {following ? 'Following' : 'Follow'}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           )}
+
+          {/* Action button to create a post */}
+          <div className="text-center pt-2">
+            <Link
+              href="/post/new"
+              className="inline-flex items-center gap-1.5 px-6 py-3 rounded-full text-xs font-bold text-white shadow-sm hover:opacity-90 transition-opacity"
+              style={{ backgroundColor: 'var(--primary)' }}
+            >
+              <span>+ Share first post</span>
+            </Link>
+          </div>
         </div>
       ) : (
         /* Posts Feed */
@@ -453,8 +576,82 @@ function HomeContent() {
                 onOptionsClick={setSelectedOptionsPost}
               />
 
+              {/* Instagram-style "Suggested for you" Carousel between posts */}
+              {postIdx === 0 && suggestedAccounts.length > 0 && (
+                <div
+                  className="my-3 p-3.5 rounded-[20px] border space-y-3 shadow-xs"
+                  style={{
+                    backgroundColor: 'var(--surface)',
+                    borderColor: 'var(--line)',
+                  }}
+                >
+                  <div className="flex items-center justify-between px-1">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-[var(--text)]">
+                      <Users size={14} className="text-[var(--primary)]" />
+                      <span>Suggested for You</span>
+                    </div>
+                    <Link
+                      href="/search?chip=Accounts"
+                      className="text-xs font-bold text-[var(--primary)] hover:underline"
+                    >
+                      See All →
+                    </Link>
+                  </div>
+
+                  <div className="flex gap-2.5 overflow-x-auto no-scrollbar pb-1">
+                    {suggestedAccounts.slice(0, 8).map((person) => {
+                      const following = followedUsernames.includes(person.username.toLowerCase());
+                      const pair = getAvatarColorPair(person.username);
+                      const isShashwath = person.username.toLowerCase() === 'shashwath71845';
+
+                      return (
+                        <div
+                          key={person.id}
+                          className="w-[140px] shrink-0 p-3 rounded-[16px] border flex flex-col items-center text-center gap-2 bg-[var(--surface-sunken)] shadow-2xs"
+                          style={{ borderColor: 'var(--line)' }}
+                        >
+                          <Link href={`/u/${person.username}`} className="flex flex-col items-center gap-1.5 w-full">
+                            <div
+                              className="w-12 h-12 rounded-full flex items-center justify-center font-bold text-xs overflow-hidden border border-[var(--line)] shadow-xs"
+                              style={{ backgroundColor: isShashwath ? '#FF5A1F' : pair.bg, color: '#fff' }}
+                            >
+                              {person.avatar ? (
+                                <img src={person.avatar} alt={person.fullName} className="w-full h-full object-cover" />
+                              ) : (
+                                person.fullName.slice(0, 2).toUpperCase()
+                              )}
+                            </div>
+                            <div className="w-full px-1">
+                              <p className="text-xs font-bold text-[var(--text)] truncate">
+                                {isShashwath ? 'Shashwath' : person.fullName}
+                              </p>
+                              <p className="text-[10px] text-[var(--text-muted)] truncate">
+                                {isShashwath ? 'Admin' : `Class ${person.class}-${person.section || 'A'}`}
+                              </p>
+                            </div>
+                          </Link>
+
+                          <button
+                            type="button"
+                            onClick={() => handleToggleFollow(person.username)}
+                            className="w-full py-1.5 rounded-full text-[11px] font-bold cursor-pointer transition-all active:scale-95 shadow-xs"
+                            style={{
+                              backgroundColor: following ? 'var(--surface)' : 'var(--primary)',
+                              color: following ? 'var(--text)' : 'var(--on-primary)',
+                              border: following ? '1px solid var(--line)' : 'none',
+                            }}
+                          >
+                            {following ? 'Following' : 'Follow'}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {/* Compact Star Board & Streak Board Teaser between posts */}
-              {postIdx === 0 && <StarBoardTeaser />}
+              {postIdx === 1 && <StarBoardTeaser />}
             </div>
           ))}
 

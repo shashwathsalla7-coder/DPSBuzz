@@ -1283,11 +1283,15 @@ export const DataStore = {
 
     const stored = getStorage<Story[]>(STORAGE_KEYS.STORIES, []);
     const banned = this.getBannedUsers();
+    const now = Date.now();
     return stored.filter((s) => {
       if (!s || !s.username) return false;
       const clean = s.username.toLowerCase().trim();
       if (DUMMY_TEST_USERNAMES.has(clean)) return false;
       if (!includeBanned && banned.includes(clean)) return false;
+      // Filter out expired stories (24-hour lifetime)
+      if (s.expiresAt && new Date(s.expiresAt).getTime() <= now) return false;
+      if (s.createdAt && now - new Date(s.createdAt).getTime() > 24 * 60 * 60 * 1000) return false;
       return true;
     });
   },
@@ -1441,20 +1445,31 @@ export const DataStore = {
     const cleanMe = (currentUsername || '').toLowerCase();
     let myGroup: UserStoryGroup | null = null;
     const peerGroups: UserStoryGroup[] = [];
+    const now = Date.now();
 
     map.forEach((userStories, username) => {
-      // Sort stories for this user chronologically (oldest first)
-      userStories.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+      // Filter out any expired stories (> 24 hours old)
+      const activeStories = userStories.filter((s) => {
+        if (!s) return false;
+        if (s.expiresAt && new Date(s.expiresAt).getTime() <= now) return false;
+        if (s.createdAt && now - new Date(s.createdAt).getTime() > 24 * 60 * 60 * 1000) return false;
+        return true;
+      });
 
-      const first = userStories[0];
-      const hasUnseen = userStories.some((s) => !s.isSeen);
+      if (activeStories.length === 0) return;
+
+      // Sort stories for this user chronologically (oldest first)
+      activeStories.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+      const first = activeStories[0];
+      const hasUnseen = activeStories.some((s) => !s.isSeen);
       const isOwn = username.toLowerCase() === cleanMe;
 
       const group: UserStoryGroup = {
         username,
         fullName: first.fullName || username,
         avatar: first.avatar,
-        stories: userStories,
+        stories: activeStories,
         hasUnseen,
         isOwn,
       };
