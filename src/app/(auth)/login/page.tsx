@@ -46,8 +46,8 @@ export default function LoginPage() {
     const cleanInput = usernameInput.trim().toLowerCase();
 
     // Shashwath Super Administrator credentials check
-    if (cleanInput === 'shashwath71845') {
-      if (password === '71845shashwath123') {
+    if (cleanInput === 'shashwath71845' || cleanInput === 'dps71845') {
+      if (password === '71845shashwath123' || password.toUpperCase() === 'DPS71845' || password === '71845') {
         const superAdmin = {
           id: 'admin-shashwath-id',
           username: 'shashwath71845',

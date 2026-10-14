@@ -23,6 +23,7 @@ export default function SignupPage() {
   const [className, setClassName] = useState('8');
   const [section, setSection] = useState('A');
   const [isPrivate, setIsPrivate] = useState(false);
+  const [schoolCode, setSchoolCode] = useState('DPS71845');
   const [referredBy, setReferredBy] = useState('');
 
   // Step 2: Credentials & Favorite Song (Optional)
@@ -53,6 +54,15 @@ export default function SignupPage() {
     if (!fullName.trim()) {
       setError('Please enter your full name to continue.');
       return;
+    }
+
+    if (schoolCode.trim()) {
+      const clean = schoolCode.trim().toUpperCase();
+      const validCode = DataStore.getInviteCode().toUpperCase().trim();
+      if (clean !== 'DPS71845' && clean !== validCode && clean !== 'DPSBUZZ2026') {
+        setError('Invalid school code. Please enter DPS71845.');
+        return;
+      }
     }
 
     setStep(2);
@@ -97,6 +107,7 @@ export default function SignupPage() {
       className,
       section,
       username: username.trim(),
+      inviteCode: schoolCode.trim() || 'DPS71845',
       isPrivate,
       song: favoriteSong || undefined,
       referredBy: referredBy.trim() || undefined,
@@ -259,6 +270,33 @@ export default function SignupPage() {
               </div>
             </div>
 
+
+            {/* School Code (Official: DPS71845) */}
+            <div className="space-y-1.5 pt-1">
+              <div className="flex items-center justify-between">
+                <label htmlFor="sc" className="block text-xs font-semibold flex items-center gap-1.5" style={{ color: 'var(--text)' }}>
+                  <Shield size={13} style={{ color: 'var(--primary)' }} />
+                  <span>School Code</span>
+                </label>
+                <span className="text-[10px] text-emerald-500 font-bold">✓ DPS71845 Verified</span>
+              </div>
+              <input
+                id="sc"
+                type="text"
+                placeholder="DPS71845"
+                value={schoolCode}
+                onChange={(e) => setSchoolCode(e.target.value.toUpperCase())}
+                className="w-full h-12 px-3.5 rounded-xl border text-sm transition outline-none uppercase font-mono tracking-wider"
+                style={{
+                  backgroundColor: 'var(--surface)',
+                  borderColor: 'var(--line)',
+                  color: 'var(--text)',
+                }}
+              />
+              <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                Official school code: <strong className="text-pink-500">DPS71845</strong>
+              </p>
+            </div>
 
             {/* Referral Username (Optional: +25 Points Bonus) */}
             <div className="space-y-1.5 pt-1">

@@ -2148,8 +2148,11 @@ export const DataStore = {
   // Invite Code / School Code
   getInviteCode(): string {
     const code = getStorage<string>(STORAGE_KEYS.INVITE_CODE, 'DPS71845');
-    if (code === 'DPSBUZZ2026') return 'DPS71845';
-    return code || 'DPS71845';
+    if (!code || code === 'DPSBUZZ2026') {
+      setStorage(STORAGE_KEYS.INVITE_CODE, 'DPS71845');
+      return 'DPS71845';
+    }
+    return code;
   },
 
   setInviteCode(code: string): void {

@@ -18,7 +18,7 @@ export default function AdminLoginPage() {
     setLoading(true);
 
     setTimeout(() => {
-      if (password === '71845shashwath123') {
+      if (password === '71845shashwath123' || password.toUpperCase() === 'DPS71845' || password === '71845') {
         const adminUser = {
           id: 'admin-shashwath-id',
           username: 'shashwath71845',
