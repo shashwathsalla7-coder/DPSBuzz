@@ -35,6 +35,7 @@ interface ChatMessage {
   sender: 'me' | 'them';
   senderUsername?: string;
   time: string;
+  reaction?: string;
   sharedPost?: {
     id: string;
     username: string;
@@ -178,6 +179,8 @@ function ChatsContent() {
   const [longPressConv, setLongPressConv] = useState<ConversationItem | null>(null);
   const [deleteConfirmConv, setDeleteConfirmConv] = useState<ConversationItem | null>(null);
   const [messageInput, setMessageInput] = useState('');
+  const [activeReactionMsgId, setActiveReactionMsgId] = useState<string | null>(null);
+  const lastTapTimeRef = useRef<{ id: string; time: number }>({ id: '', time: 0 });
 
   const showGroupToast = (msg: string) => {
     setGroupToast(msg);
@@ -723,6 +726,65 @@ function ChatsContent() {
     }).catch((err) => console.warn('Failed to sync chat message:', err));
   };
 
+  const REACTION_EMOJIS = ['❤️', '😂', '🔥', '😮', '😢', '👍'];
+
+  const handleToggleReaction = (msgId: string, emoji: string) => {
+    if (!activeConversation) return;
+    const rawId = activeConversation.id;
+    const canonicalId = getCanonicalConvId(activeConversation);
+
+    let updatedTargetMsg: ChatMessage | null = null;
+
+    setChatMessages((prev) => {
+      const currentList = prev[rawId] || prev[canonicalId] || [];
+      const updated = currentList.map((m) => {
+        if (m.id === msgId) {
+          const nextEmoji = m.reaction === emoji ? undefined : emoji;
+          const newMsg = { ...m, reaction: nextEmoji };
+          updatedTargetMsg = newMsg;
+          return newMsg;
+        }
+        return m;
+      });
+
+      const nextMap = {
+        ...prev,
+        [rawId]: updated,
+        [canonicalId]: updated,
+      };
+      try {
+        localStorage.setItem('dpsbuzz_chat_messages_v1', JSON.stringify(nextMap));
+      } catch {}
+      return nextMap;
+    });
+
+    setActiveReactionMsgId(null);
+
+    // Sync to server so classmate sees reaction in real time
+    if (updatedTargetMsg) {
+      fetch('/api/chats', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          conversationId: canonicalId,
+          message: updatedTargetMsg,
+        }),
+      }).catch((err) => console.warn('Failed to sync reaction:', err));
+    }
+  };
+
+  const handleMessageClick = (msg: ChatMessage) => {
+    const now = Date.now();
+    if (lastTapTimeRef.current.id === msg.id && now - lastTapTimeRef.current.time < 350) {
+      // Double tap -> instant Heart reaction!
+      handleToggleReaction(msg.id, '❤️');
+      lastTapTimeRef.current = { id: '', time: 0 };
+    } else {
+      lastTapTimeRef.current = { id: msg.id, time: now };
+      setActiveReactionMsgId((prev) => (prev === msg.id ? null : msg.id));
+    }
+  };
+
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     if (isMaintenanceActive) {
@@ -856,53 +918,122 @@ function ChatsContent() {
               const isMe = msg.senderUsername
                 ? msg.senderUsername.toLowerCase() === currentUsername
                 : msg.sender === 'me';
+              const showReactionBar = activeReactionMsgId === msg.id;
+
               return (
-                <div key={msg.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
-                  <div
-                    className={`max-w-[78%] px-3.5 py-2.5 rounded-[18px] text-sm leading-relaxed ${
-                      isMe
-                        ? 'bg-[var(--primary)] text-[var(--on-primary)] rounded-br-xs'
-                        : 'bg-[var(--surface-sunken)] text-[var(--text)] rounded-bl-xs'
-                    }`}
-                  >
-                    {msg.sharedPost && (
-                      <div className="mb-2 p-2.5 rounded-2xl bg-black/25 border border-white/10 overflow-hidden flex flex-col gap-2 max-w-xs text-left">
-                        <div className="flex items-center gap-1.5 text-xs font-bold text-white/95">
-                          <span>📸</span>
-                          <span>@{msg.sharedPost.username}&apos;s Post</span>
-                        </div>
-                        {msg.sharedPost.imageUrl && (
-                          <img
-                            src={msg.sharedPost.imageUrl}
-                            alt="Shared post"
-                            className="w-full max-h-48 object-cover rounded-xl border border-white/10"
-                          />
-                        )}
-                        {msg.sharedPost.caption && (
-                          <p className="text-xs line-clamp-2 text-white/85 italic leading-relaxed">
-                            &ldquo;{msg.sharedPost.caption}&rdquo;
-                          </p>
-                        )}
-                        <Link
-                          href={`/home#post-${msg.sharedPost.id}`}
-                          className="inline-flex items-center gap-1 text-[11px] font-bold text-pink-300 hover:text-pink-200 underline"
+                <div
+                  key={msg.id}
+                  className={`flex flex-col relative group ${isMe ? 'items-end' : 'items-start'} mb-1.5`}
+                >
+                  {/* Floating Emoji Reactions Bar */}
+                  {showReactionBar && (
+                    <div
+                      className={`absolute z-30 -top-10 ${
+                        isMe ? 'right-0' : 'left-0'
+                      } bg-white dark:bg-zinc-800 border border-black/10 dark:border-white/15 shadow-xl rounded-full px-2 py-1 flex items-center gap-1.5 animate-scale-in`}
+                    >
+                      {REACTION_EMOJIS.map((emoji) => (
+                        <button
+                          key={emoji}
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleToggleReaction(msg.id, emoji);
+                          }}
+                          className={`w-7 h-7 flex items-center justify-center rounded-full text-sm hover:scale-125 transition-transform active:scale-95 cursor-pointer ${
+                            msg.reaction === emoji ? 'bg-blue-100 dark:bg-blue-900/50 ring-1 ring-blue-500' : ''
+                          }`}
                         >
-                          <span>View Post in Feed</span>
-                          <span>→</span>
-                        </Link>
-                      </div>
-                    )}
-                    {msg.text === '❤️' && !msg.sharedPost ? (
-                      <span className="text-3xl inline-block animate-heart-pop py-0.5 select-none leading-none">
-                        ❤️
-                      </span>
-                    ) : (
-                      msg.text
+                          {emoji}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Message Bubble Container with Double-tap to heart & click to toggle reactions */}
+                  <div
+                    onClick={() => handleMessageClick(msg)}
+                    className="relative cursor-pointer select-none max-w-[78%]"
+                  >
+                    <div
+                      className={`px-4 py-2.5 rounded-[22px] text-[14.5px] leading-[1.42] tracking-[-0.012em] font-[450] transition-all ${
+                        isMe
+                          ? 'bg-[#007AFF] text-white rounded-br-[5px] shadow-xs'
+                          : 'bg-[#FFFFFF] text-slate-900 border border-black/10 dark:border-white/15 rounded-bl-[5px] shadow-xs'
+                      }`}
+                    >
+                      {msg.sharedPost && (
+                        <div
+                          className={`mb-2 p-2.5 rounded-2xl border overflow-hidden flex flex-col gap-2 max-w-xs text-left ${
+                            isMe
+                              ? 'bg-black/20 border-white/20 text-white'
+                              : 'bg-slate-100 border-slate-200 text-slate-900'
+                          }`}
+                        >
+                          <div className="flex items-center gap-1.5 text-xs font-bold">
+                            <span>📸</span>
+                            <span>@{msg.sharedPost.username}&apos;s Post</span>
+                          </div>
+                          {msg.sharedPost.imageUrl && (
+                            <img
+                              src={msg.sharedPost.imageUrl}
+                              alt="Shared post"
+                              className="w-full max-h-48 object-cover rounded-xl border border-black/5"
+                            />
+                          )}
+                          {msg.sharedPost.caption && (
+                            <p className="text-xs line-clamp-2 italic leading-relaxed opacity-90">
+                              &ldquo;{msg.sharedPost.caption}&rdquo;
+                            </p>
+                          )}
+                          <Link
+                            href={`/home#post-${msg.sharedPost.id}`}
+                            className={`inline-flex items-center gap-1 text-[11px] font-bold underline ${
+                              isMe ? 'text-blue-200 hover:text-white' : 'text-blue-600 hover:text-blue-700'
+                            }`}
+                          >
+                            <span>View Post in Feed</span>
+                            <span>→</span>
+                          </Link>
+                        </div>
+                      )}
+
+                      {msg.text === '❤️' && !msg.sharedPost ? (
+                        <span className="text-3xl inline-block animate-heart-pop py-0.5 select-none leading-none">
+                          ❤️
+                        </span>
+                      ) : (
+                        <span>{msg.text}</span>
+                      )}
+                    </div>
+
+                    {/* Emoji Reaction Badge on corner of bubble */}
+                    {msg.reaction && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleReaction(msg.id, msg.reaction!);
+                        }}
+                        className={`absolute -bottom-2 ${
+                          isMe ? 'right-2' : 'left-2'
+                        } bg-white dark:bg-zinc-800 border border-black/10 dark:border-white/15 text-xs px-2 py-0.5 rounded-full shadow-md flex items-center gap-0.5 cursor-pointer hover:scale-115 active:scale-95 transition-all select-none animate-scale-in`}
+                        title="Reaction (tap to remove)"
+                      >
+                        <span className="leading-none">{msg.reaction}</span>
+                      </button>
                     )}
                   </div>
-                  <span className="text-[10px] text-[var(--text-muted)] mt-1 px-1 tabular-nums">
-                    {msg.time}
-                  </span>
+
+                  {/* Message Time and Delivery Checkmarks */}
+                  <div className="flex items-center gap-1 px-1 mt-1">
+                    <span className="text-[10px] text-[var(--text-muted)] tabular-nums font-medium">
+                      {msg.time}
+                    </span>
+                    {isMe && (
+                      <CheckCheck size={13} className="text-[#007AFF] shrink-0" />
+                    )}
+                  </div>
                 </div>
               );
             })
@@ -933,18 +1064,14 @@ function ChatsContent() {
             disabled={isMaintenanceActive}
             onChange={(e) => setMessageInput(e.target.value)}
             placeholder={isMaintenanceActive ? 'Chat is disabled during scheduled maintenance 🔒' : 'Message...'}
-            className="flex-1 h-11 px-4 rounded-full bg-[var(--surface-sunken)] text-sm outline-none border border-[var(--line)] placeholder:text-[var(--text-muted)] disabled:opacity-50"
+            className="flex-1 h-11 px-4 rounded-full bg-[var(--surface-sunken)] text-[14px] outline-none border border-[var(--line)] focus:border-[#007AFF] focus:ring-1 focus:ring-[#007AFF] placeholder:text-[var(--text-muted)] disabled:opacity-50 transition-all font-normal"
             style={{ color: 'var(--text)' }}
           />
           {messageInput.trim() ? (
             <button
               type="submit"
               disabled={isMaintenanceActive}
-              className="w-11 h-11 rounded-full flex items-center justify-center cursor-pointer transition-transform active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
-              style={{
-                backgroundColor: 'var(--primary)',
-                color: 'var(--on-primary)',
-              }}
+              className="w-11 h-11 rounded-full flex items-center justify-center cursor-pointer transition-transform active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shrink-0 bg-[#007AFF] text-white shadow-xs"
               aria-label="Send message"
             >
               <Send size={18} />
