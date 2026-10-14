@@ -41,7 +41,7 @@ export const TopBar: FC<TopBarProps> = ({ notificationCount = 0 }) => {
     { title: 'Notices', href: '/notices', icon: Megaphone, desc: 'School schedule & dispatches' },
     { title: 'Groups', href: '/groups', icon: Users, desc: 'Class sections & clubs' },
     { title: 'Star Board', href: '/leaderboard', icon: Trophy, desc: 'Class & student honours' },
-    { title: 'Get Android App', href: '/download', icon: Smartphone, desc: 'Download official Android APK v1.3' },
+    { title: 'Get Android App', href: '/download', icon: Smartphone, desc: 'Download official Android APK v1.4' },
     { title: 'Settings', href: '/settings', icon: Settings, desc: 'Theme, privacy & safety' },
   ];
 

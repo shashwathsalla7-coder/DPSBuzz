@@ -138,32 +138,6 @@ export function GlobalModerationGuard() {
         </div>
       )}
 
-      {/* 3. PERSISTENT SUPER ADMIN FLOATING HEADER (VISIBLE ON DESKTOP, OUTSIDE /admin) */}
-      {isAdmin && pathname !== '/admin' && (
-        <div
-          className="hidden md:flex sticky top-0 z-40 px-3 py-1.5 items-center justify-between text-xs font-semibold border-b rounded-none"
-          style={{
-            backgroundColor: 'var(--surface-sunken)',
-            borderColor: 'var(--line)',
-            color: 'var(--text)',
-          }}
-        >
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="w-2 h-2 rounded-none bg-emerald-500 animate-pulse shrink-0" />
-            {/* Super Admin Active: */}
-            <span className="text-[11px] font-bold truncate">
-              Admin ID: <span className="text-[var(--primary)] font-mono">@{currentUser?.username}</span>
-            </span>
-          </div>
-          <Link
-            href="/admin"
-            className="px-2.5 py-1 bg-[var(--primary)] text-[var(--on-primary)] text-[11px] font-bold flex items-center gap-1.5 hover:opacity-90 transition-opacity rounded-none shrink-0"
-          >
-            <Shield size={12} />
-            <span>Admin Panel →</span>
-          </Link>
-        </div>
-      )}
     </>
   );
 }

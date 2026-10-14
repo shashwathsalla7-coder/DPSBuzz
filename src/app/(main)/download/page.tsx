@@ -96,7 +96,7 @@ export default function DownloadPage() {
             />
           </div>
           <span className="absolute -bottom-2 -right-2 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold gradient-bg text-white shadow-md">
-            v1.3 Cloud 24/7
+            v1.4 Cloud 24/7
           </span>
         </div>
 

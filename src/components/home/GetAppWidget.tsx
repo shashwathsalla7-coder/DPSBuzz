@@ -2,30 +2,41 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Download, X } from 'lucide-react';
+import { Download, Smartphone, X } from 'lucide-react';
 
 export const GetAppWidget: React.FC = () => {
-  const [isVisible, setIsVisible] = useState(false);
+  const [isVisible, setIsVisible] = useState(true);
+  const [isMinimized, setIsMinimized] = useState(false);
 
   useEffect(() => {
-    // If running inside native Android APK or installed standalone PWA, auto-hide
-    const isStandalone =
-      window.matchMedia('(display-mode: standalone)').matches ||
-      Boolean((window.navigator as unknown as { standalone?: boolean }).standalone);
+    // If running inside native Android APK, hide
     const ua = window.navigator.userAgent.toLowerCase();
     const isNative = ua.includes('dpsbuzz') || Boolean((window as unknown as { AndroidBridge?: unknown }).AndroidBridge);
-
-    if (isStandalone || isNative) {
+    if (isNative) {
+      setIsVisible(false);
       return;
     }
-
-    const dismissed = localStorage.getItem('dpsbuzz_getapp_widget_closed');
-    if (!dismissed) {
-      setIsVisible(true);
+    const dismissed = sessionStorage.getItem('dpsbuzz_getapp_widget_minimized');
+    if (dismissed) {
+      setIsMinimized(true);
     }
   }, []);
 
   if (!isVisible) return null;
+
+  if (isMinimized) {
+    return (
+      <div className="mx-3 my-2 flex justify-end">
+        <Link
+          href="/download"
+          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold text-white gradient-bg shadow-sm active:scale-95 transition-all"
+        >
+          <Smartphone size={13} />
+          <span>Get Android App (v1.4)</span>
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-3 my-2.5 p-3 rounded-[16px] border flex items-center justify-between gap-3 shadow-sm bg-gradient-to-r from-zinc-950 via-zinc-900 to-zinc-950 border-zinc-800 relative overflow-hidden animate-fade-in select-none">
@@ -44,10 +55,10 @@ export const GetAppWidget: React.FC = () => {
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
             <span className="text-xs font-bold text-white tracking-tight truncate">DPS Buzz App</span>
-            <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-pink-500/20 text-pink-400">v1.3</span>
+            <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-pink-500/20 text-pink-400">v1.4 APK</span>
           </div>
           <p className="text-[10px] text-zinc-400 truncate mt-0.5">
-            Official Android APK • 24/7 cloud server
+            Official Android APK • 24/7 Cloud Live Server
           </p>
         </div>
       </Link>
@@ -64,12 +75,12 @@ export const GetAppWidget: React.FC = () => {
         <button
           onClick={(e) => {
             e.stopPropagation();
-            setIsVisible(false);
-            localStorage.setItem('dpsbuzz_getapp_widget_closed', 'true');
+            setIsMinimized(true);
+            sessionStorage.setItem('dpsbuzz_getapp_widget_minimized', 'true');
           }}
           className="p-1 text-zinc-500 hover:text-zinc-300 rounded-lg hover:bg-zinc-800/60 transition-colors cursor-pointer"
-          aria-label="Close widget"
-          title="Dismiss"
+          aria-label="Minimize widget"
+          title="Minimize"
         >
           <X size={14} />
         </button>

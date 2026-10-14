@@ -72,13 +72,14 @@ export default function SettingsPage() {
 
   const handleCopyReferralLink = () => {
     if (!currentUser) return;
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://dpsbuzz.internal';
-    const link = `${origin}/signup?ref=${currentUser.username}`;
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://dps-buzz.vercel.app';
+    const isSuperAdmin = currentUser.username.toLowerCase() === 'shashwath71845';
+    const link = isSuperAdmin ? `${origin}/signup` : `${origin}/signup?ref=${currentUser.username}`;
     if (navigator.clipboard) {
       navigator.clipboard.writeText(link);
     }
     setCopiedRefLink(true);
-    showToast('Referral link copied! Share with friends to earn +25 points 🎁');
+    showToast(isSuperAdmin ? 'School sign up link copied!' : 'Referral link copied! Share with friends to earn +25 points 🎁');
     setTimeout(() => setCopiedRefLink(false), 3000);
   };
 

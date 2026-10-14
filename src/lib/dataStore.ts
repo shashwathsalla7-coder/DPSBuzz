@@ -2453,8 +2453,10 @@ export const DataStore = {
     localStorage.removeItem('dpsbuzz_recent_searches_v1');
     localStorage.removeItem('dpsbuzz_saved_posts_v1');
 
-    // 7. Reset current active session to shashwath admin
-    localStorage.setItem('dpsbuzz_user', JSON.stringify(cleanShashwath));
+    // 7. Clear active session so next launch forces clean login/signup
+    localStorage.removeItem('dpsbuzz_user');
+    localStorage.removeItem('dpsbuzz_shashwath_authenticated');
+    document.cookie = 'dpsbuzz_user=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
 
     // Notify server to clean sync file
     fetch('/api/sync', {
@@ -3517,24 +3519,22 @@ export interface StorageAnalytics {
 // and any accidental Shashwath session leaks on visitor devices are completely cleared
 if (typeof window !== 'undefined') {
   try {
-    const isCleanedV3 = localStorage.getItem('dpsbuzz_cleaned_v3_session_fix');
-    if (!isCleanedV3) {
+    const isCleanedV5 = localStorage.getItem('dpsbuzz_force_clean_admin_v5');
+    if (!isCleanedV5) {
       const stored = localStorage.getItem('dpsbuzz_user');
       if (stored) {
         try {
           const parsed = JSON.parse(stored);
           if (parsed && parsed.username && parsed.username.toLowerCase() === 'shashwath71845') {
-            const isAuth = localStorage.getItem('dpsbuzz_shashwath_authenticated');
-            if (!isAuth) {
-              // Clear leaked Shashwath session from visitor device
-              localStorage.removeItem('dpsbuzz_user');
-              document.cookie = 'dpsbuzz_user=; path=/; max-age=0; SameSite=Lax';
-            }
+            // Clear leaked / cached Shashwath session from visitor / user device
+            localStorage.removeItem('dpsbuzz_user');
+            localStorage.removeItem('dpsbuzz_shashwath_authenticated');
+            document.cookie = 'dpsbuzz_user=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
           }
         } catch {}
       }
       DataStore.cleanTestData();
-      localStorage.setItem('dpsbuzz_cleaned_v3_session_fix', 'true');
+      localStorage.setItem('dpsbuzz_force_clean_admin_v5', 'true');
     }
   } catch {}
 }

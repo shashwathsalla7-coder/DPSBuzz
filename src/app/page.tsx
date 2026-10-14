@@ -9,6 +9,22 @@ export default function RootPage() {
 
   useEffect(() => {
     try {
+      // Force clean any stale admin session so visitor/user devices NEVER get trapped in admin
+      if (!localStorage.getItem('dpsbuzz_force_clean_admin_v5')) {
+        const storedUser = localStorage.getItem('dpsbuzz_user');
+        if (storedUser) {
+          try {
+            const parsed = JSON.parse(storedUser);
+            if (parsed && parsed.username && parsed.username.toLowerCase() === 'shashwath71845') {
+              localStorage.removeItem('dpsbuzz_user');
+              localStorage.removeItem('dpsbuzz_shashwath_authenticated');
+              document.cookie = 'dpsbuzz_user=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
+            }
+          } catch {}
+        }
+        localStorage.setItem('dpsbuzz_force_clean_admin_v5', 'true');
+      }
+
       // 1. Check localStorage for active session
       const stored = localStorage.getItem('dpsbuzz_user');
       if (stored) {
@@ -16,7 +32,7 @@ export default function RootPage() {
         if (user && user.username && user.username.toLowerCase() !== 'guest') {
           if (user.username.toLowerCase() === 'shashwath71845' && !localStorage.getItem('dpsbuzz_shashwath_authenticated')) {
             localStorage.removeItem('dpsbuzz_user');
-            document.cookie = 'dpsbuzz_user=; path=/; max-age=0; SameSite=Lax';
+            document.cookie = 'dpsbuzz_user=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
             router.replace('/login');
             return;
           }

@@ -57,10 +57,16 @@ export default function SignupPage() {
     }
 
     if (schoolCode.trim()) {
-      const clean = schoolCode.trim().toUpperCase();
-      const validCode = DataStore.getInviteCode().toUpperCase().trim();
-      if (clean !== 'DPS71845' && clean !== validCode && clean !== 'DPSBUZZ2026') {
-        setError('Invalid school code. Please enter DPS71845.');
+      const clean = schoolCode.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+      const validCode = DataStore.getInviteCode().toUpperCase().replace(/[^A-Z0-9]/g, '');
+      if (
+        clean !== 'DPS71845' &&
+        clean !== '71845' &&
+        clean !== validCode &&
+        clean !== 'DPSBUZZ2026' &&
+        !clean.includes('71845')
+      ) {
+        setError('Please enter school code DPS71845 to continue.');
         return;
       }
     }
@@ -310,7 +316,7 @@ export default function SignupPage() {
               <input
                 id="ref"
                 type="text"
-                placeholder="Classmate username (e.g. shashwath71845)"
+                placeholder="Classmate username (optional)"
                 value={referredBy}
                 onChange={(e) => setReferredBy(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
                 className="w-full h-12 px-3.5 rounded-xl border text-sm transition outline-none"
