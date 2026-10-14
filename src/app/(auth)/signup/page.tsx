@@ -597,13 +597,13 @@ export default function SignupPage() {
         )}
 
         <div className="pt-2 border-t text-center text-xs" style={{ borderColor: 'var(--line)' }}>
-          <span style={{ color: 'var(--text-muted)' }}>Already claimed your account? </span>
+          <span style={{ color: 'var(--text-muted)' }}>Already have an account? </span>
           <Link
             href="/login"
             className="font-semibold hover:underline"
             style={{ color: 'var(--primary)' }}
           >
-            Sign in
+            Log in
           </Link>
         </div>
       </div>

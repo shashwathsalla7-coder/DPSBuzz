@@ -179,7 +179,7 @@ export default function LoginPage() {
       >
         <div>
           <h2 className="text-base font-bold" style={{ color: 'var(--text)' }}>
-            Sign in
+            Log in
           </h2>
           <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
             Enter your student username to continue
@@ -259,7 +259,7 @@ export default function LoginPage() {
               opacity: isLoading ? 0.7 : 1,
             }}
           >
-            {isLoading ? 'Checking...' : 'Sign in'}
+            {isLoading ? 'Logging in...' : 'Log in'}
           </button>
         </form>
 
@@ -270,7 +270,7 @@ export default function LoginPage() {
             className="font-semibold hover:underline"
             style={{ color: 'var(--primary)' }}
           >
-            Claim your account
+            Create an account / Sign up ✨
           </Link>
         </div>
       </div>

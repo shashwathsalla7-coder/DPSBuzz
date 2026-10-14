@@ -98,7 +98,7 @@ export default function AdminLoginPage() {
             disabled={loading}
             className="w-full h-12 rounded-[12px] bg-[var(--primary)] text-[var(--on-primary)] text-sm font-semibold hover:bg-[var(--primary-hover)] transition-colors cursor-pointer disabled:opacity-50"
           >
-            {loading ? 'Verifying...' : 'Sign in to Console'}
+            {loading ? 'Verifying...' : 'Log in to Console'}
           </button>
         </form>
 
