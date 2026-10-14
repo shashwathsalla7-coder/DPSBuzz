@@ -19,7 +19,7 @@ export const ChatNotesTray: React.FC<ChatNotesTrayProps> = ({ onReplyToNote }) =
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
   const [isSongPickerOpen, setIsSongPickerOpen] = useState(false);
   const [noteText, setNoteText] = useState('');
-  const [selectedColorTheme, setSelectedColorTheme] = useState<string>('sunset');
+  const [selectedColorTheme, setSelectedColorTheme] = useState<string>('classic');
   const [selectedSong, setSelectedSong] = useState<SongTrack | null>(null);
   const [activeNoteAction, setActiveNoteAction] = useState<ChatNote | null>(null);
   const [replyInputText, setReplyInputText] = useState('');
@@ -81,11 +81,11 @@ export const ChatNotesTray: React.FC<ChatNotesTrayProps> = ({ onReplyToNote }) =
     if (myNote) {
       setNoteText(myNote.text);
       setSelectedSong(myNote.song || null);
-      setSelectedColorTheme(myNote.colorTheme || 'sunset');
+      setSelectedColorTheme(myNote.colorTheme || 'classic');
     } else {
       setNoteText('');
       setSelectedSong(null);
-      setSelectedColorTheme('sunset');
+      setSelectedColorTheme('classic');
     }
     setIsNoteModalOpen(true);
   };
@@ -186,20 +186,20 @@ export const ChatNotesTray: React.FC<ChatNotesTrayProps> = ({ onReplyToNote }) =
   return (
     <div className="pt-2 pb-3 border-b border-[var(--line)] bg-[var(--surface)] relative">
       {/* Horizontal Tray of Notes - pt-9 ensures -top-8 thought bubbles are never clipped */}
-      <div className="flex items-start gap-5 overflow-x-auto no-scrollbar px-4 pt-9 pb-2">
+      <div className="flex items-start gap-4 overflow-x-auto no-scrollbar px-4 pt-9 pb-2">
         {/* Current User Note / Add Note */}
         {(() => {
           const myTheme = getNoteColorTheme(myNote?.colorTheme, currentUser?.username);
           return (
             <div className="flex flex-col items-center flex-shrink-0 group">
               <div className="relative mb-1">
-                {/* Thought Bubble with Modern Crisp Typography & Mixed Colors */}
+                {/* Thought Bubble with Modern Crisp Typography & Authentic Double Thought Dots */}
                 <button
                   type="button"
                   onClick={handleOpenMyNoteModal}
-                  className="btn-apple absolute -top-8 left-1/2 -translate-x-1/2 z-10 max-w-[125px] px-3 py-1.5 rounded-2xl text-[11px] sm:text-[12px] text-white font-sans font-bold tracking-tight shadow-xl flex items-center gap-1.5 truncate transition-all cursor-pointer hover:scale-105"
+                  className="btn-apple absolute -top-8 left-1/2 -translate-x-1/2 z-10 max-w-[125px] px-3 py-1.5 rounded-[18px] text-[11px] sm:text-[12px] text-white font-sans font-bold tracking-tight shadow-xl flex items-center gap-1.5 truncate transition-all cursor-pointer hover:scale-105 active:scale-95"
                   style={{
-                    background: myNote ? myTheme.gradient : 'rgba(24, 24, 27, 0.95)',
+                    background: myNote ? myTheme.gradient : 'rgba(38, 38, 38, 0.95)',
                     border: myNote ? `1px solid ${myTheme.border}` : '1px dashed rgba(255, 255, 255, 0.25)',
                     boxShadow: myNote ? myTheme.bubbleShadow : 'none',
                     color: '#FFFFFF',
@@ -207,27 +207,27 @@ export const ChatNotesTray: React.FC<ChatNotesTrayProps> = ({ onReplyToNote }) =
                 >
                   {myNote ? (
                     <>
-                      {myNote.song && <span className="text-white drop-shadow-xs">🎵</span>}
-                      <span className="truncate drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]">{myNote.text}</span>
+                      {myNote.song && <span className="text-white drop-shadow-xs shrink-0">🎵</span>}
+                      <span className="truncate drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)] uppercase">{myNote.text}</span>
                     </>
                   ) : (
-                    <span className="text-zinc-400 font-bold">+ Note</span>
+                    <span className="text-zinc-300 font-bold">+ Note</span>
                   )}
-                  {/* Pointer triangle */}
-                  <div
-                    className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 rotate-45"
-                    style={{
-                      background: myNote ? myTheme.accent : 'rgba(24, 24, 27, 0.95)',
-                      borderRight: myNote ? `1px solid ${myTheme.border}` : '1px solid rgba(255, 255, 255, 0.25)',
-                      borderBottom: myNote ? `1px solid ${myTheme.border}` : '1px solid rgba(255, 255, 255, 0.25)',
-                    }}
+                  {/* Authentic Instagram Double Thought Dots Tail */}
+                  <span
+                    className="absolute -bottom-1.5 left-4 w-2 h-2 rounded-full border border-white/20 pointer-events-none"
+                    style={{ background: myNote ? myTheme.accent : '#262626' }}
+                  />
+                  <span
+                    className="absolute -bottom-3 left-2.5 w-1.5 h-1.5 rounded-full border border-white/20 pointer-events-none"
+                    style={{ background: myNote ? myTheme.accent : '#262626' }}
                   />
                 </button>
 
-                {/* Big 80px Profile Avatar */}
+                {/* Neatly Proportioned 64px Profile Avatar (Perfect on Laptop & Mobile) */}
                 <div
                   onClick={handleOpenMyNoteModal}
-                  className={`w-20 h-20 rounded-full overflow-hidden flex items-center justify-center cursor-pointer shadow-lg mt-3 relative transition-transform group-hover:scale-102 p-1 ${
+                  className={`w-16 h-16 rounded-full overflow-hidden flex items-center justify-center cursor-pointer shadow-md mt-3 relative transition-transform group-hover:scale-102 p-0.5 ${
                     myNote
                       ? 'ring-2'
                       : 'border-2 border-zinc-700 hover:border-zinc-500 bg-zinc-800'
@@ -236,7 +236,7 @@ export const ChatNotesTray: React.FC<ChatNotesTrayProps> = ({ onReplyToNote }) =
                     myNote
                       ? {
                           background: myTheme.gradient,
-                          boxShadow: `0 0 14px ${myTheme.glow}`,
+                          boxShadow: `0 0 12px ${myTheme.glow}`,
                         }
                       : undefined
                   }
@@ -249,14 +249,14 @@ export const ChatNotesTray: React.FC<ChatNotesTrayProps> = ({ onReplyToNote }) =
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <span className="text-xl font-black text-white">
+                      <span className="text-lg font-black text-white">
                         {currentUser?.fullName?.[0]?.toUpperCase() || 'U'}
                       </span>
                     )}
                   </div>
                   {!myNote && (
-                    <div className="absolute bottom-1 right-1 w-5 h-5 rounded-full gradient-bg text-white flex items-center justify-center text-xs shadow-md">
-                      <Plus size={13} strokeWidth={3} />
+                    <div className="absolute bottom-0.5 right-0.5 w-4.5 h-4.5 rounded-full gradient-bg text-white flex items-center justify-center text-xs shadow-md">
+                      <Plus size={11} strokeWidth={3} />
                     </div>
                   )}
                 </div>
@@ -266,7 +266,7 @@ export const ChatNotesTray: React.FC<ChatNotesTrayProps> = ({ onReplyToNote }) =
               {myNote?.song && (
                 <div
                   onClick={handleOpenMyNoteModal}
-                  className="w-[96px] h-[23px] overflow-hidden rounded-full px-1.5 flex items-center gap-1 mt-1 shadow-xs cursor-pointer border"
+                  className="w-[90px] h-[22px] overflow-hidden rounded-full px-1.5 flex items-center gap-1 mt-1 shadow-xs cursor-pointer border"
                   style={{
                     background: 'rgba(24, 24, 27, 0.95)',
                     borderColor: myTheme.border,
@@ -274,23 +274,22 @@ export const ChatNotesTray: React.FC<ChatNotesTrayProps> = ({ onReplyToNote }) =
                   }}
                   title={`Song: ${myNote.song.title} by ${myNote.song.artist}`}
                 >
-                  {/* Direct Play/Pause Button on Note */}
                   <button
                     type="button"
                     onClick={(e) => handleToggleSong(e, myNote.song!)}
-                    className="btn-apple w-4 h-4 rounded-full text-white flex items-center justify-center shrink-0 shadow-2xs transition-transform hover:scale-110"
+                    className="btn-apple w-3.5 h-3.5 rounded-full text-white flex items-center justify-center shrink-0 shadow-2xs transition-transform hover:scale-110"
                     style={{ background: myTheme.gradient }}
                     aria-label={isMySongPlaying ? 'Pause song' : 'Play song'}
                   >
                     {isMySongPlaying ? (
-                      <Pause size={9} strokeWidth={3} />
+                      <Pause size={8} strokeWidth={3} />
                     ) : (
-                      <Play size={9} strokeWidth={3} className="ml-0.5" />
+                      <Play size={8} strokeWidth={3} className="ml-0.5" />
                     )}
                   </button>
 
                   <div className="overflow-hidden flex-1 relative h-full flex items-center">
-                    <div className="animate-notes-marquee text-[10px] font-bold text-white">
+                    <div className="animate-notes-marquee text-[9.5px] font-bold text-white">
                       <span>{myNote.song.title} • {myNote.song.artist} &nbsp;&nbsp;&nbsp;&nbsp; 🎵 &nbsp;</span>
                       <span>{myNote.song.title} • {myNote.song.artist} &nbsp;&nbsp;&nbsp;&nbsp; 🎵 &nbsp;</span>
                     </div>
@@ -298,7 +297,7 @@ export const ChatNotesTray: React.FC<ChatNotesTrayProps> = ({ onReplyToNote }) =
                 </div>
               )}
 
-              <span className="text-[11px] text-[var(--text-muted)] font-bold truncate max-w-[80px] text-center mt-1">
+              <span className="text-[10.5px] text-[var(--text-muted)] font-semibold truncate max-w-[76px] text-center mt-1">
                 Your note
               </span>
             </div>
@@ -318,11 +317,11 @@ export const ChatNotesTray: React.FC<ChatNotesTrayProps> = ({ onReplyToNote }) =
           return (
             <div key={note.id} className="flex flex-col items-center flex-shrink-0 group">
               <div className="relative mb-1">
-                {/* Thought Bubble with Modern Crisp Typography & Mixed Colors */}
+                {/* Thought Bubble with Modern Crisp Typography & Authentic Double Thought Dots */}
                 <button
                   type="button"
                   onClick={() => handleTapPeerNote(note)}
-                  className="btn-apple absolute -top-8 left-1/2 -translate-x-1/2 z-10 max-w-[125px] px-3 py-1.5 rounded-2xl border text-[11px] sm:text-[12px] font-sans font-bold tracking-tight shadow-xl flex items-center gap-1.5 truncate transition-all cursor-pointer hover:scale-105"
+                  className="btn-apple absolute -top-8 left-1/2 -translate-x-1/2 z-10 max-w-[125px] px-3 py-1.5 rounded-[18px] border text-[11px] sm:text-[12px] font-sans font-bold tracking-tight shadow-xl flex items-center gap-1.5 truncate transition-all cursor-pointer hover:scale-105 active:scale-95"
                   style={{
                     background: peerTheme.gradient,
                     border: `1px solid ${peerTheme.border}`,
@@ -332,29 +331,29 @@ export const ChatNotesTray: React.FC<ChatNotesTrayProps> = ({ onReplyToNote }) =
                   title={note.song ? `Playing: ${note.song.title} by ${note.song.artist}` : note.text}
                 >
                   {isSongAttached && (
-                    <span className={isThisSongPlaying ? 'animate-pulse text-white drop-shadow-xs shrink-0' : 'text-white drop-shadow-xs shrink-0'}>
+                    <span className="text-white drop-shadow-xs shrink-0">
                       🎵
                     </span>
                   )}
-                  <span className="truncate drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]">{note.text}</span>
-                  {/* Pointer triangle */}
-                  <div
-                    className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 rotate-45"
-                    style={{
-                      background: peerTheme.accent,
-                      borderRight: `1px solid ${peerTheme.border}`,
-                      borderBottom: `1px solid ${peerTheme.border}`,
-                    }}
+                  <span className="truncate drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)] uppercase">{note.text}</span>
+                  {/* Authentic Instagram Double Thought Dots Tail */}
+                  <span
+                    className="absolute -bottom-1.5 left-4 w-2 h-2 rounded-full border border-white/20 pointer-events-none"
+                    style={{ background: peerTheme.accent }}
+                  />
+                  <span
+                    className="absolute -bottom-3 left-2.5 w-1.5 h-1.5 rounded-full border border-white/20 pointer-events-none"
+                    style={{ background: peerTheme.accent }}
                   />
                 </button>
 
-                {/* Big 80px Avatar with Glowing/Gradient Mixed Color Ring */}
+                {/* Neatly Proportioned 64px Avatar (Fits Cleanly on Laptop) */}
                 <div
                   onClick={() => handleTapPeerNote(note)}
-                  className={`w-20 h-20 rounded-full overflow-hidden flex items-center justify-center cursor-pointer shadow-lg mt-3 p-1 transition-transform group-hover:scale-102 relative ring-2`}
+                  className="w-16 h-16 rounded-full overflow-hidden flex items-center justify-center cursor-pointer shadow-md mt-3 p-0.5 transition-transform group-hover:scale-102 relative ring-2"
                   style={{
                     background: peerTheme.gradient,
-                    boxShadow: isThisSongPlaying ? `0 0 18px ${peerTheme.glow}` : `0 0 10px ${peerTheme.glow}`,
+                    boxShadow: isThisSongPlaying ? `0 0 16px ${peerTheme.glow}` : `0 0 8px ${peerTheme.glow}`,
                   }}
                 >
                   <div
@@ -368,7 +367,7 @@ export const ChatNotesTray: React.FC<ChatNotesTrayProps> = ({ onReplyToNote }) =
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <span className="text-xl font-black">
+                      <span className="text-lg font-black">
                         {note.fullName?.[0]?.toUpperCase() || note.username?.[0]?.toUpperCase()}
                       </span>
                     )}
@@ -379,59 +378,44 @@ export const ChatNotesTray: React.FC<ChatNotesTrayProps> = ({ onReplyToNote }) =
                     <button
                       type="button"
                       onClick={(e) => handleToggleSong(e, note.song!)}
-                      className={`btn-apple absolute bottom-1 right-1 w-6 h-6 rounded-full flex items-center justify-center text-white shadow-md border border-white/40 ${
+                      className={`btn-apple absolute bottom-0.5 right-0.5 w-5 h-5 rounded-full flex items-center justify-center text-white shadow-md border border-white/40 ${
                         isThisSongPlaying ? 'bg-pink-500 animate-pulse' : 'bg-black/80 hover:bg-pink-600'
                       }`}
                       aria-label="Toggle song preview"
                     >
                       {isThisSongPlaying ? (
-                        <Pause size={10} strokeWidth={3} />
+                        <Pause size={8} strokeWidth={3} />
                       ) : (
-                        <Play size={10} strokeWidth={3} className="ml-0.5" />
+                        <Play size={8} strokeWidth={3} className="ml-0.5" />
                       )}
                     </button>
                   )}
                 </div>
               </div>
 
-              {/* Scrolling Song Name & Singer Name Marquee Ticker with Play Button */}
-              {note.song && (
+              {/* Scrolling Song Marquee */}
+              {isSongAttached && (
                 <div
                   onClick={() => handleTapPeerNote(note)}
-                  className="w-[96px] h-[23px] overflow-hidden rounded-full px-1.5 flex items-center gap-1 mt-1 shadow-xs cursor-pointer border"
+                  className="w-[90px] h-[22px] overflow-hidden rounded-full px-1.5 flex items-center gap-1 mt-1 shadow-xs cursor-pointer border"
                   style={{
                     background: 'rgba(24, 24, 27, 0.95)',
                     borderColor: peerTheme.border,
                     boxShadow: `0 0 8px ${peerTheme.glow}`,
                   }}
-                  title={`Song: ${note.song.title} by ${note.song.artist}`}
+                  title={`Song: ${note.song!.title} by ${note.song!.artist}`}
                 >
-                  {/* Direct Play/Pause button on pill */}
-                  <button
-                    type="button"
-                    onClick={(e) => handleToggleSong(e, note.song!)}
-                    className="btn-apple w-4 h-4 rounded-full text-white flex items-center justify-center shrink-0 shadow-2xs transition-transform hover:scale-110"
-                    style={{ background: peerTheme.gradient }}
-                    aria-label={isThisSongPlaying ? 'Pause song' : 'Play song'}
-                  >
-                    {isThisSongPlaying ? (
-                      <Pause size={9} strokeWidth={3} />
-                    ) : (
-                      <Play size={9} strokeWidth={3} className="ml-0.5" />
-                    )}
-                  </button>
-
                   <div className="overflow-hidden flex-1 relative h-full flex items-center">
-                    <div className="animate-notes-marquee text-[10px] font-bold text-white">
-                      <span>{note.song.title} • {note.song.artist} &nbsp;&nbsp;&nbsp;&nbsp; 🎵 &nbsp;</span>
-                      <span>{note.song.title} • {note.song.artist} &nbsp;&nbsp;&nbsp;&nbsp; 🎵 &nbsp;</span>
+                    <div className="animate-notes-marquee text-[9.5px] font-bold text-white">
+                      <span>{note.song!.title} • {note.song!.artist} &nbsp;&nbsp;&nbsp;&nbsp; 🎵 &nbsp;</span>
+                      <span>{note.song!.title} • {note.song!.artist} &nbsp;&nbsp;&nbsp;&nbsp; 🎵 &nbsp;</span>
                     </div>
                   </div>
                 </div>
               )}
 
-              <span className="text-[11px] text-[var(--text)] font-bold truncate max-w-[80px] text-center mt-1">
-                {note.fullName.split(' ')[0]}
+              <span className="text-[10.5px] text-[var(--text)] font-semibold truncate max-w-[76px] text-center mt-1">
+                {note.fullName?.split(' ')[0] || note.username}
               </span>
             </div>
           );
@@ -445,21 +429,18 @@ export const ChatNotesTray: React.FC<ChatNotesTrayProps> = ({ onReplyToNote }) =
         const activeTheme = getNoteColorTheme(activeNoteAction.colorTheme, activeNoteAction.username);
         return (
           <div
-            className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in select-none"
+            className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in select-none"
             onClick={() => setActiveNoteAction(null)}
           >
             <div
-              className="w-full max-w-sm bg-zinc-950 border border-zinc-800 rounded-t-3xl sm:rounded-3xl p-5 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto"
+              className="w-full max-w-[390px] bg-[#121417] border border-white/10 rounded-3xl p-5 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
-              {/* Top Sheet Drag Indicator for Mobile */}
-              <div className="w-10 h-1 rounded-full bg-zinc-700 mx-auto sm:hidden -mt-1 mb-2" />
-
-              {/* Classmate Header */}
-              <div className="flex items-center justify-between">
+              {/* Header: Classmate Info + Close */}
+              <div className="flex items-center justify-between pb-3 border-b border-white/10">
                 <div className="flex items-center gap-2.5">
                   <div
-                    className="w-11 h-11 rounded-full overflow-hidden flex items-center justify-center text-white font-bold p-0.5 shadow-sm"
+                    className="w-9 h-9 rounded-full overflow-hidden flex items-center justify-center text-white font-bold p-0.5 shadow-sm"
                     style={{ background: activeTheme.gradient }}
                   >
                     <div className="w-full h-full rounded-full overflow-hidden bg-zinc-900 flex items-center justify-center">
@@ -474,312 +455,370 @@ export const ChatNotesTray: React.FC<ChatNotesTrayProps> = ({ onReplyToNote }) =
                       )}
                     </div>
                   </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
-                      <span>{activeNoteAction.fullName}</span>
-                      <span className="text-[10px] text-zinc-400 font-normal">· Class 8-A</span>
+                  <div className="text-left">
+                    <h4 className="text-xs font-bold text-white">
+                      {activeNoteAction.fullName}
                     </h4>
-                    <p className="text-[11px] text-zinc-400">@{activeNoteAction.username}</p>
+                    <p className="text-[10px] text-zinc-400">@{activeNoteAction.username}</p>
                   </div>
                 </div>
 
                 <button
                   type="button"
                   onClick={() => setActiveNoteAction(null)}
-                  className="btn-apple p-1.5 rounded-full text-zinc-400 hover:text-white hover:bg-zinc-900"
+                  className="p-1.5 rounded-full text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors cursor-pointer"
                   aria-label="Close note popup"
                 >
                   <X size={18} />
                 </button>
               </div>
 
-              {/* Note text thought bubble in Vibrant Mixed Colors */}
-              <div
-                className="relative p-3.5 rounded-2xl text-xs font-semibold text-white leading-relaxed shadow-lg border"
-                style={{
-                  background: activeTheme.gradient,
-                  border: `1px solid ${activeTheme.border}`,
-                  boxShadow: activeTheme.bubbleShadow,
-                }}
-              >
-                <span className="text-white/80 text-sm font-serif mr-1">&ldquo;</span>
-                <span className="drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]">{activeNoteAction.text}</span>
-                <span className="text-white/80 text-sm font-serif ml-1">&rdquo;</span>
-              </div>
-
-            {/* Attached Song with Continuous Marquee & Live Player */}
-            {activeNoteAction.song && (
-              <div className="p-3 rounded-2xl bg-zinc-900/90 border border-pink-500/40 space-y-2 shadow-sm">
-                <div className="flex items-center justify-between text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
-                  <span className="flex items-center gap-1 text-pink-400">
-                    <Disc3 size={12} className={playerState.isPlaying && playerState.currentTrack?.id === activeNoteAction.song.id ? 'animate-spin' : ''} />
-                    <span>Attached Music</span>
-                  </span>
-                  <span className="text-zinc-500">30s Preview</span>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  {/* Artwork Image */}
-                  <img
-                    src={activeNoteAction.song.artworkUrl}
-                    alt={activeNoteAction.song.title}
-                    className="w-12 h-12 rounded-xl object-cover shadow-sm border border-zinc-700 shrink-0"
-                  />
-
-                  {/* Song Title and Singer Scrolling Marquee */}
-                  <div className="flex-1 min-w-0 overflow-hidden">
-                    <div className="overflow-hidden relative h-5 flex items-center">
-                      <div className="animate-notes-marquee text-xs font-bold text-pink-200">
-                        <span>{activeNoteAction.song.title} • {activeNoteAction.song.artist} &nbsp;&nbsp;&nbsp;&nbsp; 🎵 &nbsp;</span>
-                        <span>{activeNoteAction.song.title} • {activeNoteAction.song.artist} &nbsp;&nbsp;&nbsp;&nbsp; 🎵 &nbsp;</span>
-                      </div>
-                    </div>
-                    <p className="text-[10px] text-zinc-400 truncate mt-0.5">
-                      Artist: {activeNoteAction.song.artist}
-                    </p>
-                  </div>
-
-                  {/* Play / Pause Toggle Button */}
-                  <button
-                    type="button"
-                    onClick={() => globalAudio.toggleTrack(activeNoteAction.song!)}
-                    className="btn-apple w-9 h-9 rounded-full bg-gradient-to-tr from-pink-500 to-rose-500 text-white flex items-center justify-center shrink-0 shadow-md hover:opacity-90 transition-opacity"
-                    aria-label={
-                      playerState.isPlaying && playerState.currentTrack?.id === activeNoteAction.song.id
-                        ? 'Pause song'
-                        : 'Play song'
-                    }
+              {/* Center Stage: Note Bubble with Authentic Double Tail Dots Over Avatar */}
+              <div className="flex flex-col items-center py-2">
+                <div className="relative mb-3 w-full flex justify-center">
+                  <div
+                    className="relative max-w-[270px] px-4 py-3 rounded-[24px] text-center font-bold text-white text-[15px] shadow-xl"
+                    style={{
+                      background: activeTheme.gradient,
+                      border: `1px solid ${activeTheme.border}`,
+                      boxShadow: activeTheme.bubbleShadow,
+                    }}
                   >
-                    {playerState.isPlaying && playerState.currentTrack?.id === activeNoteAction.song.id ? (
-                      <Pause size={16} strokeWidth={2.5} />
-                    ) : (
-                      <Play size={16} strokeWidth={2.5} className="ml-0.5" />
-                    )}
-                  </button>
-                </div>
-
-                {/* Progress bar */}
-                {playerState.currentTrack?.id === activeNoteAction.song.id && (
-                  <div className="w-full h-1 bg-zinc-800 rounded-full overflow-hidden mt-1">
-                    <div
-                      className="h-full bg-pink-500 transition-all duration-200"
-                      style={{ width: `${playerState.progress * 100}%` }}
+                    <span className="drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)] uppercase tracking-wide">
+                      {activeNoteAction.text}
+                    </span>
+                    {/* Tail Dot 1 (medium) */}
+                    <span
+                      className="absolute -bottom-2.5 left-7 w-3 h-3 rounded-full border border-white/15"
+                      style={{ background: activeTheme.accent || '#262626' }}
+                    />
+                    {/* Tail Dot 2 (small) */}
+                    <span
+                      className="absolute -bottom-4.5 left-5 w-1.5 h-1.5 rounded-full border border-white/15"
+                      style={{ background: activeTheme.accent || '#262626' }}
                     />
                   </div>
-                )}
-              </div>
-            )}
+                </div>
 
-            {/* Quick Emoji Reaction Buttons (Tap to send instant reply in chat) */}
-            <div className="space-y-1.5 pt-1">
-              <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">
-                Quick Emoji Reaction:
-              </span>
-              <div className="grid grid-cols-4 gap-2">
-                {quickReactionEmojis.map((emoji) => (
+                {/* Classmate Avatar */}
+                <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-white/20 shadow-xl bg-zinc-900 flex items-center justify-center mt-2">
+                  {activeNoteAction.avatar ? (
+                    <img
+                      src={activeNoteAction.avatar}
+                      alt={activeNoteAction.fullName}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-xl font-black text-white">
+                      {activeNoteAction.fullName?.[0]?.toUpperCase() || activeNoteAction.username[0].toUpperCase()}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Attached Song with Continuous Marquee & Live Player */}
+              {activeNoteAction.song && (
+                <div className="p-3 rounded-2xl bg-zinc-900/90 border border-pink-500/40 space-y-2 shadow-sm">
+                  <div className="flex items-center justify-between text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
+                    <span className="flex items-center gap-1 text-pink-400">
+                      <Disc3 size={12} className={playerState.isPlaying && playerState.currentTrack?.id === activeNoteAction.song.id ? 'animate-spin' : ''} />
+                      <span>Attached Music</span>
+                    </span>
+                    <span className="text-zinc-500">30s Preview</span>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <img
+                      src={activeNoteAction.song.artworkUrl}
+                      alt={activeNoteAction.song.title}
+                      className="w-10 h-10 rounded-xl object-cover shadow-sm border border-zinc-700 shrink-0"
+                    />
+
+                    <div className="flex-1 min-w-0 overflow-hidden">
+                      <div className="overflow-hidden relative h-5 flex items-center">
+                        <div className="animate-notes-marquee text-xs font-bold text-pink-200">
+                          <span>{activeNoteAction.song.title} • {activeNoteAction.song.artist} &nbsp;&nbsp;&nbsp;&nbsp; 🎵 &nbsp;</span>
+                          <span>{activeNoteAction.song.title} • {activeNoteAction.song.artist} &nbsp;&nbsp;&nbsp;&nbsp; 🎵 &nbsp;</span>
+                        </div>
+                      </div>
+                      <p className="text-[10px] text-zinc-400 truncate mt-0.5">
+                        Artist: {activeNoteAction.song.artist}
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => globalAudio.toggleTrack(activeNoteAction.song!)}
+                      className="btn-apple w-8 h-8 rounded-full bg-gradient-to-tr from-pink-500 to-rose-500 text-white flex items-center justify-center shrink-0 shadow-md hover:opacity-90 transition-opacity cursor-pointer"
+                      aria-label={
+                        playerState.isPlaying && playerState.currentTrack?.id === activeNoteAction.song.id
+                          ? 'Pause song'
+                          : 'Play song'
+                      }
+                    >
+                      {playerState.isPlaying && playerState.currentTrack?.id === activeNoteAction.song.id ? (
+                        <Pause size={14} strokeWidth={2.5} />
+                      ) : (
+                        <Play size={14} strokeWidth={2.5} className="ml-0.5" />
+                      )}
+                    </button>
+                  </div>
+
+                  {playerState.currentTrack?.id === activeNoteAction.song.id && (
+                    <div className="w-full h-1 bg-zinc-800 rounded-full overflow-hidden mt-1">
+                      <div
+                        className="h-full bg-pink-500 transition-all duration-200"
+                        style={{ width: `${playerState.progress * 100}%` }}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Quick Emoji Reaction Buttons */}
+              <div className="space-y-1.5 pt-1">
+                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block text-left">
+                  Quick Emoji Reaction:
+                </span>
+                <div className="grid grid-cols-4 gap-2">
+                  {quickReactionEmojis.map((emoji) => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      onClick={() => handleSendReply(activeNoteAction, emoji)}
+                      className="btn-apple py-2 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-pink-500/50 text-lg flex items-center justify-center transition-all cursor-pointer shadow-2xs hover:scale-105 active:scale-95"
+                      title={`Send ${emoji} in chat`}
+                    >
+                      <span>{emoji}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Type a Custom Reply Bar */}
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleSendReply(activeNoteAction, replyInputText);
+                }}
+                className="space-y-2 pt-1 border-t border-zinc-800"
+              >
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={replyInputText}
+                    onChange={(e) => setReplyInputText(e.target.value)}
+                    placeholder={`Reply to @${activeNoteAction.username}...`}
+                    className="flex-1 bg-zinc-900 border border-zinc-800 rounded-full px-4 py-2 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-pink-500 transition-colors"
+                  />
                   <button
-                    key={emoji}
-                    type="button"
-                    onClick={() => handleSendReply(activeNoteAction, emoji)}
-                    className="btn-apple py-2 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-pink-500/50 text-lg flex items-center justify-center transition-all cursor-pointer shadow-2xs hover:scale-105 active:scale-95"
-                    title={`Send ${emoji} in chat`}
+                    type="submit"
+                    disabled={!replyInputText.trim()}
+                    className="btn-apple h-8.5 px-3.5 rounded-full gradient-bg text-white text-xs font-bold disabled:opacity-40 flex items-center justify-center gap-1 shadow-md cursor-pointer"
                   >
-                    <span>{emoji}</span>
+                    <Send size={12} />
+                    <span>Send</span>
                   </button>
-                ))}
-              </div>
+                </div>
+              </form>
             </div>
-
-            {/* Type a Custom Reply Bar */}
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleSendReply(activeNoteAction, replyInputText);
-              }}
-              className="space-y-2 pt-1 border-t border-zinc-900"
-            >
-              <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">
-                Reply to Note in Chat:
-              </span>
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={replyInputText}
-                  onChange={(e) => setReplyInputText(e.target.value)}
-                  placeholder={`Reply to @${activeNoteAction.username}...`}
-                  className="flex-1 bg-zinc-900 border border-zinc-800 rounded-full px-4 py-2.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-pink-500 transition-colors"
-                />
-                <button
-                  type="submit"
-                  disabled={!replyInputText.trim()}
-                  className="btn-apple h-9 px-4 rounded-full gradient-bg text-white text-xs font-bold disabled:opacity-40 flex items-center justify-center gap-1 shadow-md cursor-pointer"
-                >
-                  <Send size={13} />
-                  <span>Send</span>
-                </button>
-              </div>
-            </form>
           </div>
-        </div>
         );
       })()}
 
-      {/* Create / Edit Note Modal */}
+      {/* ==================================================================== */}
+      {/* CREATE / EDIT NOTE MODAL — EXACT INSTAGRAM DESIGN (CENTERED AVATAR)  */}
+      {/* ==================================================================== */}
       {isNoteModalOpen && (
         <div
-          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in"
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in"
           onClick={() => setIsNoteModalOpen(false)}
         >
           <div
-            className="w-full max-w-sm bg-zinc-950 border border-zinc-800 rounded-t-3xl sm:rounded-3xl p-5 shadow-2xl space-y-4"
+            className="w-full max-w-[390px] bg-[#121417] border border-white/10 rounded-3xl p-6 shadow-2xl relative text-center flex flex-col items-center"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold text-white">Share a Note & Song 💭</h3>
+            {/* Modal Header: Cancel & Share (Top Bar) */}
+            <div className="w-full flex items-center justify-between pb-4 border-b border-white/10 mb-5">
               <button
                 type="button"
                 onClick={() => setIsNoteModalOpen(false)}
-                className="btn-apple p-1 text-zinc-400 hover:text-white"
-                aria-label="Close note modal"
+                className="text-xs font-semibold text-zinc-400 hover:text-white transition-colors cursor-pointer"
               >
-                <X size={16} />
+                Cancel
+              </button>
+              <h3 className="text-sm font-bold text-white tracking-tight">
+                {myNote ? 'Edit note' : 'New note'}
+              </h3>
+              <button
+                type="button"
+                onClick={handleSaveNote}
+                disabled={!noteText.trim() && !selectedSong}
+                className="btn-apple px-4 py-1.5 rounded-full bg-[#007AFF] hover:bg-[#006ee6] active:scale-95 text-white text-xs font-bold shadow-md disabled:opacity-40 transition-all cursor-pointer"
+              >
+                Share
               </button>
             </div>
 
-            <form onSubmit={handleSaveNote} className="space-y-3.5">
-              <p className="text-[11px] text-zinc-400">
-                Share a thought and song clip. Your classmates can listen and see it above your avatar for 24 hours.
-              </p>
+            {/* CENTER STAGE: Note Thought Bubble Floating Above Avatar (Matching User Screenshot) */}
+            <div className="w-full flex flex-col items-center my-2">
+              {/* Floating Thought Bubble */}
+              <div className="relative mb-3 w-full flex justify-center">
+                {(() => {
+                  const currentTheme = getNoteColorTheme(selectedColorTheme, currentUser?.username);
+                  return (
+                    <div
+                      className="relative w-full max-w-[270px] px-4 py-3.5 rounded-[24px] shadow-2xl text-center transition-all"
+                      style={{
+                        background: currentTheme.gradient,
+                        border: `1px solid ${currentTheme.border}`,
+                        boxShadow: currentTheme.bubbleShadow,
+                      }}
+                    >
+                      <textarea
+                        value={noteText}
+                        onChange={(e) => setNoteText(e.target.value)}
+                        placeholder="Share a thought..."
+                        maxLength={60}
+                        rows={2}
+                        autoFocus
+                        className="w-full bg-transparent text-center text-[15px] sm:text-[16px] font-bold text-white placeholder-zinc-400 outline-none resize-none leading-snug tracking-wide uppercase select-text"
+                      />
 
-              <div>
-                <input
-                  type="text"
-                  value={noteText}
-                  onChange={(e) => setNoteText(e.target.value)}
-                  placeholder="What's on your mind? (e.g. Revision mode 📚)"
-                  maxLength={60}
-                  className="w-full bg-zinc-900 border border-zinc-800 rounded-2xl px-3.5 py-2.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-pink-500"
-                  autoFocus
-                />
-                <div className="flex justify-between items-center text-[10px] text-zinc-500 mt-1 px-1">
-                  <span>Vanishes in 24 hours</span>
-                  <span>{noteText.length}/60</span>
-                </div>
+                      {/* Tail Dot 1 (medium) */}
+                      <span
+                        className="absolute -bottom-2.5 left-7 w-3 h-3 rounded-full border border-white/15"
+                        style={{ background: currentTheme.accent || '#262626' }}
+                      />
+                      {/* Tail Dot 2 (small) */}
+                      <span
+                        className="absolute -bottom-4.5 left-5 w-1.5 h-1.5 rounded-full border border-white/15"
+                        style={{ background: currentTheme.accent || '#262626' }}
+                      />
+                    </div>
+                  );
+                })()}
               </div>
 
-              {/* Music Selection on Note */}
-              <div className="space-y-2">
-                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">
-                  Add Song to Note (30s Free) 🎵
-                </span>
-
-                {selectedSong ? (
-                  <MusicTrackPill
-                    song={selectedSong}
-                    onRemove={() => setSelectedSong(null)}
+              {/* The User Avatar in Center */}
+              <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-white/20 shadow-xl bg-zinc-900 flex items-center justify-center mt-2 relative">
+                {currentUser?.avatar ? (
+                  <img
+                    src={currentUser.avatar}
+                    alt={currentUser.fullName}
+                    className="w-full h-full object-cover"
                   />
+                ) : (
+                  <span className="text-2xl font-black text-white">
+                    {currentUser?.fullName?.[0]?.toUpperCase() || 'U'}
+                  </span>
+                )}
+              </div>
+
+              {/* Music Selection Pill — Directly Below Avatar (Matching User Prompt) */}
+              <div className="mt-4 flex flex-col items-center">
+                {selectedSong ? (
+                  <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-zinc-800/90 border border-pink-500/40 shadow-lg animate-scale-in">
+                    <img
+                      src={selectedSong.artworkUrl}
+                      alt={selectedSong.title}
+                      className="w-7 h-7 rounded-full object-cover border border-white/20 shrink-0"
+                    />
+                    <div className="text-left min-w-0 max-w-[130px]">
+                      <p className="text-[11px] font-bold text-white truncate leading-tight">
+                        {selectedSong.title}
+                      </p>
+                      <p className="text-[9.5px] text-zinc-400 truncate leading-tight">
+                        {selectedSong.artist}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        globalAudio.toggleTrack(selectedSong);
+                      }}
+                      className="w-6 h-6 rounded-full bg-pink-500 text-white flex items-center justify-center shrink-0 hover:scale-105 active:scale-95 cursor-pointer shadow-xs"
+                      aria-label={playerState.isPlaying && playerState.currentTrack?.id === selectedSong.id ? 'Pause' : 'Play'}
+                    >
+                      {playerState.isPlaying && playerState.currentTrack?.id === selectedSong.id ? (
+                        <Pause size={10} strokeWidth={3} />
+                      ) : (
+                        <Play size={10} strokeWidth={3} className="ml-0.5" />
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedSong(null)}
+                      className="p-1 text-zinc-400 hover:text-white cursor-pointer"
+                      title="Remove song"
+                      aria-label="Remove song"
+                    >
+                      <X size={13} />
+                    </button>
+                  </div>
                 ) : (
                   <button
                     type="button"
                     onClick={() => setIsSongPickerOpen(true)}
-                    className="btn-apple w-full py-2.5 px-3 rounded-xl border border-dashed border-zinc-700 hover:border-pink-500/60 bg-zinc-900 text-xs font-semibold text-zinc-300 hover:text-pink-400 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                    className="px-4 py-2 rounded-full bg-zinc-800/90 hover:bg-zinc-700 text-white border border-white/10 text-xs font-semibold flex items-center gap-2 transition-all hover:scale-105 active:scale-95 shadow-md cursor-pointer"
                   >
-                    <Music size={14} />
-                    <span>Choose Music (Anirudh, Bollywood, Lofi...)</span>
+                    <Music size={14} className="text-pink-400" />
+                    <span>Add music 🎵</span>
                   </button>
                 )}
               </div>
 
-              {/* Mixed Color Gradient Palette Selection */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
-                    <span>Note Color (Mixed Gradients) 🎨</span>
-                  </span>
-                  <span className="text-[10px] text-pink-400 font-semibold flex items-center gap-1">
-                    <Sparkles size={11} className="text-amber-400" />
-                    <span>{MIXED_NOTE_COLORS.find((c) => c.id === selectedColorTheme)?.name || 'Sunset Glow'}</span>
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-4 gap-2">
-                  {MIXED_NOTE_COLORS.map((theme) => {
-                    const isSelected = selectedColorTheme === theme.id;
-                    return (
-                      <button
-                        key={theme.id}
-                        type="button"
-                        onClick={() => setSelectedColorTheme(theme.id)}
-                        className={`h-9 rounded-xl transition-all flex items-center justify-center p-0.5 cursor-pointer relative shadow-sm ${
-                          isSelected
-                            ? 'ring-2 ring-white scale-105 shadow-md'
-                            : 'opacity-75 hover:opacity-100 hover:scale-102'
-                        }`}
-                        style={{
-                          background: theme.gradient,
-                          border: `1px solid ${theme.border}`,
-                        }}
-                        title={theme.name}
-                      >
-                        {isSelected && (
-                          <span className="text-white text-xs drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)] font-black">
-                            ✓
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Live Color Preview Bubble */}
-                <div className="p-2.5 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center">
-                  <div
-                    className="px-3 py-1.5 rounded-2xl text-[11px] font-bold text-white shadow-md max-w-[220px] truncate"
-                    style={{
-                      background:
-                        MIXED_NOTE_COLORS.find((c) => c.id === selectedColorTheme)?.gradient ||
-                        MIXED_NOTE_COLORS[0].gradient,
-                      border: `1px solid ${
-                        MIXED_NOTE_COLORS.find((c) => c.id === selectedColorTheme)?.border ||
-                        MIXED_NOTE_COLORS[0].border
-                      }`,
-                      boxShadow:
-                        MIXED_NOTE_COLORS.find((c) => c.id === selectedColorTheme)?.bubbleShadow,
-                    }}
-                  >
-                    {noteText.trim() ? noteText : 'Live Preview: Mixed Color Bubble ✨'}
-                  </div>
-                </div>
+              {/* Theme Color Selector Dots (Instagram Dark, Sunset, Aurora, etc.) */}
+              <div className="w-full mt-5 pt-3 border-t border-white/10 flex items-center justify-center gap-2">
+                <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider mr-1">
+                  Color:
+                </span>
+                {MIXED_NOTE_COLORS.slice(0, 6).map((theme) => {
+                  const isSelected = selectedColorTheme === theme.id;
+                  return (
+                    <button
+                      key={theme.id}
+                      type="button"
+                      onClick={() => setSelectedColorTheme(theme.id)}
+                      className={`w-6 h-6 rounded-full transition-all cursor-pointer relative shadow-xs ${
+                        isSelected
+                          ? 'ring-2 ring-white scale-110 shadow-md'
+                          : 'opacity-70 hover:opacity-100 hover:scale-105'
+                      }`}
+                      style={{
+                        background: theme.gradient,
+                        border: `1px solid ${theme.border}`,
+                      }}
+                      title={theme.name}
+                    >
+                      {isSelected && (
+                        <span className="absolute inset-0 flex items-center justify-center text-[10px] font-black text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">
+                          ✓
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
 
-              <div className="pt-2 flex gap-2">
-                {myNote && (
-                  <button
-                    type="button"
-                    onClick={handleDeleteMyNote}
-                    className="btn-apple px-3 py-2.5 rounded-xl bg-zinc-900 hover:bg-red-950/60 text-zinc-400 hover:text-red-400 text-xs font-semibold border border-zinc-800 transition-colors cursor-pointer"
-                  >
-                    Delete
-                  </button>
-                )}
+              {/* Subtitle & Character Counter */}
+              <div className="w-full flex items-center justify-between text-[10.5px] text-zinc-500 mt-3 px-1">
+                <span>Vanishes in 24 hours</span>
+                <span>{noteText.length}/60</span>
+              </div>
 
+              {/* Delete Note Button (If Note Already Exists) */}
+              {myNote && (
                 <button
                   type="button"
-                  onClick={() => setIsNoteModalOpen(false)}
-                  className="btn-apple flex-1 py-2.5 rounded-xl bg-zinc-900 text-zinc-300 text-xs font-semibold border border-zinc-800 hover:bg-zinc-800 cursor-pointer"
+                  onClick={handleDeleteMyNote}
+                  className="mt-3 text-[11px] text-red-400 hover:text-red-300 font-medium cursor-pointer transition-colors"
                 >
-                  Cancel
+                  Delete current note
                 </button>
-
-                <button
-                  type="submit"
-                  disabled={!noteText.trim() && !selectedSong}
-                  className="btn-apple flex-1 py-2.5 rounded-xl gradient-bg text-white text-xs font-bold disabled:opacity-40 shadow-md cursor-pointer"
-                >
-                  Share Note
-                </button>
-              </div>
-            </form>
+              )}
+            </div>
           </div>
         </div>
       )}

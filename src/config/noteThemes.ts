@@ -11,6 +11,16 @@ export interface NoteColorTheme {
 
 export const MIXED_NOTE_COLORS: NoteColorTheme[] = [
   {
+    id: 'classic',
+    name: 'Instagram Dark',
+    gradient: 'linear-gradient(135deg, #262626 0%, #1c1c1e 100%)',
+    border: 'rgba(255, 255, 255, 0.16)',
+    textColor: '#FFFFFF',
+    bubbleShadow: '0 4px 18px rgba(0, 0, 0, 0.5)',
+    glow: 'rgba(255, 255, 255, 0.15)',
+    accent: '#262626',
+  },
+  {
     id: 'sunset',
     name: 'Sunset Glow',
     gradient: 'linear-gradient(135deg, #8B5CF6 0%, #EC4899 50%, #F59E0B 100%)',
