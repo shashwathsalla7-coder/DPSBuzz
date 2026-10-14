@@ -14,7 +14,7 @@ export async function POST(
       return NextResponse.json({ success: false, error: 'Invalid comment object' }, { status: 400 });
     }
 
-    const updated = addServerComment(id, comment);
+    const updated = await addServerComment(id, comment);
     return NextResponse.json({ success: true, comments: updated.comments[id] || [] });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

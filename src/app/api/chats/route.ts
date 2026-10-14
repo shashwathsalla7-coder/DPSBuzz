@@ -7,11 +7,11 @@ export async function GET(req: NextRequest) {
     const conversationId = searchParams.get('conversationId');
 
     if (conversationId) {
-      const messages = getServerChatMessages(conversationId);
+      const messages = await getServerChatMessages(conversationId);
       return NextResponse.json({ success: true, messages });
     }
 
-    const store = getServerStore();
+    const store = await getServerStore();
     return NextResponse.json({ success: true, chatMessages: store.chatMessages });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Invalid message payload' }, { status: 400 });
     }
 
-    const updated = addServerChatMessage(conversationId, message);
+    const updated = await addServerChatMessage(conversationId, message);
     return NextResponse.json({
       success: true,
       message,

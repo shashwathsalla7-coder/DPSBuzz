@@ -67,6 +67,49 @@ function ChatsContent() {
     return conv.id;
   };
 
+  const refreshLiveStudents = () => {
+    try {
+      const all = DataStore.getProfiles();
+      const current = DataStore.getCurrentUser();
+      const isShashwath = current.username?.toLowerCase() === 'shashwath71845';
+
+      const formatted: StudentContact[] = all
+        .filter(
+          (s) =>
+            s &&
+            s.username &&
+            s.username.toLowerCase() !== current.username.toLowerCase() &&
+            s.username.toLowerCase() !== 'admin' &&
+            // If the other user is shashwath71845, ALWAYS include him for all students!
+            (s.username.toLowerCase() === 'shashwath71845' || s.role !== 'admin' || isShashwath) &&
+            !DUMMY_TEST_USERNAMES.has(s.username.toLowerCase())
+        )
+        .map((s) => {
+          const isShash = s.username.toLowerCase() === 'shashwath71845';
+          return {
+            id: s.id,
+            name: isShash ? '👑 Shashwath (Admin)' : s.fullName,
+            username: s.username,
+            studentClass: isShash ? 'School Admin' : `${s.class}-${s.section || 'A'}`,
+            avatarUrl: s.avatar,
+            isFollowing: isShashwath || isShash || s.class === current.class,
+          };
+        });
+
+      if (!isShashwath) {
+        formatted.sort((a, b) => {
+          if (a.username.toLowerCase() === 'shashwath71845') return -1;
+          if (b.username.toLowerCase() === 'shashwath71845') return 1;
+          return 0;
+        });
+      }
+
+      setLiveStudents(formatted);
+    } catch {
+      setLiveStudents([]);
+    }
+  };
+
   useEffect(() => {
     const handleUpdate = () => {
       setIsMaintenanceActive(!isAdminUser && DataStore.isMaintenanceActive());
@@ -79,6 +122,7 @@ function ChatsContent() {
             const parsed = JSON.parse(savedConvs);
             setConversations(parsed.filter((c: ConversationItem) => !c.username || !DUMMY_TEST_USERNAMES.has(c.username.toLowerCase())));
           }
+          refreshLiveStudents();
         } catch {}
       }
     };
@@ -261,49 +305,134 @@ function ChatsContent() {
   // Student directory from DataStore for New Chat Sheet
   const [liveStudents, setLiveStudents] = useState<StudentContact[]>([]);
   useEffect(() => {
-    try {
-      const all = DataStore.getProfiles();
-      const current = DataStore.getCurrentUser();
-      const isShashwath = current.username?.toLowerCase() === 'shashwath71845';
+    refreshLiveStudents();
+  }, []);
 
-      const formatted: StudentContact[] = all
-        .filter(
-          (s) =>
-            s &&
-            s.username &&
-            s.username.toLowerCase() !== current.username.toLowerCase() &&
-            s.username.toLowerCase() !== 'admin' &&
-            // If the other user is shashwath71845, ALWAYS include him for all students!
-            (s.username.toLowerCase() === 'shashwath71845' || s.role !== 'admin' || isShashwath) &&
-            !DUMMY_TEST_USERNAMES.has(s.username.toLowerCase())
-        )
-        .map((s) => {
-          const isShash = s.username.toLowerCase() === 'shashwath71845';
-          return {
-            id: s.id,
-            name: isShash ? '👑 Shashwath (Admin)' : s.fullName,
-            username: s.username,
-            studentClass: isShash ? 'School Admin' : `${s.class}-${s.section || 'A'}`,
-            avatarUrl: s.avatar,
-            // If Shashwath is looking, he can message everyone. If student is looking, Shashwath is in following.
-            isFollowing: isShashwath || isShash || s.class === current.class,
-          };
-        });
+  // Continuous background sync from cloud store (every 2.0s)
+  useEffect(() => {
+    const fetchLatestSync = async () => {
+      try {
+        const res = await fetch('/api/sync');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success) {
+            // 1. Merge incoming chat messages
+            if (data.chatMessages && typeof data.chatMessages === 'object') {
+              setChatMessages((prev) => {
+                const merged = { ...prev };
+                let hasNew = false;
+                for (const [key, list] of Object.entries(data.chatMessages)) {
+                  if (Array.isArray(list)) {
+                    const current = merged[key] || [];
+                    const existingIds = new Set(current.map((m: any) => m.id));
+                    const newOnes = (list as any[]).filter((m) => !existingIds.has(m.id));
+                    if (newOnes.length > 0) {
+                      merged[key] = [...current, ...newOnes];
+                      hasNew = true;
+                    }
+                  }
+                }
+                if (hasNew) {
+                  try {
+                    localStorage.setItem('dpsbuzz_chat_messages_v1', JSON.stringify(merged));
+                  } catch {}
+                  return merged;
+                }
+                return prev;
+              });
+            }
 
-      // Pin Shashwath to the very top for students
-      if (!isShashwath) {
-        formatted.sort((a, b) => {
-          if (a.username.toLowerCase() === 'shashwath71845') return -1;
-          if (b.username.toLowerCase() === 'shashwath71845') return 1;
-          return 0;
-        });
+            // 2. Merge incoming profiles so New Chat sheet immediately discovers all student accounts
+            if (Array.isArray(data.profiles) && data.profiles.length > 0) {
+              const localProfiles = DataStore.getProfiles();
+              const profileMap = new Map(localProfiles.map((p) => [p.username.toLowerCase(), p]));
+              let profChanged = false;
+              for (const p of data.profiles) {
+                if (p && p.username && !profileMap.has(p.username.toLowerCase())) {
+                  profileMap.set(p.username.toLowerCase(), p);
+                  profChanged = true;
+                }
+              }
+              if (profChanged) {
+                localStorage.setItem('dpsbuzz_profiles_v2', JSON.stringify(Array.from(profileMap.values())));
+                window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated'));
+              }
+            }
+          }
+        }
+      } catch {}
+    };
+
+    fetchLatestSync();
+    const interval = setInterval(fetchLatestSync, 2000);
+    return () => clearInterval(interval);
+  }, [currentUsername]);
+
+  // Auto-sync inbox conversations list from chatMessages
+  useEffect(() => {
+    if (!currentUsername) return;
+    const allProfiles = DataStore.getProfiles();
+
+    setConversations((prev) => {
+      let changed = false;
+      const updated = [...prev];
+
+      for (const [key, msgs] of Object.entries(chatMessages)) {
+        if (!Array.isArray(msgs) || msgs.length === 0) continue;
+        const lastMsg = msgs[msgs.length - 1];
+        if (!lastMsg) continue;
+
+        let targetUser = '';
+        if (key.includes('__')) {
+          const parts = key.split('__').map((p) => p.trim().toLowerCase());
+          if (parts.includes(currentUsername)) {
+            targetUser = parts.find((p) => p !== currentUsername) || '';
+          }
+        } else if (key.startsWith('conv-') && !key.startsWith('conv-group-')) {
+          const raw = key.replace(/^conv-/, '').toLowerCase();
+          if (raw !== currentUsername) {
+            targetUser = raw;
+          }
+        }
+
+        if (targetUser) {
+          const isMe = lastMsg.senderUsername
+            ? lastMsg.senderUsername.toLowerCase() === currentUsername
+            : lastMsg.sender === 'me';
+          const msgPreview = isMe ? `You: ${lastMsg.text}` : lastMsg.text;
+          const convIdx = updated.findIndex((c) => (c.username || '').toLowerCase() === targetUser);
+
+          if (convIdx >= 0) {
+            const existing = updated[convIdx];
+            if (existing.lastMessage !== msgPreview || existing.timeAgo !== (lastMsg.time || 'Just now')) {
+              updated[convIdx] = {
+                ...existing,
+                lastMessage: msgPreview,
+                timeAgo: lastMsg.time || 'Just now',
+                isUnread: activeConversation?.username?.toLowerCase() === targetUser ? false : (!isMe || existing.isUnread),
+              };
+              changed = true;
+            }
+          } else {
+            const prof = allProfiles.find((p) => (p.username || '').toLowerCase() === targetUser);
+            updated.unshift({
+              id: `conv-${targetUser}`,
+              name: prof ? prof.fullName : targetUser,
+              username: targetUser,
+              studentClass: prof ? `Class ${prof.class}-${prof.section || 'A'}` : 'Student',
+              avatar: prof?.avatar || null,
+              lastMessage: msgPreview,
+              timeAgo: lastMsg.time || 'Just now',
+              isUnread: !isMe,
+            });
+            changed = true;
+          }
+        }
       }
 
-      setLiveStudents(formatted);
-    } catch {
-      setLiveStudents([]);
-    }
-  }, []);
+      return changed ? updated : prev;
+    });
+  }, [chatMessages, currentUsername, activeConversation]);
 
   const liveFollowing = useMemo(() => liveStudents.filter((s) => s.isFollowing), [liveStudents]);
   const liveOthers = useMemo(() => liveStudents.filter((s) => !s.isFollowing), [liveStudents]);

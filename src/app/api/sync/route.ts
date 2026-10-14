@@ -3,7 +3,7 @@ import { getServerStore, saveServerStore } from '@/lib/serverStore';
 
 export async function GET() {
   try {
-    const store = getServerStore();
+    const store = await getServerStore();
     return NextResponse.json({
       success: true,
       posts: store.posts,
@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { posts, stories, profiles, comments, likes } = body;
-    const current = getServerStore();
+    const current = await getServerStore({ forceRefresh: true });
     const deletedIds = new Set(current.deletedPostIds || []);
 
     // Merge posts (keep unique by id, newest first, exclude deleted posts)
@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const updated = saveServerStore({
+    const updated = await saveServerStore({
       posts: mergedPosts,
       stories: mergedStories,
       profiles: mergedProfiles,

@@ -14,7 +14,7 @@ export async function POST(
       return NextResponse.json({ success: false, error: 'Username required' }, { status: 400 });
     }
 
-    const result = toggleServerLike(id, username);
+    const result = await toggleServerLike(id, username);
     return NextResponse.json({ success: true, ...result });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

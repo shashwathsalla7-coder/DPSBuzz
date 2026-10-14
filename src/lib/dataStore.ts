@@ -556,6 +556,26 @@ export const DataStore = {
       const data = await res.json();
       if (!data.success) return false;
 
+      // Push active user to cloud if not already registered on server
+      const activeUser = this.getCurrentUser();
+      if (
+        activeUser &&
+        activeUser.username &&
+        activeUser.username !== 'guest' &&
+        !DUMMY_TEST_USERNAMES.has(activeUser.username.toLowerCase())
+      ) {
+        const hasOnServer = Array.isArray(data.profiles) && data.profiles.some(
+          (p: any) => p.username?.toLowerCase() === activeUser.username.toLowerCase()
+        );
+        if (!hasOnServer) {
+          fetch('/api/auth/profile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ profile: activeUser }),
+          }).catch(() => {});
+        }
+      }
+
       let changed = false;
 
       // 1. Merge posts (exclude any permanently deleted posts)
@@ -674,6 +694,79 @@ export const DataStore = {
           }
         }
         setStorage(STORAGE_KEYS.CHAT_MESSAGES, mergedMessages);
+
+        // 7. Auto-update conversations list for any incoming messages
+        if (activeUser && activeUser.username) {
+          const myUser = activeUser.username.toLowerCase();
+          const savedConvs = getStorage<any[]>('dpsbuzz_chat_conversations_v2', []);
+          const updatedConvs = [...savedConvs];
+          let convsChanged = false;
+          const allProfilesList = getStorage<Profile[]>(STORAGE_KEYS.PROFILES, []);
+
+          for (const [key, list] of Object.entries(mergedMessages)) {
+            if (!Array.isArray(list) || list.length === 0) continue;
+            const lastMsg = list[list.length - 1];
+            if (!lastMsg) continue;
+
+            let otherUsername = '';
+            if (key.includes('__')) {
+              const parts = key.split('__').map((p) => p.trim().toLowerCase());
+              if (parts.includes(myUser)) {
+                otherUsername = parts.find((p) => p !== myUser) || '';
+              }
+            } else if (key.startsWith('conv-') && !key.startsWith('conv-group-')) {
+              const raw = key.replace(/^conv-/, '').toLowerCase();
+              if (raw !== myUser) {
+                otherUsername = raw;
+              }
+            }
+
+            if (otherUsername) {
+              const isMe = lastMsg.senderUsername
+                ? lastMsg.senderUsername.toLowerCase() === myUser
+                : lastMsg.sender === 'me';
+              const msgPreview = isMe ? `You: ${lastMsg.text}` : lastMsg.text;
+              const convIdx = updatedConvs.findIndex(
+                (c) => (c.username || '').toLowerCase() === otherUsername
+              );
+
+              if (convIdx >= 0) {
+                if (
+                  updatedConvs[convIdx].lastMessage !== msgPreview ||
+                  updatedConvs[convIdx].timeAgo !== (lastMsg.time || 'Just now')
+                ) {
+                  updatedConvs[convIdx] = {
+                    ...updatedConvs[convIdx],
+                    lastMessage: msgPreview,
+                    timeAgo: lastMsg.time || 'Just now',
+                    isUnread: !isMe,
+                  };
+                  convsChanged = true;
+                }
+              } else {
+                const prof = allProfilesList.find(
+                  (p) => (p.username || '').toLowerCase() === otherUsername
+                );
+                updatedConvs.unshift({
+                  id: `conv-${otherUsername}`,
+                  name: prof ? prof.fullName : otherUsername,
+                  username: otherUsername,
+                  studentClass: prof ? `Class ${prof.class}-${prof.section || 'A'}` : 'Student',
+                  avatar: prof?.avatar || null,
+                  lastMessage: msgPreview,
+                  timeAgo: lastMsg.time || 'Just now',
+                  isUnread: !isMe,
+                });
+                convsChanged = true;
+              }
+            }
+          }
+
+          if (convsChanged) {
+            setStorage('dpsbuzz_chat_conversations_v2', updatedConvs);
+            changed = true;
+          }
+        }
       }
 
       if (changed) {

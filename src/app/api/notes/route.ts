@@ -3,7 +3,7 @@ import { getServerStore, addServerChatNote, deleteServerChatNote } from '@/lib/s
 
 export async function GET() {
   try {
-    const store = getServerStore();
+    const store = await getServerStore();
     return NextResponse.json({ success: true, notes: store.chatNotes });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Invalid note payload' }, { status: 400 });
     }
 
-    const updated = addServerChatNote(note);
+    const updated = await addServerChatNote(note);
     return NextResponse.json({ success: true, note, totalNotes: updated.chatNotes.length });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -35,7 +35,7 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Username required' }, { status: 400 });
     }
 
-    const updated = deleteServerChatNote(username);
+    const updated = await deleteServerChatNote(username);
     return NextResponse.json({ success: true, totalNotes: updated.chatNotes.length });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

@@ -1,3 +1,4 @@
+import { v2 as cloudinary } from 'cloudinary';
 import fs from 'fs';
 import path from 'path';
 import type { Post, Story, Profile, ChatNote, Notice } from './dataStore';
@@ -15,8 +16,20 @@ export interface ServerStoreData {
   lastUpdated: number;
 }
 
+const CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME || 'ogfaxmjw';
+const API_KEY = process.env.CLOUDINARY_API_KEY || '585871931796836';
+const API_SECRET = process.env.CLOUDINARY_API_SECRET || 'Fpudf-0uhRPjKpFdmQzOiXZTh1M';
+
+cloudinary.config({
+  cloud_name: CLOUD_NAME,
+  api_key: API_KEY,
+  api_secret: API_SECRET,
+  secure: true,
+});
+
 const DATA_DIR = path.join(process.cwd(), 'data');
 const STORE_FILE = path.join(DATA_DIR, 'server_store.json');
+const CLOUD_STORE_PUBLIC_ID = 'dpsbuzz_store.json';
 
 const DEFAULT_ADMIN: Profile = {
   id: 'admin-shashwath-id',
@@ -36,119 +49,191 @@ const DEFAULT_ADMIN: Profile = {
   createdAt: '2026-10-01T00:00:00.000Z',
 };
 
+function createInitialStore(): ServerStoreData {
+  return {
+    posts: [],
+    stories: [],
+    profiles: [DEFAULT_ADMIN],
+    chatNotes: [],
+    chatMessages: {},
+    comments: {},
+    likes: {},
+    notices: [],
+    deletedPostIds: [],
+    lastUpdated: Date.now(),
+  };
+}
+
+let memoryCache: ServerStoreData | null = null;
+let lastFetchTime = 0;
+const CACHE_TTL_MS = 1500; // 1.5 seconds TTL for rapid serverless polling
+
 function ensureDataDirectory(): void {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
-  }
-}
-
-export function getServerStore(): ServerStoreData {
-  ensureDataDirectory();
-  if (!fs.existsSync(STORE_FILE)) {
-    const initialData: ServerStoreData = {
-      posts: [],
-      stories: [],
-      profiles: [DEFAULT_ADMIN],
-      chatNotes: [],
-      chatMessages: {},
-      comments: {},
-      likes: {},
-      notices: [],
-      lastUpdated: Date.now(),
-    };
-    try {
-      fs.writeFileSync(STORE_FILE, JSON.stringify(initialData, null, 2), 'utf-8');
-    } catch (e) {
-      console.error('Error initializing server store file:', e);
-    }
-    return initialData;
-  }
-
   try {
-    const content = fs.readFileSync(STORE_FILE, 'utf-8');
-    const parsed = JSON.parse(content) as ServerStoreData;
-    if (!parsed.posts) parsed.posts = [];
-    if (!parsed.stories) parsed.stories = [];
-    if (!parsed.profiles) parsed.profiles = [DEFAULT_ADMIN];
-    if (!parsed.chatNotes) parsed.chatNotes = [];
-    if (!parsed.chatMessages) parsed.chatMessages = {};
-    if (!parsed.comments) parsed.comments = {};
-    if (!parsed.likes) parsed.likes = {};
-    if (!parsed.deletedPostIds) parsed.deletedPostIds = [];
-    return parsed;
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+  } catch {}
+}
+
+function normalizeStore(parsed: any): ServerStoreData {
+  if (!parsed || typeof parsed !== 'object') {
+    return createInitialStore();
+  }
+  return {
+    posts: Array.isArray(parsed.posts) ? parsed.posts : [],
+    stories: Array.isArray(parsed.stories) ? parsed.stories : [],
+    profiles: Array.isArray(parsed.profiles) && parsed.profiles.length > 0 ? parsed.profiles : [DEFAULT_ADMIN],
+    chatNotes: Array.isArray(parsed.chatNotes) ? parsed.chatNotes : [],
+    chatMessages: parsed.chatMessages && typeof parsed.chatMessages === 'object' ? parsed.chatMessages : {},
+    comments: parsed.comments && typeof parsed.comments === 'object' ? parsed.comments : {},
+    likes: parsed.likes && typeof parsed.likes === 'object' ? parsed.likes : {},
+    notices: Array.isArray(parsed.notices) ? parsed.notices : [],
+    deletedPostIds: Array.isArray(parsed.deletedPostIds) ? parsed.deletedPostIds : [],
+    lastUpdated: typeof parsed.lastUpdated === 'number' ? parsed.lastUpdated : Date.now(),
+  };
+}
+
+function readLocalStore(): ServerStoreData | null {
+  try {
+    if (fs.existsSync(STORE_FILE)) {
+      const content = fs.readFileSync(STORE_FILE, 'utf-8');
+      return normalizeStore(JSON.parse(content));
+    }
+  } catch {}
+  return null;
+}
+
+function writeLocalStore(data: ServerStoreData): void {
+  try {
+    ensureDataDirectory();
+    fs.writeFileSync(STORE_FILE, JSON.stringify(data, null, 2), 'utf-8');
+  } catch {}
+}
+
+async function fetchCloudStore(): Promise<ServerStoreData | null> {
+  try {
+    const url = `https://res.cloudinary.com/${CLOUD_NAME}/raw/upload/${CLOUD_STORE_PUBLIC_ID}?t=${Date.now()}`;
+    const res = await fetch(url, { cache: 'no-store' });
+    if (res.ok) {
+      const data = await res.json();
+      return normalizeStore(data);
+    }
   } catch (e) {
-    console.error('Error reading server store file:', e);
-    return {
-      posts: [],
-      stories: [],
-      profiles: [DEFAULT_ADMIN],
-      chatNotes: [],
-      chatMessages: {},
-      comments: {},
-      likes: {},
-      notices: [],
-      deletedPostIds: [],
-      lastUpdated: Date.now(),
-    };
+    console.warn('Could not read store from Cloudinary raw storage:', e);
+  }
+  return null;
+}
+
+async function uploadCloudStore(data: ServerStoreData): Promise<void> {
+  try {
+    const jsonStr = JSON.stringify(data);
+    const base64Data = 'data:application/json;base64,' + Buffer.from(jsonStr).toString('base64');
+    await cloudinary.uploader.upload(base64Data, {
+      resource_type: 'raw',
+      public_id: CLOUD_STORE_PUBLIC_ID,
+      overwrite: true,
+      invalidate: true,
+    });
+  } catch (e) {
+    console.error('Error uploading store to Cloudinary:', e);
   }
 }
 
-export function saveServerStore(data: Partial<ServerStoreData>): ServerStoreData {
-  ensureDataDirectory();
-  const current = getServerStore();
+export async function getServerStore(options?: { forceRefresh?: boolean }): Promise<ServerStoreData> {
+  const now = Date.now();
+  if (!options?.forceRefresh && memoryCache && (now - lastFetchTime < CACHE_TTL_MS)) {
+    return memoryCache;
+  }
+
+  // 1. Fetch from Cloudinary
+  const cloudData = await fetchCloudStore();
+  if (cloudData) {
+    memoryCache = cloudData;
+    lastFetchTime = Date.now();
+    writeLocalStore(cloudData);
+    return memoryCache;
+  }
+
+  // 2. Fall back to local file if available
+  const localData = readLocalStore();
+  if (localData) {
+    memoryCache = localData;
+    lastFetchTime = Date.now();
+    return memoryCache;
+  }
+
+  // 3. Fall back to memoryCache or default
+  if (!memoryCache) {
+    memoryCache = createInitialStore();
+    lastFetchTime = Date.now();
+    writeLocalStore(memoryCache);
+    uploadCloudStore(memoryCache).catch(() => {});
+  }
+
+  return memoryCache;
+}
+
+export function getServerStoreSync(): ServerStoreData {
+  if (memoryCache) return memoryCache;
+  const local = readLocalStore();
+  if (local) {
+    memoryCache = local;
+    return local;
+  }
+  return createInitialStore();
+}
+
+export async function saveServerStore(data: Partial<ServerStoreData>): Promise<ServerStoreData> {
+  const current = await getServerStore({ forceRefresh: true });
   const updated: ServerStoreData = {
     ...current,
     ...data,
     lastUpdated: Date.now(),
   };
 
-  try {
-    fs.writeFileSync(STORE_FILE, JSON.stringify(updated, null, 2), 'utf-8');
-  } catch (e) {
-    console.error('Error writing server store file:', e);
-  }
+  memoryCache = updated;
+  lastFetchTime = Date.now();
+
+  writeLocalStore(updated);
+  await uploadCloudStore(updated);
 
   return updated;
 }
 
-export function addServerPost(post: Post): ServerStoreData {
-  const current = getServerStore();
+export async function addServerPost(post: Post): Promise<ServerStoreData> {
+  const current = await getServerStore({ forceRefresh: true });
   if (current.deletedPostIds && current.deletedPostIds.includes(post.id)) {
     return current;
   }
-  // Filter out any existing post with same ID
   const filtered = current.posts.filter((p) => p.id !== post.id);
   filtered.unshift(post);
 
-  // Update profile post count
   const updatedProfiles = current.profiles.map((p) =>
     p.username.toLowerCase() === post.username.toLowerCase()
       ? { ...p, postCount: (p.postCount || 0) + 1 }
       : p
   );
 
-  return saveServerStore({
+  return await saveServerStore({
     posts: filtered,
     profiles: updatedProfiles,
   });
 }
 
-export function deleteServerPost(postId: string): ServerStoreData {
-  const current = getServerStore();
+export async function deleteServerPost(postId: string): Promise<ServerStoreData> {
+  const current = await getServerStore({ forceRefresh: true });
   const deletedPost = current.posts.find((p) => p.id === postId);
   const filtered = current.posts.filter((p) => p.id !== postId);
 
-  // Keep a permanent record of deleted post IDs so sync can never resurrect it
   const deletedIds = new Set(current.deletedPostIds || []);
   deletedIds.add(postId);
 
-  // Clean up likes and comments
   const updatedLikes = { ...current.likes };
   delete updatedLikes[postId];
   const updatedComments = { ...current.comments };
   delete updatedComments[postId];
 
-  // Update profile post count if found
   let updatedProfiles = current.profiles;
   if (deletedPost) {
     updatedProfiles = current.profiles.map((p) =>
@@ -158,7 +243,7 @@ export function deleteServerPost(postId: string): ServerStoreData {
     );
   }
 
-  return saveServerStore({
+  return await saveServerStore({
     posts: filtered,
     likes: updatedLikes,
     comments: updatedComments,
@@ -167,23 +252,23 @@ export function deleteServerPost(postId: string): ServerStoreData {
   });
 }
 
-export function addServerStory(story: Story): ServerStoreData {
-  const current = getServerStore();
+export async function addServerStory(story: Story): Promise<ServerStoreData> {
+  const current = await getServerStore({ forceRefresh: true });
   const filtered = current.stories.filter((s) => s.id !== story.id);
   filtered.unshift(story);
-  return saveServerStore({ stories: filtered });
+  return await saveServerStore({ stories: filtered });
 }
 
-export function upsertServerProfile(profile: Profile): ServerStoreData {
-  const current = getServerStore();
+export async function upsertServerProfile(profile: Profile): Promise<ServerStoreData> {
+  const current = await getServerStore({ forceRefresh: true });
   const clean = profile.username.toLowerCase().trim();
   const filtered = current.profiles.filter((p) => p.username.toLowerCase().trim() !== clean);
   filtered.unshift(profile);
-  return saveServerStore({ profiles: filtered });
+  return await saveServerStore({ profiles: filtered });
 }
 
-export function toggleServerLike(postId: string, username: string): { isLiked: boolean; likesCount: number } {
-  const current = getServerStore();
+export async function toggleServerLike(postId: string, username: string): Promise<{ isLiked: boolean; likesCount: number }> {
+  const current = await getServerStore({ forceRefresh: true });
   const cleanUser = username.toLowerCase().trim();
   const currentLikes = current.likes[postId] || [];
   const hasLiked = currentLikes.includes(cleanUser);
@@ -202,7 +287,7 @@ export function toggleServerLike(postId: string, username: string): { isLiked: b
     return p;
   });
 
-  saveServerStore({
+  await saveServerStore({
     likes: { ...current.likes, [postId]: nextLikes },
     posts: updatedPosts,
   });
@@ -210,11 +295,11 @@ export function toggleServerLike(postId: string, username: string): { isLiked: b
   return { isLiked: !hasLiked, likesCount: nextLikes.length };
 }
 
-export function addServerComment(
+export async function addServerComment(
   postId: string,
   comment: { id: string; username: string; text: string; timeAgo: string }
-): ServerStoreData {
-  const current = getServerStore();
+): Promise<ServerStoreData> {
+  const current = await getServerStore({ forceRefresh: true });
   const existingComments = current.comments[postId] || [];
   const updatedComments = [...existingComments, comment];
 
@@ -225,43 +310,74 @@ export function addServerComment(
     return p;
   });
 
-  return saveServerStore({
+  return await saveServerStore({
     comments: { ...current.comments, [postId]: updatedComments },
     posts: updatedPosts,
   });
 }
 
-export function addServerChatMessage(
+export async function addServerChatMessage(
   conversationId: string,
   message: { id: string; conversationId?: string; text: string; sender: 'me' | 'them'; senderUsername?: string; time: string; createdAt?: string }
-): ServerStoreData {
-  const current = getServerStore();
-  const existing = current.chatMessages[conversationId] || [];
-  const filtered = existing.filter((m) => m.id !== message.id);
-  filtered.push(message);
+): Promise<ServerStoreData> {
+  const current = await getServerStore({ forceRefresh: true });
+  
+  // Normalize canonical ID if possible (e.g. userA__userB sorted)
+  let targetKey = conversationId;
+  if (conversationId.includes('__')) {
+    const parts = conversationId.split('__').map((p) => p.trim().toLowerCase());
+    targetKey = parts.sort().join('__');
+  }
 
-  return saveServerStore({
-    chatMessages: { ...current.chatMessages, [conversationId]: filtered },
+  const existing = current.chatMessages[targetKey] || current.chatMessages[conversationId] || [];
+  const filtered = existing.filter((m) => m.id !== message.id);
+  filtered.push({ ...message, conversationId: targetKey });
+
+  const updatedChatMessages = {
+    ...current.chatMessages,
+    [targetKey]: filtered,
+  };
+  // Also store under conversationId if different
+  if (targetKey !== conversationId) {
+    updatedChatMessages[conversationId] = filtered;
+  }
+
+  return await saveServerStore({
+    chatMessages: updatedChatMessages,
   });
 }
 
-export function getServerChatMessages(conversationId: string): any[] {
-  const current = getServerStore();
-  return current.chatMessages[conversationId] || [];
+export async function getServerChatMessages(conversationId: string): Promise<any[]> {
+  const current = await getServerStore();
+  if (current.chatMessages[conversationId]) {
+    return current.chatMessages[conversationId];
+  }
+  if (conversationId.includes('__')) {
+    const parts = conversationId.split('__').map((p) => p.trim().toLowerCase());
+    const canonicalKey = parts.sort().join('__');
+    if (current.chatMessages[canonicalKey]) {
+      return current.chatMessages[canonicalKey];
+    }
+    const reversedKey = [parts[1], parts[0]].join('__');
+    if (current.chatMessages[reversedKey]) {
+      return current.chatMessages[reversedKey];
+    }
+  }
+  return [];
 }
 
-export function addServerChatNote(note: ChatNote): ServerStoreData {
-  const current = getServerStore();
+export async function addServerChatNote(note: ChatNote): Promise<ServerStoreData> {
+  const current = await getServerStore({ forceRefresh: true });
   const filtered = current.chatNotes.filter(
     (n) => n.username.toLowerCase() !== note.username.toLowerCase()
   );
   filtered.unshift(note);
-  return saveServerStore({ chatNotes: filtered });
+  return await saveServerStore({ chatNotes: filtered });
 }
 
-export function deleteServerChatNote(username: string): ServerStoreData {
-  const current = getServerStore();
+export async function deleteServerChatNote(username: string): Promise<ServerStoreData> {
+  const current = await getServerStore({ forceRefresh: true });
   const clean = username.toLowerCase().trim();
   const filtered = current.chatNotes.filter((n) => n.username.toLowerCase() !== clean);
-  return saveServerStore({ chatNotes: filtered });
+  return await saveServerStore({ chatNotes: filtered });
 }

@@ -5,7 +5,7 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const username = searchParams.get('username')?.toLowerCase()?.trim();
-    const store = getServerStore();
+    const store = await getServerStore();
 
     if (!username) {
       return NextResponse.json({ success: true, profiles: store.profiles });
@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Invalid profile object' }, { status: 400 });
     }
 
-    upsertServerProfile(profile);
+    await upsertServerProfile(profile);
     return NextResponse.json({ success: true, profile });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

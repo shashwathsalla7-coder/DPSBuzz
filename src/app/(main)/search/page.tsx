@@ -88,9 +88,17 @@ function SearchContent() {
     };
 
     loadData();
+
+    // Pull accounts and content from persistent cloud store on mount and periodically
+    DataStore.syncWithServer().then(() => loadData()).catch(() => {});
+    const syncInterval = setInterval(() => {
+      DataStore.syncWithServer().then(() => loadData()).catch(() => {});
+    }, 4000);
+
     window.addEventListener('dpsbuzz:content_updated', loadData);
     window.addEventListener('storage', loadData);
     return () => {
+      clearInterval(syncInterval);
       window.removeEventListener('dpsbuzz:content_updated', loadData);
       window.removeEventListener('storage', loadData);
     };
