@@ -28,6 +28,10 @@ import {
   Trash2,
   Phone,
   Video,
+  Pin,
+  ArrowUp,
+  ArrowDown,
+  GripVertical,
 } from 'lucide-react';
 import Link from 'next/link';
 import { DataStore, type Profile, type HabitStreak, type SongTrack, type Post } from '@/lib/dataStore';
@@ -129,6 +133,8 @@ export default function ProfileClient({ username }: { username: string }) {
   const [editClass, setEditClass] = useState(initialProfile.class || '8');
   const [editSection, setEditSection] = useState(initialProfile.section || 'A');
   const [editAvatar, setEditAvatar] = useState<string | null>(initialProfile.avatar || null);
+  const [isRearrangeMode, setIsRearrangeMode] = useState(false);
+  const [draggedPostId, setDraggedPostId] = useState<string | null>(null);
   const profilePhotoInputRef = useRef<HTMLInputElement>(null);
 
   const showToast = (msg: string) => {
@@ -272,18 +278,30 @@ export default function ProfileClient({ username }: { username: string }) {
   const pair = getAvatarColorPair(profile.username);
   const isOfficial = profile.username.toLowerCase() === 'dpsbuzz_official';
 
-  const originalPosts = useMemo(() => {
-    const list = DataStore.getPosts(true).filter(
+  const rawOriginalPosts = useMemo(() => {
+    return DataStore.getPosts(true).filter(
       (p) => p.username.toLowerCase() === profile.username.toLowerCase() && !p.isRepost
     );
-    return [...list].sort((a, b) => {
-      if (a.timeAgo === 'Just now' || a.id.startsWith('post-')) return -1;
-      if (b.timeAgo === 'Just now' || b.id.startsWith('post-')) return 1;
-      const timeA = new Date(a.createdAt || 0).getTime();
-      const timeB = new Date(b.createdAt || 0).getTime();
-      return timeB - timeA;
-    });
   }, [profile.username, postsVersion]);
+
+  const originalPosts = useMemo(() => {
+    return DataStore.getOrderedUserPosts(profile.username, rawOriginalPosts);
+  }, [profile.username, rawOriginalPosts, postsVersion]);
+
+  const handleTogglePin = (postId: string) => {
+    const res = DataStore.togglePinPost(profile.username, postId);
+    setPostsVersion((v) => v + 1);
+    showToast(res.isPinned ? 'Post pinned to your profile! 📌' : 'Post unpinned from your profile 📌');
+  };
+
+  const handleMovePost = (fromIndex: number, toIndex: number) => {
+    if (toIndex < 0 || toIndex >= originalPosts.length) return;
+    const currentIds = originalPosts.map((p) => p.id);
+    const [movedId] = currentIds.splice(fromIndex, 1);
+    currentIds.splice(toIndex, 0, movedId);
+    DataStore.setProfileGridOrder(profile.username, currentIds);
+    setPostsVersion((v) => v + 1);
+  };
 
   const repostPosts = useMemo(() => {
     const list = DataStore.getRepostsByUser(profile.username);
@@ -840,72 +858,198 @@ export default function ProfileClient({ username }: { username: string }) {
 
       {/* Grid Tab Bar */}
       <div
-        className="flex border-t border-b mt-2 max-w-[480px] mx-auto"
+        className="flex items-center justify-between border-t border-b mt-2 max-w-[480px] mx-auto px-1"
         style={{
           borderColor: 'var(--line)',
         }}
       >
-        <button
-          onClick={() => setActiveTab('posts')}
-          className="flex-1 py-3 flex items-center justify-center btn-press border-b-2 cursor-pointer gap-1.5"
-          style={{
-            borderColor: activeTab === 'posts' ? 'var(--text)' : 'transparent',
-            color: activeTab === 'posts' ? 'var(--text)' : 'var(--text-muted)',
-          }}
-          aria-label="Posts tab"
-        >
-          <Grid3X3 size={19} />
-          <span className="text-[11px] font-semibold">Posts</span>
-        </button>
-        <button
-          onClick={() => setActiveTab('reposts')}
-          className="flex-1 py-3 flex items-center justify-center btn-press border-b-2 cursor-pointer gap-1.5"
-          style={{
-            borderColor: activeTab === 'reposts' ? 'var(--primary)' : 'transparent',
-            color: activeTab === 'reposts' ? 'var(--primary)' : 'var(--text-muted)',
-          }}
-          aria-label="Reposts tab"
-        >
-          <Repeat2 size={19} />
-          <span className="text-[11px] font-semibold">Reposts</span>
-          {repostPosts.length > 0 && (
-            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-pink-500/20 text-pink-500 font-bold tabular-nums">
-              {repostPosts.length}
-            </span>
-          )}
-        </button>
-        <button
-          onClick={() => setActiveTab('saved')}
-          className="flex-1 py-3 flex items-center justify-center btn-press border-b-2 cursor-pointer gap-1.5"
-          style={{
-            borderColor: activeTab === 'saved' ? 'var(--text)' : 'transparent',
-            color: activeTab === 'saved' ? 'var(--text)' : 'var(--text-muted)',
-          }}
-          aria-label="Saved tab"
-        >
-          <Bookmark size={19} />
-          <span className="text-[11px] font-semibold">Saved</span>
-          {savedPosts.length > 0 && (
-            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-500 font-bold tabular-nums">
-              {savedPosts.length}
-            </span>
-          )}
-        </button>
+        <div className="flex flex-1">
+          <button
+            onClick={() => setActiveTab('posts')}
+            className="flex-1 py-3 flex items-center justify-center btn-press border-b-2 cursor-pointer gap-1.5"
+            style={{
+              borderColor: activeTab === 'posts' ? 'var(--text)' : 'transparent',
+              color: activeTab === 'posts' ? 'var(--text)' : 'var(--text-muted)',
+            }}
+            aria-label="Posts tab"
+          >
+            <Grid3X3 size={19} />
+            <span className="text-[11px] font-semibold">Posts</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('reposts')}
+            className="flex-1 py-3 flex items-center justify-center btn-press border-b-2 cursor-pointer gap-1.5"
+            style={{
+              borderColor: activeTab === 'reposts' ? 'var(--primary)' : 'transparent',
+              color: activeTab === 'reposts' ? 'var(--primary)' : 'var(--text-muted)',
+            }}
+            aria-label="Reposts tab"
+          >
+            <Repeat2 size={19} />
+            <span className="text-[11px] font-semibold">Reposts</span>
+            {repostPosts.length > 0 && (
+              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-pink-500/20 text-pink-500 font-bold tabular-nums">
+                {repostPosts.length}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => setActiveTab('saved')}
+            className="flex-1 py-3 flex items-center justify-center btn-press border-b-2 cursor-pointer gap-1.5"
+            style={{
+              borderColor: activeTab === 'saved' ? 'var(--text)' : 'transparent',
+              color: activeTab === 'saved' ? 'var(--text)' : 'var(--text-muted)',
+            }}
+            aria-label="Saved tab"
+          >
+            <Bookmark size={19} />
+            <span className="text-[11px] font-semibold">Saved</span>
+            {savedPosts.length > 0 && (
+              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-500 font-bold tabular-nums">
+                {savedPosts.length}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* Edit Grid / Rearrange Toggle Button */}
+        {isOwnProfile && activeTab === 'posts' && originalPosts.length > 1 && (
+          <button
+            type="button"
+            onClick={() => setIsRearrangeMode((prev) => !prev)}
+            className={`text-xs font-semibold px-2.5 py-1 rounded-full border transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
+              isRearrangeMode
+                ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                : 'bg-[var(--surface-sunken)] text-[var(--text-muted)] hover:text-[var(--text)] border-[var(--line)]'
+            }`}
+            title={isRearrangeMode ? 'Finish rearranging' : 'Rearrange posts on your profile'}
+          >
+            <GripVertical size={13} />
+            <span>{isRearrangeMode ? 'Done' : 'Edit Grid'}</span>
+          </button>
+        )}
       </div>
+
+      {/* Rearrange Mode Instructions Banner */}
+      {isRearrangeMode && (
+        <div className="max-w-[480px] mx-auto px-3 py-2 my-1 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-xs flex items-center justify-between gap-2 animate-fade-in">
+          <div className="flex items-center gap-1.5 text-blue-400">
+            <Sparkles size={14} className="shrink-0" />
+            <span className="font-medium text-[11px] leading-tight">
+              Rearrange mode: Tap ◀ ▶ or drag posts to reorder. Pinned posts stay first.
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsRearrangeMode(false)}
+            className="px-2.5 py-1 rounded-full bg-blue-600 hover:bg-blue-500 text-white font-bold text-[11px] shrink-0 cursor-pointer shadow-xs"
+          >
+            Done
+          </button>
+        </div>
+      )}
 
       {/* Posts Grid */}
       <div className="max-w-[480px] mx-auto px-1 py-2">
         {activeTab === 'posts' ? (
           originalPosts.length > 0 ? (
             <div className="grid grid-cols-3 gap-1.5">
-              {originalPosts.map((post) => {
+              {originalPosts.map((post, postIdx) => {
                 const displayImg = post.imageUrl || (post.images && post.images.length > 0 ? post.images[0] : null);
+
+                if (isRearrangeMode) {
+                  return (
+                    <div
+                      key={post.id}
+                      draggable
+                      onDragStart={() => setDraggedPostId(post.id)}
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={() => {
+                        if (draggedPostId && draggedPostId !== post.id) {
+                          const fromIdx = originalPosts.findIndex((p) => p.id === draggedPostId);
+                          const toIdx = postIdx;
+                          handleMovePost(fromIdx, toIdx);
+                          setDraggedPostId(null);
+                        }
+                      }}
+                      className="aspect-square relative overflow-hidden rounded-[16px] bg-[var(--surface-sunken)] p-1.5 flex flex-col justify-between border-2 border-dashed border-blue-500/50 shadow-sm select-none"
+                    >
+                      {displayImg && (
+                        <img
+                          src={displayImg}
+                          alt={post.caption}
+                          className="absolute inset-0 w-full h-full object-cover opacity-50"
+                        />
+                      )}
+
+                      {/* Top badge row: order number + Pin toggle */}
+                      <div className="relative z-10 flex items-center justify-between w-full">
+                        <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-bold flex items-center justify-center shadow-xs">
+                          {postIdx + 1}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleTogglePin(post.id);
+                          }}
+                          className={`p-1 rounded-full text-xs cursor-pointer shadow-xs ${
+                            post.isPinned
+                              ? 'bg-amber-500 text-black font-bold'
+                              : 'bg-black/60 text-white hover:bg-black/80'
+                          }`}
+                          title={post.isPinned ? 'Unpin post' : 'Pin to top of profile'}
+                        >
+                          <Pin size={11} className={post.isPinned ? 'fill-black rotate-45' : 'rotate-45'} />
+                        </button>
+                      </div>
+
+                      {/* Bottom row: ◀ and ▶ movement buttons */}
+                      <div className="relative z-10 flex items-center justify-center gap-2 py-0.5">
+                        <button
+                          type="button"
+                          disabled={postIdx === 0}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleMovePost(postIdx, postIdx - 1);
+                          }}
+                          className="w-7 h-7 rounded-full bg-black/80 hover:bg-black text-white flex items-center justify-center disabled:opacity-25 cursor-pointer shadow-md text-xs font-bold"
+                          title="Move earlier"
+                        >
+                          ◀
+                        </button>
+                        <button
+                          type="button"
+                          disabled={postIdx === originalPosts.length - 1}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleMovePost(postIdx, postIdx + 1);
+                          }}
+                          className="w-7 h-7 rounded-full bg-black/80 hover:bg-black text-white flex items-center justify-center disabled:opacity-25 cursor-pointer shadow-md text-xs font-bold"
+                          title="Move later"
+                        >
+                          ▶
+                        </button>
+                      </div>
+                    </div>
+                  );
+                }
+
                 return (
                   <div
                     key={post.id}
                     onClick={() => setSelectedPostDetail(post)}
                     className="aspect-square relative overflow-hidden rounded-[16px] bg-[var(--surface-sunken)] cursor-pointer group border border-[var(--line)] shadow-2xs"
                   >
+                    {/* Instagram-style Top Right Pin Icon Badge */}
+                    {post.isPinned && (
+                      <div
+                        className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/65 backdrop-blur-xs flex items-center justify-center text-white shadow-xs z-10"
+                        title={`Pinned post #${post.pinnedIndex || 1}`}
+                      >
+                        <Pin size={11} className="fill-white rotate-45 text-white" />
+                      </div>
+                    )}
                     {displayImg ? (
                       <img
                         src={displayImg}
@@ -1087,6 +1231,11 @@ export default function ProfileClient({ username }: { username: string }) {
                     <span className="text-xs font-bold" style={{ color: 'var(--text)' }}>
                       {selectedPostDetail.username}
                     </span>
+                    {DataStore.isPostPinned(selectedPostDetail.username, selectedPostDetail.id) && (
+                      <span className="text-[10px] font-bold text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+                        <Pin size={10} className="fill-amber-500 rotate-45" /> Pinned
+                      </span>
+                    )}
                     {selectedPostDetail.isRepost && (
                       <span className="text-[10px] font-bold text-pink-500 bg-pink-500/10 px-1.5 py-0.2 rounded-full flex items-center gap-0.5">
                         <Repeat2 size={10} /> Repost
@@ -1099,6 +1248,27 @@ export default function ProfileClient({ username }: { username: string }) {
                 </div>
               </div>
               <div className="flex items-center gap-1">
+                {/* Pin / Unpin button for profile owner (regular posts only) */}
+                {isOwnProfile && !selectedPostDetail.isRepost && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleTogglePin(selectedPostDetail.id);
+                    }}
+                    className={`p-1.5 rounded-full transition-colors cursor-pointer ${
+                      DataStore.isPostPinned(profile.username, selectedPostDetail.id)
+                        ? 'text-amber-500 bg-amber-500/10 hover:bg-amber-500/20'
+                        : 'text-[var(--text-muted)] hover:text-amber-500 hover:bg-[var(--surface-sunken)]'
+                    }`}
+                    aria-label={DataStore.isPostPinned(profile.username, selectedPostDetail.id) ? 'Unpin post' : 'Pin post to profile'}
+                    title={DataStore.isPostPinned(profile.username, selectedPostDetail.id) ? 'Unpin post' : 'Pin post to profile'}
+                  >
+                    <Pin
+                      size={18}
+                      className={DataStore.isPostPinned(profile.username, selectedPostDetail.id) ? 'fill-amber-500 rotate-45' : ''}
+                    />
+                  </button>
+                )}
                 {(() => {
                   const cur = DataStore.getCurrentUser();
                   const canDelete = cur && (

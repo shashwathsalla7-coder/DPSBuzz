@@ -89,6 +89,8 @@ export interface Post {
     avatar?: string | null;
     caption?: string;
   };
+  isPinned?: boolean;
+  pinnedIndex?: number;
 }
 
 export interface HabitStreak {
@@ -385,6 +387,8 @@ const STORAGE_KEYS = {
   MAINTENANCE_DATES: 'dpsbuzz_maintenance_dates_v1',
   MAINTENANCE_MODE: 'dpsbuzz_maintenance_mode_v1',
   SAVED_POSTS: 'dpsbuzz_saved_posts_v1',
+  PINNED_POSTS: 'dpsbuzz_pinned_posts_v1',
+  GRID_ORDER: 'dpsbuzz_grid_order_v1',
 };
 
 function getStorage<T>(key: string, defaultValue: T): T {
@@ -1286,6 +1290,113 @@ export const DataStore = {
         Boolean(p.isRepost) &&
         (p.id === postId || p.repostedFrom?.postId === postId)
     );
+  },
+
+  // ==========================================
+  // PINNED POSTS & CUSTOM PROFILE GRID REORDERING
+  // ==========================================
+  getPinnedPostIds(username: string): string[] {
+    const clean = (username || '').toLowerCase().trim();
+    if (!clean) return [];
+    const map = getStorage<Record<string, string[]>>(STORAGE_KEYS.PINNED_POSTS, {});
+    return Array.isArray(map[clean]) ? map[clean] : [];
+  },
+
+  isPostPinned(username: string, postId: string): boolean {
+    const pinned = this.getPinnedPostIds(username);
+    return pinned.includes(postId);
+  },
+
+  togglePinPost(username: string, postId: string): { isPinned: boolean; pinnedIds: string[] } {
+    const clean = (username || '').toLowerCase().trim();
+    if (!clean || !postId) return { isPinned: false, pinnedIds: [] };
+    const map = getStorage<Record<string, string[]>>(STORAGE_KEYS.PINNED_POSTS, {});
+    const currentList = Array.isArray(map[clean]) ? [...map[clean]] : [];
+    const existingIndex = currentList.indexOf(postId);
+    let isPinned = false;
+
+    if (existingIndex !== -1) {
+      // Unpin: remove from pinned list. Remaining pinned posts naturally shift up!
+      currentList.splice(existingIndex, 1);
+      isPinned = false;
+    } else {
+      // Pin: append to pinned list (1st pin = #1, 2nd pin = #2, etc.)
+      currentList.push(postId);
+      isPinned = true;
+    }
+
+    map[clean] = currentList;
+    setStorage(STORAGE_KEYS.PINNED_POSTS, map);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated'));
+    }
+    return { isPinned, pinnedIds: currentList };
+  },
+
+  getProfileGridOrder(username: string): string[] {
+    const clean = (username || '').toLowerCase().trim();
+    if (!clean) return [];
+    const map = getStorage<Record<string, string[]>>(STORAGE_KEYS.GRID_ORDER, {});
+    return Array.isArray(map[clean]) ? map[clean] : [];
+  },
+
+  setProfileGridOrder(username: string, orderedIds: string[]): void {
+    const clean = (username || '').toLowerCase().trim();
+    if (!clean) return;
+    const map = getStorage<Record<string, string[]>>(STORAGE_KEYS.GRID_ORDER, {});
+    map[clean] = orderedIds;
+    setStorage(STORAGE_KEYS.GRID_ORDER, map);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated'));
+    }
+  },
+
+  getOrderedUserPosts(username: string, basePosts: Post[]): Post[] {
+    const clean = (username || '').toLowerCase().trim();
+    if (!clean || !basePosts || basePosts.length === 0) return basePosts || [];
+
+    const pinnedIds = this.getPinnedPostIds(clean);
+    const customOrder = this.getProfileGridOrder(clean);
+
+    // 1. Separate pinned posts
+    const pinnedPosts: Post[] = [];
+    const unpinnedPosts: Post[] = [];
+
+    const postMap = new Map<string, Post>();
+    basePosts.forEach((p) => postMap.set(p.id, p));
+
+    pinnedIds.forEach((pid, idx) => {
+      const found = postMap.get(pid);
+      if (found) {
+        pinnedPosts.push({
+          ...found,
+          isPinned: true,
+          pinnedIndex: idx + 1,
+        });
+        postMap.delete(pid);
+      }
+    });
+
+    // 2. For remaining unpinned posts, apply custom order if defined
+    if (customOrder && customOrder.length > 0) {
+      customOrder.forEach((cid) => {
+        const found = postMap.get(cid);
+        if (found) {
+          unpinnedPosts.push({ ...found, isPinned: false });
+          postMap.delete(cid);
+        }
+      });
+    }
+
+    // 3. Any leftovers not explicitly ordered sort chronologically
+    const leftovers = Array.from(postMap.values()).map((p) => ({ ...p, isPinned: false }));
+    leftovers.sort((a, b) => {
+      const timeA = new Date(a.createdAt || 0).getTime();
+      const timeB = new Date(b.createdAt || 0).getTime();
+      return timeB - timeA;
+    });
+
+    return [...pinnedPosts, ...unpinnedPosts, ...leftovers];
   },
 
   // Stories
