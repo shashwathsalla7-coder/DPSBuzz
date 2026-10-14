@@ -76,6 +76,14 @@ export const AppleHelloSplash: React.FC = () => {
     return () => clearInterval(interval);
   }, [isVisible, isFadingOut]);
 
+  const dismiss = () => {
+    setIsFadingOut(true);
+    setTimeout(() => {
+      setIsVisible(false);
+      setIsFadingOut(false);
+    }, 600);
+  };
+
   // Auto-dismiss after 2.4 seconds
   useEffect(() => {
     if (!isVisible) return;
@@ -84,14 +92,6 @@ export const AppleHelloSplash: React.FC = () => {
     }, 2400);
     return () => clearTimeout(timer);
   }, [isVisible]);
-
-  const dismiss = () => {
-    setIsFadingOut(true);
-    setTimeout(() => {
-      setIsVisible(false);
-      setIsFadingOut(false);
-    }, 600);
-  };
 
   if (!isVisible) return null;
 
