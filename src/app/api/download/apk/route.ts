@@ -33,7 +33,7 @@ export async function GET() {
       'Content-Type': 'application/vnd.android.package-archive',
       'Content-Length': stat.size.toString(),
       'Content-Disposition': 'attachment; filename="DPS_Buzz.apk"',
-      'Cache-Control': 'public, max-age=3600',
+      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
     },
   });
 }
