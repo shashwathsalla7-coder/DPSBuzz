@@ -33,6 +33,7 @@ import {
   ArrowDown,
   GripVertical,
   Tag,
+  Maximize2,
 } from 'lucide-react';
 import Link from 'next/link';
 import { DataStore, type Profile, type HabitStreak, type SongTrack, type Post } from '@/lib/dataStore';
@@ -85,6 +86,95 @@ export default function ProfileClient({ username }: { username: string }) {
   // Post Detail & Repost Modals
   const [selectedPostDetail, setSelectedPostDetail] = useState<Post | null>(null);
   const [showDetailRepostSheet, setShowDetailRepostSheet] = useState(false);
+
+  // Long-press peek & pop preview state (Instagram-style Peek & Pop with quick actions)
+  const [peekPost, setPeekPost] = useState<Post | null>(null);
+  const [peekFitMode, setPeekFitMode] = useState<'cover' | 'contain'>('cover');
+  const [peekLikedPosts, setPeekLikedPosts] = useState<Record<string, boolean>>({});
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const touchStartPosRef = useRef<{ x: number; y: number } | null>(null);
+  const isLongPressActiveRef = useRef<boolean>(false);
+  const justLongPressedRef = useRef<boolean>(false);
+
+  // Close peek on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && peekPost) {
+        setPeekPost(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [peekPost]);
+
+  const startLongPress = (post: Post, e: React.TouchEvent | React.MouseEvent) => {
+    if (isRearrangeMode) return;
+    if ('touches' in e && e.touches.length > 0) {
+      touchStartPosRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    } else if ('clientX' in e) {
+      touchStartPosRef.current = { x: (e as React.MouseEvent).clientX, y: (e as React.MouseEvent).clientY };
+    }
+    isLongPressActiveRef.current = false;
+    if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+
+    longPressTimerRef.current = setTimeout(() => {
+      isLongPressActiveRef.current = true;
+      justLongPressedRef.current = true;
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        try {
+          navigator.vibrate(45);
+        } catch {}
+      }
+      setPeekPost(post);
+      setPeekFitMode('cover');
+    }, 450);
+  };
+
+  const cancelLongPress = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    touchStartPosRef.current = null;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!touchStartPosRef.current || e.touches.length === 0) return;
+    const dx = Math.abs(e.touches[0].clientX - touchStartPosRef.current.x);
+    const dy = Math.abs(e.touches[0].clientY - touchStartPosRef.current.y);
+    if (dx > 10 || dy > 10) {
+      cancelLongPress();
+    }
+  };
+
+  const handleTouchEnd = () => {
+    cancelLongPress();
+    if (justLongPressedRef.current) {
+      setTimeout(() => {
+        justLongPressedRef.current = false;
+      }, 300);
+    }
+  };
+
+  const getLongPressProps = (post: Post, onClickFallback: () => void) => ({
+    onTouchStart: (e: React.TouchEvent) => startLongPress(post, e),
+    onTouchMove: handleTouchMove,
+    onTouchEnd: handleTouchEnd,
+    onMouseDown: (e: React.MouseEvent) => startLongPress(post, e),
+    onMouseUp: cancelLongPress,
+    onMouseLeave: cancelLongPress,
+    onContextMenu: (e: React.MouseEvent) => {
+      e.preventDefault();
+      if (!isRearrangeMode) {
+        setPeekPost(post);
+        setPeekFitMode('cover');
+      }
+    },
+    onClick: () => {
+      if (justLongPressedRef.current || isLongPressActiveRef.current) return;
+      onClickFallback();
+    },
+  });
 
   // Reactive listener for content updates and reposts
   useEffect(() => {
@@ -1072,8 +1162,8 @@ export default function ProfileClient({ username }: { username: string }) {
                 return (
                   <div
                     key={post.id}
-                    onClick={() => setSelectedPostDetail(post)}
-                    className="aspect-square relative overflow-hidden rounded-[16px] bg-[var(--surface-sunken)] cursor-pointer group border border-[var(--line)] shadow-2xs"
+                    {...getLongPressProps(post, () => setSelectedPostDetail(post))}
+                    className="aspect-square relative overflow-hidden rounded-[16px] bg-[var(--surface-sunken)] cursor-pointer group border border-[var(--line)] shadow-2xs select-none"
                   >
                     {/* Instagram-style Top Right Pin Icon Badge */}
                     {post.isPinned && (
@@ -1134,8 +1224,8 @@ export default function ProfileClient({ username }: { username: string }) {
                 return (
                   <div
                     key={post.id}
-                    onClick={() => setSelectedPostDetail(post)}
-                    className="aspect-square relative overflow-hidden rounded-[16px] bg-[var(--surface-sunken)] cursor-pointer group border border-[var(--line)] shadow-2xs"
+                    {...getLongPressProps(post, () => setSelectedPostDetail(post))}
+                    className="aspect-square relative overflow-hidden rounded-[16px] bg-[var(--surface-sunken)] cursor-pointer group border border-[var(--line)] shadow-2xs select-none"
                   >
                     {displayImg ? (
                       <img
@@ -1186,11 +1276,11 @@ export default function ProfileClient({ username }: { username: string }) {
                 return (
                   <div
                     key={post.id}
-                    onClick={() => {
+                    {...getLongPressProps(post, () => {
                       setSelectedPostDetail(post);
                       setDetailSlideIndex(0);
-                    }}
-                    className="aspect-square relative overflow-hidden rounded-[16px] bg-[var(--surface-sunken)] cursor-pointer group border border-[var(--line)] shadow-2xs"
+                    })}
+                    className="aspect-square relative overflow-hidden rounded-[16px] bg-[var(--surface-sunken)] cursor-pointer group border border-[var(--line)] shadow-2xs select-none"
                   >
                     {displayImg ? (
                       <img
@@ -1253,8 +1343,8 @@ export default function ProfileClient({ username }: { username: string }) {
               return (
                 <div
                   key={post.id}
-                  onClick={() => setSelectedPostDetail(post)}
-                  className="aspect-square relative overflow-hidden rounded-[16px] bg-[var(--surface-sunken)] cursor-pointer group border border-[var(--line)] shadow-2xs"
+                  {...getLongPressProps(post, () => setSelectedPostDetail(post))}
+                  className="aspect-square relative overflow-hidden rounded-[16px] bg-[var(--surface-sunken)] cursor-pointer group border border-[var(--line)] shadow-2xs select-none"
                 >
                   {displayImg ? (
                     <img
@@ -2468,6 +2558,321 @@ export default function ProfileClient({ username }: { username: string }) {
         }}
         title="Change Post Music 🎵"
       />
+
+      {/* ─── Long Press Peek & Pop Modal (Instagram Style) ──────────────── */}
+      {peekPost && (
+        <div
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-scale-in select-none"
+          onClick={() => setPeekPost(null)}
+        >
+          <div
+            className="w-full max-w-[320px] sm:max-w-[340px] flex flex-col gap-2.5 max-h-[92vh] overflow-y-auto no-scrollbar"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* 1. Post Header + Image Preview Card */}
+            <div
+              className="w-full rounded-2xl overflow-hidden shadow-2xl border border-[var(--line)] bg-[var(--card)] cursor-pointer"
+              onClick={() => {
+                const target = peekPost;
+                setPeekPost(null);
+                setSelectedPostDetail(target);
+              }}
+              title="Tap to open full post"
+            >
+              {/* Header */}
+              <div className="px-3.5 py-2.5 flex items-center justify-between bg-[var(--surface)] border-b border-[var(--line)]">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-8 h-8 rounded-full overflow-hidden bg-[var(--surface-sunken)] flex items-center justify-center shrink-0 border border-[var(--line)]">
+                    {peekPost.avatar ? (
+                      <img src={peekPost.avatar} alt={peekPost.username} className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-xs font-bold text-[var(--primary)]">
+                        {peekPost.username.slice(0, 2).toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold truncate text-[var(--text)]">@{peekPost.username}</p>
+                    <p className="text-[10px] text-[var(--text-muted)] truncate">DPS Hyderabad • {peekPost.class || 'Student'}</p>
+                  </div>
+                </div>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--surface-sunken)] text-[var(--text-muted)] font-semibold border border-[var(--line)]">
+                  Preview
+                </span>
+              </div>
+
+              {/* Image Preview with Adjust Preview toggle support */}
+              <div className="w-full aspect-square bg-black relative flex items-center justify-center overflow-hidden">
+                {(() => {
+                  const displayImg = peekPost.imageUrl || (peekPost.images && peekPost.images.length > 0 ? peekPost.images[0] : null);
+                  if (!displayImg) {
+                    return (
+                      <div className="p-6 text-center text-xs text-[var(--text-muted)]">
+                        {peekPost.caption}
+                      </div>
+                    );
+                  }
+                  return (
+                    <img
+                      src={displayImg}
+                      alt={peekPost.caption}
+                      className={`w-full h-full transition-all duration-300 ${
+                        peekFitMode === 'contain' ? 'object-contain' : 'object-cover'
+                      }`}
+                    />
+                  );
+                })()}
+
+                {/* Carousel badge if multi-photo */}
+                {peekPost.images && peekPost.images.length > 1 && (
+                  <div className="absolute top-2.5 right-2.5 px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-xs text-white text-[10px] font-bold z-10">
+                    1/{peekPost.images.length} 📷
+                  </div>
+                )}
+
+                {/* Pinned badge */}
+                {peekPost.isPinned && (
+                  <div className="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-full bg-amber-500 text-black text-[10px] font-bold flex items-center gap-1 shadow-xs z-10">
+                    <Pin size={10} className="fill-black rotate-45" />
+                    <span>Pinned</span>
+                  </div>
+                )}
+
+                {/* Audio Track Pill */}
+                {peekPost.song && (
+                  <div className="absolute bottom-2.5 inset-x-2.5 z-10">
+                    <div className="px-2.5 py-1 rounded-full bg-black/70 backdrop-blur-xs text-white text-[11px] font-medium flex items-center gap-1.5 shadow-md">
+                      <Music size={12} className="text-pink-400 shrink-0 animate-pulse" />
+                      <span className="truncate">{peekPost.song.title} • {peekPost.song.artist}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* 2. Action Menu Card (Instagram quick actions as shown in reel screenshot) */}
+            <div className="w-full rounded-2xl overflow-hidden shadow-2xl border border-[var(--line)] bg-[var(--card)] divide-y divide-[var(--line)]">
+              {/* Option 1: Reorder Grid (Reordenar grade) */}
+              {isOwnProfile && originalPosts.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPeekPost(null);
+                    setIsRearrangeMode(true);
+                    showToast('Rearrange mode enabled! Drag or tap ◀ ▶ to reorder. ▦');
+                  }}
+                  className="w-full px-4 py-3 flex items-center gap-3 text-left text-xs font-semibold hover:bg-[var(--surface-sunken)] transition-colors cursor-pointer text-[var(--text)] group"
+                >
+                  <Grid3X3 size={18} className="text-[var(--text-muted)] group-hover:text-blue-500 transition-colors shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <span className="flex items-center gap-1.5">
+                      <span>Reorder grid</span>
+                      <span className="text-[10px] text-[var(--text-muted)] font-normal">(Reordenar grade)</span>
+                    </span>
+                    <p className="text-[10px] font-normal text-[var(--text-muted)]">Rearrange photos on your profile</p>
+                  </div>
+                  <span className="text-[10px] text-blue-500 font-bold">▦</span>
+                </button>
+              )}
+
+              {/* Option 2: Adjust Preview (Ajustar prévia) */}
+              <button
+                type="button"
+                onClick={() => {
+                  setPeekFitMode((mode) => (mode === 'cover' ? 'contain' : 'cover'));
+                  showToast(peekFitMode === 'cover' ? 'Preview set to Fit (Ajustar prévia) ⛶' : 'Preview set to Fill ⛶');
+                }}
+                className="w-full px-4 py-3 flex items-center gap-3 text-left text-xs font-semibold hover:bg-[var(--surface-sunken)] transition-colors cursor-pointer text-[var(--text)] group"
+              >
+                <Maximize2 size={18} className="text-[var(--text-muted)] group-hover:text-pink-500 transition-colors shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <span className="flex items-center gap-1.5">
+                    <span>Adjust preview</span>
+                    <span className="text-[10px] text-[var(--text-muted)] font-normal">(Ajustar prévia)</span>
+                  </span>
+                  <p className="text-[10px] font-normal text-[var(--text-muted)]">
+                    {peekFitMode === 'cover' ? 'Fit photo to frame' : 'Fill full frame'}
+                  </p>
+                </div>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--surface-sunken)] text-[var(--text-muted)] font-bold capitalize">
+                  {peekFitMode}
+                </span>
+              </button>
+
+              {/* Option 3: Pin to profile / Unpin from profile */}
+              {isOwnProfile && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleTogglePin(peekPost.id);
+                    setPeekPost((p) => (p ? { ...p, isPinned: !p.isPinned } : null));
+                  }}
+                  className="w-full px-4 py-3 flex items-center gap-3 text-left text-xs font-semibold hover:bg-[var(--surface-sunken)] transition-colors cursor-pointer text-[var(--text)] group"
+                >
+                  <Pin
+                    size={18}
+                    className={`rotate-45 shrink-0 transition-colors ${
+                      peekPost.isPinned ? 'text-amber-500 fill-amber-500' : 'text-[var(--text-muted)] group-hover:text-amber-500'
+                    }`}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <span>{peekPost.isPinned ? 'Unpin from profile' : 'Pin to your profile'}</span>
+                    <p className="text-[10px] font-normal text-[var(--text-muted)]">Keep at the top of your grid</p>
+                  </div>
+                  {peekPost.isPinned && (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-500 font-bold">
+                      Pinned
+                    </span>
+                  )}
+                </button>
+              )}
+
+              {/* Option 4: Like (Curtir) */}
+              <button
+                type="button"
+                onClick={() => {
+                  const currentlyLiked = !!peekLikedPosts[peekPost.id];
+                  const newLiked = !currentlyLiked;
+                  setPeekLikedPosts((prev) => ({ ...prev, [peekPost.id]: newLiked }));
+                  setPeekPost((prev) => (prev ? { ...prev, likes: prev.likes + (newLiked ? 1 : -1) } : null));
+                  showToast(newLiked ? 'Liked post! ❤️' : 'Unliked post');
+                  fetch(`/api/posts/${peekPost.id}/like`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: profile.username }),
+                  }).catch(() => {});
+                }}
+                className="w-full px-4 py-3 flex items-center gap-3 text-left text-xs font-semibold hover:bg-[var(--surface-sunken)] transition-colors cursor-pointer text-[var(--text)] group"
+              >
+                <Heart
+                  size={18}
+                  className={`shrink-0 transition-colors ${
+                    peekLikedPosts[peekPost.id] || peekPost.likes > 0
+                      ? 'text-red-500 fill-red-500'
+                      : 'text-[var(--text-muted)] group-hover:text-red-500'
+                  }`}
+                />
+                <div className="flex-1 min-w-0">
+                  <span className="flex items-center gap-1.5">
+                    <span>{peekLikedPosts[peekPost.id] ? 'Liked' : 'Like'}</span>
+                    <span className="text-[10px] text-[var(--text-muted)] font-normal">(Curtir)</span>
+                  </span>
+                  <p className="text-[10px] font-normal text-[var(--text-muted)]">{peekPost.likes || 0} likes</p>
+                </div>
+              </button>
+
+              {/* Option 5: Comment (Comentar) */}
+              <button
+                type="button"
+                onClick={() => {
+                  const target = peekPost;
+                  setPeekPost(null);
+                  setSelectedPostDetail(target);
+                }}
+                className="w-full px-4 py-3 flex items-center gap-3 text-left text-xs font-semibold hover:bg-[var(--surface-sunken)] transition-colors cursor-pointer text-[var(--text)] group"
+              >
+                <MessageCircle size={18} className="text-[var(--text-muted)] group-hover:text-blue-500 transition-colors shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <span className="flex items-center gap-1.5">
+                    <span>Comment</span>
+                    <span className="text-[10px] text-[var(--text-muted)] font-normal">(Comentar)</span>
+                  </span>
+                  <p className="text-[10px] font-normal text-[var(--text-muted)]">Open comments and conversation</p>
+                </div>
+                <span className="text-[10px] text-[var(--text-muted)] font-medium">
+                  {peekPost.comments || 0}
+                </span>
+              </button>
+
+              {/* Option 6: Change Post Music (for owner) */}
+              {isOwnProfile && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const target = peekPost;
+                    setPeekPost(null);
+                    setSelectedPostDetail(target);
+                    setShowPostSongPickerModal(true);
+                  }}
+                  className="w-full px-4 py-3 flex items-center gap-3 text-left text-xs font-semibold hover:bg-[var(--surface-sunken)] transition-colors cursor-pointer text-[var(--text)] group"
+                >
+                  <Music size={18} className="text-pink-500 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <span>{peekPost.song ? 'Change background music' : 'Add background music'}</span>
+                    <p className="text-[10px] font-normal text-[var(--text-muted)]">
+                      {peekPost.song ? `Current: ${peekPost.song.title}` : 'Pick soundtrack from music library'}
+                    </p>
+                  </div>
+                  <span className="text-[10px] text-pink-500 font-bold">🎵</span>
+                </button>
+              )}
+
+              {/* Option 7: Push Tagged Post to Main Grid (if tagged) */}
+              {isOwnProfile && peekPost.username.toLowerCase() !== profile.username.toLowerCase() && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleToggleTaggedOnGrid(peekPost.id);
+                    setPeekPost(null);
+                  }}
+                  className="w-full px-4 py-3 flex items-center gap-3 text-left text-xs font-semibold hover:bg-[var(--surface-sunken)] transition-colors cursor-pointer text-[var(--text)] group"
+                >
+                  <Tag size={18} className="text-blue-500 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <span>
+                      {DataStore.isTaggedPostOnGrid(profile.username, peekPost.id)
+                        ? 'Remove from main profile grid'
+                        : 'Push photo to main profile grid'}
+                    </span>
+                    <p className="text-[10px] font-normal text-[var(--text-muted)]">Show tagged post on your primary tab</p>
+                  </div>
+                  <span className="text-[10px] text-blue-500 font-bold">🏷️</span>
+                </button>
+              )}
+
+              {/* Option 8: Share post */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (typeof navigator !== 'undefined' && navigator.clipboard) {
+                    navigator.clipboard.writeText(`${window.location.origin}/u/${peekPost.username}?post=${peekPost.id}`);
+                  }
+                  showToast('Post link copied to clipboard! 📋✨');
+                }}
+                className="w-full px-4 py-3 flex items-center gap-3 text-left text-xs font-semibold hover:bg-[var(--surface-sunken)] transition-colors cursor-pointer text-[var(--text)] group"
+              >
+                <Share2 size={18} className="text-[var(--text-muted)] group-hover:text-emerald-500 transition-colors shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <span>Share</span>
+                  <p className="text-[10px] font-normal text-[var(--text-muted)]">Copy shareable link</p>
+                </div>
+              </button>
+
+              {/* Option 9: Delete post (if own profile) */}
+              {isOwnProfile && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (confirm('Are you sure you want to delete this post?')) {
+                      DataStore.deletePost(peekPost.id);
+                      setPeekPost(null);
+                      setPostsVersion((v) => v + 1);
+                      showToast('Post deleted 🗑️');
+                    }
+                  }}
+                  className="w-full px-4 py-3 flex items-center gap-3 text-left text-xs font-semibold hover:bg-red-500/10 transition-colors cursor-pointer text-red-500 group"
+                >
+                  <Trash2 size={18} className="text-red-500 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <span>Delete post</span>
+                    <p className="text-[10px] font-normal text-red-400/80">Permanently remove this photo</p>
+                  </div>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
