@@ -1,0 +1,17 @@
+User-Agent: *
+Allow: /
+Allow: /download
+Allow: /login
+Allow: /signup
+Allow: /notices
+Allow: /leaderboard
+Allow: /groups
+Allow: /u/*
+Disallow: /api/*
+Disallow: /admin
+Disallow: /admin/*
+Disallow: /settings
+Disallow: /post/*
+Disallow: /chats/*
+
+Sitemap: https://dps-buzz.vercel.app/sitemap.xml
