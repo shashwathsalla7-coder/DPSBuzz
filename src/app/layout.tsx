@@ -94,7 +94,7 @@ export const metadata: Metadata = {
     title: 'DPS Buzz',
   },
   verification: {
-    google: 'google5194ad6ad52c0f4c',
+    google: 'RBSTRSJjxlFrexXvv6cjVYbZ30BMRgcGl-Vj-aQXzVc',
   },
   category: 'education',
 };
@@ -118,7 +118,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     >
       <head>
         <JsonLd />
-        <meta name="google-site-verification" content="google5194ad6ad52c0f4c" />
         <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
         <meta name="mobile-web-app-capable" content="yes" />
         <script
