@@ -1,6 +1,135 @@
 {
-  "posts": [],
-  "stories": [],
+  "posts": [
+    {
+      "userId": "admin-shashwath-id",
+      "username": "shashwath71845",
+      "fullName": "Shashwath (Admin)",
+      "class": "Class Staff-A",
+      "avatar": null,
+      "caption": "\"Hey everyone, please check out my new app and let me know what you think! I’ve poured countless late nights into building this, so I’d really appreciate your feedback and support.\"",
+      "images": [
+        "https://res.cloudinary.com/ogfaxmjw/image/upload/v1791976299/dpsbuzz/posts/vou5x2twzxfsttgbemib.webp"
+      ],
+      "habitCategory": "studies",
+      "song": {
+        "id": "1831237608",
+        "title": "Arz Kiya Hai  Coke Studio Bharat",
+        "artist": "Anuv Jain",
+        "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/02/e7/77/02e77709-a5f6-5470-9e5b-70a0d6ff45ed/25UM1IM13936.rgb.jpg/200x200bb.jpg",
+        "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/e7/37/24/e73724af-35c2-505c-5caa-9bb1b3b7c37c/mzaf_15804261838668939498.plus.aac.p.m4a",
+        "durationSeconds": 295,
+        "startTime": 0,
+        "clipDuration": 15
+      },
+      "id": "post-1791976342088",
+      "createdAt": "2026-10-14T11:12:22.088Z",
+      "timeAgo": "Just now",
+      "likes": 0,
+      "comments": 0,
+      "views": 0,
+      "imageUrl": "https://res.cloudinary.com/ogfaxmjw/image/upload/v1791976299/dpsbuzz/posts/vou5x2twzxfsttgbemib.webp",
+      "habitPointsAwarded": 0,
+      "habitTag": "#Studies & Revision"
+    }
+  ],
+  "stories": [
+    {
+      "userId": "admin-shashwath-id",
+      "username": "shashwath71845",
+      "fullName": "Shashwath (Admin)",
+      "avatar": null,
+      "imageUrl": "https://images.unsplash.com/photo-1521587760476-6c12a4b040da?auto=format&fit=crop&w=800&q=80",
+      "background": "#0F131B",
+      "textColor": "#FFFFFF",
+      "id": "story-1791916690262-8wg2",
+      "createdAt": "2026-10-13T18:38:10.262Z",
+      "expiresAt": "2026-10-14T18:38:10.262Z",
+      "hasStory": true,
+      "isSeen": true,
+      "isNew": false,
+      "viewers": [
+        "shashwath71845"
+      ],
+      "viewsCount": 1
+    },
+    {
+      "userId": "admin-shashwath-id",
+      "username": "shashwath71845",
+      "fullName": "Shashwath (Admin)",
+      "avatar": null,
+      "text": "Hi glad that you are using my app please share with your friends and give me a feedback  and you can be on the leaderboard  whoever gets highest",
+      "background": "linear-gradient(135deg, #FF5A1F 0%, #E0207F 100%)",
+      "textColor": "#FFFFFF",
+      "song": {
+        "id": "1831237608",
+        "title": "Arz Kiya Hai  Coke Studio Bharat",
+        "artist": "Anuv Jain",
+        "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/02/e7/77/02e77709-a5f6-5470-9e5b-70a0d6ff45ed/25UM1IM13936.rgb.jpg/200x200bb.jpg",
+        "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/e7/37/24/e73724af-35c2-505c-5caa-9bb1b3b7c37c/mzaf_15804261838668939498.plus.aac.p.m4a",
+        "durationSeconds": 295,
+        "startTime": 0,
+        "clipDuration": 15
+      },
+      "id": "story-1791976906924-hnew",
+      "createdAt": "2026-10-14T11:21:46.924Z",
+      "expiresAt": "2026-10-15T11:21:46.930Z",
+      "hasStory": true,
+      "isSeen": true,
+      "isNew": false,
+      "viewers": [
+        "shashwath71845"
+      ],
+      "viewsCount": 1
+    },
+    {
+      "userId": "admin-shashwath-id",
+      "username": "shashwath71845",
+      "fullName": "Shashwath (Admin)",
+      "avatar": null,
+      "imageUrl": "https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?auto=format&fit=crop&w=800&q=80",
+      "background": "#0F131B",
+      "textColor": "#FFFFFF",
+      "id": "story-1791916706532-km5v",
+      "createdAt": "2026-10-13T18:38:26.532Z",
+      "expiresAt": "2026-10-14T18:38:26.533Z",
+      "hasStory": true,
+      "isSeen": true,
+      "isNew": false,
+      "viewers": [
+        "shashwath71845"
+      ],
+      "viewsCount": 1
+    },
+    {
+      "userId": "admin-shashwath-id",
+      "username": "shashwath71845",
+      "fullName": "Shashwath (Admin)",
+      "avatar": null,
+      "text": "Whoever has  the highest followers  will get a  special thing / idk planning",
+      "background": "linear-gradient(135deg, #FF5A1F 0%, #E0207F 100%)",
+      "textColor": "#FFFFFF",
+      "song": {
+        "id": "1831237608",
+        "title": "Arz Kiya Hai  Coke Studio Bharat",
+        "artist": "Anuv Jain",
+        "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/02/e7/77/02e77709-a5f6-5470-9e5b-70a0d6ff45ed/25UM1IM13936.rgb.jpg/200x200bb.jpg",
+        "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/e7/37/24/e73724af-35c2-505c-5caa-9bb1b3b7c37c/mzaf_15804261838668939498.plus.aac.p.m4a",
+        "durationSeconds": 295,
+        "startTime": 0,
+        "clipDuration": 15
+      },
+      "id": "story-1791976979205-wiyg",
+      "createdAt": "2026-10-14T11:22:59.205Z",
+      "expiresAt": "2026-10-15T11:22:59.205Z",
+      "hasStory": true,
+      "isSeen": true,
+      "isNew": false,
+      "viewers": [
+        "shashwath71845"
+      ],
+      "viewsCount": 1
+    }
+  ],
   "profiles": [
     {
       "id": "admin-shashwath-id",
@@ -10,14 +139,24 @@
       "isVerified": true,
       "isApproved": true,
       "avatar": null,
-      "bio": "DPS Buzz Super Administrator 🛡️ • Full Systems & Moderation Access",
-      "class": "Staff",
-      "section": "Admin",
+      "bio": "",
+      "class": "8",
+      "section": "G",
       "followerCount": 0,
       "followingCount": 0,
-      "postCount": 0,
+      "postCount": 2,
       "spiritPoints": 0,
-      "createdAt": "2026-10-01T00:00:00.000Z"
+      "createdAt": "2026-10-01T00:00:00.000Z",
+      "song": {
+        "id": "1831237608",
+        "title": "Arz Kiya Hai  Coke Studio Bharat",
+        "artist": "Anuv Jain",
+        "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/02/e7/77/02e77709-a5f6-5470-9e5b-70a0d6ff45ed/25UM1IM13936.rgb.jpg/200x200bb.jpg",
+        "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/e7/37/24/e73724af-35c2-505c-5caa-9bb1b3b7c37c/mzaf_15804261838668939498.plus.aac.p.m4a",
+        "durationSeconds": 295,
+        "startTime": 0,
+        "clipDuration": 15
+      }
     }
   ],
   "chatNotes": [],
@@ -35,6 +174,9 @@
   "comments": {},
   "likes": {},
   "notices": [],
-  "deletedPostIds": [],
-  "lastUpdated": 1791975361922
+  "deletedPostIds": [
+    "post-1791917869810",
+    "post-1791976076481"
+  ],
+  "lastUpdated": 1791976924470
 }

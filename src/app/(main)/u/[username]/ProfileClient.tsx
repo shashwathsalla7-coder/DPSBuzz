@@ -308,15 +308,15 @@ export default function ProfileClient({ username }: { username: string }) {
       ...profile,
       fullName: editFullName.trim() || profile.fullName,
       bio: editBio.trim(),
-      class: editClass,
-      section: editSection,
+      class: '8',
+      section: 'G',
       avatar: editAvatar !== undefined ? editAvatar : profile.avatar,
     };
     DataStore.updateProfile(profile.username, {
       fullName: updated.fullName,
       bio: updated.bio,
-      class: updated.class,
-      section: updated.section,
+      class: '8',
+      section: 'G',
       avatar: updated.avatar,
     });
     setProfile(updated);
@@ -1350,15 +1350,16 @@ export default function ProfileClient({ username }: { username: string }) {
           onClick={() => setShowEditModal(false)}
         >
           <div
-            className="w-full max-w-[420px] border rounded-[28px] overflow-hidden"
+            className="w-full max-w-[420px] max-h-[85vh] sm:max-h-[80vh] border rounded-t-[28px] sm:rounded-[28px] overflow-hidden flex flex-col shadow-2xl"
             style={{
               backgroundColor: 'var(--surface)',
               borderColor: 'var(--line)',
             }}
             onClick={(e) => e.stopPropagation()}
           >
+            {/* Modal Header */}
             <div
-              className="flex items-center justify-between px-4 py-3 border-b"
+              className="flex items-center justify-between px-4 py-3 border-b flex-shrink-0"
               style={{ borderColor: 'var(--line)' }}
             >
               <span className="text-sm font-bold">Edit Profile</span>
@@ -1371,7 +1372,8 @@ export default function ProfileClient({ username }: { username: string }) {
               </button>
             </div>
 
-            <form onSubmit={handleSaveProfile} className="p-4 space-y-3.5">
+            {/* Scrollable Form Body */}
+            <form id="edit-profile-form" onSubmit={handleSaveProfile} className="p-4 space-y-3.5 overflow-y-auto flex-1 overscroll-contain">
               {/* Photo Upload from Device Gallery - Circle Profile Logo */}
               <div className="flex flex-col items-center justify-center gap-2 pb-2 border-b border-[var(--line)]">
                 <input
@@ -1427,7 +1429,7 @@ export default function ProfileClient({ username }: { username: string }) {
                   )}
                 </div>
                 <p className="text-[10px] text-[var(--text-muted)] text-center">
-                  Select your favorite portrait from device gallery (rectangle preview)
+                  Select your portrait from device gallery
                 </p>
               </div>
 
@@ -1439,7 +1441,7 @@ export default function ProfileClient({ username }: { username: string }) {
                   type="text"
                   value={editFullName}
                   onChange={(e) => setEditFullName(e.target.value)}
-                  className="w-full text-xs px-3 py-2 border rounded-xl focus:outline-none"
+                  className="w-full text-xs px-3 py-2.5 border rounded-xl focus:outline-none"
                   style={{
                     backgroundColor: 'var(--surface-sunken)',
                     borderColor: 'var(--line)',
@@ -1466,80 +1468,62 @@ export default function ProfileClient({ username }: { username: string }) {
                 />
               </div>
 
-              {/* Class & Section with rules: Class 6 = A-F, Classes 7-10 = A-G */}
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-[11px] font-bold block mb-1" style={{ color: 'var(--text-muted)' }}>
-                    CLASS
-                  </label>
-                  <select
-                    value={editClass}
-                    onChange={(e) => {
-                      const newCls = e.target.value;
-                      setEditClass(newCls);
-                      const validSections = getClassSections(newCls);
-                      if (!validSections.includes(editSection)) {
-                        setEditSection(validSections[0]);
-                      }
-                    }}
-                    className="w-full text-xs px-3 py-2 border rounded-xl focus:outline-none cursor-pointer"
-                    style={{
-                      backgroundColor: 'var(--surface-sunken)',
-                      borderColor: 'var(--line)',
-                      color: 'var(--text)',
-                    }}
-                  >
-                    {['6', '7', '8', '9', '10'].map((c) => (
-                      <option key={c} value={c}>Class {c} ({c === '6' ? 'A-F' : 'A-G'})</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-[11px] font-bold block mb-1" style={{ color: 'var(--text-muted)' }}>
-                    SECTION
-                  </label>
-                  <select
-                    value={editSection}
-                    onChange={(e) => setEditSection(e.target.value)}
-                    className="w-full text-xs px-3 py-2 border rounded-xl focus:outline-none cursor-pointer"
-                    style={{
-                      backgroundColor: 'var(--surface-sunken)',
-                      borderColor: 'var(--line)',
-                      color: 'var(--text)',
-                    }}
-                  >
-                    {getClassSections(editClass).map((s) => (
-                      <option key={s} value={s}>Section {s}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="pt-2 flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowEditModal(false)}
-                  className="flex-1 py-2 text-xs font-semibold border rounded-xl cursor-pointer"
+              {/* Class & Section locked permanently to Class 8-G (dropdown removed) */}
+              <div>
+                <label className="text-[11px] font-bold block mb-1" style={{ color: 'var(--text-muted)' }}>
+                  CLASS & SECTION
+                </label>
+                <div
+                  className="w-full text-xs px-3 py-2.5 border rounded-xl flex items-center justify-between"
                   style={{
-                    backgroundColor: 'var(--surface)',
+                    backgroundColor: 'var(--surface-sunken)',
                     borderColor: 'var(--line)',
                     color: 'var(--text)',
                   }}
                 >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 py-2 text-xs font-bold rounded-xl btn-press cursor-pointer"
-                  style={{
-                    backgroundColor: 'var(--primary)',
-                    color: 'var(--on-primary)',
-                  }}
-                >
-                  Save Changes
-                </button>
+                  <span className="font-bold">Class 8-G (Section G)</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 font-bold border border-emerald-500/30">
+                    🔒 Class 8-G
+                  </span>
+                </div>
+                <p className="text-[10px] text-[var(--text-muted)] mt-1">
+                  Registered school class is fixed to Class 8-G.
+                </p>
               </div>
             </form>
+
+            {/* Pinned Sticky Bottom Footer with Save Changes Button */}
+            <div
+              className="p-3 border-t flex gap-2 flex-shrink-0 z-10 shadow-[0_-4px_12px_rgba(0,0,0,0.1)]"
+              style={{
+                backgroundColor: 'var(--surface)',
+                borderColor: 'var(--line)',
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setShowEditModal(false)}
+                className="flex-1 py-2.5 text-xs font-semibold border rounded-xl cursor-pointer"
+                style={{
+                  backgroundColor: 'var(--surface-sunken)',
+                  borderColor: 'var(--line)',
+                  color: 'var(--text)',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                form="edit-profile-form"
+                className="flex-1 py-2.5 text-xs font-bold rounded-xl btn-press cursor-pointer shadow-md"
+                style={{
+                  backgroundColor: 'var(--primary)',
+                  color: 'var(--on-primary)',
+                }}
+              >
+                Save Changes
+              </button>
+            </div>
           </div>
         </div>
       )}
