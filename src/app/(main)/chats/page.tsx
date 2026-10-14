@@ -95,7 +95,7 @@ function ChatsContent() {
           const isShash = s.username.toLowerCase() === 'shashwath71845';
           return {
             id: s.id,
-            name: isShash ? '👑 Shashwath (Admin)' : s.fullName,
+            name: s.fullName,
             username: s.username,
             studentClass: isShash ? 'School Admin' : `${s.class}-${s.section || 'A'}`,
             avatarUrl: s.avatar,

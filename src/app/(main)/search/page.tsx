@@ -184,7 +184,7 @@ function SearchContent() {
     const shashwathProfile = allProfiles.find((p) => p.username.toLowerCase() === 'shashwath71845') || {
       id: 'admin-shashwath-id',
       username: 'shashwath71845',
-      fullName: 'Shashwath (Admin)',
+      fullName: 'Shashwath Salla',
       bio: 'DPS Buzz Super Administrator 🛡️',
       avatar: null,
       role: 'admin',
@@ -529,7 +529,7 @@ function SearchContent() {
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5">
                           <p className="text-xs font-bold text-[var(--text)] truncate">
-                            {isShashwath ? '👑 Shashwath (Admin)' : person.fullName}
+                            {person.fullName}
                           </p>
                           {person.isVerified && (
                             <span className="text-blue-400 text-[10px]">✓</span>
@@ -654,7 +654,7 @@ function SearchContent() {
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5">
                           <p className="text-xs font-bold text-[var(--text)] truncate">
-                            {isShashwath ? '👑 Shashwath (Admin)' : person.fullName}
+                            {person.fullName}
                           </p>
                           {person.isVerified && (
                             <span className="text-blue-400 text-[10px]">✓</span>

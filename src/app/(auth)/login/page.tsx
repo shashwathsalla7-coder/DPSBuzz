@@ -65,7 +65,7 @@ export default function LoginPage() {
         const superAdmin = {
           id: 'admin-shashwath-id',
           username: 'shashwath71845',
-          fullName: 'Shashwath (Admin)',
+          fullName: 'Shashwath Salla',
           role: 'admin',
           isVerified: true,
           isApproved: true,

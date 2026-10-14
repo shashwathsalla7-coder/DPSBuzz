@@ -32,14 +32,30 @@ export const AppleHelloSplash: React.FC = () => {
         const stored = typeof window !== 'undefined' ? localStorage.getItem('dpsbuzz_user') : null;
         if (stored) {
           const parsed = JSON.parse(stored);
-          setActiveUser(parsed);
-          return;
+          if (parsed && parsed.username && parsed.username !== 'guest') {
+            let cleanFullName = (parsed.fullName || parsed.name || parsed.username || '').replace(/\s*\(Admin\)/gi, '').trim();
+            if (parsed.username.toLowerCase() === 'shashwath71845' && (!cleanFullName || cleanFullName === 'Shashwath')) {
+              cleanFullName = 'Shashwath Salla';
+            }
+            parsed.fullName = cleanFullName;
+            setActiveUser(parsed);
+            return;
+          }
         }
       } catch {}
       try {
         const fallback = DataStore.getCurrentUser();
-        setActiveUser(fallback);
+        if (fallback && fallback.username && fallback.username !== 'guest') {
+          let cleanFullName = (fallback.fullName || fallback.username || '').replace(/\s*\(Admin\)/gi, '').trim();
+          if (fallback.username.toLowerCase() === 'shashwath71845' && (!cleanFullName || cleanFullName === 'Shashwath')) {
+            cleanFullName = 'Shashwath Salla';
+          }
+          fallback.fullName = cleanFullName;
+          setActiveUser(fallback);
+          return;
+        }
       } catch {}
+      setActiveUser(null);
     };
 
     updateActiveUser();
@@ -167,19 +183,21 @@ export const AppleHelloSplash: React.FC = () => {
             </p>
           </div>
 
-          {activeUser ? (
+          {activeUser && activeUser.username && activeUser.username !== 'guest' ? (
             <div className="flex flex-col items-center gap-1.5 animate-fade-in pt-1">
               <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 backdrop-blur-md shadow-[0_4px_20px_rgba(0,0,0,0.3)]">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                 <span className="text-sm font-bold text-white tracking-tight">
                   @{activeUser.username}
                 </span>
-                <span className="text-xs text-neutral-300 font-medium border-l border-white/20 pl-2">
-                  {activeUser.fullName}
-                </span>
+                {activeUser.fullName && (
+                  <span className="text-xs text-neutral-300 font-medium border-l border-white/20 pl-2">
+                    {activeUser.fullName}
+                  </span>
+                )}
               </div>
               <p className="text-xs text-neutral-400 font-medium">
-                {activeUser.class ? `Class ${activeUser.class}-${activeUser.section || 'A'} • ` : ''}Your School. Your Vibe. 🐝
+                {activeUser.class ? `Class ${activeUser.class}${activeUser.section ? `-${activeUser.section}` : ''} • ` : ''}Your School. Your Vibe. 🐝
               </p>
             </div>
           ) : (

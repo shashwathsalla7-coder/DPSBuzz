@@ -22,7 +22,7 @@ export default function AdminLoginPage() {
         const adminUser = {
           id: 'admin-shashwath-id',
           username: 'shashwath71845',
-          fullName: 'Shashwath (Admin)',
+          fullName: 'Shashwath Salla',
           role: 'admin',
           avatar: null,
           isVerified: true,

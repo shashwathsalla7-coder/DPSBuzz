@@ -301,7 +301,7 @@ export const ADMIN_ACCOUNT: Profile = {
 export const SHASHWATH_ADMIN_ACCOUNT: Profile = {
   id: 'admin-shashwath-id',
   username: 'shashwath71845',
-  fullName: 'Shashwath (Admin)',
+  fullName: 'Shashwath Salla',
   bio: 'DPS Buzz Super Administrator 🛡️ • Full Systems & Moderation Access',
   avatar: null,
   role: 'admin',
@@ -882,6 +882,13 @@ export const DataStore = {
                 parsed = { ...parsed, followerCount: 0, followingCount: 0, postCount: 0, spiritPoints: 0 };
                 localStorage.setItem('dpsbuzz_user', JSON.stringify(parsed));
               }
+            }
+            if (parsed.fullName && parsed.fullName.includes('(Admin)')) {
+              parsed.fullName = parsed.fullName.replace(/\s*\(Admin\)/gi, '').trim();
+              if (parsed.username.toLowerCase() === 'shashwath71845' && parsed.fullName === 'Shashwath') {
+                parsed.fullName = 'Shashwath Salla';
+              }
+              localStorage.setItem('dpsbuzz_user', JSON.stringify(parsed));
             }
             return parsed;
           }

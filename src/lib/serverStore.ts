@@ -34,7 +34,7 @@ const CLOUD_STORE_PUBLIC_ID = 'dpsbuzz_store.json';
 const DEFAULT_ADMIN: Profile = {
   id: 'admin-shashwath-id',
   username: 'shashwath71845',
-  fullName: 'Shashwath (Admin)',
+  fullName: 'Shashwath Salla',
   role: 'admin',
   isVerified: true,
   isApproved: true,
