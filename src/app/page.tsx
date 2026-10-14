@@ -5,70 +5,8 @@ import { useRouter } from 'next/navigation';
 
 export default function RootPage() {
   const router = useRouter();
-  const [checked, setChecked] = useState(false);
 
   useEffect(() => {
-    try {
-      // Force clean any stale admin session so visitor/user devices NEVER get trapped in admin
-      if (!localStorage.getItem('dpsbuzz_force_clean_admin_v5')) {
-        const storedUser = localStorage.getItem('dpsbuzz_user');
-        if (storedUser) {
-          try {
-            const parsed = JSON.parse(storedUser);
-            if (parsed && parsed.username && parsed.username.toLowerCase() === 'shashwath71845') {
-              localStorage.removeItem('dpsbuzz_user');
-              localStorage.removeItem('dpsbuzz_shashwath_authenticated');
-              document.cookie = 'dpsbuzz_user=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
-            }
-          } catch {}
-        }
-        localStorage.setItem('dpsbuzz_force_clean_admin_v5', 'true');
-      }
-
-      // 1. Check localStorage for active session
-      const stored = localStorage.getItem('dpsbuzz_user');
-      if (stored) {
-        const user = JSON.parse(stored);
-        if (user && user.username && user.username.toLowerCase() !== 'guest') {
-          if (user.username.toLowerCase() === 'shashwath71845' && !localStorage.getItem('dpsbuzz_shashwath_authenticated')) {
-            localStorage.removeItem('dpsbuzz_user');
-            document.cookie = 'dpsbuzz_user=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
-            router.replace('/login');
-            return;
-          }
-          // Keep cookie in sync for server routes & WebView
-          document.cookie = `dpsbuzz_user=${encodeURIComponent(stored)}; path=/; max-age=31536000; SameSite=Lax`;
-          router.replace('/home');
-          return;
-        }
-      }
-
-      // 2. Fallback: check cookie if localStorage was empty
-      if (typeof document !== 'undefined' && document.cookie) {
-        const cookies = document.cookie.split('; ');
-        const userCookie = cookies.find((c) => c.startsWith('dpsbuzz_user='));
-        if (userCookie) {
-          const raw = decodeURIComponent(userCookie.split('=')[1]);
-          const user = JSON.parse(raw);
-          if (user && user.username && user.username.toLowerCase() !== 'guest') {
-            if (user.username.toLowerCase() === 'shashwath71845' && !localStorage.getItem('dpsbuzz_shashwath_authenticated')) {
-              localStorage.removeItem('dpsbuzz_user');
-              document.cookie = 'dpsbuzz_user=; path=/; max-age=0; SameSite=Lax';
-              router.replace('/login');
-              return;
-            }
-            localStorage.setItem('dpsbuzz_user', raw);
-            router.replace('/home');
-            return;
-          }
-        }
-      }
-    } catch (e) {
-      console.warn('Session check on root page:', e);
-    }
-
-    // No session found - go to login
-    setChecked(true);
     router.replace('/login');
   }, [router]);
 

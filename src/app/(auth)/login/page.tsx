@@ -13,9 +13,22 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Auto-redirect if already logged in
+  const [activeSession, setActiveSession] = useState<{ username: string; fullName: string } | null>(null);
+
+  // Check active session without forcing an auto-redirect away from login screen
   useEffect(() => {
     try {
+      if (typeof window !== 'undefined') {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('logout') === 'true') {
+          localStorage.removeItem('dpsbuzz_user');
+          localStorage.removeItem('dpsbuzz_shashwath_authenticated');
+          document.cookie = 'dpsbuzz_user=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
+          setActiveSession(null);
+          return;
+        }
+      }
+
       const stored = localStorage.getItem('dpsbuzz_user');
       if (stored) {
         const u = JSON.parse(stored);
@@ -23,13 +36,14 @@ export default function LoginPage() {
           if (u.username.toLowerCase() === 'shashwath71845' && !localStorage.getItem('dpsbuzz_shashwath_authenticated')) {
             localStorage.removeItem('dpsbuzz_user');
             document.cookie = 'dpsbuzz_user=; path=/; max-age=0; SameSite=Lax';
+            setActiveSession(null);
             return;
           }
-          router.replace('/home');
+          setActiveSession(u);
         }
       }
     } catch {}
-  }, [router]);
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -186,16 +200,43 @@ export default function LoginPage() {
           </p>
         </div>
 
-        {error && (
+        {activeSession && (
           <div
-            className="p-3 rounded-lg text-xs font-medium border flex items-center gap-2"
+            className="p-3 rounded-xl border flex items-center justify-between text-xs"
             style={{
               backgroundColor: 'var(--surface-sunken)',
-              borderColor: 'var(--danger)',
-              color: 'var(--danger)',
+              borderColor: 'var(--line)',
             }}
           >
-            <span>{error}</span>
+            <div>
+              <p className="font-semibold" style={{ color: 'var(--text)' }}>
+                Active: @{activeSession.username}
+              </p>
+              <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
+                You are currently logged in on this browser
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  localStorage.removeItem('dpsbuzz_user');
+                  localStorage.removeItem('dpsbuzz_shashwath_authenticated');
+                  document.cookie = 'dpsbuzz_user=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
+                  setActiveSession(null);
+                }}
+                className="px-2.5 py-1 rounded-lg border text-xs font-semibold text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                style={{ borderColor: 'var(--line)' }}
+              >
+                Log Out
+              </button>
+              <Link
+                href="/home"
+                className="px-2.5 py-1 rounded-lg text-xs font-semibold text-white bg-[var(--primary)] hover:opacity-90 transition-opacity"
+              >
+                Go Home
+              </Link>
+            </div>
           </div>
         )}
 
