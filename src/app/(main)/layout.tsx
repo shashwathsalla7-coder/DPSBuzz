@@ -1,11 +1,16 @@
 import { Suspense } from 'react';
-import { MobileTabBar, DesktopSidebar, TopBar, GlobalModerationGuard } from '@/components/layout';
+import { MobileTabBar, DesktopSidebar, TopBar, GlobalModerationGuard, GlobalNotificationListener } from '@/components/layout';
 import { AppleHelloSplash } from '@/components/ui';
 import InstallPromptBanner from '@/components/pwa/InstallPromptBanner';
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-dvh">
+      {/* Real-time Global Chat Notification Banners, Audio Chime & Unread Synchronization */}
+      <Suspense fallback={null}>
+        <GlobalNotificationListener />
+      </Suspense>
+
       {/* Apple-style Hello Welcome Greeting */}
       <AppleHelloSplash />
 
@@ -21,7 +26,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
       
       {/* Mobile top bar */}
       <Suspense fallback={null}>
-        <TopBar notificationCount={3} />
+        <TopBar />
       </Suspense>
 
 

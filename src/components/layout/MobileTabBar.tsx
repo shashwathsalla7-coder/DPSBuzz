@@ -10,7 +10,7 @@ import { getAvatarColorPair } from '@/config/tokens';
 export const MobileTabBar: FC = () => {
   const pathname = usePathname();
   const [currentUser, setCurrentUser] = useState<Profile | null>(null);
-  const [hasUnreadChats, setHasUnreadChats] = useState(false);
+  const [unreadChatsCount, setUnreadChatsCount] = useState(0);
 
   useEffect(() => {
     const updateUserState = () => {
@@ -20,10 +20,10 @@ export const MobileTabBar: FC = () => {
       // Check unread conversations
       try {
         const convs = JSON.parse(localStorage.getItem('dpsbuzz_chat_conversations_v2') || '[]');
-        const unread = convs.some((c: any) => (c.unreadCount || 0) > 0 || c.isUnread);
-        setHasUnreadChats(Boolean(unread));
+        const count = convs.filter((c: any) => (c.unreadCount || 0) > 0 || c.isUnread).length;
+        setUnreadChatsCount(count);
       } catch {
-        setHasUnreadChats(false);
+        setUnreadChatsCount(0);
       }
     };
 
@@ -142,15 +142,14 @@ export const MobileTabBar: FC = () => {
               strokeWidth={isChatsActive ? 2.5 : 1.75}
               className={isChatsActive ? 'fill-current' : ''}
             />
-            {hasUnreadChats && (
+            {unreadChatsCount > 0 && (
               <span
-                className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full"
-                style={{
-                  backgroundColor: 'var(--like)',
-                  border: '2px solid var(--surface)',
-                }}
-                aria-label="Unread chats"
-              />
+                className="absolute -top-1.5 -right-2 min-w-[17px] h-[17px] px-1 rounded-full text-[9px] font-extrabold text-white flex items-center justify-center leading-none border-2 border-[var(--surface)] animate-bounce-in shadow-xs"
+                style={{ backgroundColor: 'var(--like)' }}
+                aria-label={`${unreadChatsCount} unread chats`}
+              >
+                {unreadChatsCount > 9 ? '9+' : unreadChatsCount}
+              </span>
             )}
           </div>
           <span className={`text-[12px] leading-tight mt-0.5 ${isChatsActive ? 'font-bold' : 'font-medium'}`}>

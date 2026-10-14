@@ -601,9 +601,9 @@ function HomeContent() {
             <div className="w-9 h-1 rounded-full bg-[var(--line-strong)] mx-auto" />
             <div className="flex items-center justify-between pb-1 border-b border-[var(--line)]">
               <div>
-                <h3 className="font-bold text-sm text-[var(--text)]">Share Post with Friends</h3>
+                <h3 className="font-bold text-sm text-[var(--text)]">Share Post</h3>
                 <p className="text-[11px] text-[var(--text-muted)]">
-                  Select friends you follow and click Share to send into chat
+                  Copy link, share via apps, or send directly into chat
                 </p>
               </div>
               <button
@@ -620,8 +620,72 @@ function HomeContent() {
               </button>
             </div>
 
+            {/* Quick External Share Actions */}
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    const postUrl = `${window.location.origin}/home#post-${selectedSharePost.id}`;
+                    await navigator.clipboard.writeText(postUrl);
+                    showToast('Direct link copied to clipboard! 📋');
+                  } catch {
+                    showToast('Failed to copy link');
+                  }
+                }}
+                className="flex items-center justify-center gap-2 py-2 px-3 rounded-xl border text-xs font-semibold cursor-pointer hover:bg-[var(--surface-sunken)] active:scale-95 transition-all text-[var(--text)]"
+                style={{ borderColor: 'var(--line)' }}
+              >
+                <Copy size={14} className="text-pink-500" />
+                <span>Copy Link</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={async () => {
+                  const postUrl = `${window.location.origin}/home#post-${selectedSharePost.id}`;
+                  const shareTitle = `DPS Buzz • @${selectedSharePost.username}'s post`;
+                  const shareText = selectedSharePost.caption
+                    ? `"${selectedSharePost.caption}"`
+                    : `Check out @${selectedSharePost.username}'s post on DPS Buzz!`;
+
+                  if (navigator.share) {
+                    try {
+                      await navigator.share({
+                        title: shareTitle,
+                        text: shareText,
+                        url: postUrl,
+                      });
+                      showToast('Shared successfully! 🚀');
+                    } catch (err: any) {
+                      if (err.name !== 'AbortError') {
+                        await navigator.clipboard.writeText(postUrl);
+                        showToast('Direct link copied to clipboard! 📋');
+                      }
+                    }
+                  } else {
+                    await navigator.clipboard.writeText(postUrl);
+                    showToast('Direct link copied to clipboard! 📋');
+                  }
+                }}
+                className="flex items-center justify-center gap-2 py-2 px-3 rounded-xl border text-xs font-semibold cursor-pointer hover:bg-[var(--surface-sunken)] active:scale-95 transition-all text-[var(--text)]"
+                style={{ borderColor: 'var(--line)' }}
+              >
+                <Share2 size={14} className="text-pink-500" />
+                <span>Share via Apps</span>
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2 py-0.5">
+              <div className="h-px flex-1 bg-[var(--line)]" />
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                or send into chat
+              </span>
+              <div className="h-px flex-1 bg-[var(--line)]" />
+            </div>
+
             {/* Search filter for friends */}
-            <div className="pt-1">
+            <div>
               <input
                 type="text"
                 placeholder="Search friends or classmates..."

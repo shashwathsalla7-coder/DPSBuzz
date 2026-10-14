@@ -35,6 +35,12 @@ interface ChatMessage {
   sender: 'me' | 'them';
   senderUsername?: string;
   time: string;
+  sharedPost?: {
+    id: string;
+    username: string;
+    imageUrl?: string | null;
+    caption?: string;
+  };
 }
 
 const INITIAL_CONVERSATIONS: ConversationItem[] = [];
@@ -285,8 +291,14 @@ function ChatsContent() {
     setConversations((prev) => {
       const existing = prev.find((c) => c.username?.toLowerCase() === targetUser);
       if (existing) {
-        setActiveConversation(existing);
-        return prev;
+        const readConv = { ...existing, isUnread: false, unreadCount: 0 };
+        setActiveConversation(readConv);
+        const updated = prev.map((c) => (c.id === existing.id ? readConv : c));
+        try {
+          localStorage.setItem('dpsbuzz_chat_conversations_v2', JSON.stringify(updated));
+          window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated'));
+        } catch {}
+        return updated;
       }
       const newConv: ConversationItem = {
         id: `conv-${targetUser}`,
@@ -296,9 +308,15 @@ function ChatsContent() {
         lastMessage: 'Started new conversation',
         timeAgo: 'Just now',
         isUnread: false,
+        unreadCount: 0,
       };
       setActiveConversation(newConv);
-      return [newConv, ...prev];
+      const updated = [newConv, ...prev];
+      try {
+        localStorage.setItem('dpsbuzz_chat_conversations_v2', JSON.stringify(updated));
+        window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated'));
+      } catch {}
+      return updated;
     });
   }, [userParam, currentUsername]);
 
@@ -501,11 +519,28 @@ function ChatsContent() {
     setDeleteConfirmConv(null);
   };
 
+  const openConversation = (conv: ConversationItem) => {
+    const readConv = { ...conv, isUnread: false, unreadCount: 0 };
+    setActiveConversation(readConv);
+    setConversations((prev) => {
+      const updated = prev.map((c) =>
+        c.id === conv.id || (c.username && c.username.toLowerCase() === conv.username?.toLowerCase())
+          ? { ...c, isUnread: false, unreadCount: 0 }
+          : c
+      );
+      try {
+        localStorage.setItem('dpsbuzz_chat_conversations_v2', JSON.stringify(updated));
+        window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated'));
+      } catch {}
+      return updated;
+    });
+  };
+
   const handleStartNewChat = (student: StudentContact) => {
     setIsNewChatOpen(false);
     const existing = conversations.find((c) => c.username === student.username);
     if (existing) {
-      setActiveConversation(existing);
+      openConversation(existing);
     } else {
       const newConv: ConversationItem = {
         id: `conv-${student.username}`,
@@ -515,9 +550,10 @@ function ChatsContent() {
         lastMessage: 'Started new conversation',
         timeAgo: 'Just now',
         isUnread: false,
+        unreadCount: 0,
       };
       setConversations((prev) => [newConv, ...prev]);
-      setActiveConversation(newConv);
+      openConversation(newConv);
     }
   };
 
@@ -757,6 +793,33 @@ function ChatsContent() {
                         : 'bg-[var(--surface-sunken)] text-[var(--text)] rounded-bl-xs'
                     }`}
                   >
+                    {msg.sharedPost && (
+                      <div className="mb-2 p-2.5 rounded-2xl bg-black/25 border border-white/10 overflow-hidden flex flex-col gap-2 max-w-xs text-left">
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-white/95">
+                          <span>📸</span>
+                          <span>@{msg.sharedPost.username}&apos;s Post</span>
+                        </div>
+                        {msg.sharedPost.imageUrl && (
+                          <img
+                            src={msg.sharedPost.imageUrl}
+                            alt="Shared post"
+                            className="w-full max-h-48 object-cover rounded-xl border border-white/10"
+                          />
+                        )}
+                        {msg.sharedPost.caption && (
+                          <p className="text-xs line-clamp-2 text-white/85 italic leading-relaxed">
+                            &ldquo;{msg.sharedPost.caption}&rdquo;
+                          </p>
+                        )}
+                        <Link
+                          href={`/home#post-${msg.sharedPost.id}`}
+                          className="inline-flex items-center gap-1 text-[11px] font-bold text-pink-300 hover:text-pink-200 underline"
+                        >
+                          <span>View Post in Feed</span>
+                          <span>→</span>
+                        </Link>
+                      </div>
+                    )}
                     {msg.text}
                   </div>
                   <span className="text-[10px] text-[var(--text-muted)] mt-1 px-1 tabular-nums">
@@ -991,7 +1054,7 @@ function ChatsContent() {
                     <ConversationRow
                       key={conv.id}
                       conversation={conv}
-                      onClick={() => setActiveConversation(conv)}
+                      onClick={() => openConversation(conv)}
                       onLongPress={(c) => setLongPressConv(c)}
                       onMuteToggle={handleMuteToggle}
                       onDeleteRequest={(c) => setDeleteConfirmConv(c)}
@@ -1014,7 +1077,7 @@ function ChatsContent() {
                       <ConversationRow
                         key={conv.id}
                         conversation={conv}
-                        onClick={() => setActiveConversation(conv)}
+                        onClick={() => openConversation(conv)}
                         onLongPress={(c) => setLongPressConv(c)}
                         onMuteToggle={handleMuteToggle}
                         onDeleteRequest={(c) => setDeleteConfirmConv(c)}
@@ -1038,7 +1101,7 @@ function ChatsContent() {
                       <ConversationRow
                         key={conv.id}
                         conversation={conv}
-                        onClick={() => setActiveConversation(conv)}
+                        onClick={() => openConversation(conv)}
                         onLongPress={(c) => setLongPressConv(c)}
                         onMuteToggle={handleMuteToggle}
                         onDeleteRequest={(c) => setDeleteConfirmConv(c)}

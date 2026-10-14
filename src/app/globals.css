@@ -726,6 +726,17 @@ button:not([disabled]):not([data-no-apple="true"]):active,
   animation: apple-fade-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+/* Floating Notification Toast Slide Down */
+@keyframes slide-down {
+  0% { transform: translateY(-100%); opacity: 0; }
+  60% { transform: translateY(4px); opacity: 1; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+.animate-slide-down {
+  animation: slide-down 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
 /* Respect Reduced Motion */
 @media (prefers-reduced-motion: reduce) {
   * {

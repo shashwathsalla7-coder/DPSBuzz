@@ -237,7 +237,7 @@ export interface RosterEntry {
 export interface NotificationItem {
   id: string;
   userId: string;
-  type: 'like' | 'comment' | 'follow' | 'notice' | 'badge' | 'system';
+  type: 'like' | 'comment' | 'follow' | 'notice' | 'badge' | 'system' | 'chat';
   title: string;
   body: string;
   timeAgo: string;
@@ -2041,6 +2041,34 @@ export const DataStore = {
     return getStorage<NotificationItem[]>(STORAGE_KEYS.NOTIFICATIONS, []);
   },
 
+  addNotification(data: {
+    userId: string;
+    type?: 'like' | 'comment' | 'follow' | 'notice' | 'badge' | 'system' | 'chat';
+    title: string;
+    body: string;
+    link?: string;
+  }): NotificationItem {
+    const notifs = this.getNotifications();
+    const newNotif: NotificationItem = {
+      id: `notif-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      userId: data.userId.toLowerCase().trim(),
+      type: data.type || 'system',
+      title: data.title,
+      body: data.body,
+      timeAgo: 'Just now',
+      isRead: false,
+      link: data.link,
+    };
+    notifs.unshift(newNotif);
+    if (notifs.length > 100) notifs.length = 100;
+    setStorage(STORAGE_KEYS.NOTIFICATIONS, notifs);
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated', { detail: { type: 'notification_added' } }));
+    }
+    return newNotif;
+  },
+
   // Groups (Strictly real student and school groups created in the app)
   getGroups(): Group[] {
     const list = getStorage<Group[]>(STORAGE_KEYS.GROUPS, []);
@@ -3455,22 +3483,32 @@ export const DataStore = {
   // Share post to chat with friends
   sharePostToChat(post: Post, targetUsernames: string[], senderUsername?: string): void {
     if (!targetUsernames.length || typeof window === 'undefined') return;
-    const cur = senderUsername || this.getCurrentUser().username;
+    const cur = (senderUsername || this.getCurrentUser().username).toLowerCase().trim();
 
     try {
       const storedConv = JSON.parse(localStorage.getItem('dpsbuzz_chat_conversations_v2') || '[]');
       const storedMsgs = JSON.parse(localStorage.getItem('dpsbuzz_chat_messages_v1') || '{}');
       const profiles = this.getProfiles();
-      const previewText = `Shared @${post.username}'s post: "${post.caption ? (post.caption.length > 50 ? post.caption.slice(0, 50) + '...' : post.caption) : 'Photo moment'}" 📸`;
+      const curProfile = profiles.find((p) => (p.username || '').toLowerCase() === cur);
+      const senderName = curProfile ? curProfile.fullName : cur;
+
+      const captionSnippet = post.caption
+        ? post.caption.length > 50
+          ? post.caption.slice(0, 50) + '...'
+          : post.caption
+        : 'Photo moment';
+      const previewText = `Shared @${post.username}'s post: "${captionSnippet}" 📸`;
+      const timeNow = 'Just now';
+      const timeStr = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date());
 
       targetUsernames.forEach((tUser) => {
         const cleanT = tUser.toLowerCase().trim();
         const convId = `conv-${cleanT}`;
-        const targetProf = profiles.find((p) => p.username.toLowerCase() === cleanT);
+        const canonicalId = [cur, cleanT].sort().join('__');
+        const targetProf = profiles.find((p) => (p.username || '').toLowerCase() === cleanT);
         const targetName = targetProf ? targetProf.fullName : tUser;
-        const timeNow = 'Just now';
 
-        const existingIdx = storedConv.findIndex((c: any) => c.username?.toLowerCase() === cleanT || c.id === convId);
+        const existingIdx = storedConv.findIndex((c: any) => (c.username || '').toLowerCase() === cleanT || c.id === convId || c.id === canonicalId);
         if (existingIdx >= 0) {
           storedConv[existingIdx].lastMessage = `You: ${previewText}`;
           storedConv[existingIdx].timeAgo = timeNow;
@@ -3490,16 +3528,40 @@ export const DataStore = {
           id: `msg-share-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
           text: previewText,
           sender: 'me' as const,
-          time: new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date()),
+          senderUsername: cur,
+          senderName: senderName,
+          time: timeStr,
+          timestamp: Date.now(),
           sharedPost: {
             id: post.id,
             username: post.username,
-            imageUrl: post.imageUrl || (post.images && post.images[0]),
-            caption: post.caption,
+            imageUrl: post.imageUrl || (post.images && post.images[0]) || null,
+            caption: post.caption || '',
           },
         };
 
         storedMsgs[convId] = [...(storedMsgs[convId] || []), newMsg];
+        storedMsgs[canonicalId] = [...(storedMsgs[canonicalId] || []), newMsg];
+
+        // Sync to cloud chat store so recipient gets it over the cloud!
+        fetch('/api/chats', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            conversationId: canonicalId,
+            recipientUsername: cleanT,
+            message: newMsg,
+          }),
+        }).catch((err) => console.warn('Failed to post shared post to cloud chat:', err));
+
+        // Create notification for target user
+        this.addNotification({
+          userId: cleanT,
+          type: 'chat',
+          title: `💬 @${cur} shared a post with you`,
+          body: previewText,
+          link: `/chats?user=${cur}`,
+        });
       });
 
       localStorage.setItem('dpsbuzz_chat_conversations_v2', JSON.stringify(storedConv));
@@ -3516,20 +3578,22 @@ export const DataStore = {
   // Story reply directly into chat with story author
   sendStoryReplyToChat(story: Story, replyText: string, senderUsername?: string): void {
     if (typeof window === 'undefined') return;
-    const cur = senderUsername || this.getCurrentUser().username;
+    const cur = (senderUsername || this.getCurrentUser().username).toLowerCase().trim();
     const authorUsername = story.username.toLowerCase().trim();
 
     try {
       const convId = `conv-${authorUsername}`;
+      const canonicalId = [cur, authorUsername].sort().join('__');
       const storedConv = JSON.parse(localStorage.getItem('dpsbuzz_chat_conversations_v2') || '[]');
       const storedMsgs = JSON.parse(localStorage.getItem('dpsbuzz_chat_messages_v1') || '{}');
       const profiles = this.getProfiles();
-      const targetProf = profiles.find((p) => p.username.toLowerCase() === authorUsername);
+      const targetProf = profiles.find((p) => (p.username || '').toLowerCase() === authorUsername);
       const targetName = story.fullName || targetProf?.fullName || authorUsername;
       const formattedMsg = `Replied to your story: "${replyText}" 💬`;
       const timeNow = 'Just now';
+      const timeStr = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date());
 
-      const existingIdx = storedConv.findIndex((c: any) => c.username?.toLowerCase() === authorUsername || c.id === convId);
+      const existingIdx = storedConv.findIndex((c: any) => (c.username || '').toLowerCase() === authorUsername || c.id === convId || c.id === canonicalId);
       if (existingIdx >= 0) {
         storedConv[existingIdx].lastMessage = `You: ${formattedMsg}`;
         storedConv[existingIdx].timeAgo = timeNow;
@@ -3546,29 +3610,39 @@ export const DataStore = {
       }
 
       const newMsg = {
-        id: `msg-story-${Date.now()}`,
+        id: `msg-story-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
         text: formattedMsg,
         sender: 'me' as const,
-        time: new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date()),
+        senderUsername: cur,
+        time: timeStr,
+        timestamp: Date.now(),
       };
 
       storedMsgs[convId] = [...(storedMsgs[convId] || []), newMsg];
+      storedMsgs[canonicalId] = [...(storedMsgs[canonicalId] || []), newMsg];
 
       localStorage.setItem('dpsbuzz_chat_conversations_v2', JSON.stringify(storedConv));
       localStorage.setItem('dpsbuzz_chat_messages_v1', JSON.stringify(storedMsgs));
 
+      // Sync to cloud chat store
+      fetch('/api/chats', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          conversationId: canonicalId,
+          recipientUsername: authorUsername,
+          message: newMsg,
+        }),
+      }).catch((err) => console.warn('Failed to sync story reply to chat:', err));
+
       // Also create a notification for the story owner
-      const notifs = this.getNotifications();
-      notifs.unshift({
-        id: `notif-sreply-${Date.now()}`,
-        userId: cur,
-        type: 'comment',
-        title: `@${cur} replied to your story`,
+      this.addNotification({
+        userId: authorUsername,
+        type: 'chat',
+        title: `💬 @${cur} replied to your story`,
         body: `"${replyText}"`,
-        timeAgo: 'Just now',
-        isRead: false,
+        link: `/chats?user=${cur}`,
       });
-      setStorage(STORAGE_KEYS.NOTIFICATIONS, notifs);
 
       window.dispatchEvent(
         new CustomEvent('dpsbuzz:content_updated', { detail: { type: 'story_reply_sent' } })

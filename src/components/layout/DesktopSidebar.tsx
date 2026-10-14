@@ -25,10 +25,33 @@ const navItems = [
 export const DesktopSidebar: FC = () => {
   const pathname = usePathname();
   const [isAdmin, setIsAdmin] = useState(false);
+  const [unreadChatsCount, setUnreadChatsCount] = useState(0);
+  const [unreadNotifsCount, setUnreadNotifsCount] = useState(0);
 
   useEffect(() => {
-    const cur = DataStore.getCurrentUser();
-    setIsAdmin(cur?.username?.toLowerCase() === 'shashwath71845');
+    const updateStats = () => {
+      const cur = DataStore.getCurrentUser();
+      setIsAdmin(cur?.username?.toLowerCase() === 'shashwath71845');
+
+      const notifs = DataStore.getNotifications();
+      setUnreadNotifsCount(notifs.filter((n) => !n.isRead).length);
+
+      try {
+        const convs = JSON.parse(localStorage.getItem('dpsbuzz_chat_conversations_v2') || '[]');
+        const count = convs.filter((c: any) => c.isUnread || (c.unreadCount || 0) > 0).length;
+        setUnreadChatsCount(count);
+      } catch {
+        setUnreadChatsCount(0);
+      }
+    };
+
+    updateStats();
+    window.addEventListener('dpsbuzz:content_updated', updateStats);
+    window.addEventListener('storage', updateStats);
+    return () => {
+      window.removeEventListener('dpsbuzz:content_updated', updateStats);
+      window.removeEventListener('storage', updateStats);
+    };
   }, []);
 
   const bottomItems = [
@@ -58,10 +81,33 @@ export const DesktopSidebar: FC = () => {
         aria-label={item.label}
         aria-current={isActive ? 'page' : undefined}
       >
-        <Icon size={20} strokeWidth={isActive ? 2.5 : 1.75} />
+        <div className="relative">
+          <Icon size={20} strokeWidth={isActive ? 2.5 : 1.75} />
+          {item.label === 'Chats' && unreadChatsCount > 0 && (
+            <span
+              className="lg:hidden absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full"
+              style={{ backgroundColor: 'var(--like)' }}
+            />
+          )}
+          {item.label === 'Alerts' && unreadNotifsCount > 0 && (
+            <span
+              className="lg:hidden absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-pink-500"
+            />
+          )}
+        </div>
         <span className="hidden lg:block text-sm">{item.label}</span>
-        {item.label === 'Alerts' && (
-          <span className="hidden lg:flex ml-auto w-2 h-2 rounded-full bg-[var(--accent)]" />
+        {item.label === 'Chats' && unreadChatsCount > 0 && (
+          <span
+            className="hidden lg:flex ml-auto min-w-[18px] h-[18px] px-1 rounded-full text-white text-[10px] font-extrabold items-center justify-center animate-bounce-in shadow-xs"
+            style={{ backgroundColor: 'var(--like)' }}
+          >
+            {unreadChatsCount > 9 ? '9+' : unreadChatsCount}
+          </span>
+        )}
+        {item.label === 'Alerts' && unreadNotifsCount > 0 && (
+          <span className="hidden lg:flex ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-pink-500 text-white text-[10px] font-extrabold items-center justify-center animate-bounce-in shadow-xs">
+            {unreadNotifsCount > 9 ? '9+' : unreadNotifsCount}
+          </span>
         )}
       </Link>
     );

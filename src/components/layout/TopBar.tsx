@@ -17,18 +17,30 @@ export const TopBar: FC<TopBarProps> = ({ notificationCount = 0 }) => {
   const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(notificationCount);
 
   useEffect(() => {
-    const updateUser = () => {
+    const updateStats = () => {
       const user = DataStore.getCurrentUser();
       setIsAdmin(user?.username?.toLowerCase() === 'shashwath71845');
+
+      const notifs = DataStore.getNotifications();
+      const unreadNotifs = notifs.filter((n) => !n.isRead).length;
+
+      try {
+        const convs = JSON.parse(localStorage.getItem('dpsbuzz_chat_conversations_v2') || '[]');
+        const unreadChats = convs.filter((c: any) => c.isUnread || (c.unreadCount || 0) > 0).length;
+        setUnreadCount(unreadNotifs + unreadChats);
+      } catch {
+        setUnreadCount(unreadNotifs);
+      }
     };
-    updateUser();
-    window.addEventListener('dpsbuzz:content_updated', updateUser);
-    window.addEventListener('storage', updateUser);
+    updateStats();
+    window.addEventListener('dpsbuzz:content_updated', updateStats);
+    window.addEventListener('storage', updateStats);
     return () => {
-      window.removeEventListener('dpsbuzz:content_updated', updateUser);
-      window.removeEventListener('storage', updateUser);
+      window.removeEventListener('dpsbuzz:content_updated', updateStats);
+      window.removeEventListener('storage', updateStats);
     };
   }, []);
 
@@ -74,12 +86,12 @@ export const TopBar: FC<TopBarProps> = ({ notificationCount = 0 }) => {
               aria-label="Notifications"
             >
               <Bell size={21} strokeWidth={1.8} />
-              {notificationCount > 0 && (
+              {unreadCount > 0 && (
                 <span
-                  className="absolute top-1.5 right-1.5 min-w-[15px] h-[15px] px-1 rounded-full text-[9px] font-extrabold text-white flex items-center justify-center tabular-nums leading-none border border-[var(--surface)]"
+                  className="absolute top-1.5 right-1.5 min-w-[17px] h-[17px] px-1 rounded-full text-[10px] font-extrabold text-white flex items-center justify-center tabular-nums leading-none border border-[var(--surface)] animate-bounce-in shadow-xs"
                   style={{ backgroundColor: 'var(--like)' }}
                 >
-                  {notificationCount > 9 ? '9+' : notificationCount}
+                  {unreadCount > 9 ? '9+' : unreadCount}
                 </span>
               )}
             </Link>

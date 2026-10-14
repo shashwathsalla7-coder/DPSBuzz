@@ -15,7 +15,11 @@ export default function NotificationsPage() {
   const currentUser = useMemo(() => DataStore.getCurrentUser(), []);
 
   const loadAll = () => {
-    const list = DataStore.getNotifications();
+    const currentClean = (currentUser?.username || '').toLowerCase().trim();
+    const rawList = DataStore.getNotifications();
+    const list = rawList.filter(
+      (n) => !n.userId || n.userId === 'all' || n.userId.toLowerCase().trim() === currentClean
+    );
     setNotifications(list || []);
 
     setGroupRequests(DataStore.getGroupJoinRequests().filter((r) => r.status === 'pending'));
@@ -36,6 +40,21 @@ export default function NotificationsPage() {
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 2500);
+  };
+
+  const handleMarkAllRead = () => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    try {
+      const raw = DataStore.getNotifications();
+      const currentClean = (currentUser?.username || '').toLowerCase().trim();
+      const updated = raw.map((n) =>
+        !n.userId || n.userId === 'all' || n.userId.toLowerCase().trim() === currentClean
+          ? { ...n, isRead: true }
+          : n
+      );
+      localStorage.setItem('dpsbuzz_notifications_v1', JSON.stringify(updated));
+      window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated'));
+    } catch {}
   };
 
   const handleAcceptGroupReq = (req: GroupJoinRequest) => {
@@ -68,8 +87,77 @@ export default function NotificationsPage() {
     showToast(`Declined follow request from @${req.requester}`);
   };
 
-  const todayNotifs = notifications.filter((n) => n.timeAgo.includes('h') || n.timeAgo.includes('m'));
+  const todayNotifs = notifications.filter((n) => n.timeAgo.includes('h') || n.timeAgo.includes('m') || n.timeAgo === 'Just now');
   const earlierNotifs = notifications.filter((n) => !todayNotifs.includes(n));
+
+  const handleNotificationClick = (notif: NotificationItem) => {
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === notif.id ? { ...n, isRead: true } : n))
+    );
+    try {
+      const raw = DataStore.getNotifications();
+      const updated = raw.map((n) => (n.id === notif.id ? { ...n, isRead: true } : n));
+      localStorage.setItem('dpsbuzz_notifications_v1', JSON.stringify(updated));
+      window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated'));
+    } catch {}
+  };
+
+  const renderNotificationRow = (notif: NotificationItem) => {
+    const pair = getAvatarColorPair(notif.userId);
+    const rowContent = (
+      <div
+        key={notif.id}
+        onClick={() => handleNotificationClick(notif)}
+        className={`px-4 py-3 border-b last:border-b-0 flex items-center justify-between transition-colors ${
+          notif.link ? 'cursor-pointer hover:bg-[var(--surface-sunken)]' : ''
+        }`}
+        style={{ borderColor: 'var(--line)' }}
+      >
+        <div className="flex items-center gap-3 min-w-0">
+          <div
+            className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs shrink-0 relative"
+            style={{ backgroundColor: pair.bg, color: pair.text }}
+          >
+            {notif.userId.slice(0, 2).toUpperCase()}
+            {notif.type === 'chat' && (
+              <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-pink-500 text-white flex items-center justify-center text-[9px] shadow-xs">
+                💬
+              </span>
+            )}
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs leading-snug truncate" style={{ color: 'var(--text)' }}>
+              <span className="font-bold">{notif.title}</span>
+            </p>
+            {notif.body && (
+              <p className="text-[11px] text-[var(--text-muted)] truncate mt-0.5">
+                {notif.body}
+              </p>
+            )}
+            <span className="text-[10px] tabular-nums" style={{ color: 'var(--text-muted)' }}>
+              {notif.timeAgo.includes('ago') || notif.timeAgo === 'Just now' ? notif.timeAgo : `${notif.timeAgo} ago`}
+            </span>
+          </div>
+        </div>
+
+        {!notif.isRead && (
+          <div
+            className="w-2.5 h-2.5 rounded-full shrink-0 ml-2 animate-pulse-glow"
+            style={{ backgroundColor: 'var(--primary)' }}
+          />
+        )}
+      </div>
+    );
+
+    if (notif.link) {
+      return (
+        <Link key={notif.id} href={notif.link} className="block">
+          {rowContent}
+        </Link>
+      );
+    }
+    return rowContent;
+  };
 
   return (
     <div className="space-y-4 pb-20 select-none">
@@ -97,8 +185,8 @@ export default function NotificationsPage() {
         </div>
 
         <button
-          onClick={() => setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })))}
-          className="text-xs font-semibold hover:underline btn-press"
+          onClick={handleMarkAllRead}
+          className="text-xs font-semibold hover:underline btn-press cursor-pointer"
           style={{ color: 'var(--primary)' }}
         >
           Mark all read
@@ -266,40 +354,7 @@ export default function NotificationsPage() {
                     borderColor: 'var(--line)',
                   }}
                 >
-                  {todayNotifs.map((notif) => {
-                    const pair = getAvatarColorPair(notif.userId);
-                    return (
-                      <div
-                        key={notif.id}
-                        className="px-4 py-3 border-b last:border-b-0 flex items-center justify-between"
-                        style={{ borderColor: 'var(--line)' }}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div
-                            className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs shrink-0"
-                            style={{ backgroundColor: pair.bg, color: pair.text }}
-                          >
-                            {notif.userId.slice(0, 2).toUpperCase()}
-                          </div>
-                          <div>
-                            <p className="text-xs leading-snug" style={{ color: 'var(--text)' }}>
-                              <span className="font-bold">{notif.title}</span>
-                            </p>
-                            <span className="text-[11px] tabular-nums" style={{ color: 'var(--text-muted)' }}>
-                              {notif.timeAgo} ago
-                            </span>
-                          </div>
-                        </div>
-
-                        {!notif.isRead && (
-                          <div
-                            className="w-2 h-2 rounded-full shrink-0 ml-2"
-                            style={{ backgroundColor: 'var(--primary)' }}
-                          />
-                        )}
-                      </div>
-                    );
-                  })}
+                  {todayNotifs.map(renderNotificationRow)}
                 </div>
               </div>
             )}
@@ -317,40 +372,7 @@ export default function NotificationsPage() {
                     borderColor: 'var(--line)',
                   }}
                 >
-                  {earlierNotifs.map((notif) => {
-                    const pair = getAvatarColorPair(notif.userId);
-                    return (
-                      <div
-                        key={notif.id}
-                        className="px-4 py-3 border-b last:border-b-0 flex items-center justify-between"
-                        style={{ borderColor: 'var(--line)' }}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div
-                            className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs shrink-0"
-                            style={{ backgroundColor: pair.bg, color: pair.text }}
-                          >
-                            {notif.userId.slice(0, 2).toUpperCase()}
-                          </div>
-                          <div>
-                            <p className="text-xs leading-snug" style={{ color: 'var(--text)' }}>
-                              <span className="font-bold">{notif.title}</span>
-                            </p>
-                            <span className="text-[11px] tabular-nums" style={{ color: 'var(--text-muted)' }}>
-                              {notif.timeAgo}
-                            </span>
-                          </div>
-                        </div>
-
-                        {!notif.isRead && (
-                          <div
-                            className="w-2 h-2 rounded-full shrink-0 ml-2"
-                            style={{ backgroundColor: 'var(--primary)' }}
-                          />
-                        )}
-                      </div>
-                    );
-                  })}
+                  {earlierNotifs.map(renderNotificationRow)}
                 </div>
               </div>
             )}
