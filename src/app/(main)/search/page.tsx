@@ -19,6 +19,7 @@ import { HeroCard } from '@/components/search/HeroCard';
 import { TrendingGrid } from '@/components/search/TrendingGrid';
 import { SearchSkeletons } from '@/components/search/SearchSkeletons';
 import { getAvatarColorPair } from '@/config/tokens';
+import { SuggestedAccountsList } from '@/components/suggestions';
 
 export default function SearchPage() {
   return (
@@ -493,71 +494,22 @@ function SearchContent() {
             currentUsername={currentUser?.username}
           />
 
-          {/* Suggested Classmates List with Follow Buttons */}
-          <div className="px-4 space-y-3 pb-8">
-            <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
-              <Users size={14} className="text-[var(--primary)]" />
-              <span>Suggested Accounts for You</span>
-            </div>
-
-            <div className="space-y-2">
-              {suggestedClassmates.slice(0, 15).map((person) => {
-                const following = isFollowing(person.username);
-                const pair = getAvatarColorPair(person.username);
-                const isShashwath = person.username.toLowerCase() === 'shashwath71845';
-
-                return (
-                  <div
-                    key={person.id}
-                    className="p-3 rounded-[16px] border flex items-center justify-between gap-3 bg-[var(--surface)] hover:border-[var(--line-strong)] transition-all"
-                    style={{ borderColor: 'var(--line)' }}
-                  >
-                    <Link
-                      href={`/u/${person.username}`}
-                      className="flex items-center gap-3 min-w-0 flex-1"
-                    >
-                      <div
-                        className="w-11 h-11 rounded-full flex items-center justify-center font-bold text-xs shrink-0 overflow-hidden border border-[var(--line)]"
-                        style={{ backgroundColor: isShashwath ? '#FF5A1F' : pair.bg, color: '#fff' }}
-                      >
-                        {person.avatar ? (
-                          <img src={person.avatar} alt={person.fullName} className="w-full h-full object-cover" />
-                        ) : (
-                          person.fullName.slice(0, 2).toUpperCase()
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <p className="text-xs font-bold text-[var(--text)] truncate">
-                            {person.fullName}
-                          </p>
-                          {person.isVerified && (
-                            <span className="text-blue-400 text-[10px]">✓</span>
-                          )}
-                        </div>
-                        <p className="text-[11px] text-[var(--text-muted)] truncate">
-                          @{person.username} · {isShashwath ? 'School Admin' : `Class ${person.class}-${person.section || 'A'}`}
-                        </p>
-                      </div>
-                    </Link>
-
-                    {currentUser?.username.toLowerCase().trim() !== person.username.toLowerCase().trim() && (
-                      <button
-                        type="button"
-                        onClick={() => handleFollowToggle(person.username)}
-                        className="px-4 py-1.5 rounded-full text-xs font-bold shrink-0 cursor-pointer transition-all active:scale-95 shadow-xs"
-                        style={{
-                          backgroundColor: following ? 'var(--surface-sunken)' : 'var(--primary)',
-                          color: following ? 'var(--text)' : 'var(--on-primary)',
-                          border: following ? '1px solid var(--line)' : 'none',
-                        }}
-                      >
-                        {following ? 'Following' : 'Follow'}
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
+          {/* Suggested Classmates List (Instagram Style) */}
+          <div className="px-4 pb-8">
+            <div
+              className="p-4 rounded-[22px] border shadow-xs"
+              style={{
+                backgroundColor: 'var(--surface)',
+                borderColor: 'var(--line)',
+              }}
+            >
+              <SuggestedAccountsList
+                limit={10}
+                showHeader={true}
+                onFollowToggled={(target) => {
+                  handleFollowToggle(target);
+                }}
+              />
             </div>
           </div>
         </div>

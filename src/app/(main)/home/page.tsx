@@ -30,6 +30,7 @@ import { PostCard } from '@/components/home/PostCard';
 import { StarBoardTeaser } from '@/components/home/StarBoardTeaser';
 import { GetAppWidget } from '@/components/home/GetAppWidget';
 import { HomeFeedSkeleton } from '@/components/home/HomeFeedSkeleton';
+import { SuggestedAccountsList } from '@/components/suggestions';
 
 export default function HomePage() {
   return (
@@ -466,87 +467,23 @@ function HomeContent() {
             </div>
           </div>
 
-          {/* 2. Suggested Classmates List */}
-          {suggestedAccounts.length > 0 && (
-            <div
-              className="p-4 rounded-[22px] border space-y-3 shadow-xs"
-              style={{
-                backgroundColor: 'var(--surface)',
-                borderColor: 'var(--line)',
+          {/* 2. Suggested Classmates List (Instagram Style) */}
+          <div
+            className="p-4 rounded-[22px] border shadow-xs"
+            style={{
+              backgroundColor: 'var(--surface)',
+              borderColor: 'var(--line)',
+            }}
+          >
+            <SuggestedAccountsList
+              limit={5}
+              showHeader={true}
+              onFollowToggled={(target, isNow) => {
+                setFollowsVersion((v) => v + 1);
+                showToast(isNow ? `Following @${target}! 🤝` : `Unfollowed @${target}`);
               }}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-[var(--text)] uppercase tracking-wider">
-                  <Users size={14} className="text-[var(--primary)]" />
-                  <span>Suggested Accounts for You</span>
-                </div>
-                <Link
-                  href="/search?chip=Accounts"
-                  className="text-xs font-bold text-[var(--primary)] hover:underline"
-                >
-                  See all →
-                </Link>
-              </div>
-
-              <div className="space-y-2">
-                {suggestedAccounts.slice(0, 6).map((person) => {
-                  const following = followedUsernames.includes(person.username.toLowerCase());
-                  const pair = getAvatarColorPair(person.username);
-                  const isShashwath = person.username.toLowerCase() === 'shashwath71845';
-
-                  return (
-                    <div
-                      key={person.id}
-                      className="p-3 rounded-[16px] border flex items-center justify-between gap-3 bg-[var(--surface-sunken)]/60 hover:border-[var(--line-strong)] transition-all"
-                      style={{ borderColor: 'var(--line)' }}
-                    >
-                      <Link
-                        href={`/u/${person.username}`}
-                        className="flex items-center gap-3 min-w-0 flex-1"
-                      >
-                        <div
-                          className="w-11 h-11 rounded-full flex items-center justify-center font-bold text-xs shrink-0 overflow-hidden border border-[var(--line)]"
-                          style={{ backgroundColor: isShashwath ? '#FF5A1F' : pair.bg, color: '#fff' }}
-                        >
-                          {person.avatar ? (
-                            <img src={person.avatar} alt={person.fullName} className="w-full h-full object-cover" />
-                          ) : (
-                            person.fullName.slice(0, 2).toUpperCase()
-                          )}
-                        </div>
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <p className="text-xs font-bold text-[var(--text)] truncate">
-                              {person.fullName}
-                            </p>
-                            {person.isVerified && (
-                              <span className="text-blue-400 text-[10px]">✓</span>
-                            )}
-                          </div>
-                          <p className="text-[11px] text-[var(--text-muted)] truncate">
-                            @{person.username} · {isShashwath ? 'School Admin' : `Class ${person.class}-${person.section || 'A'}`}
-                          </p>
-                        </div>
-                      </Link>
-
-                      <button
-                        type="button"
-                        onClick={() => handleToggleFollow(person.username)}
-                        className="px-4 py-1.5 rounded-full text-xs font-bold shrink-0 cursor-pointer transition-all active:scale-95 shadow-xs"
-                        style={{
-                          backgroundColor: following ? 'var(--surface)' : 'var(--primary)',
-                          color: following ? 'var(--text)' : 'var(--on-primary)',
-                          border: following ? '1px solid var(--line)' : 'none',
-                        }}
-                      >
-                        {following ? 'Following' : 'Follow'}
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+            />
+          </div>
 
           {/* Action button to create a post */}
           <div className="text-center pt-2">
@@ -576,77 +513,23 @@ function HomeContent() {
                 onOptionsClick={setSelectedOptionsPost}
               />
 
-              {/* Instagram-style "Suggested for you" Carousel between posts */}
-              {postIdx === 0 && suggestedAccounts.length > 0 && (
+              {/* Instagram-style "Suggested for you" Section between posts */}
+              {postIdx === 0 && (
                 <div
-                  className="my-3 p-3.5 rounded-[20px] border space-y-3 shadow-xs"
+                  className="my-3 p-4 rounded-[22px] border shadow-xs"
                   style={{
                     backgroundColor: 'var(--surface)',
                     borderColor: 'var(--line)',
                   }}
                 >
-                  <div className="flex items-center justify-between px-1">
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-[var(--text)]">
-                      <Users size={14} className="text-[var(--primary)]" />
-                      <span>Suggested for You</span>
-                    </div>
-                    <Link
-                      href="/search?chip=Accounts"
-                      className="text-xs font-bold text-[var(--primary)] hover:underline"
-                    >
-                      See All →
-                    </Link>
-                  </div>
-
-                  <div className="flex gap-2.5 overflow-x-auto no-scrollbar pb-1">
-                    {suggestedAccounts.slice(0, 8).map((person) => {
-                      const following = followedUsernames.includes(person.username.toLowerCase());
-                      const pair = getAvatarColorPair(person.username);
-                      const isShashwath = person.username.toLowerCase() === 'shashwath71845';
-
-                      return (
-                        <div
-                          key={person.id}
-                          className="w-[140px] shrink-0 p-3 rounded-[16px] border flex flex-col items-center text-center gap-2 bg-[var(--surface-sunken)] shadow-2xs"
-                          style={{ borderColor: 'var(--line)' }}
-                        >
-                          <Link href={`/u/${person.username}`} className="flex flex-col items-center gap-1.5 w-full">
-                            <div
-                              className="w-12 h-12 rounded-full flex items-center justify-center font-bold text-xs overflow-hidden border border-[var(--line)] shadow-xs"
-                              style={{ backgroundColor: isShashwath ? '#FF5A1F' : pair.bg, color: '#fff' }}
-                            >
-                              {person.avatar ? (
-                                <img src={person.avatar} alt={person.fullName} className="w-full h-full object-cover" />
-                              ) : (
-                                person.fullName.slice(0, 2).toUpperCase()
-                              )}
-                            </div>
-                            <div className="w-full px-1">
-                              <p className="text-xs font-bold text-[var(--text)] truncate">
-                                {isShashwath ? 'Shashwath' : person.fullName}
-                              </p>
-                              <p className="text-[10px] text-[var(--text-muted)] truncate">
-                                {isShashwath ? 'Admin' : `Class ${person.class}-${person.section || 'A'}`}
-                              </p>
-                            </div>
-                          </Link>
-
-                          <button
-                            type="button"
-                            onClick={() => handleToggleFollow(person.username)}
-                            className="w-full py-1.5 rounded-full text-[11px] font-bold cursor-pointer transition-all active:scale-95 shadow-xs"
-                            style={{
-                              backgroundColor: following ? 'var(--surface)' : 'var(--primary)',
-                              color: following ? 'var(--text)' : 'var(--on-primary)',
-                              border: following ? '1px solid var(--line)' : 'none',
-                            }}
-                          >
-                            {following ? 'Following' : 'Follow'}
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
+                  <SuggestedAccountsList
+                    limit={5}
+                    showHeader={true}
+                    onFollowToggled={(target, isNow) => {
+                      setFollowsVersion((v) => v + 1);
+                      showToast(isNow ? `Following @${target}! 🤝` : `Unfollowed @${target}`);
+                    }}
+                  />
                 </div>
               )}
 

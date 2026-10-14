@@ -29,6 +29,13 @@ export interface Profile {
   createdAt: string;
 }
 
+export interface InstagramSuggestionItem {
+  profile: Profile;
+  mutualFriends: Array<{ username: string; fullName: string; avatar: string | null }>;
+  extraMutualCount: number;
+  subtitle: string;
+}
+
 export interface SongTrack {
   id: string;
   title: string;
@@ -3011,6 +3018,78 @@ export const DataStore = {
         // Most mutual connections
         return (b.bridges.length + b.mutuals.length) - (a.bridges.length + a.mutuals.length);
       });
+  },
+
+  getInstagramSuggestions(myUsername: string): InstagramSuggestionItem[] {
+    const cleanMe = (myUsername || '').toLowerCase().trim();
+    const all = this.getProfiles();
+    const candidateMap = new Map<string, Profile>();
+
+    for (const p of all) {
+      if (!p || !p.username) continue;
+      const u = p.username.toLowerCase().trim();
+      if (!u || u === cleanMe || u === 'admin' || DUMMY_TEST_USERNAMES.has(u)) continue;
+      if (this.isFollowing(cleanMe, u)) continue;
+      if (!candidateMap.has(u)) {
+        candidateMap.set(u, p);
+      }
+    }
+
+    const candidates = Array.from(candidateMap.values());
+    const me = this.getProfileByUsername(cleanMe) || this.getCurrentUser();
+
+    const items: InstagramSuggestionItem[] = candidates.map((p) => {
+      const mutualUsernames = this.getMutualFollows(cleanMe, p.username);
+      const { bridges } = this.getMutualBridges(cleanMe, p.username);
+      const allMutualNames = Array.from(new Set([...mutualUsernames, ...bridges])).filter(
+        (u) => u !== cleanMe && u !== p.username.toLowerCase()
+      );
+
+      const mutualFriends = allMutualNames
+        .map((u) => this.getProfileByUsername(u))
+        .filter(Boolean)
+        .map((prof) => ({
+          username: prof!.username,
+          fullName: prof!.fullName,
+          avatar: prof!.avatar,
+        }));
+
+      let subtitle = 'Suggested for you';
+      let extraMutualCount = 0;
+
+      if (mutualFriends.length > 0) {
+        const first = mutualFriends[0];
+        extraMutualCount = mutualFriends.length - 1;
+        if (extraMutualCount > 0) {
+          subtitle = `Followed by ${first.username} + ${extraMutualCount}`;
+        } else {
+          subtitle = `Followed by ${first.username}`;
+        }
+      }
+
+      return {
+        profile: p,
+        mutualFriends: mutualFriends.slice(0, 2),
+        extraMutualCount,
+        subtitle,
+      };
+    });
+
+    return items.sort((a, b) => {
+      // 1. Mutuals first!
+      if (a.mutualFriends.length > 0 && b.mutualFriends.length === 0) return -1;
+      if (a.mutualFriends.length === 0 && b.mutualFriends.length > 0) return 1;
+      if (a.mutualFriends.length !== b.mutualFriends.length) {
+        return b.mutualFriends.length - a.mutualFriends.length;
+      }
+      // 2. Classmates second
+      const aClass = me && a.profile.class && a.profile.class === me.class;
+      const bClass = me && b.profile.class && b.profile.class === me.class;
+      if (aClass && !bClass) return -1;
+      if (!aClass && bClass) return 1;
+      // 3. Fallback to follower count / posts
+      return (b.profile.followerCount || 0) - (a.profile.followerCount || 0);
+    });
   },
 
   // ==========================================
