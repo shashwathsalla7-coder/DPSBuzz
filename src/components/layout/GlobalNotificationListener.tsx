@@ -159,8 +159,8 @@ export function GlobalNotificationListener() {
               seenMessageIdsRef.current.add(msg.id);
               hasNewMessages = true;
 
-              // If it's from someone else and this is NOT initial page load
-              if (isFromSomeoneElse && !isFirstRunRef.current) {
+              // If it's from someone else and this is NOT initial page load and NOT an automated call log
+              if (isFromSomeoneElse && !isFirstRunRef.current && !msg.isCallLog) {
                 const senderUser = (msg.senderUsername || otherUsername).toLowerCase().trim();
                 const senderProf = allProfiles.find(
                   (p) => (p.username || '').toLowerCase() === senderUser

@@ -57,11 +57,6 @@ export function CallModal({
   const pipVideoRef = useRef<HTMLVideoElement | null>(null);
   const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Web Audio Context & Node refs for mobile loudspeaker amplification
-  const audioCtxRef = useRef<AudioContext | null>(null);
-  const sourceNodeRef = useRef<MediaStreamAudioSourceNode | null>(null);
-  const gainNodeRef = useRef<GainNode | null>(null);
-
   const [isPipSwapped, setIsPipSwapped] = useState(false);
   const [hasRemoteVideo, setHasRemoteVideo] = useState(false);
   const [needsAudioUnlock, setNeedsAudioUnlock] = useState(false);
@@ -110,16 +105,23 @@ export function CallModal({
     };
   }, [remoteStream]);
 
-  // Dedicated Remote Audio Playback: active for both Voice and Video calls
+  // Dedicated Remote Audio Playback: single sovereign audio sink for clean WebRTC voice
   useEffect(() => {
     if (!remoteAudioRef.current || !remoteStream) return;
 
     const audioEl = remoteAudioRef.current;
+    const audioTracks = remoteStream.getAudioTracks();
+    if (audioTracks.length === 0) return;
+
+    audioTracks.forEach((t) => {
+      t.enabled = true;
+    });
+
     if (audioEl.srcObject !== remoteStream) {
       audioEl.srcObject = remoteStream;
     }
-    audioEl.volume = 1.0;
     audioEl.muted = isSpeakerMuted;
+    audioEl.volume = 1.0;
 
     const playAudio = () => {
       const playPromise = audioEl.play();
@@ -127,7 +129,7 @@ export function CallModal({
         playPromise
           .then(() => setNeedsAudioUnlock(false))
           .catch((err) => {
-            console.warn('Audio play restricted on mobile:', err);
+            console.warn('[WebRTC] Audio playback restricted by autoplay:', err);
             setNeedsAudioUnlock(true);
           });
       }
@@ -135,9 +137,7 @@ export function CallModal({
 
     playAudio();
 
-    const audioTracks = remoteStream.getAudioTracks();
     audioTracks.forEach((t) => {
-      t.enabled = true;
       t.addEventListener('unmute', playAudio);
     });
     remoteStream.addEventListener('addtrack', playAudio);
@@ -150,91 +150,44 @@ export function CallModal({
     };
   }, [remoteStream, isSpeakerMuted]);
 
-  // Web Audio Destination Bridge: amplifies and routes WebRTC audio to mobile loudspeakers
-  useEffect(() => {
-    if (!remoteStream) return;
-    const audioTracks = remoteStream.getAudioTracks();
-    if (audioTracks.length === 0) return;
-
-    try {
-      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-      if (!AudioCtx) return;
-
-      if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
-        audioCtxRef.current = new AudioCtx();
-      }
-      const ctx = audioCtxRef.current;
-      if (ctx.state === 'suspended') {
-        ctx.resume().catch(() => {});
-      }
-
-      if (sourceNodeRef.current) {
-        try { sourceNodeRef.current.disconnect(); } catch {}
-        sourceNodeRef.current = null;
-      }
-
-      const audioStream = new MediaStream(audioTracks);
-      const source = ctx.createMediaStreamSource(audioStream);
-      const gain = ctx.createGain();
-      gain.gain.value = isSpeakerMuted ? 0 : 1.0;
-      source.connect(gain);
-      gain.connect(ctx.destination);
-      sourceNodeRef.current = source;
-      gainNodeRef.current = gain;
-    } catch (e) {
-      console.warn('[WebAudio] Bridge setup non-fatal warning:', e);
-    }
-
-    return () => {
-      if (sourceNodeRef.current) {
-        try { sourceNodeRef.current.disconnect(); } catch {}
-        sourceNodeRef.current = null;
-      }
-    };
-  }, [remoteStream, isSpeakerMuted]);
-
   // React to Speaker Mute Toggle
   useEffect(() => {
-    if (gainNodeRef.current) {
-      gainNodeRef.current.gain.value = isSpeakerMuted ? 0 : 1.0;
-    }
     if (remoteAudioRef.current) {
       remoteAudioRef.current.muted = isSpeakerMuted;
     }
   }, [isSpeakerMuted]);
 
-  // Video Call Main Video Element
+  // Video Call Main Video Element (Pixels only - strictly muted to prevent acoustic echo cancellation)
   useEffect(() => {
     if (!call.isVideo) return;
     const targetStream = isPipSwapped ? localStream : remoteStream;
     if (mainVideoRef.current && targetStream) {
-      if (mainVideoRef.current.srcObject !== targetStream) {
-        mainVideoRef.current.srcObject = targetStream;
+      const vTracks = targetStream.getVideoTracks();
+      if (vTracks.length > 0) {
+        mainVideoRef.current.srcObject = new MediaStream(vTracks);
       }
-      mainVideoRef.current.muted = isPipSwapped ? true : isSpeakerMuted;
+      mainVideoRef.current.muted = true;
       mainVideoRef.current.play().catch(() => {});
     }
-  }, [call.isVideo, localStream, remoteStream, isPipSwapped, isSpeakerMuted]);
+  }, [call.isVideo, localStream, remoteStream, isPipSwapped]);
 
-  // Video Call Floating PIP Video Element
+  // Video Call Floating PIP Video Element (Pixels only - strictly muted)
   useEffect(() => {
     if (!call.isVideo) return;
     const pipStream = isPipSwapped ? remoteStream : localStream;
     if (pipVideoRef.current && pipStream) {
-      if (pipVideoRef.current.srcObject !== pipStream) {
-        pipVideoRef.current.srcObject = pipStream;
+      const pipVTracks = pipStream.getVideoTracks();
+      if (pipVTracks.length > 0) {
+        pipVideoRef.current.srcObject = new MediaStream(pipVTracks);
       }
-      pipVideoRef.current.muted = isPipSwapped ? isSpeakerMuted : true;
+      pipVideoRef.current.muted = true;
       pipVideoRef.current.play().catch(() => {});
     }
-  }, [call.isVideo, localStream, remoteStream, isPipSwapped, isSpeakerMuted]);
+  }, [call.isVideo, localStream, remoteStream, isPipSwapped]);
 
   // Global user interaction listener to unlock any blocked audio on mobile browsers
   useEffect(() => {
     const handleUnlock = () => {
-      if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') {
-        audioCtxRef.current.resume().catch(() => {});
-      }
       if (remoteAudioRef.current) {
         remoteAudioRef.current
           .play()
@@ -334,7 +287,7 @@ export function CallModal({
               ref={mainVideoRef}
               autoPlay
               playsInline
-              muted={isPipSwapped ? true : isSpeakerMuted}
+              muted={true}
               onLoadedMetadata={() => setHasRemoteVideo(true)}
               onPlaying={() => setHasRemoteVideo(true)}
               className={`w-full h-full object-cover transition-opacity duration-300 ${
@@ -381,7 +334,7 @@ export function CallModal({
                   ref={pipVideoRef}
                   autoPlay
                   playsInline
-                  muted={isPipSwapped ? isSpeakerMuted : true}
+                  muted={true}
                   className={`w-full h-full object-cover ${
                     (!isPipSwapped && !isCameraOff) || (isPipSwapped && hasRemoteVideo)
                       ? 'block'

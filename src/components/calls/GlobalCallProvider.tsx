@@ -211,6 +211,7 @@ export function GlobalCallProvider() {
   const processedCandidatesRef = useRef<Set<string>>(new Set());
   const pendingRemoteCandidatesRef = useRef<any[]>([]);
   const consecutiveMissedPollsRef = useRef(0);
+  const notifiedIncomingCallIdsRef = useRef<Set<string>>(new Set());
 
   // Ingest ICE candidate with automatic queueing if remote description is not yet set
   const ingestIceCandidate = useCallback(async (pc: RTCPeerConnection, cand: any) => {
@@ -332,6 +333,7 @@ export function GlobalCallProvider() {
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach((track) => {
         try {
+          track.enabled = false;
           track.stop();
         } catch {}
       });
@@ -341,6 +343,7 @@ export function GlobalCallProvider() {
     if (remoteMediaStreamRef.current) {
       remoteMediaStreamRef.current.getTracks().forEach((track) => {
         try {
+          track.enabled = false;
           track.stop();
         } catch {}
       });
@@ -349,6 +352,14 @@ export function GlobalCallProvider() {
 
     if (peerConnRef.current) {
       try {
+        peerConnRef.current.getSenders().forEach((s) => {
+          if (s.track) {
+            try {
+              s.track.enabled = false;
+              s.track.stop();
+            } catch {}
+          }
+        });
         peerConnRef.current.close();
       } catch {}
       peerConnRef.current = null;
@@ -356,6 +367,7 @@ export function GlobalCallProvider() {
 
     setLocalStream(null);
     setRemoteStream(null);
+    answeringCallIdRef.current = null;
     processedCandidatesRef.current.clear();
     pendingRemoteCandidatesRef.current = [];
   }, []);
@@ -505,10 +517,29 @@ export function GlobalCallProvider() {
     } catch {}
 
     stopCallAudio();
-    playCallConnectedSound();
     if (!incomingCall) return;
 
     const callToAccept = incomingCall;
+
+    // Verify call is still active on server and not already hung up by caller
+    try {
+      const verifyRes = await fetch(`/api/calls?callId=${encodeURIComponent(callToAccept.callId)}&t=${Date.now()}`);
+      if (verifyRes.ok) {
+        const verifyData = await verifyRes.json();
+        const sc = verifyData.call || verifyData.activeCall;
+        if (!sc || sc.status === 'ended' || sc.status === 'rejected') {
+          console.log('[Calls] Call was already ended by caller before answering');
+          setIncomingCall(null);
+          stopCallAudio();
+          playCallEndedSound();
+          alert('This call was already ended by the caller.');
+          return;
+        }
+      }
+    } catch {}
+
+    cleanUpCallResources();
+    playCallConnectedSound();
     answeringCallIdRef.current = callToAccept.callId;
 
     // Immediately place call into connected state so activeCall is never null and UI immediately transitions
@@ -933,7 +964,9 @@ export function GlobalCallProvider() {
     const pollCallStatus = async () => {
       try {
         if (!isPolling) return;
-        const callParam = activeCall?.callId ? `&callId=${encodeURIComponent(activeCall.callId)}` : '';
+        const callParam = (activeCall?.callId || incomingCall?.callId)
+          ? `&callId=${encodeURIComponent((activeCall?.callId || incomingCall?.callId)!)}`
+          : '';
         const res = await fetch(`/api/calls?username=${encodeURIComponent(currentUsername)}${callParam}&t=${Date.now()}`);
         if (!res.ok) return;
         const data = await res.json();
@@ -946,19 +979,32 @@ export function GlobalCallProvider() {
           if (!activeCall && !answeringCallIdRef.current && (!incomingCall || incomingCall.callId !== serverCall.callId)) {
             setIncomingCall(serverCall);
             playIncomingRingtone();
-            showBackgroundNotification(`📞 Incoming ${serverCall.isVideo ? 'Video' : 'Voice'} Call`, {
-              body: `${serverCall.callerName || serverCall.callerUsername} is calling you on DPS Buzz`,
-              icon: serverCall.callerAvatar || '/icons/icon-192.png',
-              tag: `call-${serverCall.callId}`,
-              url: '/chats',
-            });
+            if (!notifiedIncomingCallIdsRef.current.has(serverCall.callId)) {
+              notifiedIncomingCallIdsRef.current.add(serverCall.callId);
+              showBackgroundNotification(`📞 Incoming ${serverCall.isVideo ? 'Video' : 'Voice'} Call`, {
+                body: `${serverCall.callerName || serverCall.callerUsername} is calling you on DPS Buzz`,
+                icon: serverCall.callerAvatar || '/icons/icon-192.png',
+                tag: `call-${serverCall.callId}`,
+                url: '/chats',
+              });
+            }
           }
         }
 
         // Case 2: Incoming call was cancelled or timed out
-        if (!serverCall && incomingCall) {
-          setIncomingCall(null);
-          stopCallAudio();
+        if (incomingCall) {
+          const isCancelled =
+            !serverCall ||
+            serverCall.status === 'ended' ||
+            serverCall.status === 'rejected' ||
+            serverCall.callId !== incomingCall.callId;
+
+          if (isCancelled) {
+            console.log('[WebRTC] Incoming call cancelled or ended by caller');
+            setIncomingCall(null);
+            stopCallAudio();
+            playCallEndedSound();
+          }
         }
 
         // Case 3: Active call state synchronization (For both Caller and Receiver)
@@ -1072,12 +1118,15 @@ export function GlobalCallProvider() {
           if (!activeCall && !answeringCallIdRef.current && (!incomingCall || incomingCall.callId !== serverCall.callId)) {
             setIncomingCall(serverCall);
             playIncomingRingtone();
-            showBackgroundNotification(`📞 Incoming ${serverCall.isVideo ? 'Video' : 'Voice'} Call`, {
-              body: `${serverCall.callerName || serverCall.callerUsername} is calling you on DPS Buzz`,
-              icon: serverCall.callerAvatar || '/icons/icon-192.png',
-              tag: `call-${serverCall.callId}`,
-              url: '/chats',
-            });
+            if (!notifiedIncomingCallIdsRef.current.has(serverCall.callId)) {
+              notifiedIncomingCallIdsRef.current.add(serverCall.callId);
+              showBackgroundNotification(`📞 Incoming ${serverCall.isVideo ? 'Video' : 'Voice'} Call`, {
+                body: `${serverCall.callerName || serverCall.callerUsername} is calling you on DPS Buzz`,
+                icon: serverCall.callerAvatar || '/icons/icon-192.png',
+                tag: `call-${serverCall.callId}`,
+                url: '/chats',
+              });
+            }
             return;
           }
         }
