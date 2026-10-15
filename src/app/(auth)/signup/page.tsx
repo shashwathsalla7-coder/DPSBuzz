@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { getClassSections } from '@/config/school';
 import { DataStore, type SongTrack } from '@/lib/dataStore';
 import Logo from '@/components/ui/Logo';
@@ -13,7 +12,6 @@ import { Music, Gift, Shield, CheckCircle2 } from 'lucide-react';
 type Step = 1 | 2 | 3;
 
 export default function SignupPage() {
-  const router = useRouter();
   const [step, setStep] = useState<Step>(1);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -78,11 +76,12 @@ export default function SignupPage() {
     e.preventDefault();
     setError('');
 
-    if (!username.trim() || !password || !confirmPassword) {
+    const cleanUser = username.trim().toLowerCase();
+    if (!cleanUser || !password || !confirmPassword) {
       setError('Please fill in all account fields.');
       return;
     }
-    if (username.length > 20) {
+    if (cleanUser.length > 20) {
       setError('Username must be 20 characters or less.');
       return;
     }
@@ -92,6 +91,13 @@ export default function SignupPage() {
     }
     if (password !== confirmPassword) {
       setError("Passwords don't match. Type them again carefully.");
+      return;
+    }
+
+    // Pre-validate duplicate username immediately on Step 2
+    const profiles = DataStore.getProfiles();
+    if (profiles.some((p) => p.username.toLowerCase() === cleanUser)) {
+      setError('This username is already taken. Please choose another username.');
       return;
     }
 
@@ -106,37 +112,35 @@ export default function SignupPage() {
 
     setError('');
     setIsLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 600));
 
-    const result = DataStore.registerStudent({
-      fullName: fullName.trim(),
-      className,
-      section,
-      username: username.trim(),
-      inviteCode: schoolCode.trim() || 'DPS71845',
-      isPrivate,
-      song: favoriteSong || undefined,
-      referredBy: referredBy.trim() || undefined,
-    });
+    try {
+      const result = DataStore.registerStudent({
+        fullName: fullName.trim(),
+        className,
+        section,
+        username: username.trim(),
+        inviteCode: schoolCode.trim() || 'DPS71845',
+        isPrivate,
+        song: favoriteSong || undefined,
+        referredBy: referredBy.trim() || undefined,
+      });
 
-    if (!result.success || !result.profile) {
-      setError(result.error || 'Failed to complete registration.');
+      if (!result.success || !result.profile) {
+        setError(result.error || 'Failed to complete registration.');
+        setIsLoading(false);
+        return;
+      }
+
+      localStorage.setItem('dpsbuzz_user', JSON.stringify(result.profile));
+      document.cookie = `dpsbuzz_user=${encodeURIComponent(JSON.stringify(result.profile))}; path=/; max-age=31536000; SameSite=Lax`;
+
+      // Instant reliable navigation to home feed
+      window.location.replace('/home');
+    } catch (err: any) {
+      console.error('Registration exception:', err);
+      setError(err?.message || 'Failed to complete registration. Please try again.');
       setIsLoading(false);
-      return;
     }
-
-    localStorage.setItem('dpsbuzz_user', JSON.stringify(result.profile));
-    document.cookie = `dpsbuzz_user=${encodeURIComponent(JSON.stringify(result.profile))}; path=/; max-age=31536000; SameSite=Lax`;
-
-    // Sync newly created student profile to server so Android App immediately sees it and triggers new-user alert
-    fetch('/api/auth/profile', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ profile: result.profile, isNewSignup: true }),
-    }).catch(() => {});
-
-    setIsLoading(false);
-    router.push('/home');
   };
 
   return (
@@ -610,6 +614,19 @@ export default function SignupPage() {
                 I agree to the school community rules.
               </span>
             </label>
+
+            {error && (
+              <div
+                className="p-3 rounded-lg text-xs font-semibold border animate-fade-in"
+                style={{
+                  backgroundColor: 'var(--surface-sunken)',
+                  borderColor: 'var(--danger)',
+                  color: 'var(--danger)',
+                }}
+              >
+                {error}
+              </div>
+            )}
 
             <div className="flex gap-2">
               <button

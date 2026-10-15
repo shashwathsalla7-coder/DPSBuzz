@@ -2,12 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { school } from '@/config/school';
 import Logo from '@/components/ui/Logo';
 
 export default function LoginPage() {
-  const router = useRouter();
   const [usernameInput, setUsernameInput] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -55,7 +53,6 @@ export default function LoginPage() {
     }
 
     setIsLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 350));
 
     const cleanInput = usernameInput.trim().toLowerCase();
 
@@ -102,8 +99,7 @@ export default function LoginPage() {
           body: JSON.stringify({ profile: superAdmin }),
         }).catch(() => {});
 
-        setIsLoading(false);
-        router.push('/home');
+        window.location.replace('/home');
         return;
       } else {
         setError('Incorrect password for administrator shashwath71845.');
@@ -170,8 +166,7 @@ export default function LoginPage() {
 
     localStorage.setItem('dpsbuzz_user', JSON.stringify(match));
     document.cookie = `dpsbuzz_user=${encodeURIComponent(JSON.stringify(match))}; path=/; max-age=31536000; SameSite=Lax`;
-    setIsLoading(false);
-    router.push('/home');
+    window.location.replace('/home');
   };
 
   return (

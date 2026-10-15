@@ -614,6 +614,36 @@
   ],
   "notifications": [
     {
+      "id": "notif-srv-admin-1792065647220-wf1e",
+      "userId": "shashwath71845",
+      "type": "system",
+      "title": "🎉 New Student Signed Up!",
+      "body": "@teststudent (Test Student) from Class 8-A just joined DPS Buzz.",
+      "timeAgo": "Just now",
+      "isRead": false,
+      "link": "/u/teststudent"
+    },
+    {
+      "id": "notif-srv-school-1792065647220-78ha",
+      "userId": "admin",
+      "type": "system",
+      "title": "🎉 New Student Signed Up!",
+      "body": "@teststudent (Test Student) from Class 8-A just joined DPS Buzz.",
+      "timeAgo": "Just now",
+      "isRead": false,
+      "link": "/u/teststudent"
+    },
+    {
+      "id": "notif-srv-welcome-1792065647220-1pr6",
+      "userId": "teststudent",
+      "type": "system",
+      "title": "🐝 Welcome to DPS Buzz!",
+      "body": "Hi Test Student, welcome to the DPS campus social network! Your profile is live.",
+      "timeAgo": "Just now",
+      "isRead": false,
+      "link": "/home"
+    },
+    {
       "id": "notif-srv-admin-1792057477563-kxwp",
       "userId": "shashwath71845",
       "type": "system",
@@ -644,5 +674,5 @@
       "link": "/home"
     }
   ],
-  "lastUpdated": 1792064018399
+  "lastUpdated": 1792065647264
 }

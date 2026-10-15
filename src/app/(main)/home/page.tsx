@@ -42,12 +42,6 @@ export default function HomePage() {
 
 function HomeContent() {
   const router = useRouter();
-  if (typeof window !== 'undefined') {
-    const cur = DataStore.getCurrentUser();
-    if (!cur || !cur.username || cur.username.toLowerCase() === 'guest') {
-      return null;
-    }
-  }
   const [posts, setPosts] = useState<Post[]>([]);
   const [notices, setNotices] = useState<Notice[]>([]);
   const [broadcastAlert, setBroadcastAlert] = useState<BroadcastAlert | null>(null);
@@ -402,6 +396,10 @@ function HomeContent() {
     // Whole school: all public posts
     return [...posts].sort(sortFn);
   }, [activeTab, posts, followedUsernames, currentUser.username, demoState]);
+
+  if (!currentUser || !currentUser.username || currentUser.username.toLowerCase() === 'guest') {
+    return <HomeFeedSkeleton />;
+  }
 
   return (
     <div className="space-y-0 min-h-dvh">
