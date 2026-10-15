@@ -6,7 +6,6 @@ import {
   saveServerCall,
   updateServerCall,
   deleteServerCall,
-  getServerActiveCalls,
 } from '@/lib/serverStore';
 
 export type { CallSession };
@@ -20,15 +19,20 @@ const NO_CACHE_HEADERS = {
 // In-memory fast cache for instantaneous same-container lookups
 declare global {
   var __dpsbuzz_active_calls: Map<string, CallSession> | undefined;
+  var __dpsbuzz_dead_calls: Map<string, number> | undefined;
 }
 
 if (!globalThis.__dpsbuzz_active_calls) {
   globalThis.__dpsbuzz_active_calls = new Map<string, CallSession>();
 }
+if (!globalThis.__dpsbuzz_dead_calls) {
+  globalThis.__dpsbuzz_dead_calls = new Map<string, number>();
+}
 
 const localCache = globalThis.__dpsbuzz_active_calls;
+const deadCalls = globalThis.__dpsbuzz_dead_calls;
 
-// Helper to safely merge call sessions and prevent reverting connected states
+// Helper to safely merge call sessions and prevent reviving ended calls
 function mergeCallSessions(
   existing: CallSession | null | undefined,
   incoming: CallSession | null | undefined
@@ -46,29 +50,11 @@ function mergeCallSessions(
       ? 'connected'
       : (incoming.status || existing.status);
 
-  // Merge ICE candidates without duplicates, keyed by sender and candidate payload
-  const candMap = new Map<string, any>();
-  (incoming.iceCandidates || []).forEach((c) => {
-    if (c && c.candidate) {
-      const key = `${c.sender || ''}_${typeof c.candidate === 'string' ? c.candidate : JSON.stringify(c.candidate)}`;
-      candMap.set(key, c);
-    }
-  });
-  (existing.iceCandidates || []).forEach((c) => {
-    if (c && c.candidate) {
-      const key = `${c.sender || ''}_${typeof c.candidate === 'string' ? c.candidate : JSON.stringify(c.candidate)}`;
-      candMap.set(key, c);
-    }
-  });
-
   return {
     ...existing,
     ...incoming,
     status,
-    sdpOffer: incoming.sdpOffer || existing.sdpOffer || null,
-    sdpAnswer: incoming.sdpAnswer || existing.sdpAnswer || null,
     connectedAt: incoming.connectedAt || existing.connectedAt,
-    iceCandidates: Array.from(candMap.values()),
   };
 }
 
@@ -79,52 +65,85 @@ export async function GET(req: NextRequest) {
     const callId = searchParams.get('callId');
 
     const now = Date.now();
-    // Prune stale or expired sessions from memory cache
+
+    // 1. Prune dead calls older than 60s
+    for (const [id, ts] of deadCalls.entries()) {
+      if (now - ts > 60000) {
+        deadCalls.delete(id);
+      }
+    }
+
+    // 2. Prune stale sessions from local cache
     for (const [id, c] of localCache.entries()) {
-      if (!c || !c.callId) {
+      if (!c || !c.callId || deadCalls.has(id)) {
         localCache.delete(id);
         continue;
       }
-      if ((c.status === 'ended' || c.status === 'rejected') && now - (c.endedAt || c.createdAt) > 20000) {
+      if ((c.status === 'ended' || c.status === 'rejected') && now - (c.endedAt || c.createdAt) > 10000) {
+        deadCalls.set(id, now);
         localCache.delete(id);
         continue;
       }
-      if (c.status === 'ringing' && now - c.createdAt > 45000) {
+      if (c.status === 'ringing' && now - c.createdAt > 40000) {
+        deadCalls.set(id, now);
         localCache.delete(id);
         continue;
       }
       if (c.status === 'connected' && now - (c.connectedAt || c.createdAt) > 7200000) {
+        deadCalls.set(id, now);
         localCache.delete(id);
         continue;
       }
     }
 
+    // 3. Resolve specific callId if requested
     let callForId: CallSession | null = null;
     if (callId) {
-      const cached = localCache.get(callId) || null;
-      const serverCall = await getServerCall(callId);
-      callForId = mergeCallSessions(cached, serverCall);
-      if (callForId) {
-        if (callForId.status === 'ringing' && now - callForId.createdAt > 45000) {
-          localCache.delete(callId);
-          callForId = null;
-        } else {
-          localCache.set(callId, callForId);
+      if (deadCalls.has(callId)) {
+        callForId = {
+          callId,
+          callerUsername: '',
+          callerName: '',
+          receiverUsername: '',
+          receiverName: '',
+          isVideo: false,
+          status: 'ended',
+          createdAt: now - 5000,
+          endedAt: now,
+        };
+      } else {
+        const cached = localCache.get(callId) || null;
+        const serverCall = await getServerCall(callId);
+        callForId = mergeCallSessions(cached, serverCall);
+        if (callForId) {
+          if (callForId.status === 'ended' || callForId.status === 'rejected') {
+            deadCalls.set(callId, now);
+            localCache.delete(callId);
+          } else if (callForId.status === 'ringing' && now - callForId.createdAt > 40000) {
+            deadCalls.set(callId, now);
+            localCache.delete(callId);
+            callForId = null;
+          } else {
+            localCache.set(callId, callForId);
+          }
         }
       }
     }
 
+    // 4. Resolve active call for username (polling for incoming or active calls)
     let userActiveCall: CallSession | null = null;
     if (username) {
       // Check local cache first for valid ringing or connected call
       for (const call of localCache.values()) {
+        if (deadCalls.has(call.callId)) continue;
         if (
           (call.receiverUsername.toLowerCase().trim() === username ||
             call.callerUsername.toLowerCase().trim() === username) &&
           call.status !== 'ended' &&
           call.status !== 'rejected'
         ) {
-          if (call.status === 'ringing' && now - call.createdAt > 45000) {
+          if (call.status === 'ringing' && now - call.createdAt > 40000) {
+            deadCalls.set(call.callId, now);
             localCache.delete(call.callId);
             continue;
           }
@@ -133,10 +152,11 @@ export async function GET(req: NextRequest) {
         }
       }
 
+      // Fallback check from persistent store if not in memory
       if (!userActiveCall) {
         const serverCall = await findUserActiveCall(username);
-        if (serverCall) {
-          if (!(serverCall.status === 'ringing' && now - serverCall.createdAt > 45000)) {
+        if (serverCall && !deadCalls.has(serverCall.callId)) {
+          if (!(serverCall.status === 'ringing' && now - serverCall.createdAt > 40000)) {
             userActiveCall = serverCall;
             localCache.set(serverCall.callId, serverCall);
           }
@@ -174,11 +194,9 @@ export async function POST(req: NextRequest) {
       receiverName,
       receiverAvatar,
       isVideo,
-      sdpOffer,
-      sdpAnswer,
-      candidate,
-      sender,
     } = body;
+
+    const now = Date.now();
 
     if (action === 'initiate') {
       if (!callerUsername || !receiverUsername) {
@@ -186,8 +204,8 @@ export async function POST(req: NextRequest) {
       }
 
       const id = callId || `call-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-      // Check if any candidates or offer were pre-buffered in localCache
-      const existingStub = localCache.get(id);
+      // Clear from dead calls if previously present
+      deadCalls.delete(id);
 
       const newCall: CallSession = {
         callId: id,
@@ -199,9 +217,7 @@ export async function POST(req: NextRequest) {
         receiverAvatar: receiverAvatar || null,
         isVideo: Boolean(isVideo),
         status: 'ringing',
-        createdAt: Date.now(),
-        sdpOffer: sdpOffer || existingStub?.sdpOffer || null,
-        iceCandidates: existingStub?.iceCandidates || [],
+        createdAt: now,
       };
 
       localCache.set(id, newCall);
@@ -210,6 +226,11 @@ export async function POST(req: NextRequest) {
     }
 
     if (action === 'answer') {
+      // Guard: if call already dead or cancelled by caller, reject answer
+      if (deadCalls.has(callId)) {
+        return NextResponse.json({ success: false, error: 'Call already ended by caller' }, { status: 200 });
+      }
+
       const cached = localCache.get(callId) || null;
       const serverCall = await getServerCall(callId);
       let call = mergeCallSessions(cached, serverCall);
@@ -225,43 +246,21 @@ export async function POST(req: NextRequest) {
           receiverAvatar: body.receiverAvatar || null,
           isVideo: Boolean(body.isVideo),
           status: 'connected',
-          createdAt: Date.now() - 2000,
-          connectedAt: Date.now(),
-          sdpAnswer: sdpAnswer || null,
-          iceCandidates: [],
+          createdAt: now - 2000,
+          connectedAt: now,
         };
       }
 
-      if (!call) {
-        return NextResponse.json({ success: false, error: 'Call session not found' }, { status: 404 });
+      if (!call || call.status === 'ended' || call.status === 'rejected') {
+        deadCalls.set(callId, now);
+        localCache.delete(callId);
+        return NextResponse.json({ success: false, error: 'Call session not active' }, { status: 200 });
       }
-
-      // Merge any candidates included in the answer payload
-      const candidates = call.iceCandidates ? [...call.iceCandidates] : [];
-      if (body.candidates && Array.isArray(body.candidates)) {
-        body.candidates.forEach((cand: any) => {
-          if (!cand) return;
-          const candObj = typeof cand === 'object' ? cand : { candidate: cand };
-          const key = `${sender || 'receiver'}_${typeof candObj.candidate === 'string' ? candObj.candidate : JSON.stringify(candObj)}`;
-          const exists = candidates.some(
-            (c) => `${c.sender || ''}_${typeof c.candidate === 'string' ? c.candidate : JSON.stringify(c.candidate)}` === key
-          );
-          if (!exists) {
-            candidates.push({ sender: 'receiver', candidate: candObj });
-          }
-        });
-      }
-
-      const updates: Partial<CallSession> = {
-        status: 'connected',
-        connectedAt: Date.now(),
-        ...(sdpAnswer ? { sdpAnswer } : {}),
-        iceCandidates: candidates,
-      };
 
       const updated: CallSession = {
         ...call,
-        ...updates,
+        status: 'connected',
+        connectedAt: now,
       };
 
       localCache.set(callId, updated);
@@ -270,140 +269,21 @@ export async function POST(req: NextRequest) {
     }
 
     if (action === 'reject') {
-      const cached = localCache.get(callId) || null;
-      const serverCall = await getServerCall(callId);
-      const call = mergeCallSessions(cached, serverCall);
-      const updates: Partial<CallSession> = {
-        status: 'rejected',
-        endedAt: Date.now(),
-        durationSeconds: 0,
-      };
-      const finalCall = call ? { ...call, ...updates } : ({ callId, ...updates } as any);
-      localCache.set(callId, finalCall);
-      setTimeout(() => localCache.delete(callId), 15000);
-      await updateServerCall(callId, finalCall);
+      deadCalls.set(callId, now);
+      localCache.delete(callId);
+      await deleteServerCall(callId);
       return NextResponse.json({ success: true });
     }
 
     if (action === 'end') {
-      const cached = localCache.get(callId) || null;
-      const serverCall = await getServerCall(callId);
-      const call = mergeCallSessions(cached, serverCall);
-      const endedAt = Date.now();
-      let durationSeconds = 0;
-      if (call?.connectedAt) {
-        durationSeconds = Math.max(1, Math.round((endedAt - call.connectedAt) / 1000));
-      }
-
-      const updates: Partial<CallSession> = {
-        status: 'ended',
-        endedAt,
-        durationSeconds,
-      };
-      const finalCall: CallSession = {
-        callId,
-        callerUsername: call?.callerUsername || body.callerUsername || '',
-        callerName: call?.callerName || '',
-        callerAvatar: call?.callerAvatar || null,
-        receiverUsername: call?.receiverUsername || body.receiverUsername || '',
-        receiverName: call?.receiverName || '',
-        receiverAvatar: call?.receiverAvatar || null,
-        isVideo: call?.isVideo ?? false,
-        createdAt: call?.createdAt || Date.now(),
-        ...call,
-        ...updates,
-        status: 'ended',
-      };
-
-      // Keep in localCache for 15s so polling peers receive the ended status cleanly
-      localCache.set(callId, finalCall);
-      setTimeout(() => localCache.delete(callId), 15000);
-
-      await updateServerCall(callId, finalCall);
-      return NextResponse.json({ success: true, durationSeconds });
-    }
-
-    if (action === 'signal') {
-      const cached = localCache.get(callId) || null;
-      const serverCall = await getServerCall(callId);
-      let call = mergeCallSessions(cached, serverCall);
-
-      // If call session was initiated but not yet written to serverStore, create memory stub so candidates are never lost
-      if (!call) {
-        const caller = (body.callerUsername || (sender === 'caller' ? body.username : '') || '').toLowerCase().trim();
-        const receiver = (body.receiverUsername || (sender === 'receiver' ? body.username : '') || '').toLowerCase().trim();
-        call = {
-          callId,
-          callerUsername: caller,
-          callerName: body.callerName || caller,
-          callerAvatar: body.callerAvatar || null,
-          receiverUsername: receiver,
-          receiverName: body.receiverName || receiver,
-          receiverAvatar: body.receiverAvatar || null,
-          isVideo: Boolean(body.isVideo),
-          status: 'ringing',
-          createdAt: Date.now(),
-          sdpOffer: sdpOffer || null,
-          sdpAnswer: sdpAnswer || null,
-          iceCandidates: [],
-        };
-        localCache.set(callId, call);
-      }
-
-      const updates: Partial<CallSession> = {};
-      if (sdpOffer) updates.sdpOffer = sdpOffer;
-      if (sdpAnswer) updates.sdpAnswer = sdpAnswer;
-
-      const candidates = call.iceCandidates ? [...call.iceCandidates] : [];
-      let addedAny = false;
-
-      // Handle single candidate (preserving full object with sdpMid & sdpMLineIndex)
-      if (candidate && sender) {
-        const candObj = typeof candidate === 'object' ? candidate : { candidate };
-        const key = typeof candObj.candidate === 'string' ? candObj.candidate : JSON.stringify(candObj);
-        const exists = candidates.some(
-          (c) => c.sender === sender && (typeof c.candidate === 'string' ? c.candidate : JSON.stringify(c.candidate)) === key
-        );
-        if (!exists) {
-          candidates.push({ sender, candidate: candObj });
-          addedAny = true;
-        }
-      }
-
-      // Handle batch candidates array (preserving full object with sdpMid & sdpMLineIndex)
-      if (body.candidates && Array.isArray(body.candidates) && sender) {
-        body.candidates.forEach((cand: any) => {
-          if (!cand) return;
-          const candObj = typeof cand === 'object' ? cand : { candidate: cand };
-          const key = typeof candObj.candidate === 'string' ? candObj.candidate : JSON.stringify(candObj);
-          const exists = candidates.some(
-            (c) => c.sender === sender && (typeof c.candidate === 'string' ? c.candidate : JSON.stringify(c.candidate)) === key
-          );
-          if (!exists) {
-            candidates.push({ sender, candidate: candObj });
-            addedAny = true;
-          }
-        });
-      }
-
-      if (addedAny) {
-        updates.iceCandidates = candidates;
-      }
-
-      if (Object.keys(updates).length > 0) {
-        const updated: CallSession = {
-          ...call,
-          ...updates,
-        };
-        localCache.set(callId, updated);
-        await updateServerCall(callId, updated);
-      }
-
+      deadCalls.set(callId, now);
+      localCache.delete(callId);
+      await deleteServerCall(callId);
       return NextResponse.json({ success: true });
     }
 
     return NextResponse.json({ success: false, error: 'Unknown action' }, { status: 400 });
-  } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  } catch (err: any) {
+    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
 }
