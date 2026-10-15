@@ -32,7 +32,7 @@ node tests/unit.test.mjs
 
 ## 2. School Invite Code & Verification
 
-- **Default School Invite Code:** `DPSBUZZ2026`
+- **Default School Invite Code:** `DPS71845`
 - Can be viewed and modified anytime in the Admin Console under `/admin` → **System & Wipe**.
 - Student sign-up strictly validates the student's admission number and full name against page 1 of their physical school diary.
 
