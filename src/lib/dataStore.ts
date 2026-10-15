@@ -303,7 +303,7 @@ export interface RosterEntry {
 export interface NotificationItem {
   id: string;
   userId: string;
-  type: 'like' | 'comment' | 'follow' | 'notice' | 'badge' | 'system' | 'chat';
+  type: 'like' | 'comment' | 'follow' | 'notice' | 'badge' | 'system' | 'chat' | 'post';
   title: string;
   body: string;
   timeAgo: string;
@@ -2865,7 +2865,7 @@ export const DataStore = {
 
   addNotification(data: {
     userId: string;
-    type?: 'like' | 'comment' | 'follow' | 'notice' | 'badge' | 'system' | 'chat';
+    type?: NotificationItem['type'];
     title: string;
     body: string;
     link?: string;

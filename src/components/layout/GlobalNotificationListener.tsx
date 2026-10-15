@@ -2,9 +2,14 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { ChevronRight, X, MessageCircle } from 'lucide-react';
-import { DataStore } from '@/lib/dataStore';
+import { ChevronRight, X, MessageCircle, Bell } from 'lucide-react';
+import { DataStore, DUMMY_TEST_USERNAMES } from '@/lib/dataStore';
 import { getAvatarColorPair } from '@/config/tokens';
+import {
+  showBackgroundNotification,
+  requestNotificationPermission,
+  getNotificationPermission,
+} from '@/lib/pushNotifications';
 
 interface IncomingChatToast {
   id: string;
@@ -20,8 +25,34 @@ export function GlobalNotificationListener() {
   const router = useRouter();
   const pathname = usePathname();
   const [activeToast, setActiveToast] = useState<IncomingChatToast | null>(null);
+  const [showPermBanner, setShowPermBanner] = useState<boolean>(false);
   const seenMessageIdsRef = useRef<Set<string>>(new Set());
+  const seenPostIdsRef = useRef<Set<string>>(new Set());
   const isFirstRunRef = useRef(true);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const perm = getNotificationPermission();
+      const dismissed = localStorage.getItem('dpsbuzz_notif_prompt_dismissed');
+      if (perm === 'default' && !dismissed) {
+        setShowPermBanner(true);
+      }
+    }
+  }, []);
+
+  const handleEnablePermissions = async () => {
+    const res = await requestNotificationPermission();
+    if (res === 'granted') {
+      setShowPermBanner(false);
+    }
+  };
+
+  const handleDismissBanner = () => {
+    setShowPermBanner(false);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('dpsbuzz_notif_prompt_dismissed', 'true');
+    }
+  };
 
   // Gentle high-fidelity Web Audio chime
   const playNotificationChime = useCallback(() => {
@@ -65,7 +96,7 @@ export function GlobalNotificationListener() {
     const user = DataStore.getCurrentUser();
     const currentUsername = (user?.username || '').toLowerCase().trim();
 
-    // Populate already known messages on initial load so old messages don't spam toasts
+    // Populate already known messages and posts on initial load so old items don't spam notifications
     try {
       if (currentUsername && currentUsername !== 'guest') {
         const userMsgKey = `dpsbuzz_chat_messages_${currentUsername}_v3`;
@@ -77,6 +108,10 @@ export function GlobalNotificationListener() {
             }
           }
         }
+      }
+      const existingPosts = DataStore.getPosts(true);
+      for (const p of existingPosts) {
+        if (p && p.id) seenPostIdsRef.current.add(p.id);
       }
     } catch {}
 
@@ -163,15 +198,14 @@ export function GlobalNotificationListener() {
                   link: tier === 'REQUESTS' ? `/chats?view=requests` : `/chats?user=${senderUser}`,
                 });
 
-                // Trigger browser push notification if permitted
-                if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
-                  try {
-                    new Notification(`DPS Buzz • ${senderName}`, {
-                      body: toastText,
-                      icon: senderProf?.avatar || '/icons/icon-192.png',
-                    });
-                  } catch {}
-                }
+                // Trigger system device notification (Service Worker ready on mobile + desktop)
+                showBackgroundNotification(`DPS Buzz • ${senderName}`, {
+                  body: toastText,
+                  icon: senderProf?.avatar || '/icons/icon-192.png',
+                  tag: `chat-${senderUser}`,
+                  url: tier === 'REQUESTS' ? '/chats?view=requests' : `/chats?user=${encodeURIComponent(senderUser)}`,
+                  vibrate: [200, 100, 200],
+                }).catch(() => {});
               }
             }
           }
@@ -235,6 +269,48 @@ export function GlobalNotificationListener() {
           if (!isCurrentlyInThisChat) {
             playNotificationChime();
             setActiveToast(newestIncomingMsg);
+          }
+        }
+
+        // Check for new posts from other students and trigger direct device push notification
+        if (Array.isArray(data.posts)) {
+          const deletedUsers = DataStore.getDeletedUsernames();
+          for (const post of data.posts) {
+            if (!post || !post.id) continue;
+            if (!seenPostIdsRef.current.has(post.id)) {
+              seenPostIdsRef.current.add(post.id);
+
+              const postAuthor = (post.username || '').toLowerCase().trim();
+              if (
+                !isFirstRunRef.current &&
+                postAuthor &&
+                postAuthor !== uname &&
+                !DUMMY_TEST_USERNAMES.has(postAuthor) &&
+                !deletedUsers.has(postAuthor)
+              ) {
+                const authorProf = allProfiles.find((p) => (p.username || '').toLowerCase() === postAuthor);
+                const authorName = authorProf?.fullName || post.username;
+                const postSnippet = post.caption ? post.caption.slice(0, 100) : 'Shared a new photo on DPS Buzz 📸';
+
+                DataStore.addNotification({
+                  userId: uname,
+                  type: 'post',
+                  title: `📸 New Post from @${post.username}`,
+                  body: postSnippet,
+                  link: '/home',
+                });
+
+                showBackgroundNotification(`DPS Buzz • ${authorName}`, {
+                  body: postSnippet,
+                  icon: post.avatar || authorProf?.avatar || '/icons/icon-192.png',
+                  tag: `post-${post.id}`,
+                  url: '/home',
+                  vibrate: [150, 80, 150],
+                }).catch(() => {});
+
+                playNotificationChime();
+              }
+            }
           }
         }
 
@@ -319,15 +395,14 @@ export function GlobalNotificationListener() {
         link: tier === 'REQUESTS' ? `/chats?view=requests` : `/chats?user=${senderUser}`,
       });
 
-      // Browser push notification if permitted
-      if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
-        try {
-          new Notification(`DPS Buzz • ${senderName}`, {
-            body: toastText,
-            icon: senderProf?.avatar || '/icons/icon-192.png',
-          });
-        } catch {}
-      }
+      // Device push notification directly to phone/PC
+      showBackgroundNotification(`DPS Buzz • ${senderName}`, {
+        body: toastText,
+        icon: senderProf?.avatar || '/icons/icon-192.png',
+        tag: `chat-${senderUser}`,
+        url: tier === 'REQUESTS' ? `/chats?view=requests` : `/chats?user=${encodeURIComponent(senderUser)}`,
+        vibrate: [200, 100, 200],
+      }).catch(() => {});
 
       // Check if user is currently inside THIS specific sender's chat
       const activeChatUser = (typeof window !== 'undefined' ? (sessionStorage.getItem('dpsbuzz_active_chat_user') || '') : '').toLowerCase().trim();
@@ -372,82 +447,125 @@ export function GlobalNotificationListener() {
     return () => clearTimeout(timer);
   }, [activeToast]);
 
-  if (!activeToast) return null;
-
-  const colors = getAvatarColorPair(activeToast.senderUsername);
-  const initials = activeToast.senderName.slice(0, 2).toUpperCase();
+  if (!activeToast && !showPermBanner) return null;
 
   return (
-    <div
-      className="fixed top-3 left-3 right-3 max-w-md mx-auto z-[100] animate-slide-down select-none pointer-events-auto"
-      role="alert"
-      aria-live="assertive"
-    >
-      <div
-        className="rounded-2xl border p-3 shadow-2xl backdrop-blur-2xl flex items-center gap-3 transition-all cursor-pointer hover:scale-[1.01] active:scale-[0.99]"
-        style={{
-          backgroundColor: 'rgba(18, 18, 18, 0.96)',
-          borderColor: 'rgba(236, 72, 153, 0.45)',
-          boxShadow: '0 16px 40px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(236, 72, 153, 0.3)',
-        }}
-        onClick={() => handleOpenChatFromToast(activeToast.senderUsername)}
-      >
-        {/* Sender Avatar with Online Story Ring Accent */}
-        <div className="relative shrink-0">
+    <>
+      {showPermBanner && !activeToast && (
+        <div
+          className="fixed top-3 left-3 right-3 max-w-md mx-auto z-[95] animate-slide-down select-none pointer-events-auto"
+          role="region"
+          aria-label="Enable notifications"
+        >
           <div
-            className="w-11 h-11 rounded-full overflow-hidden flex items-center justify-center font-bold text-xs border"
+            className="rounded-2xl border p-3 shadow-xl backdrop-blur-2xl flex items-center justify-between gap-3"
             style={{
-              backgroundColor: colors.bg,
-              color: colors.text,
-              borderColor: 'rgba(255, 255, 255, 0.15)',
+              backgroundColor: 'rgba(18, 18, 18, 0.95)',
+              borderColor: 'rgba(236, 72, 153, 0.35)',
+              boxShadow: '0 10px 30px rgba(0, 0, 0, 0.6)',
             }}
           >
-            {activeToast.senderAvatar ? (
-              <img src={activeToast.senderAvatar} alt={activeToast.senderName} className="w-full h-full object-cover" />
-            ) : (
-              initials
-            )}
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className="text-xl">🔔</span>
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-white truncate">Enable Device Notifications</p>
+                <p className="text-[11px] text-zinc-300 truncate">Get instant alerts for chats & new posts</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                type="button"
+                onClick={handleEnablePermissions}
+                className="px-3 py-1.5 rounded-xl gradient-bg text-white text-xs font-bold shadow-sm hover:opacity-90 active:scale-95 cursor-pointer"
+              >
+                Turn On
+              </button>
+              <button
+                type="button"
+                onClick={handleDismissBanner}
+                className="w-7 h-7 rounded-full flex items-center justify-center text-zinc-400 hover:text-white cursor-pointer"
+                aria-label="Dismiss"
+              >
+                <X size={15} />
+              </button>
+            </div>
           </div>
-          <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-emerald-500 border-2 border-[#121212] flex items-center justify-center">
-            <MessageCircle size={8} className="text-white fill-white" />
-          </span>
         </div>
+      )}
 
-        {/* Message Content: Sender Profile Name + Message Preview */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between gap-1">
-            <p className="text-xs font-bold truncate text-white flex items-center gap-1.5">
-              <span>{activeToast.senderName}</span>
-              <span className="text-[11px] text-zinc-400 font-normal">@{activeToast.senderUsername}</span>
-            </p>
-            <span className="text-[10px] text-zinc-400 shrink-0 font-medium">{activeToast.time}</span>
-          </div>
-          <p className="text-xs text-zinc-200 truncate mt-0.5 font-medium leading-snug">
-            {activeToast.text}
-          </p>
-        </div>
-
-        {/* Action Button & Close */}
-        <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-          <button
-            type="button"
+      {activeToast && (
+        <div
+          className="fixed top-3 left-3 right-3 max-w-md mx-auto z-[100] animate-slide-down select-none pointer-events-auto"
+          role="alert"
+          aria-live="assertive"
+        >
+          <div
+            className="rounded-2xl border p-3 shadow-2xl backdrop-blur-2xl flex items-center gap-3 transition-all cursor-pointer hover:scale-[1.01] active:scale-[0.99]"
+            style={{
+              backgroundColor: 'rgba(18, 18, 18, 0.96)',
+              borderColor: 'rgba(236, 72, 153, 0.45)',
+              boxShadow: '0 16px 40px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(236, 72, 153, 0.3)',
+            }}
             onClick={() => handleOpenChatFromToast(activeToast.senderUsername)}
-            className="px-3 py-1.5 rounded-xl gradient-bg text-white text-xs font-bold flex items-center gap-1 shadow-sm hover:opacity-90 active:scale-95 cursor-pointer"
           >
-            <span>Reply</span>
-            <ChevronRight size={13} strokeWidth={2.5} />
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveToast(null)}
-            className="w-7 h-7 rounded-full flex items-center justify-center text-zinc-400 hover:text-white hover:bg-white/10 cursor-pointer transition-colors"
-            aria-label="Close notification"
-          >
-            <X size={16} />
-          </button>
+            {/* Sender Avatar with Online Story Ring Accent */}
+            <div className="relative shrink-0">
+              <div
+                className="w-11 h-11 rounded-full overflow-hidden flex items-center justify-center font-bold text-xs border"
+                style={{
+                  backgroundColor: getAvatarColorPair(activeToast.senderUsername).bg,
+                  color: getAvatarColorPair(activeToast.senderUsername).text,
+                  borderColor: 'rgba(255, 255, 255, 0.15)',
+                }}
+              >
+                {activeToast.senderAvatar ? (
+                  <img src={activeToast.senderAvatar} alt={activeToast.senderName} className="w-full h-full object-cover" />
+                ) : (
+                  activeToast.senderName.slice(0, 2).toUpperCase()
+                )}
+              </div>
+              <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-emerald-500 border-2 border-[#121212] flex items-center justify-center">
+                <MessageCircle size={8} className="text-white fill-white" />
+              </span>
+            </div>
+
+            {/* Message Content: Sender Profile Name + Message Preview */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-1">
+                <p className="text-xs font-bold truncate text-white flex items-center gap-1.5">
+                  <span>{activeToast.senderName}</span>
+                  <span className="text-[11px] text-zinc-400 font-normal">@{activeToast.senderUsername}</span>
+                </p>
+                <span className="text-[10px] text-zinc-400 shrink-0 font-medium">{activeToast.time}</span>
+              </div>
+              <p className="text-xs text-zinc-200 truncate mt-0.5 font-medium leading-snug">
+                {activeToast.text}
+              </p>
+            </div>
+
+            {/* Action Button & Close */}
+            <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+              <button
+                type="button"
+                onClick={() => handleOpenChatFromToast(activeToast.senderUsername)}
+                className="px-3 py-1.5 rounded-xl gradient-bg text-white text-xs font-bold flex items-center gap-1 shadow-sm hover:opacity-90 active:scale-95 cursor-pointer"
+              >
+                <span>Reply</span>
+                <ChevronRight size={13} strokeWidth={2.5} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveToast(null)}
+                className="w-7 h-7 rounded-full flex items-center justify-center text-zinc-400 hover:text-white hover:bg-white/10 cursor-pointer transition-colors"
+                aria-label="Close notification"
+              >
+                <X size={16} />
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
+      )}
+    </>
   );
 }
 
