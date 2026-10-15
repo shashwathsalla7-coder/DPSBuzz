@@ -361,6 +361,8 @@ export function GlobalCallProvider() {
           body: JSON.stringify({
             action: 'end',
             callId: currentCall.callId,
+            callerUsername: currentCall.callerUsername,
+            receiverUsername: currentCall.receiverUsername,
           }),
         });
         broadcastCallEvent({ type: 'CALL_ENDED', callId: currentCall.callId });
@@ -388,6 +390,8 @@ export function GlobalCallProvider() {
         body: JSON.stringify({
           action: 'reject',
           callId: incomingCall.callId,
+          callerUsername: incomingCall.callerUsername,
+          receiverUsername: incomingCall.receiverUsername,
         }),
       });
       broadcastCallEvent({ type: 'CALL_REJECTED', callId: incomingCall.callId });
@@ -543,6 +547,8 @@ export function GlobalCallProvider() {
           body: JSON.stringify({
             action: 'signal',
             callId: callToAccept.callId,
+            callerUsername: callToAccept.callerUsername,
+            receiverUsername: callToAccept.receiverUsername,
             candidates: toSend,
             sender: 'receiver',
           }),
@@ -597,6 +603,11 @@ export function GlobalCallProvider() {
         body: JSON.stringify({
           action: 'answer',
           callId: callToAccept.callId,
+          callerUsername: callToAccept.callerUsername,
+          receiverUsername: callToAccept.receiverUsername,
+          callerName: callToAccept.callerName,
+          receiverName: callToAccept.receiverName,
+          isVideo: callToAccept.isVideo,
           sdpAnswer,
         }),
       });
@@ -745,6 +756,8 @@ export function GlobalCallProvider() {
             body: JSON.stringify({
               action: 'signal',
               callId,
+              callerUsername,
+              receiverUsername,
               candidates: batch,
               sender: 'caller',
             }),
@@ -773,6 +786,8 @@ export function GlobalCallProvider() {
           body: JSON.stringify({
             action: 'signal',
             callId,
+            callerUsername,
+            receiverUsername,
             sdpOffer: completeOffer,
             sender: 'caller',
           }),

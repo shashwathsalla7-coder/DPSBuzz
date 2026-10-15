@@ -735,8 +735,8 @@ function writeLocalCalls(calls: Record<string, CallSession>): void {
 
 async function fetchCloudCalls(): Promise<Record<string, CallSession> | null> {
   try {
-    // Add dynamic cache-buster so Cloudinary CDN never returns stale call states
-    const url = `https://res.cloudinary.com/${CLOUD_NAME}/raw/upload/${CLOUD_CALLS_PUBLIC_ID}?r=${Date.now()}_${Math.random().toString(36).substring(2)}`;
+    // Use v${Date.now()} in URL path to completely bypass Cloudflare/Cloudinary 30-day edge cache
+    const url = `https://res.cloudinary.com/${CLOUD_NAME}/raw/upload/v${Date.now()}/${CLOUD_CALLS_PUBLIC_ID}`;
     const res = await fetch(url, {
       cache: 'no-store',
       headers: {
@@ -836,15 +836,27 @@ export async function updateServerCall(
 ): Promise<CallSession | null> {
   const current = await getServerActiveCalls(true);
   const existing = current[callId] || callsCache[callId] || (readLocalCalls() || {})[callId];
+
+  const callerUsername = updates.callerUsername || existing?.callerUsername || '';
+  const receiverUsername = updates.receiverUsername || existing?.receiverUsername || '';
+
+  // Guard: NEVER create or save a session with blank usernames
+  if (!callerUsername && !receiverUsername) {
+    console.warn('[serverStore] updateServerCall skipped: missing usernames for callId', callId);
+    return existing || null;
+  }
+
   const baseCall: CallSession = existing || {
     callId,
-    callerUsername: '',
-    callerName: '',
-    receiverUsername: '',
-    receiverName: '',
-    isVideo: false,
+    callerUsername,
+    callerName: updates.callerName || '',
+    callerAvatar: updates.callerAvatar || null,
+    receiverUsername,
+    receiverName: updates.receiverName || '',
+    receiverAvatar: updates.receiverAvatar || null,
+    isVideo: updates.isVideo ?? false,
     status: (updates.status as any) || 'ringing',
-    createdAt: Date.now(),
+    createdAt: updates.createdAt || Date.now(),
   };
 
   // Merge iceCandidates if present without duplicates
@@ -863,6 +875,10 @@ export async function updateServerCall(
   const updatedCall: CallSession = {
     ...baseCall,
     ...updates,
+    callerUsername: callerUsername || baseCall.callerUsername,
+    receiverUsername: receiverUsername || baseCall.receiverUsername,
+    callerName: updates.callerName || baseCall.callerName,
+    receiverName: updates.receiverName || baseCall.receiverName,
     ...(mergedCandidates.length > 0 ? { iceCandidates: mergedCandidates } : {}),
   };
   const updatedMap = { ...current, [callId]: updatedCall };

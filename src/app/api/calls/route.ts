@@ -199,7 +199,26 @@ export async function POST(req: NextRequest) {
     if (action === 'answer') {
       const cached = localCache.get(callId) || null;
       const serverCall = await getServerCall(callId);
-      const call = mergeCallSessions(cached, serverCall);
+      let call = mergeCallSessions(cached, serverCall);
+
+      if (!call && (body.callerUsername || body.receiverUsername)) {
+        call = {
+          callId,
+          callerUsername: (body.callerUsername || '').toLowerCase().trim(),
+          callerName: body.callerName || body.callerUsername || '',
+          callerAvatar: body.callerAvatar || null,
+          receiverUsername: (body.receiverUsername || '').toLowerCase().trim(),
+          receiverName: body.receiverName || body.receiverUsername || '',
+          receiverAvatar: body.receiverAvatar || null,
+          isVideo: Boolean(body.isVideo),
+          status: 'connected',
+          createdAt: Date.now() - 2000,
+          connectedAt: Date.now(),
+          sdpAnswer: sdpAnswer || null,
+          iceCandidates: [],
+        };
+      }
+
       if (!call) {
         return NextResponse.json({ success: false, error: 'Call session not found' }, { status: 404 });
       }
@@ -216,18 +235,21 @@ export async function POST(req: NextRequest) {
       };
 
       localCache.set(callId, updated);
-      await updateServerCall(callId, updates);
+      await updateServerCall(callId, updated);
       return NextResponse.json({ success: true, call: updated });
     }
 
     if (action === 'reject') {
+      const cached = localCache.get(callId) || null;
+      const serverCall = await getServerCall(callId);
+      const call = mergeCallSessions(cached, serverCall);
       const updates: Partial<CallSession> = {
         status: 'rejected',
         endedAt: Date.now(),
         durationSeconds: 0,
       };
       localCache.delete(callId);
-      await updateServerCall(callId, updates);
+      await updateServerCall(callId, call ? { ...call, ...updates } : updates);
       return NextResponse.json({ success: true });
     }
 
@@ -247,7 +269,7 @@ export async function POST(req: NextRequest) {
         durationSeconds,
       };
       localCache.delete(callId);
-      await updateServerCall(callId, updates);
+      await updateServerCall(callId, call ? { ...call, ...updates } : updates);
       return NextResponse.json({ success: true, durationSeconds });
     }
 
@@ -258,13 +280,17 @@ export async function POST(req: NextRequest) {
 
       // If call session was initiated but not yet written to serverStore, create memory stub so candidates are never lost
       if (!call) {
+        const caller = (body.callerUsername || (sender === 'caller' ? body.username : '') || '').toLowerCase().trim();
+        const receiver = (body.receiverUsername || (sender === 'receiver' ? body.username : '') || '').toLowerCase().trim();
         call = {
           callId,
-          callerUsername: sender === 'caller' ? (body.username || 'caller') : '',
-          callerName: '',
-          receiverUsername: '',
-          receiverName: '',
-          isVideo: false,
+          callerUsername: caller,
+          callerName: body.callerName || caller,
+          callerAvatar: body.callerAvatar || null,
+          receiverUsername: receiver,
+          receiverName: body.receiverName || receiver,
+          receiverAvatar: body.receiverAvatar || null,
+          isVideo: Boolean(body.isVideo),
           status: 'ringing',
           createdAt: Date.now(),
           sdpOffer: sdpOffer || null,
@@ -318,7 +344,7 @@ export async function POST(req: NextRequest) {
           ...updates,
         };
         localCache.set(callId, updated);
-        await updateServerCall(callId, updates);
+        await updateServerCall(callId, updated);
       }
 
       return NextResponse.json({ success: true });
