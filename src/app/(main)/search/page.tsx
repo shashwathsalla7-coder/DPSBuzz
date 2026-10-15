@@ -649,6 +649,8 @@ function SearchContent() {
                           ? 'Following'
                           : DataStore.hasRequestedFollow(currentUser?.username || '', person.username)
                           ? 'Requested 🔒'
+                          : currentUser?.username && DataStore.isFollowing(person.username, currentUser.username)
+                          ? 'Follow Back'
                           : 'Follow'}
                       </button>
                     )}

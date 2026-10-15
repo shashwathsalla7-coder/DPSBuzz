@@ -16,6 +16,8 @@ export interface ServerStoreData {
   deletedUsernames?: string[]; // Usernames deleted permanently - NEVER re-add to profiles/posts/leaderboard
   notifications?: NotificationItem[];
   activeCalls?: Record<string, CallSession>;
+  follows?: Array<{ follower: string; following: string }>;
+  followRequests?: Array<{ requester: string; target: string }>;
   lastUpdated: number;
 }
 
@@ -66,6 +68,8 @@ function createInitialStore(): ServerStoreData {
     deletedUsernames: [],
     notifications: [],
     activeCalls: {},
+    follows: [],
+    followRequests: [],
     lastUpdated: Date.now(),
   };
 }
@@ -141,6 +145,8 @@ function normalizeStore(parsed: any): ServerStoreData {
       }
       return calls;
     })(),
+    follows: Array.isArray(parsed.follows) ? parsed.follows : [],
+    followRequests: Array.isArray(parsed.followRequests) ? parsed.followRequests : [],
     lastUpdated: typeof parsed.lastUpdated === 'number' ? parsed.lastUpdated : Date.now(),
   };
 }

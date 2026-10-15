@@ -204,7 +204,13 @@ export function SuggestedAccountsList({
                     }`}
                     aria-label={isFollowing ? `Unfollow ${person.username}` : `Follow ${person.username}`}
                   >
-                    {isFollowing ? 'Following' : isRequested ? 'Requested 🔒' : 'Follow'}
+                    {isFollowing
+                      ? 'Following'
+                      : isRequested
+                      ? 'Requested 🔒'
+                      : currentUsername && DataStore.isFollowing(person.username, currentUsername)
+                      ? 'Follow Back'
+                      : 'Follow'}
                   </button>
                 );
               })()}

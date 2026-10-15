@@ -70,13 +70,13 @@ export default function NotificationsPage() {
   const handleAcceptFollowReq = (req: any) => {
     DataStore.acceptFollowRequest(currentUser.username, req.requester);
     setFollowRequests((prev) => prev.filter((f) => f.requester !== req.requester));
-    showToast(`Accepted follow request from @${req.requester}! ✨`);
+    showToast(`Accepted friend request from @${req.requester}! You are now following each other 🎉`);
   };
 
   const handleDeclineFollowReq = (req: any) => {
     DataStore.cancelFollowRequest(req.requester, currentUser.username);
     setFollowRequests((prev) => prev.filter((f) => f.requester !== req.requester));
-    showToast(`Declined follow request from @${req.requester}`);
+    showToast(`Declined friend request from @${req.requester}`);
   };
 
   const todayNotifs = notifications.filter((n) => n.timeAgo.includes('h') || n.timeAgo.includes('m') || n.timeAgo === 'Just now');
@@ -223,7 +223,7 @@ export default function NotificationsPage() {
                           @{freq.requester}
                         </p>
                         <p className="text-[11px] text-[var(--text-muted)] truncate">
-                          Requested to follow your profile
+                          Sent you a friend request 🤝
                         </p>
                       </div>
                     </div>

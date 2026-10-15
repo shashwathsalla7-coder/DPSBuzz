@@ -102,6 +102,26 @@ export default function ProfileClient({ username }: { username: string }) {
     return false;
   });
 
+  const [isFollowedBy, setIsFollowedBy] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const cur = DataStore.getCurrentUser();
+      if (cur?.username && cur.username.toLowerCase() !== 'guest') {
+        return DataStore.isFollowedBy(cur.username, username);
+      }
+    }
+    return false;
+  });
+
+  const [hasIncomingRequest, setHasIncomingRequest] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const cur = DataStore.getCurrentUser();
+      if (cur?.username && cur.username.toLowerCase() !== 'guest') {
+        return DataStore.isFollowRequested(username, cur.username);
+      }
+    }
+    return false;
+  });
+
   // Interactive Button Modals & Sheets
   const [showProfileOptions, setShowProfileOptions] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -224,6 +244,8 @@ export default function ProfileClient({ username }: { username: string }) {
       if (cur?.username && cur.username.toLowerCase() !== 'guest') {
         setIsFollowing(DataStore.isFollowing(cur.username, username));
         setIsRequested(DataStore.isFollowRequested(cur.username, username));
+        setIsFollowedBy(DataStore.isFollowedBy(cur.username, username));
+        setHasIncomingRequest(DataStore.isFollowRequested(username, cur.username));
       }
     };
     window.addEventListener('dpsbuzz:content_updated', handleUpdate);
@@ -933,8 +955,15 @@ export default function ProfileClient({ username }: { username: string }) {
 
         {/* Identity & Bio */}
         <div className="space-y-1">
-          <div className="text-sm font-bold" style={{ color: 'var(--text)' }}>
-            {profile.fullName}
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm font-bold" style={{ color: 'var(--text)' }}>
+              {profile.fullName}
+            </span>
+            {!isOwnProfile && isFollowedBy && (
+              <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-[var(--surface-sunken)] text-[var(--text-muted)] border border-[var(--line)]">
+                Follows you
+              </span>
+            )}
           </div>
           <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
             {isOfficial ? 'Official School Office' : `Class ${profile.class}-${profile.section || 'A'} • DPS Student 🐝`}
@@ -1083,6 +1112,19 @@ export default function ProfileClient({ username }: { username: string }) {
                     return;
                   }
 
+                  // If there is an incoming friend request from this user, accepting it makes them mutual friends!
+                  if (hasIncomingRequest) {
+                    DataStore.acceptFollowRequest(currentUser.username, profile.username);
+                    setIsFollowing(true);
+                    setIsFollowedBy(true);
+                    setHasIncomingRequest(false);
+                    setPostsVersion((v) => v + 1);
+                    const updated = DataStore.getProfileByUsername(profile.username);
+                    if (updated) setProfile(updated);
+                    showToast(`Accepted friend request from @${profile.username}! You are now friends 🎉`);
+                    return;
+                  }
+
                   // If already following, unfollow directly
                   if (isFollowing) {
                     const isNow = DataStore.toggleFollow(currentUser.username, profile.username);
@@ -1104,43 +1146,32 @@ export default function ProfileClient({ username }: { username: string }) {
                     } else {
                       DataStore.requestFollow(currentUser.username, profile.username);
                       setIsRequested(true);
-                      showToast(`Follow request sent to @${profile.username} 🔒`);
-                      try {
-                        DataStore.addNotification({
-                          id: `notif-freq-${Date.now()}`,
-                          type: 'follow',
-                          title: 'New Follow Request',
-                          message: `@${currentUser.username} requested to follow you`,
-                          timeAgo: 'Just now',
-                          createdAt: new Date().toISOString(),
-                          read: false,
-                          recipientUsername: profile.username.toLowerCase().trim(),
-                          senderUsername: currentUser.username,
-                          senderAvatar: currentUser.avatar || null,
-                          targetId: currentUser.username,
-                        } as any);
-                      } catch {}
+                      showToast(`Friend request sent to @${profile.username} 🔒`);
                     }
                     return;
                   }
 
-                  // If public, direct follow
+                  // If public or Follow Back, direct follow
                   const isNow = DataStore.toggleFollow(currentUser.username, profile.username);
                   setIsFollowing(isNow);
                   setIsRequested(false);
                   setPostsVersion((v) => v + 1);
                   const updated = DataStore.getProfileByUsername(profile.username);
                   if (updated) setProfile(updated);
-                  showToast(`Following @${profile.username}`);
+                  showToast(isFollowedBy ? `You and @${profile.username} are now friends! 🤝` : `Following @${profile.username}`);
                 }}
                 className="flex-1 h-9 rounded-full text-xs font-semibold btn-press flex items-center justify-center cursor-pointer shadow-xs"
                 style={{
-                  backgroundColor: isFollowing || isRequested ? 'var(--surface-sunken)' : 'var(--accent-cta)',
-                  color: isFollowing || isRequested ? 'var(--text)' : 'var(--on-accent-cta)',
-                  border: isFollowing || isRequested ? '1px solid var(--line)' : 'none',
+                  backgroundColor: (isFollowing || isRequested) && !hasIncomingRequest ? 'var(--surface-sunken)' : 'var(--accent-cta)',
+                  color: (isFollowing || isRequested) && !hasIncomingRequest ? 'var(--text)' : 'var(--on-accent-cta)',
+                  border: (isFollowing || isRequested) && !hasIncomingRequest ? '1px solid var(--line)' : 'none',
                 }}
               >
-                {isFollowing ? 'Following' : isRequested ? 'Requested' : 'Follow'}
+                {hasIncomingRequest
+                  ? 'Confirm'
+                  : isFollowedBy && !isFollowing && !isRequested
+                  ? 'Follow Back'
+                  : isFollowing ? 'Following' : isRequested ? 'Requested' : 'Follow'}
               </button>
               <Link
                 href={`/chats?user=${profile.username}`}
@@ -3503,6 +3534,8 @@ export default function ProfileClient({ username }: { username: string }) {
                   const cur = DataStore.getCurrentUser();
                   const isSelf = cur && cur.username.toLowerCase() === student.username.toLowerCase();
                   const isFollowingStudent = cur ? DataStore.isFollowing(cur.username, student.username) : false;
+                  const isFollowedByStudent = cur ? DataStore.isFollowedBy(cur.username, student.username) : false;
+                  const hasReqStudent = cur ? DataStore.hasRequestedFollow(cur.username, student.username) : false;
 
                   return (
                     <div
@@ -3554,12 +3587,18 @@ export default function ProfileClient({ username }: { username: string }) {
                             type="button"
                             onClick={() => handleToggleFollowInModal(student.username)}
                             className={`px-3 py-1 rounded-full text-xs font-semibold cursor-pointer transition-colors shadow-2xs ${
-                              isFollowingStudent
+                              isFollowingStudent || hasReqStudent
                                 ? 'bg-[var(--surface-sunken)] text-[var(--text)] border border-[var(--line)] hover:bg-red-500/10 hover:text-red-500'
                                 : 'bg-blue-600 hover:bg-blue-500 text-white'
                             }`}
                           >
-                            {isFollowingStudent ? 'Following' : 'Follow'}
+                            {isFollowingStudent
+                              ? 'Following'
+                              : hasReqStudent
+                              ? 'Requested'
+                              : isFollowedByStudent
+                              ? 'Follow Back'
+                              : 'Follow'}
                           </button>
                         )}
                       </div>

@@ -947,6 +947,55 @@ export const DataStore = {
         setStorage(STORAGE_KEYS.NOTICES, Array.from(noticeMap.values()));
       }
 
+      // 10. Merge server follows & followRequests
+      if (Array.isArray(data.follows)) {
+        const localFollows = getStorage<Array<{ follower: string; following: string }>>(STORAGE_KEYS.FOLLOWS, []);
+        const followSet = new Set(localFollows.map((f) => `${f.follower.toLowerCase().trim()}__${f.following.toLowerCase().trim()}`));
+        let followsChanged = false;
+        for (const f of data.follows) {
+          if (f && f.follower && f.following) {
+            const fol = f.follower.toLowerCase().trim();
+            const fing = f.following.toLowerCase().trim();
+            if (fol && fing && fol !== fing) {
+              const key = `${fol}__${fing}`;
+              if (!followSet.has(key)) {
+                localFollows.push({ follower: fol, following: fing });
+                followSet.add(key);
+                followsChanged = true;
+              }
+            }
+          }
+        }
+        if (followsChanged) {
+          setStorage(STORAGE_KEYS.FOLLOWS, localFollows);
+          changed = true;
+        }
+      }
+
+      if (Array.isArray(data.followRequests)) {
+        const localReqs = getStorage<Array<{ requester: string; target: string }>>(STORAGE_KEYS.FOLLOW_REQUESTS, []);
+        const reqSet = new Set(localReqs.map((r) => `${r.requester.toLowerCase().trim()}__${r.target.toLowerCase().trim()}`));
+        let reqsChanged = false;
+        for (const r of data.followRequests) {
+          if (r && r.requester && r.target) {
+            const req = r.requester.toLowerCase().trim();
+            const tar = r.target.toLowerCase().trim();
+            if (req && tar && req !== tar) {
+              const key = `${req}__${tar}`;
+              if (!reqSet.has(key)) {
+                localReqs.push({ requester: req, target: tar });
+                reqSet.add(key);
+                reqsChanged = true;
+              }
+            }
+          }
+        }
+        if (reqsChanged) {
+          setStorage(STORAGE_KEYS.FOLLOW_REQUESTS, localReqs);
+          changed = true;
+        }
+      }
+
       if (changed) {
         window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated'));
       }
@@ -3712,6 +3761,24 @@ export const DataStore = {
     });
     setStorage(STORAGE_KEYS.PROFILES, profiles);
 
+    // Send in-app notification to followed user
+    if (isNowFollowing) {
+      const isMutual = list.some(
+        (f) => f.follower.toLowerCase() === cleanFollowing && f.following.toLowerCase() === cleanFollower
+      );
+      try {
+        this.addNotification({
+          userId: cleanFollowing,
+          type: 'follow',
+          title: isMutual ? 'New Friend 🤝' : 'New Follower',
+          body: isMutual
+            ? `@${cleanFollower} followed you back! You are now friends.`
+            : `@${cleanFollower} started following you`,
+          link: `/u/${cleanFollower}`,
+        });
+      } catch {}
+    }
+
     if (typeof window !== 'undefined') {
       window.dispatchEvent(
         new CustomEvent('dpsbuzz:content_updated', {
@@ -3724,6 +3791,22 @@ export const DataStore = {
         })
       );
     }
+
+    // Sync to cloud
+    try {
+      fetch('/api/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          follows: isNowFollowing ? [{ follower: cleanFollower, following: cleanFollowing }] : [],
+          removedFollows: !isNowFollowing ? [{ follower: cleanFollower, following: cleanFollowing }] : [],
+          profiles: profiles.filter((p) => {
+            const u = p.username.toLowerCase().trim();
+            return u === cleanFollowing || u === cleanFollower;
+          }),
+        }),
+      }).catch(() => {});
+    } catch {}
 
     return isNowFollowing;
   },
@@ -3758,6 +3841,36 @@ export const DataStore = {
     if (!list.some((r) => r.requester.toLowerCase() === cleanReq && r.target.toLowerCase() === cleanTar)) {
       list.push({ requester: cleanReq, target: cleanTar });
       setStorage(STORAGE_KEYS.FOLLOW_REQUESTS, list);
+
+      // Add in-app notification for recipient
+      try {
+        this.addNotification({
+          userId: cleanTar,
+          type: 'follow',
+          title: 'New Friend Request 🤝',
+          body: `@${cleanReq} sent you a friend request`,
+          link: '/notifications',
+        });
+      } catch {}
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('dpsbuzz:content_updated', {
+            detail: { type: 'follow_requested', requester: cleanReq, target: cleanTar },
+          })
+        );
+      }
+
+      // Sync to cloud so target user sees request on any device
+      try {
+        fetch('/api/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            followRequests: [{ requester: cleanReq, target: cleanTar }],
+          }),
+        }).catch(() => {});
+      } catch {}
     }
   },
 
@@ -3765,10 +3878,32 @@ export const DataStore = {
     const cleanReq = requester.toLowerCase().trim();
     const cleanTar = target.toLowerCase().trim();
     let list = this.getFollowRequests();
+    const beforeCount = list.length;
     list = list.filter(
       (r) => !(r.requester.toLowerCase() === cleanReq && r.target.toLowerCase() === cleanTar)
     );
-    setStorage(STORAGE_KEYS.FOLLOW_REQUESTS, list);
+    if (list.length !== beforeCount) {
+      setStorage(STORAGE_KEYS.FOLLOW_REQUESTS, list);
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('dpsbuzz:content_updated', {
+            detail: { type: 'follow_request_cancelled', requester: cleanReq, target: cleanTar },
+          })
+        );
+      }
+
+      // Sync removal to cloud
+      try {
+        fetch('/api/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            removedFollowRequests: [{ requester: cleanReq, target: cleanTar }],
+          }),
+        }).catch(() => {});
+      } catch {}
+    }
   },
 
   acceptFollowRequest(target: string, requester: string): void {
@@ -3778,36 +3913,85 @@ export const DataStore = {
 
     this.cancelFollowRequest(requester, target);
     let list = this.getFollows();
+    let modified = false;
+
+    // 1. Requester follows target
     if (!list.some((f) => f.follower.toLowerCase() === cleanReq && f.following.toLowerCase() === cleanTar)) {
       list.push({ follower: cleanReq, following: cleanTar });
-      setStorage(STORAGE_KEYS.FOLLOWS, list);
-
-      const targetFollowersCount = list.filter((f) => f.following.toLowerCase().trim() === cleanTar).length;
-      const reqFollowingCount = list.filter((f) => f.follower.toLowerCase().trim() === cleanReq).length;
-
-      const profiles = this.getProfiles().map((p) => {
-        if (p.username.toLowerCase() === cleanTar) {
-          return { ...p, followerCount: targetFollowersCount };
-        }
-        if (p.username.toLowerCase() === cleanReq) {
-          return { ...p, followingCount: reqFollowingCount };
-        }
-        return p;
-      });
-      setStorage(STORAGE_KEYS.PROFILES, profiles);
-
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(
-          new CustomEvent('dpsbuzz:content_updated', {
-            detail: {
-              type: 'follow_accepted',
-              target: cleanTar,
-              requester: cleanReq,
-            },
-          })
-        );
-      }
+      modified = true;
     }
+
+    // 2. Target ALSO follows requester back (Mutual friendship established!)
+    if (!list.some((f) => f.follower.toLowerCase() === cleanTar && f.following.toLowerCase() === cleanReq)) {
+      list.push({ follower: cleanTar, following: cleanReq });
+      modified = true;
+    }
+
+    if (modified) {
+      setStorage(STORAGE_KEYS.FOLLOWS, list);
+    }
+
+    // 3. Recalculate authoritative follower and following counts for BOTH users
+    const targetFollowersCount = list.filter((f) => f.following.toLowerCase().trim() === cleanTar).length;
+    const targetFollowingCount = list.filter((f) => f.follower.toLowerCase().trim() === cleanTar).length;
+    const reqFollowersCount = list.filter((f) => f.following.toLowerCase().trim() === cleanReq).length;
+    const reqFollowingCount = list.filter((f) => f.follower.toLowerCase().trim() === cleanReq).length;
+
+    const profiles = this.getProfiles().map((p) => {
+      const u = p.username.toLowerCase().trim();
+      if (u === cleanTar) {
+        return { ...p, followerCount: targetFollowersCount, followingCount: targetFollowingCount };
+      }
+      if (u === cleanReq) {
+        return { ...p, followerCount: reqFollowersCount, followingCount: reqFollowingCount };
+      }
+      return p;
+    });
+    setStorage(STORAGE_KEYS.PROFILES, profiles);
+
+    // 4. Send in-app notification to requester that their friend request was accepted
+    try {
+      this.addNotification({
+        userId: cleanReq,
+        type: 'follow',
+        title: 'Friend Request Accepted 🎉',
+        body: `@${cleanTar} accepted your friend request! You are now following each other.`,
+        link: `/u/${cleanTar}`,
+      });
+    } catch {}
+
+    // 5. Fire content updated event with mutual flag
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('dpsbuzz:content_updated', {
+          detail: {
+            type: 'follow_accepted',
+            target: cleanTar,
+            requester: cleanReq,
+            mutual: true,
+          },
+        })
+      );
+    }
+
+    // 6. Sync mutual follows and profile counts to cloud
+    try {
+      fetch('/api/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          follows: [
+            { follower: cleanReq, following: cleanTar },
+            { follower: cleanTar, following: cleanReq },
+          ],
+          removedFollowRequests: [{ requester: cleanReq, target: cleanTar }],
+          profiles: profiles.filter((p) => {
+            const u = p.username.toLowerCase().trim();
+            return u === cleanTar || u === cleanReq;
+          }),
+        }),
+      }).catch(() => {});
+    } catch {}
   },
 
   declineFollowRequest(target: string, requester: string): void {

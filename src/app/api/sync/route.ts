@@ -43,6 +43,8 @@ export async function GET(req: NextRequest) {
       deletedUsernames: store.deletedUsernames || [],
       notifications: store.notifications || [],
       notices: store.notices || [],
+      follows: store.follows || [],
+      followRequests: store.followRequests || [],
       lastUpdated: store.lastUpdated,
     }, { headers: NO_CACHE_HEADERS });
   } catch (error: any) {
@@ -131,6 +133,48 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Merge follows
+    let mergedFollows = Array.isArray(current.follows) ? [...current.follows] : [];
+    if (Array.isArray(body.follows)) {
+      const existingSet = new Set(mergedFollows.map((f) => `${(f.follower || '').toLowerCase().trim()}__${(f.following || '').toLowerCase().trim()}`));
+      for (const f of body.follows) {
+        const fol = (f.follower || '').toLowerCase().trim();
+        const fing = (f.following || '').toLowerCase().trim();
+        if (fol && fing && fol !== fing && !deletedUsernames.has(fol) && !deletedUsernames.has(fing)) {
+          const key = `${fol}__${fing}`;
+          if (!existingSet.has(key)) {
+            mergedFollows.push({ follower: fol, following: fing });
+            existingSet.add(key);
+          }
+        }
+      }
+    }
+    if (Array.isArray(body.removedFollows)) {
+      const removeSet = new Set(body.removedFollows.map((f: any) => `${(f.follower || '').toLowerCase().trim()}__${(f.following || '').toLowerCase().trim()}`));
+      mergedFollows = mergedFollows.filter((f) => !removeSet.has(`${(f.follower || '').toLowerCase().trim()}__${(f.following || '').toLowerCase().trim()}`));
+    }
+
+    // Merge followRequests
+    let mergedFollowRequests = Array.isArray(current.followRequests) ? [...current.followRequests] : [];
+    if (Array.isArray(body.followRequests)) {
+      const existingReqs = new Set(mergedFollowRequests.map((r) => `${(r.requester || '').toLowerCase().trim()}__${(r.target || '').toLowerCase().trim()}`));
+      for (const r of body.followRequests) {
+        const req = (r.requester || '').toLowerCase().trim();
+        const tar = (r.target || '').toLowerCase().trim();
+        if (req && tar && req !== tar && !deletedUsernames.has(req) && !deletedUsernames.has(tar)) {
+          const key = `${req}__${tar}`;
+          if (!existingReqs.has(key)) {
+            mergedFollowRequests.push({ requester: req, target: tar });
+            existingReqs.add(key);
+          }
+        }
+      }
+    }
+    if (Array.isArray(body.removedFollowRequests)) {
+      const removeReqSet = new Set(body.removedFollowRequests.map((r: any) => `${(r.requester || '').toLowerCase().trim()}__${(r.target || '').toLowerCase().trim()}`));
+      mergedFollowRequests = mergedFollowRequests.filter((r) => !removeReqSet.has(`${(r.requester || '').toLowerCase().trim()}__${(r.target || '').toLowerCase().trim()}`));
+    }
+
     const updated = await saveServerStore({
       posts: mergedPosts,
       stories: mergedStories,
@@ -138,6 +182,8 @@ export async function POST(req: NextRequest) {
       comments: mergedComments,
       likes: { ...current.likes, ...(likes || {}) },
       notices: mergedNotices,
+      follows: mergedFollows,
+      followRequests: mergedFollowRequests,
     });
 
     return NextResponse.json({
@@ -148,6 +194,8 @@ export async function POST(req: NextRequest) {
       comments: updated.comments,
       likes: updated.likes,
       notices: updated.notices,
+      follows: updated.follows || [],
+      followRequests: updated.followRequests || [],
       deletedUsernames: updated.deletedUsernames || [],
       lastUpdated: updated.lastUpdated,
     }, { headers: NO_CACHE_HEADERS });
