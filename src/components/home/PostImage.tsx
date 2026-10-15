@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { MoreHorizontal, ImageOff, Heart, CheckCircle2, Volume2, VolumeX } from 'lucide-react';
+import { MoreHorizontal, ImageOff, Heart, CheckCircle2, Volume2, VolumeX, Tag } from 'lucide-react';
 import { type Post } from '@/lib/dataStore';
 import { getAvatarColorPair } from '@/config/tokens';
 import { globalAudio } from '@/lib/audioManager';
@@ -266,6 +266,19 @@ export const PostImage: React.FC<PostImageProps> = ({
                 </>
               )}
             </button>
+          </div>
+        )}
+
+        {/* Tagged Classmates Indicator on Photo (Instagram Style) */}
+        {post.taggedUsers && post.taggedUsers.length > 0 && (
+          <div className="absolute bottom-3.5 left-3.5 z-20 pointer-events-none">
+            <span
+              className="h-7 px-2 rounded-full flex items-center gap-1 text-white backdrop-blur-md shadow-md text-[10px] font-bold"
+              style={{ backgroundColor: 'rgba(0, 0, 0, 0.65)' }}
+            >
+              <Tag size={12} />
+              <span>{post.taggedUsers.length}</span>
+            </span>
           </div>
         )}
       </div>
