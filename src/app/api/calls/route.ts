@@ -46,13 +46,19 @@ function mergeCallSessions(
       ? 'connected'
       : (incoming.status || existing.status);
 
-  // Merge ICE candidates without duplicates
+  // Merge ICE candidates without duplicates, keyed by sender and candidate payload
   const candMap = new Map<string, any>();
   (incoming.iceCandidates || []).forEach((c) => {
-    if (c && c.candidate) candMap.set(JSON.stringify(c.candidate), c);
+    if (c && c.candidate) {
+      const key = `${c.sender || ''}_${typeof c.candidate === 'string' ? c.candidate : JSON.stringify(c.candidate)}`;
+      candMap.set(key, c);
+    }
   });
   (existing.iceCandidates || []).forEach((c) => {
-    if (c && c.candidate) candMap.set(JSON.stringify(c.candidate), c);
+    if (c && c.candidate) {
+      const key = `${c.sender || ''}_${typeof c.candidate === 'string' ? c.candidate : JSON.stringify(c.candidate)}`;
+      candMap.set(key, c);
+    }
   });
 
   return {
@@ -79,7 +85,7 @@ export async function GET(req: NextRequest) {
         localCache.delete(id);
         continue;
       }
-      if ((c.status === 'ended' || c.status === 'rejected') && now - (c.endedAt || c.createdAt) > 15000) {
+      if ((c.status === 'ended' || c.status === 'rejected') && now - (c.endedAt || c.createdAt) > 20000) {
         localCache.delete(id);
         continue;
       }
@@ -93,26 +99,24 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    let callForId: CallSession | null = null;
     if (callId) {
       const cached = localCache.get(callId) || null;
       const serverCall = await getServerCall(callId);
-      const merged = mergeCallSessions(cached, serverCall);
-      if (merged) {
-        if (merged.status === 'ringing' && now - merged.createdAt > 45000) {
+      callForId = mergeCallSessions(cached, serverCall);
+      if (callForId) {
+        if (callForId.status === 'ringing' && now - callForId.createdAt > 45000) {
           localCache.delete(callId);
-          return NextResponse.json({ success: true, call: null, activeCall: null }, { headers: NO_CACHE_HEADERS });
+          callForId = null;
+        } else {
+          localCache.set(callId, callForId);
         }
-        localCache.set(callId, merged);
-        return NextResponse.json(
-          { success: true, call: merged, activeCall: merged },
-          { headers: NO_CACHE_HEADERS }
-        );
       }
-      return NextResponse.json({ success: true, call: null, activeCall: null }, { headers: NO_CACHE_HEADERS });
     }
 
+    let userActiveCall: CallSession | null = null;
     if (username) {
-      // Check local cache first for valid non-expired active call
+      // Check local cache first for valid ringing or connected call
       for (const call of localCache.values()) {
         if (
           (call.receiverUsername.toLowerCase().trim() === username ||
@@ -124,27 +128,36 @@ export async function GET(req: NextRequest) {
             localCache.delete(call.callId);
             continue;
           }
-          return NextResponse.json({ success: true, activeCall: call }, { headers: NO_CACHE_HEADERS });
+          userActiveCall = call;
+          break;
         }
       }
 
-      const serverCall = await findUserActiveCall(username);
-      if (serverCall) {
-        if (serverCall.status === 'ringing' && now - serverCall.createdAt > 45000) {
-          return NextResponse.json({ success: true, activeCall: null }, { headers: NO_CACHE_HEADERS });
+      if (!userActiveCall) {
+        const serverCall = await findUserActiveCall(username);
+        if (serverCall) {
+          if (!(serverCall.status === 'ringing' && now - serverCall.createdAt > 45000)) {
+            userActiveCall = serverCall;
+            localCache.set(serverCall.callId, serverCall);
+          }
         }
-        localCache.set(serverCall.callId, serverCall);
-        return NextResponse.json(
-          { success: true, activeCall: serverCall },
-          { headers: NO_CACHE_HEADERS }
-        );
       }
-      return NextResponse.json({ success: true, activeCall: null }, { headers: NO_CACHE_HEADERS });
     }
 
-    return NextResponse.json({ success: true, activeCall: null }, { headers: NO_CACHE_HEADERS });
+    const resolvedActive =
+      userActiveCall ||
+      (callForId && (callForId.status === 'ringing' || callForId.status === 'connected') ? callForId : null);
+
+    return NextResponse.json(
+      {
+        success: true,
+        call: callForId,
+        activeCall: resolvedActive,
+      },
+      { headers: NO_CACHE_HEADERS }
+    );
   } catch (err: any) {
-    return NextResponse.json({ success: true, activeCall: null }, { headers: NO_CACHE_HEADERS });
+    return NextResponse.json({ success: true, call: null, activeCall: null }, { headers: NO_CACHE_HEADERS });
   }
 }
 
@@ -223,10 +236,27 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: false, error: 'Call session not found' }, { status: 404 });
       }
 
+      // Merge any candidates included in the answer payload
+      const candidates = call.iceCandidates ? [...call.iceCandidates] : [];
+      if (body.candidates && Array.isArray(body.candidates)) {
+        body.candidates.forEach((cand: any) => {
+          if (!cand) return;
+          const candObj = typeof cand === 'object' ? cand : { candidate: cand };
+          const key = `${sender || 'receiver'}_${typeof candObj.candidate === 'string' ? candObj.candidate : JSON.stringify(candObj)}`;
+          const exists = candidates.some(
+            (c) => `${c.sender || ''}_${typeof c.candidate === 'string' ? c.candidate : JSON.stringify(c.candidate)}` === key
+          );
+          if (!exists) {
+            candidates.push({ sender: 'receiver', candidate: candObj });
+          }
+        });
+      }
+
       const updates: Partial<CallSession> = {
         status: 'connected',
         connectedAt: Date.now(),
         ...(sdpAnswer ? { sdpAnswer } : {}),
+        iceCandidates: candidates,
       };
 
       const updated: CallSession = {

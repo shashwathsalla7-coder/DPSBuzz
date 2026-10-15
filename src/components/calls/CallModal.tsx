@@ -110,13 +110,6 @@ export function CallModal({
     if (!remoteAudioRef.current || !remoteStream) return;
 
     const audioEl = remoteAudioRef.current;
-    const audioTracks = remoteStream.getAudioTracks();
-    if (audioTracks.length === 0) return;
-
-    audioTracks.forEach((t) => {
-      t.enabled = true;
-    });
-
     if (audioEl.srcObject !== remoteStream) {
       audioEl.srcObject = remoteStream;
     }
@@ -124,6 +117,11 @@ export function CallModal({
     audioEl.volume = 1.0;
 
     const playAudio = () => {
+      const audioTracks = remoteStream.getAudioTracks();
+      audioTracks.forEach((t) => {
+        t.enabled = true;
+      });
+
       const playPromise = audioEl.play();
       if (playPromise !== undefined) {
         playPromise
@@ -137,16 +135,25 @@ export function CallModal({
 
     playAudio();
 
+    const audioTracks = remoteStream.getAudioTracks();
     audioTracks.forEach((t) => {
+      t.enabled = true;
       t.addEventListener('unmute', playAudio);
     });
-    remoteStream.addEventListener('addtrack', playAudio);
+
+    const handleAddTrack = (e: MediaStreamTrackEvent) => {
+      if (e.track.kind === 'audio') {
+        e.track.enabled = true;
+        playAudio();
+      }
+    };
+    remoteStream.addEventListener('addtrack', handleAddTrack);
 
     return () => {
       audioTracks.forEach((t) => {
         t.removeEventListener('unmute', playAudio);
       });
-      remoteStream.removeEventListener('addtrack', playAudio);
+      remoteStream.removeEventListener('addtrack', handleAddTrack);
     };
   }, [remoteStream, isSpeakerMuted]);
 
@@ -162,9 +169,8 @@ export function CallModal({
     if (!call.isVideo) return;
     const targetStream = isPipSwapped ? localStream : remoteStream;
     if (mainVideoRef.current && targetStream) {
-      const vTracks = targetStream.getVideoTracks();
-      if (vTracks.length > 0) {
-        mainVideoRef.current.srcObject = new MediaStream(vTracks);
+      if (mainVideoRef.current.srcObject !== targetStream) {
+        mainVideoRef.current.srcObject = targetStream;
       }
       mainVideoRef.current.muted = true;
       mainVideoRef.current.play().catch(() => {});
@@ -176,9 +182,8 @@ export function CallModal({
     if (!call.isVideo) return;
     const pipStream = isPipSwapped ? remoteStream : localStream;
     if (pipVideoRef.current && pipStream) {
-      const pipVTracks = pipStream.getVideoTracks();
-      if (pipVTracks.length > 0) {
-        pipVideoRef.current.srcObject = new MediaStream(pipVTracks);
+      if (pipVideoRef.current.srcObject !== pipStream) {
+        pipVideoRef.current.srcObject = pipStream;
       }
       pipVideoRef.current.muted = true;
       pipVideoRef.current.play().catch(() => {});

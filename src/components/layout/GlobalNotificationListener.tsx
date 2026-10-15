@@ -159,8 +159,18 @@ export function GlobalNotificationListener() {
               seenMessageIdsRef.current.add(msg.id);
               hasNewMessages = true;
 
+              const isCallMessage =
+                Boolean(msg.isCallLog) ||
+                (typeof msg.text === 'string' &&
+                  (msg.text.includes('📞') ||
+                    msg.text.includes('📹') ||
+                    msg.text.includes('Voice call') ||
+                    msg.text.includes('Video call') ||
+                    msg.text.includes('Missed voice call') ||
+                    msg.text.includes('Missed video call')));
+
               // If it's from someone else and this is NOT initial page load and NOT an automated call log
-              if (isFromSomeoneElse && !isFirstRunRef.current && !msg.isCallLog) {
+              if (isFromSomeoneElse && !isFirstRunRef.current && !isCallMessage) {
                 const senderUser = (msg.senderUsername || otherUsername).toLowerCase().trim();
                 const senderProf = allProfiles.find(
                   (p) => (p.username || '').toLowerCase() === senderUser

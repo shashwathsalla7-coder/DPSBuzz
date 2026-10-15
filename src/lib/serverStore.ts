@@ -760,6 +760,27 @@ async function fetchCloudCalls(): Promise<Record<string, CallSession> | null> {
   return null;
 }
 
+let cloudCallsUploadPromise: Promise<void> | null = null;
+let pendingCloudCallsUpload: Record<string, CallSession> | null = null;
+
+async function syncCloudCalls(calls: Record<string, CallSession>): Promise<void> {
+  writeLocalCalls(calls);
+  pendingCloudCallsUpload = calls;
+  if (cloudCallsUploadPromise) return;
+
+  cloudCallsUploadPromise = (async () => {
+    try {
+      while (pendingCloudCallsUpload) {
+        const toUpload = pendingCloudCallsUpload;
+        pendingCloudCallsUpload = null;
+        await uploadCloudCalls(toUpload);
+      }
+    } finally {
+      cloudCallsUploadPromise = null;
+    }
+  })();
+}
+
 async function uploadCloudCalls(calls: Record<string, CallSession>): Promise<void> {
   try {
     writeLocalCalls(calls);
@@ -826,7 +847,7 @@ export async function saveServerCall(call: CallSession): Promise<CallSession> {
   callsCache = updated;
   lastCallsFetchTime = Date.now();
 
-  await uploadCloudCalls(updated);
+  await syncCloudCalls(updated);
   return call;
 }
 
@@ -891,7 +912,7 @@ export async function updateServerCall(
   callsCache = updatedMap;
   lastCallsFetchTime = Date.now();
 
-  await uploadCloudCalls(updatedMap);
+  await syncCloudCalls(updatedMap);
   return updatedCall;
 }
 
@@ -901,7 +922,7 @@ export async function deleteServerCall(callId: string): Promise<void> {
     delete current[callId];
     callsCache = current;
     lastCallsFetchTime = Date.now();
-    await uploadCloudCalls(current);
+    await syncCloudCalls(current);
   }
 }
 

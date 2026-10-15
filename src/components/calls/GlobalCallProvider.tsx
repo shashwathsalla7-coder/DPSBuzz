@@ -212,6 +212,7 @@ export function GlobalCallProvider() {
   const pendingRemoteCandidatesRef = useRef<any[]>([]);
   const consecutiveMissedPollsRef = useRef(0);
   const notifiedIncomingCallIdsRef = useRef<Set<string>>(new Set());
+  const missedIncomingPollsRef = useRef(0);
 
   // Ingest ICE candidate with automatic queueing if remote description is not yet set
   const ingestIceCandidate = useCallback(async (pc: RTCPeerConnection, cand: any) => {
@@ -447,7 +448,7 @@ export function GlobalCallProvider() {
           const stream = await navigator.mediaDevices.getUserMedia({
             audio: audioConstraints,
             video: {
-              facingMode,
+              facingMode: { ideal: facingMode },
               width: { ideal: 1280 },
               height: { ideal: 720 },
             },
@@ -455,16 +456,27 @@ export function GlobalCallProvider() {
           audioTrack = stream.getAudioTracks()[0] || null;
           videoTrack = stream.getVideoTracks()[0] || null;
         } catch (mediaErr: any) {
-          console.warn('Camera/mic access error, attempting audio-only fallback:', mediaErr);
+          console.warn('High-res camera/mic setup failed, trying standard video+audio:', mediaErr);
           try {
-            const audioOnly = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
-            audioTrack = audioOnly.getAudioTracks()[0] || null;
-          } catch (aErr: any) {
+            // Second attempt: basic video + audio without strict constraints
+            const stream = await navigator.mediaDevices.getUserMedia({
+              audio: true,
+              video: true,
+            });
+            audioTrack = stream.getAudioTracks()[0] || null;
+            videoTrack = stream.getVideoTracks()[0] || null;
+          } catch (err2: any) {
+            console.warn('Standard video setup failed, attempting audio-only:', err2);
             try {
-              const basicAudio = await navigator.mediaDevices.getUserMedia({ audio: true });
-              audioTrack = basicAudio.getAudioTracks()[0] || null;
-            } catch (fallbackErr: any) {
-              console.warn('Microphone access restricted, falling back to synthetic track:', fallbackErr);
+              const audioOnly = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
+              audioTrack = audioOnly.getAudioTracks()[0] || null;
+            } catch (aErr: any) {
+              try {
+                const basicAudio = await navigator.mediaDevices.getUserMedia({ audio: true });
+                audioTrack = basicAudio.getAudioTracks()[0] || null;
+              } catch (fallbackErr: any) {
+                console.warn('Microphone access restricted, falling back to synthetic track:', fallbackErr);
+              }
             }
           }
         }
@@ -520,24 +532,6 @@ export function GlobalCallProvider() {
     if (!incomingCall) return;
 
     const callToAccept = incomingCall;
-
-    // Verify call is still active on server and not already hung up by caller
-    try {
-      const verifyRes = await fetch(`/api/calls?callId=${encodeURIComponent(callToAccept.callId)}&t=${Date.now()}`);
-      if (verifyRes.ok) {
-        const verifyData = await verifyRes.json();
-        const sc = verifyData.call || verifyData.activeCall;
-        if (!sc || sc.status === 'ended' || sc.status === 'rejected') {
-          console.log('[Calls] Call was already ended by caller before answering');
-          setIncomingCall(null);
-          stopCallAudio();
-          playCallEndedSound();
-          alert('This call was already ended by the caller.');
-          return;
-        }
-      }
-    } catch {}
-
     cleanUpCallResources();
     playCallConnectedSound();
     answeringCallIdRef.current = callToAccept.callId;
@@ -591,35 +585,22 @@ export function GlobalCallProvider() {
         const cState = pc.connectionState;
         const iState = pc.iceConnectionState;
         console.log('[WebRTC] Receiver connection state:', cState, 'ICE:', iState);
-        if (
-          cState === 'disconnected' ||
-          cState === 'failed' ||
-          cState === 'closed' ||
-          iState === 'disconnected' ||
-          iState === 'failed' ||
-          iState === 'closed'
-        ) {
+        // Only trigger teardown on terminal failed or closed states. Do NOT tear down on temporary disconnected dips!
+        if (cState === 'failed' || cState === 'closed' || iState === 'failed' || iState === 'closed') {
           setTimeout(() => {
             const currentPc = peerConnRef.current;
             if (!currentPc) return;
             const cs = currentPc.connectionState;
             const is = currentPc.iceConnectionState;
-            if (
-              cs === 'disconnected' ||
-              cs === 'failed' ||
-              cs === 'closed' ||
-              is === 'disconnected' ||
-              is === 'failed' ||
-              is === 'closed'
-            ) {
-              console.log('[WebRTC] Remote peer disconnected or closed.');
+            if (cs === 'failed' || cs === 'closed' || is === 'failed' || is === 'closed') {
+              console.log('[WebRTC] Remote peer definitively disconnected or closed.');
               stopCallAudio();
               playCallEndedSound();
               cleanUpCallResources();
               setActiveCall(null);
               setDurationSeconds(0);
             }
-          }, 1500);
+          }, 3500);
         }
       };
 
@@ -655,21 +636,44 @@ export function GlobalCallProvider() {
         }
       };
 
-      // Retrieve latest caller offer and ICE candidates from server
+      // Retrieve latest caller offer and ICE candidates from server with retry loop
       let activeOffer = callToAccept.sdpOffer;
       let activeCandidates = callToAccept.iceCandidates || [];
-      try {
-        const freshRes = await fetch(`/api/calls?callId=${encodeURIComponent(callToAccept.callId)}&t=${Date.now()}`);
-        if (freshRes.ok) {
-          const freshData = await freshRes.json();
-          if (freshData.call?.sdpOffer) {
-            activeOffer = freshData.call.sdpOffer;
+      let isStillActive = true;
+
+      let attempts = 0;
+      while (!activeOffer && attempts < 8) {
+        attempts++;
+        try {
+          const freshRes = await fetch(`/api/calls?callId=${encodeURIComponent(callToAccept.callId)}&t=${Date.now()}`);
+          if (freshRes.ok) {
+            const freshData = await freshRes.json();
+            const sc = freshData.call || freshData.activeCall;
+            if (sc) {
+              if (sc.status === 'ended' || sc.status === 'rejected') {
+                isStillActive = false;
+                break;
+              }
+              if (sc.sdpOffer) {
+                activeOffer = sc.sdpOffer;
+                activeCandidates = sc.iceCandidates || activeCandidates;
+                break;
+              }
+            }
           }
-          if (freshData.call?.iceCandidates) {
-            activeCandidates = freshData.call.iceCandidates;
-          }
-        }
-      } catch {}
+        } catch {}
+        await new Promise((r) => setTimeout(r, 350));
+      }
+
+      if (!isStillActive) {
+        console.log('[WebRTC] Caller already ended call before receiver answered');
+        stopCallAudio();
+        playCallEndedSound();
+        cleanUpCallResources();
+        setActiveCall(null);
+        alert('This call was already ended by the caller.');
+        return;
+      }
 
       let sdpAnswer: any = null;
       if (activeOffer) {
@@ -690,6 +694,9 @@ export function GlobalCallProvider() {
         sdpAnswer = pc.localDescription || answer;
       }
 
+      const initialBatch = [...candidateBatch];
+      candidateBatch = [];
+
       await fetch('/api/calls', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -702,6 +709,8 @@ export function GlobalCallProvider() {
           receiverName: callToAccept.receiverName,
           isVideo: callToAccept.isVideo,
           sdpAnswer,
+          candidates: initialBatch,
+          sender: 'receiver',
         }),
       });
 
@@ -836,35 +845,22 @@ export function GlobalCallProvider() {
           const cState = pc.connectionState;
           const iState = pc.iceConnectionState;
           console.log('[WebRTC] Caller connection state:', cState, 'ICE:', iState);
-          if (
-            cState === 'disconnected' ||
-            cState === 'failed' ||
-            cState === 'closed' ||
-            iState === 'disconnected' ||
-            iState === 'failed' ||
-            iState === 'closed'
-          ) {
+          // Only trigger teardown on terminal failed or closed states. Do NOT tear down on temporary disconnected dips!
+          if (cState === 'failed' || cState === 'closed' || iState === 'failed' || iState === 'closed') {
             setTimeout(() => {
               const currentPc = peerConnRef.current;
               if (!currentPc) return;
               const cs = currentPc.connectionState;
               const is = currentPc.iceConnectionState;
-              if (
-                cs === 'disconnected' ||
-                cs === 'failed' ||
-                cs === 'closed' ||
-                is === 'disconnected' ||
-                is === 'failed' ||
-                is === 'closed'
-              ) {
-                console.log('[WebRTC] Remote peer disconnected or closed.');
+              if (cs === 'failed' || cs === 'closed' || is === 'failed' || is === 'closed') {
+                console.log('[WebRTC] Remote peer definitively disconnected or closed.');
                 stopCallAudio();
                 playCallEndedSound();
                 cleanUpCallResources();
                 setActiveCall(null);
                 setDurationSeconds(0);
               }
-            }, 1500);
+            }, 3500);
           }
         };
 
@@ -964,15 +960,14 @@ export function GlobalCallProvider() {
     const pollCallStatus = async () => {
       try {
         if (!isPolling) return;
-        const callParam = (activeCall?.callId || incomingCall?.callId)
-          ? `&callId=${encodeURIComponent((activeCall?.callId || incomingCall?.callId)!)}`
-          : '';
+        const specificCallId = activeCall?.callId || incomingCall?.callId;
+        const callParam = specificCallId ? `&callId=${encodeURIComponent(specificCallId)}` : '';
         const res = await fetch(`/api/calls?username=${encodeURIComponent(currentUsername)}${callParam}&t=${Date.now()}`);
         if (!res.ok) return;
         const data = await res.json();
         if (!data.success) return;
 
-        const serverCall: CallSession | null = data.activeCall || data.call || null;
+        const serverCall: CallSession | null = data.call || data.activeCall || null;
 
         // Case 1: Incoming call arrived for current user while idle
         if (serverCall && serverCall.receiverUsername === currentUsername && serverCall.status === 'ringing') {
@@ -993,17 +988,22 @@ export function GlobalCallProvider() {
 
         // Case 2: Incoming call was cancelled or timed out
         if (incomingCall) {
-          const isCancelled =
-            !serverCall ||
-            serverCall.status === 'ended' ||
-            serverCall.status === 'rejected' ||
-            serverCall.callId !== incomingCall.callId;
-
-          if (isCancelled) {
+          if (serverCall && (serverCall.status === 'ended' || serverCall.status === 'rejected')) {
             console.log('[WebRTC] Incoming call cancelled or ended by caller');
             setIncomingCall(null);
             stopCallAudio();
             playCallEndedSound();
+            missedIncomingPollsRef.current = 0;
+          } else if (!serverCall) {
+            missedIncomingPollsRef.current = (missedIncomingPollsRef.current || 0) + 1;
+            if (missedIncomingPollsRef.current >= 4) {
+              console.log('[WebRTC] Incoming call timed out after 4 missed polls');
+              setIncomingCall(null);
+              stopCallAudio();
+              missedIncomingPollsRef.current = 0;
+            }
+          } else {
+            missedIncomingPollsRef.current = 0;
           }
         }
 
@@ -1081,8 +1081,8 @@ export function GlobalCallProvider() {
             // serverCall is absent or mismatched
             if (activeCall.status === 'connected') {
               consecutiveMissedPollsRef.current += 1;
-              if (consecutiveMissedPollsRef.current >= 3) {
-                console.log('[WebRTC] Active call ended or missing from server for 3 polls. Terminating locally.');
+              if (consecutiveMissedPollsRef.current >= 15) {
+                console.log('[WebRTC] Active call ended or missing from server for 15 polls. Terminating locally.');
                 stopCallAudio();
                 playCallEndedSound();
                 cleanUpCallResources();
@@ -1239,6 +1239,7 @@ export function GlobalCallProvider() {
             sender.replaceTrack(newTrack);
           }
         }
+        localStreamRef.current = newStream;
         setLocalStream(newStream);
       } catch {}
     }
