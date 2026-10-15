@@ -25,6 +25,10 @@ import {
   Camera,
   Shield,
   UserX,
+  UserPlus,
+  Search,
+  Clock,
+  Sparkles,
 } from 'lucide-react';
 import { ChatsHeader } from '@/components/chats/ChatsHeader';
 import { ChatSearch } from '@/components/chats/ChatSearch';
@@ -338,6 +342,13 @@ function ChatsContent() {
   const [selectedFullPhoto, setSelectedFullPhoto] = useState<string | null>(null);
   const lastTapTimeRef = useRef<{ id: string; time: number }>({ id: '', time: 0 });
 
+  // Group Member Management & Group Invitations State
+  const [isAddGroupMembersOpen, setIsAddGroupMembersOpen] = useState(false);
+  const [isGroupInfoOpen, setIsGroupInfoOpen] = useState(false);
+  const [groupMemberSearchQuery, setGroupMemberSearchQuery] = useState('');
+  const [myGroupInvites, setMyGroupInvites] = useState<GroupJoinRequest[]>([]);
+  const [groupSyncTick, setGroupSyncTick] = useState(0);
+
   // Chat Wallpaper / Background & Emoji Drawer State
   const [isBgSelectorOpen, setIsBgSelectorOpen] = useState(false);
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
@@ -432,6 +443,88 @@ function ChatsContent() {
     setSelectedGroupMembers([]);
     showGroupToast(`Group "${newGroupConv.name}" created! Invitations sent.`);
   };
+
+  // Sync pending group invites on mount and on storage/content updates
+  useEffect(() => {
+    const syncInvites = () => {
+      if (currentUsername) {
+        setMyGroupInvites(DataStore.getGroupInvitesForUser(currentUsername));
+      }
+    };
+    syncInvites();
+    window.addEventListener('dpsbuzz:content_updated', syncInvites);
+    return () => window.removeEventListener('dpsbuzz:content_updated', syncInvites);
+  }, [currentUsername, groupSyncTick]);
+
+  const handleInviteFriendToGroup = (targetUsername: string) => {
+    if (!activeConversation || !activeConversation.isGroup) return;
+    const activeGroupId = activeConversation.id.replace(/^conv-/, '');
+
+    DataStore.sendGroupInvite(activeGroupId, targetUsername, currentUsername);
+
+    // Post an authentic system message into the active group chat
+    const sysMsg: ChatMessage = {
+      id: `msg-inv-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      text: `@${currentUsername} invited @${targetUsername} to join the group 📬`,
+      sender: 'them',
+      senderUsername: 'system',
+      time: 'Just now',
+      createdAt: new Date().toISOString(),
+      isSeen: true,
+    };
+
+    setChatMessages((prev) => {
+      const list = prev[activeConversation.id] || [];
+      return { ...prev, [activeConversation.id]: [...list, sysMsg] };
+    });
+
+    fetch('/api/chats', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        conversationId: activeConversation.id,
+        senderUsername: currentUsername,
+        message: sysMsg,
+      }),
+    }).catch(() => {});
+
+    showGroupToast(`Invitation sent to @${targetUsername}! They'll be added when they accept.`);
+    setGroupSyncTick((t) => t + 1);
+  };
+
+  const handleAcceptGroupInvite = (invite: GroupJoinRequest) => {
+    const res = DataStore.acceptGroupInvite(invite.id, currentUsername);
+    if (res.success) {
+      showGroupToast(`Joined "${invite.groupName}"! 🎉 Group chat added.`);
+      setMyGroupInvites(DataStore.getGroupInvitesForUser(currentUsername));
+      setGroupSyncTick((t) => t + 1);
+      const convId = `conv-${invite.groupId}`;
+      const initials = invite.groupName.slice(0, 2).toUpperCase() || 'GP';
+      const newGroupConv: ConversationItem = {
+        id: convId,
+        name: invite.groupName,
+        username: invite.groupName.toLowerCase().replace(/\s+/g, '_'),
+        isGroup: true,
+        groupInitials: initials,
+        lastMessage: `@${currentUsername} joined the group! 🎉`,
+        timeAgo: 'Just now',
+        isUnread: false,
+        studentClass: '8-A',
+      };
+      setConversations((prev) => [newGroupConv, ...prev.filter((c) => c.id !== convId)]);
+      openConversation(newGroupConv);
+    }
+  };
+
+  const handleDeclineGroupInvite = (invite: GroupJoinRequest) => {
+    const res = DataStore.declineGroupInvite(invite.id);
+    if (res.success) {
+      showGroupToast(`Declined invitation to join "${invite.groupName}".`);
+      setMyGroupInvites(DataStore.getGroupInvitesForUser(currentUsername));
+      setGroupSyncTick((t) => t + 1);
+    }
+  };
+
   const [chatMessages, setChatMessages] = useState<Record<string, ChatMessage[]>>(() => {
     if (typeof window !== 'undefined') {
       try {
@@ -2078,13 +2171,15 @@ function ChatsContent() {
             {/* Avatar 36px (circle for people, 10px rounded for groups) */}
             <div
               onClick={() => {
-                if (!activeConversation.isGroup && targetUser) {
+                if (activeConversation.isGroup) {
+                  setIsGroupInfoOpen(true);
+                } else if (targetUser) {
                   router.push(`/u/${targetUser}`);
                 }
               }}
-              title={!activeConversation.isGroup ? `View @${targetUser}'s profile` : undefined}
-              className={`w-9 h-9 flex items-center justify-center font-bold text-xs shrink-0 border overflow-hidden ${
-                activeConversation.isGroup ? 'rounded-[10px]' : 'rounded-full cursor-pointer hover:opacity-85'
+              title={activeConversation.isGroup ? `View group details & members` : `View @${targetUser}'s profile`}
+              className={`w-9 h-9 flex items-center justify-center font-bold text-xs shrink-0 border overflow-hidden cursor-pointer hover:opacity-85 ${
+                activeConversation.isGroup ? 'rounded-[10px]' : 'rounded-full'
               }`}
               style={{
                 backgroundColor: activeConversation.isGroup ? 'var(--primary)' : colors.bg,
@@ -2103,22 +2198,46 @@ function ChatsContent() {
 
             <div
               onClick={() => {
-                if (!activeConversation.isGroup && targetUser) {
+                if (activeConversation.isGroup) {
+                  setIsGroupInfoOpen(true);
+                } else if (targetUser) {
                   router.push(`/u/${targetUser}`);
                 }
               }}
-              className={`min-w-0 ${!activeConversation.isGroup ? 'cursor-pointer hover:opacity-85' : ''}`}
+              className="min-w-0 cursor-pointer hover:opacity-85"
             >
               <h2 className="text-sm font-semibold truncate leading-tight" style={{ color: 'var(--text)' }}>
                 {activeConversation.name}
               </h2>
               <p className="text-[11px] text-[var(--text-muted)] truncate">
-                {activeConversation.isGroup ? 'Class Group' : `@${activeConversation.username} · Class ${activeConversation.studentClass || '8-A'}`}
+                {activeConversation.isGroup ? (
+                  <span className="flex items-center gap-1 text-[var(--primary)] font-medium">
+                    <span>Class Group</span>
+                    <span>·</span>
+                    <span>View members</span>
+                  </span>
+                ) : (
+                  `@${activeConversation.username} · Class ${activeConversation.studentClass || '8-A'}`
+                )}
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-1">
+            {/* If it's a group: ADD FRIENDS (+) Button right in the chat header! */}
+            {activeConversation.isGroup && (
+              <button
+                type="button"
+                onClick={() => setIsAddGroupMembersOpen(true)}
+                className="h-8 px-2.5 rounded-full flex items-center gap-1.5 text-xs font-bold cursor-pointer transition-all bg-[var(--primary)] text-white hover:opacity-90 active:scale-95 shadow-xs"
+                aria-label="Add members to group"
+                title="Add friends to group"
+              >
+                <UserPlus size={14} strokeWidth={2.5} />
+                <span className="text-[11px]">Add</span>
+              </button>
+            )}
+
             {/* Quick 1-tap Wallpaper / Theme selector button */}
             <button
               type="button"
@@ -2888,6 +3007,295 @@ function ChatsContent() {
             setMessageInput((prev) => prev + emoji);
           }}
         />
+
+        {/* Modal 1: Add Friends to Group Modal */}
+        {activeConversation.isGroup && isAddGroupMembersOpen && (() => {
+          const activeGroupId = activeConversation.id.replace(/^conv-/, '');
+          const currentMembers = DataStore.getGroupMembers(activeGroupId);
+          const pendingInvites = DataStore.getGroupPendingInvites(activeGroupId);
+          const memberUsernames = new Set(currentMembers.map((m) => m.toLowerCase().trim()));
+          const pendingUsernames = new Set(pendingInvites.map((r) => r.username.toLowerCase().trim()));
+
+          const filteredCandidates = liveStudents.filter((st) => {
+            if (st.username.toLowerCase() === currentUsername) return false;
+            if (!groupMemberSearchQuery.trim()) return true;
+            const q = groupMemberSearchQuery.toLowerCase();
+            return (
+              st.name.toLowerCase().includes(q) ||
+              st.username.toLowerCase().includes(q) ||
+              st.studentClass.toLowerCase().includes(q)
+            );
+          });
+
+          return (
+            <div
+              className="fixed inset-0 z-[65] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4 animate-fade-in"
+              onClick={() => {
+                setIsAddGroupMembersOpen(false);
+                setGroupMemberSearchQuery('');
+              }}
+            >
+              <div
+                className="relative w-full max-w-md rounded-t-[28px] sm:rounded-[28px] border p-5 shadow-2xl z-10 space-y-4 max-h-[85vh] overflow-y-auto"
+                style={{
+                  backgroundColor: 'var(--surface)',
+                  borderColor: 'var(--line)',
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="w-9 h-1 rounded-full bg-[var(--line-strong)] mx-auto sm:hidden" />
+
+                <div className="flex items-center justify-between pb-1">
+                  <div className="flex items-center gap-2">
+                    <span className="p-1.5 rounded-full bg-emerald-500/10 text-emerald-500">
+                      <UserPlus size={18} />
+                    </span>
+                    <div>
+                      <h3 className="text-base font-bold text-[var(--text)]">Add Friends</h3>
+                      <p className="text-[11px] text-[var(--text-muted)]">
+                        Invite classmates to {activeConversation.name}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsAddGroupMembersOpen(false);
+                      setGroupMemberSearchQuery('');
+                    }}
+                    className="p-1 rounded-full text-[var(--text-muted)] hover:text-[var(--text)] cursor-pointer"
+                    aria-label="Close"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                <div className="relative">
+                  <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
+                  <input
+                    type="text"
+                    placeholder="Search classmates by name or @username..."
+                    value={groupMemberSearchQuery}
+                    onChange={(e) => setGroupMemberSearchQuery(e.target.value)}
+                    className="w-full h-10 pl-9 pr-4 rounded-full text-xs outline-none border transition-colors focus:border-[var(--primary)]"
+                    style={{
+                      backgroundColor: 'var(--surface-sunken)',
+                      borderColor: 'var(--line)',
+                      color: 'var(--text)',
+                    }}
+                  />
+                </div>
+
+                <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
+                  Invitations will be sent. When your classmate accepts (&ldquo;Yes, I want to join&rdquo;), they will be added automatically.
+                </p>
+
+                <div className="max-h-64 overflow-y-auto space-y-2 pr-1">
+                  {filteredCandidates.length === 0 ? (
+                    <div className="py-8 text-center text-xs text-[var(--text-muted)]">
+                      No classmates found matching &ldquo;{groupMemberSearchQuery}&rdquo;
+                    </div>
+                  ) : (
+                    filteredCandidates.map((st) => {
+                      const isMember = memberUsernames.has(st.username.toLowerCase());
+                      const isInvited = pendingUsernames.has(st.username.toLowerCase());
+                      const liveProf = DataStore.getProfileByUsername(st.username);
+                      const effectiveAvatar = liveProf?.avatar || st.avatarUrl || null;
+                      const pair = getAvatarColorPair(st.username);
+
+                      return (
+                        <div
+                          key={st.username}
+                          className="p-2.5 rounded-[18px] border flex items-center justify-between transition-colors bg-[var(--surface-sunken)] border-[var(--line)]"
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0 flex-1 mr-2">
+                            <div
+                              className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs shrink-0 overflow-hidden"
+                              style={{ backgroundColor: pair.bg, color: pair.text }}
+                            >
+                              {effectiveAvatar ? (
+                                <img src={effectiveAvatar} alt={st.name} className="w-full h-full object-cover" />
+                              ) : (
+                                st.name.slice(0, 2).toUpperCase()
+                              )}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold text-[var(--text)] truncate">{st.name}</p>
+                              <p className="text-[10px] text-[var(--text-muted)] truncate">
+                                @{st.username} · {st.studentClass}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="shrink-0">
+                            {isMember ? (
+                              <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-500/15 text-emerald-600 border border-emerald-500/30">
+                                ✓ Member
+                              </span>
+                            ) : isInvited ? (
+                              <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-500/15 text-amber-600 border border-amber-500/30 flex items-center gap-1">
+                                <Clock size={11} /> Invited
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleInviteFriendToGroup(st.username)}
+                                className="px-3.5 py-1.5 rounded-full text-xs font-bold text-white bg-[var(--primary)] hover:opacity-90 active:scale-95 transition-all cursor-pointer flex items-center gap-1 shadow-xs"
+                              >
+                                <Plus size={13} strokeWidth={2.5} />
+                                <span>Invite</span>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Modal 2: Group Info & Members Sheet */}
+        {activeConversation.isGroup && isGroupInfoOpen && (() => {
+          const activeGroupId = activeConversation.id.replace(/^conv-/, '');
+          const currentMembers = DataStore.getGroupMembers(activeGroupId);
+          const pendingInvites = DataStore.getGroupPendingInvites(activeGroupId);
+          const groupObj = DataStore.getGroups().find((g) => g.id === activeGroupId);
+
+          return (
+            <div
+              className="fixed inset-0 z-[65] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4 animate-fade-in"
+              onClick={() => setIsGroupInfoOpen(false)}
+            >
+              <div
+                className="relative w-full max-w-md rounded-t-[28px] sm:rounded-[28px] border p-5 shadow-2xl z-10 space-y-4 max-h-[85vh] overflow-y-auto"
+                style={{
+                  backgroundColor: 'var(--surface)',
+                  borderColor: 'var(--line)',
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="w-9 h-1 rounded-full bg-[var(--line-strong)] mx-auto sm:hidden" />
+
+                <div className="flex items-center justify-between pb-2 border-b" style={{ borderColor: 'var(--line)' }}>
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="w-12 h-12 rounded-[14px] flex items-center justify-center font-bold text-base text-white shrink-0 shadow-md"
+                      style={{ backgroundColor: 'var(--primary)' }}
+                    >
+                      {activeConversation.groupInitials || activeConversation.name.slice(0, 2).toUpperCase()}
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-[var(--text)]">{activeConversation.name}</h3>
+                      <p className="text-xs text-[var(--text-muted)]">
+                        {currentMembers.length} enrolled member{currentMembers.length !== 1 ? 's' : ''}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsGroupInfoOpen(false)}
+                    className="p-1 rounded-full text-[var(--text-muted)] hover:text-[var(--text)] cursor-pointer"
+                    aria-label="Close"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                {/* Add Friends CTA button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsGroupInfoOpen(false);
+                    setIsAddGroupMembersOpen(true);
+                  }}
+                  className="w-full py-2.5 px-4 rounded-full text-xs font-bold bg-[var(--primary)] text-white hover:opacity-90 active:scale-98 transition-all cursor-pointer flex items-center justify-center gap-2 shadow-xs"
+                >
+                  <UserPlus size={15} />
+                  <span>+ Add Friends to Group</span>
+                </button>
+
+                {/* Members list */}
+                <div className="space-y-3 pt-1">
+                  <div className="flex items-center justify-between text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">
+                    <span>Enrolled Members ({currentMembers.length})</span>
+                  </div>
+
+                  <div className="max-h-52 overflow-y-auto space-y-1.5 pr-1">
+                    {currentMembers.map((m) => {
+                      const prof = DataStore.getProfileByUsername(m);
+                      const effectiveAvatar = prof?.avatar || null;
+                      const fullName = prof?.fullName || m;
+                      const pair = getAvatarColorPair(m);
+                      const isMe = m.toLowerCase() === currentUsername;
+                      const isCreator = groupObj?.members?.[0]?.toLowerCase() === m.toLowerCase();
+
+                      return (
+                        <div
+                          key={m}
+                          className="p-2.5 rounded-[16px] border flex items-center justify-between bg-[var(--surface-sunken)] border-[var(--line)]"
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0 flex-1 mr-2">
+                            <div
+                              className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 overflow-hidden"
+                              style={{ backgroundColor: pair.bg, color: pair.text }}
+                            >
+                              {effectiveAvatar ? (
+                                <img src={effectiveAvatar} alt={fullName} className="w-full h-full object-cover" />
+                              ) : (
+                                fullName.slice(0, 2).toUpperCase()
+                              )}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold text-[var(--text)] truncate">
+                                {fullName} {isMe && <span className="text-[10px] text-[var(--primary)] font-semibold">(You)</span>}
+                              </p>
+                              <p className="text-[10px] text-[var(--text-muted)] truncate">
+                                @{m} {prof?.class && `· Class ${prof.class}-${prof.section || 'A'}`}
+                              </p>
+                            </div>
+                          </div>
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/10 text-[var(--text-muted)]">
+                            {isCreator ? 'Admin' : 'Member'}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Pending Invites (if any) */}
+                {pendingInvites.length > 0 && (
+                  <div className="space-y-2 pt-2 border-t" style={{ borderColor: 'var(--line)' }}>
+                    <div className="flex items-center justify-between text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">
+                      <span>Pending Invitations ({pendingInvites.length})</span>
+                      <span className="text-[10px] text-amber-500 font-semibold lowercase">waiting for response</span>
+                    </div>
+
+                    <div className="max-h-36 overflow-y-auto space-y-1.5 pr-1">
+                      {pendingInvites.map((inv) => (
+                        <div
+                          key={inv.id}
+                          className="p-2 rounded-[14px] border flex items-center justify-between bg-[var(--surface-sunken)]/60 border-[var(--line)]"
+                        >
+                          <div className="min-w-0">
+                            <p className="text-xs font-semibold text-[var(--text)] truncate">@{inv.username}</p>
+                            <p className="text-[10px] text-[var(--text-muted)]">Invited by @{inv.invitedBy}</p>
+                          </div>
+                          <span className="text-[10px] text-amber-500 font-medium flex items-center gap-1">
+                            <Clock size={10} /> Pending
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })()}
       </div>
     );
   }
@@ -2961,14 +3369,25 @@ function ChatsContent() {
         <button
           type="button"
           onClick={() => setActiveChip('groups')}
-          className={`h-9 px-4 rounded-full text-xs font-semibold cursor-pointer transition-all active:scale-95 ${
+          className={`h-9 px-4 rounded-full text-xs font-semibold cursor-pointer transition-all active:scale-95 flex items-center gap-1.5 ${
             activeChip === 'groups'
               ? 'bg-[var(--primary)] text-[var(--on-primary)] shadow-xs'
               : 'bg-[var(--surface-sunken)] text-[var(--text-muted)] border border-[var(--line)] hover:text-[var(--text)]'
           }`}
           aria-label="Group chats"
         >
-          Groups
+          <span>Groups</span>
+          {myGroupInvites.length > 0 && (
+            <span
+              className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold tabular-nums ${
+                activeChip === 'groups'
+                  ? 'bg-white/20 text-white'
+                  : 'bg-emerald-500 text-white'
+              }`}
+            >
+              {myGroupInvites.length}
+            </span>
+          )}
         </button>
 
         <button
@@ -3006,6 +3425,62 @@ function ChatsContent() {
           <span>New Group</span>
         </button>
       </div>
+
+      {/* Pending Group Invitations Banner (Visible on All and Groups tabs) */}
+      {myGroupInvites.length > 0 && activeChip !== 'requests' && (
+        <div className="mx-4 my-2.5 p-3.5 rounded-[22px] bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-transparent border border-emerald-500/30 space-y-2.5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-base">📬</span>
+              <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                Group Invitation{myGroupInvites.length > 1 ? 's' : ''} for You ({myGroupInvites.length})
+              </span>
+            </div>
+            <span className="text-[10px] text-[var(--text-muted)]">Action required</span>
+          </div>
+          <div className="space-y-2">
+            {myGroupInvites.map((inv) => (
+              <div
+                key={inv.id}
+                className="p-3 rounded-[16px] border flex items-center justify-between gap-3 shadow-xs"
+                style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--line)' }}
+              >
+                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                  <div
+                    className="w-9 h-9 rounded-[10px] flex items-center justify-center font-bold text-xs text-white shrink-0 shadow-xs"
+                    style={{ backgroundColor: 'var(--primary)' }}
+                  >
+                    {inv.groupName.slice(0, 2).toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <h4 className="text-xs font-bold text-[var(--text)] truncate">{inv.groupName}</h4>
+                    <p className="text-[11px] text-[var(--text-muted)] truncate">
+                      Invited by <span className="font-semibold text-[var(--primary)]">@{inv.invitedBy}</span>
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => handleAcceptGroupInvite(inv)}
+                    className="px-3 py-1.5 rounded-full text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-700 active:scale-95 transition-all cursor-pointer shadow-xs flex items-center gap-1"
+                  >
+                    <Check size={12} strokeWidth={2.5} />
+                    <span>Yes, Join</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeclineGroupInvite(inv)}
+                    className="px-2.5 py-1.5 rounded-full text-xs font-semibold text-red-500 hover:bg-red-500/10 active:scale-95 transition-all cursor-pointer border border-red-500/30"
+                  >
+                    Decline
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* 4. Requests List View (when Requests chip is selected) */}
       {activeChip === 'requests' ? (

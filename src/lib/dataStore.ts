@@ -3236,7 +3236,25 @@ export const DataStore = {
   getGroupMembers(groupId: string): string[] {
     const defaultMembersMap: Record<string, string[]> = {};
     const stored = getStorage<Record<string, string[]>>(STORAGE_KEYS.GROUP_MEMBERS, defaultMembersMap);
-    return stored[groupId] || defaultMembersMap[groupId] || [];
+    if (stored[groupId] && Array.isArray(stored[groupId]) && stored[groupId].length > 0) {
+      return stored[groupId];
+    }
+    const group = this.getGroups().find((g) => g.id === groupId);
+    if (group && Array.isArray(group.members) && group.members.length > 0) {
+      return group.members;
+    }
+    return [];
+  },
+
+  getGroupPendingInvites(groupId: string): GroupJoinRequest[] {
+    const list = getStorage<GroupJoinRequest[]>(STORAGE_KEYS.GROUP_JOIN_REQUESTS, []);
+    return list.filter(
+      (r) =>
+        r &&
+        r.groupId === groupId &&
+        r.status === 'pending' &&
+        r.type === 'invite'
+    );
   },
 
   isGroupMember(groupId: string, username: string): boolean {
