@@ -324,8 +324,8 @@ export default function StyleguidePage() {
                 {/* Seen Story */}
                 <div className="flex flex-col items-center gap-1.5 shrink-0">
                   <StoryRing variant="seen" username="sneha_10c" name="Sneha P" />
-                  <span className="text-[11px] text-[var(--text-muted)] font-medium">Seen Ring</span>
-                  <span className="text-[10px] text-[var(--text-muted)]">#C4CCD8 / #3A4357</span>
+                  <span className="text-[11px] text-[var(--text-secondary)] font-medium">Seen Ring</span>
+                  <span className="text-[10px] text-[var(--text-muted)]">Visible Off-White</span>
                 </div>
               </div>
             </Card>

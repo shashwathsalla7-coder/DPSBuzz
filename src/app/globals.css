@@ -367,12 +367,12 @@ body[data-theme="dark"] .story-ring-unseen .story-ring-inner,
   background-color: var(--surface, #171C26);
 }
 
-/* --- Seen Story Ring: Clean Grey Ring when stories are already seen (NEVER white) --- */
+/* --- Seen Story Ring: Visible Soft Off-White Ring when stories are already seen --- */
 .story-ring-seen {
   width: 62px;
   height: 62px;
   border-radius: 9999px;
-  background: #737373;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.88) 0%, rgba(255, 255, 255, 0.65) 100%);
   padding: 2.5px;
   display: flex;
   align-items: center;
@@ -380,20 +380,27 @@ body[data-theme="dark"] .story-ring-unseen .story-ring-inner,
   position: relative;
   flex-shrink: 0;
   box-sizing: border-box;
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.15);
 }
 
 :root[data-theme="dark"] .story-ring-seen,
 body[data-theme="dark"] .story-ring-seen,
 [data-theme="dark"] .story-ring-seen {
-  background: #52525b;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.88) 0%, rgba(255, 255, 255, 0.65) 100%);
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.15);
 }
 
-/* Seen inner ring: matches surface/background in both modes, NEVER white */
+[data-theme="light"] .story-ring-seen {
+  background: #CBD5E1;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.05);
+}
+
+/* Seen inner ring: matches surface/background in both modes for crisp contrast */
 .story-ring-seen .story-ring-inner {
   width: 100%;
   height: 100%;
   border-radius: 9999px;
-  background-color: var(--surface, #FFFFFF);
+  background-color: var(--surface, #171C26);
   padding: 2.5px;
   display: flex;
   align-items: center;
@@ -405,6 +412,10 @@ body[data-theme="dark"] .story-ring-seen,
 body[data-theme="dark"] .story-ring-seen .story-ring-inner,
 [data-theme="dark"] .story-ring-seen .story-ring-inner {
   background-color: var(--surface, #171C26);
+}
+
+[data-theme="light"] .story-ring-seen .story-ring-inner {
+  background-color: var(--surface, #FFFFFF);
 }
 
 /* --- Reward Story Ring (Gold) --- */
