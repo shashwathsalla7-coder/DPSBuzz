@@ -696,10 +696,16 @@ function cleanCallsMap(calls: Record<string, CallSession>): Record<string, CallS
   const now = Date.now();
   for (const [id, c] of Object.entries(calls)) {
     if (!c || !c.callId) continue;
+    // Prune ended or rejected calls after 15 seconds
     if ((c.status === 'ended' || c.status === 'rejected') && now - (c.endedAt || c.createdAt) > 15000) {
       continue;
     }
+    // Prune unanswered ringing calls after 45 seconds
     if (c.status === 'ringing' && now - c.createdAt > 45000) {
+      continue;
+    }
+    // Prune stale connected calls after 30 minutes to prevent zombie locks
+    if (c.status === 'connected' && now - (c.connectedAt || c.createdAt) > 30 * 60 * 1000) {
       continue;
     }
     cleaned[id] = c;
@@ -729,7 +735,8 @@ function writeLocalCalls(calls: Record<string, CallSession>): void {
 
 async function fetchCloudCalls(): Promise<Record<string, CallSession> | null> {
   try {
-    const url = `https://res.cloudinary.com/${CLOUD_NAME}/raw/upload/${CLOUD_CALLS_PUBLIC_ID}?t=${Date.now()}`;
+    // Add dynamic cache-buster so Cloudinary CDN never returns stale call states
+    const url = `https://res.cloudinary.com/${CLOUD_NAME}/raw/upload/${CLOUD_CALLS_PUBLIC_ID}?r=${Date.now()}_${Math.random().toString(36).substring(2)}`;
     const res = await fetch(url, {
       cache: 'no-store',
       headers: {
@@ -787,7 +794,7 @@ export async function getServerActiveCalls(force = false): Promise<Record<string
 
 export async function getServerCall(callId: string): Promise<CallSession | null> {
   const calls = await getServerActiveCalls(true);
-  return calls[callId] || null;
+  return calls[callId] || callsCache[callId] || (readLocalCalls() || {})[callId] || null;
 }
 
 export async function findUserActiveCall(username: string): Promise<CallSession | null> {
@@ -802,6 +809,9 @@ export async function findUserActiveCall(username: string): Promise<CallSession 
       call.status !== 'rejected'
     ) {
       if (call.status === 'ringing' && now - (call.createdAt || now) > 45000) {
+        continue;
+      }
+      if (call.status === 'connected' && now - (call.connectedAt || call.createdAt || now) > 30 * 60 * 1000) {
         continue;
       }
       return call;
@@ -825,11 +835,20 @@ export async function updateServerCall(
   updates: Partial<CallSession>
 ): Promise<CallSession | null> {
   const current = await getServerActiveCalls(true);
-  const existing = current[callId] || callsCache[callId];
-  if (!existing) return null;
+  const existing = current[callId] || callsCache[callId] || (readLocalCalls() || {})[callId];
+  const baseCall: CallSession = existing || {
+    callId,
+    callerUsername: '',
+    callerName: '',
+    receiverUsername: '',
+    receiverName: '',
+    isVideo: false,
+    status: (updates.status as any) || 'ringing',
+    createdAt: Date.now(),
+  };
 
-  // Merge iceCandidates if present
-  let mergedCandidates = existing.iceCandidates || [];
+  // Merge iceCandidates if present without duplicates
+  let mergedCandidates = baseCall.iceCandidates ? [...baseCall.iceCandidates] : [];
   if (updates.iceCandidates) {
     const candMap = new Map<string, any>();
     mergedCandidates.forEach((c) => {
@@ -842,7 +861,7 @@ export async function updateServerCall(
   }
 
   const updatedCall: CallSession = {
-    ...existing,
+    ...baseCall,
     ...updates,
     ...(mergedCandidates.length > 0 ? { iceCandidates: mergedCandidates } : {}),
   };

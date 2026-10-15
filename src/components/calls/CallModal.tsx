@@ -107,13 +107,17 @@ export function CallModal({
 
   // Dedicated Remote Audio Playback: active for both Voice and Video calls
   useEffect(() => {
-    if (remoteAudioRef.current && remoteStream) {
-      if (remoteAudioRef.current.srcObject !== remoteStream) {
-        remoteAudioRef.current.srcObject = remoteStream;
-      }
-      remoteAudioRef.current.volume = 1.0;
-      remoteAudioRef.current.muted = isSpeakerMuted;
-      const playPromise = remoteAudioRef.current.play();
+    if (!remoteAudioRef.current || !remoteStream) return;
+
+    const audioEl = remoteAudioRef.current;
+    if (audioEl.srcObject !== remoteStream) {
+      audioEl.srcObject = remoteStream;
+    }
+    audioEl.volume = 1.0;
+    audioEl.muted = isSpeakerMuted;
+
+    const playAudio = () => {
+      const playPromise = audioEl.play();
       if (playPromise !== undefined) {
         playPromise
           .then(() => setNeedsAudioUnlock(false))
@@ -122,7 +126,22 @@ export function CallModal({
             setNeedsAudioUnlock(true);
           });
       }
-    }
+    };
+
+    playAudio();
+
+    const audioTracks = remoteStream.getAudioTracks();
+    audioTracks.forEach((t) => {
+      t.addEventListener('unmute', playAudio);
+    });
+    remoteStream.addEventListener('addtrack', playAudio);
+
+    return () => {
+      audioTracks.forEach((t) => {
+        t.removeEventListener('unmute', playAudio);
+      });
+      remoteStream.removeEventListener('addtrack', playAudio);
+    };
   }, [remoteStream, isSpeakerMuted]);
 
   // Video Call Main Video Element (Visual only, strictly muted)
@@ -185,21 +204,14 @@ export function CallModal({
       aria-modal="true"
       aria-label={`${call.isVideo ? 'Video' : 'Voice'} call with ${otherPersonName}`}
     >
-      {/* Dedicated Remote Audio Element (Offscreen) - Always active for both Voice and Video calls */}
+      {/* Dedicated Remote Audio Element (In-DOM sr-only for mobile engine compliance) */}
       <audio
         ref={remoteAudioRef}
         autoPlay
         playsInline
         muted={isSpeakerMuted}
-        style={{
-          position: 'fixed',
-          top: '-200px',
-          left: '-200px',
-          width: '1px',
-          height: '1px',
-          opacity: 0.001,
-          pointerEvents: 'none',
-        }}
+        className="sr-only"
+        aria-hidden="true"
       />
 
       {/* Top Header Bar */}

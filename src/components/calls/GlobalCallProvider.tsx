@@ -17,56 +17,69 @@ import { showBackgroundNotification } from '@/lib/pushNotifications';
 
 const ICE_SERVERS: RTCConfiguration = {
   iceServers: [
-    // 1. Google High-Availability Global STUN
+    // 1. Google High-Availability Global STUN (IPv4 & IPv6 Anycast)
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
     { urls: 'stun:stun2.l.google.com:19302' },
     { urls: 'stun:stun3.l.google.com:19302' },
     { urls: 'stun:stun4.l.google.com:19302' },
-    // 2. Cloudflare Global STUN
+
+    // 2. Cloudflare Global Edge STUN
     { urls: 'stun:stun.cloudflare.com:3478' },
-    // 3. Metered Open Relay STUN
-    { urls: 'stun:openrelay.metered.ca:80' },
+
+    // 3. Twilio Global Anycast STUN
+    { urls: 'stun:global.stun.twilio.com:3478' },
+
+    // 4. Metered Relay STUN
+    { urls: 'stun:stun.relay.metered.ca:80' },
     { urls: 'stun:relay.metered.ca:80' },
-    // 4. Metered Open Relay TURN over UDP port 80 (bypasses restrictive UDP port blocks)
+
+    // 5. Metered Global Relay TURN over UDP port 80 & 443
     {
-      urls: 'turn:openrelay.metered.ca:80',
+      urls: 'turn:global.relay.metered.ca:80',
       username: 'openrelayproject',
       credential: 'openrelayproject',
     },
-    // 5. Metered Open Relay TURN over UDP port 443
     {
-      urls: 'turn:openrelay.metered.ca:443',
+      urls: 'turn:global.relay.metered.ca:443',
       username: 'openrelayproject',
       credential: 'openrelayproject',
     },
-    // 6. Metered Open Relay TURN over TCP port 443 (vital for mobile 4G/5G carriers with UDP throttling)
+
+    // 6. Metered Global Relay TURN over TCP port 80 & 443 (Critical for mobile 4G/5G CGNAT / Symmetric NAT)
     {
-      urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+      urls: 'turn:global.relay.metered.ca:80?transport=tcp',
       username: 'openrelayproject',
       credential: 'openrelayproject',
     },
-    // 7. Metered Open Relay TURNS over TLS/TCP port 443 (deep packet inspection traversal)
     {
-      urls: 'turns:openrelay.metered.ca:443?transport=tcp',
+      urls: 'turn:global.relay.metered.ca:443?transport=tcp',
       username: 'openrelayproject',
       credential: 'openrelayproject',
     },
-    // 8. Static Auth Open Relay fallback
+
+    // 7. Metered Secure TURNS over TLS/TCP port 443
     {
-      urls: 'turn:staticauth.openrelay.metered.ca:80',
-      username: 'openrelayprojectusername',
-      credential: 'openrelayprojectsecret',
+      urls: 'turns:global.relay.metered.ca:443?transport=tcp',
+      username: 'openrelayproject',
+      credential: 'openrelayproject',
+    },
+
+    // 8. Regional Relay Backup
+    {
+      urls: 'turn:relay.metered.ca:80',
+      username: 'openrelayproject',
+      credential: 'openrelayproject',
     },
     {
-      urls: 'turn:staticauth.openrelay.metered.ca:443',
-      username: 'openrelayprojectusername',
-      credential: 'openrelayprojectsecret',
+      urls: 'turn:relay.metered.ca:443',
+      username: 'openrelayproject',
+      credential: 'openrelayproject',
     },
     {
-      urls: 'turn:staticauth.openrelay.metered.ca:443?transport=tcp',
-      username: 'openrelayprojectusername',
-      credential: 'openrelayprojectsecret',
+      urls: 'turn:relay.metered.ca:443?transport=tcp',
+      username: 'openrelayproject',
+      credential: 'openrelayproject',
     },
   ],
   iceCandidatePoolSize: 10,
@@ -517,18 +530,30 @@ export function GlobalCallProvider() {
         }
       };
 
+      // Batch receiver ICE candidates in 80ms bursts to prevent HTTP spam
+      let candidateBatch: any[] = [];
+      let batchTimer: any = null;
+      const flushCandidates = () => {
+        if (candidateBatch.length === 0) return;
+        const toSend = [...candidateBatch];
+        candidateBatch = [];
+        fetch('/api/calls', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'signal',
+            callId: callToAccept.callId,
+            candidates: toSend,
+            sender: 'receiver',
+          }),
+        }).catch(() => {});
+      };
+
       pc.onicecandidate = (event) => {
         if (event.candidate) {
-          fetch('/api/calls', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              action: 'signal',
-              callId: callToAccept.callId,
-              candidate: event.candidate,
-              sender: 'receiver',
-            }),
-          }).catch(() => {});
+          candidateBatch.push(event.candidate);
+          if (batchTimer) clearTimeout(batchTimer);
+          batchTimer = setTimeout(flushCandidates, 80);
         }
       };
 
@@ -563,7 +588,6 @@ export function GlobalCallProvider() {
 
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
-        await waitForIceGathering(pc, 2500);
         sdpAnswer = pc.localDescription || answer;
       }
 
@@ -576,6 +600,8 @@ export function GlobalCallProvider() {
           sdpAnswer,
         }),
       });
+
+      flushCandidates();
 
       const updatedCall: CallSession = {
         ...callToAccept,
@@ -628,10 +654,58 @@ export function GlobalCallProvider() {
 
       playOutgoingRingtone();
 
-      const stream = await setupMediaStream(params.isVideo);
       const callId = `call-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+      const initialCall: CallSession = {
+        callId,
+        callerUsername,
+        callerName: user.fullName || callerUsername,
+        callerAvatar: user.avatar || null,
+        receiverUsername,
+        receiverName: params.receiverName,
+        receiverAvatar: params.receiverAvatar || null,
+        isVideo: params.isVideo,
+        status: 'ringing',
+        createdAt: Date.now(),
+        iceCandidates: [],
+      };
+
+      // Show ringing UI on caller immediately
+      setActiveCall(initialCall);
 
       try {
+        // Register call on the server IMMEDIATELY so receiver gets ringing notification with 0 delay
+        const initRes = await fetch('/api/calls', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'initiate',
+            callId,
+            callerUsername,
+            callerName: user.fullName || callerUsername,
+            callerAvatar: user.avatar || null,
+            receiverUsername,
+            receiverName: params.receiverName,
+            receiverAvatar: params.receiverAvatar || null,
+            isVideo: params.isVideo,
+          }),
+        });
+
+        if (!initRes.ok) {
+          throw new Error(`Server returned status ${initRes.status}. Call could not be placed.`);
+        }
+
+        const initData = await initRes.json();
+        if (!initData.success) {
+          throw new Error(initData.error || 'Call could not be placed. Please try again.');
+        }
+
+        const activeSession = initData.call || initialCall;
+        setActiveCall(activeSession);
+        broadcastCallEvent({ type: 'CALL_INITIATED', call: activeSession });
+
+        // Acquire media devices
+        const stream = await setupMediaStream(params.isVideo);
+
         const pc = new RTCPeerConnection(ICE_SERVERS);
         peerConnRef.current = pc;
 
@@ -657,18 +731,31 @@ export function GlobalCallProvider() {
           }
         };
 
+        // Candidate batching to prevent HTTP queue storms and Cloudinary collisions
+        let candidateBatch: RTCIceCandidate[] = [];
+        let batchTimer: any = null;
+
+        const flushCandidates = () => {
+          if (candidateBatch.length === 0) return;
+          const batch = [...candidateBatch];
+          candidateBatch = [];
+          fetch('/api/calls', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'signal',
+              callId,
+              candidates: batch,
+              sender: 'caller',
+            }),
+          }).catch(() => {});
+        };
+
         pc.onicecandidate = (event) => {
           if (event.candidate) {
-            fetch('/api/calls', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                action: 'signal',
-                callId,
-                candidate: event.candidate,
-                sender: 'caller',
-              }),
-            }).catch(() => {});
+            candidateBatch.push(event.candidate);
+            if (batchTimer) clearTimeout(batchTimer);
+            batchTimer = setTimeout(flushCandidates, 80);
           }
         };
 
@@ -677,37 +764,21 @@ export function GlobalCallProvider() {
           offerToReceiveVideo: params.isVideo,
         });
         await pc.setLocalDescription(offer);
-        await waitForIceGathering(pc, 2500);
+        await waitForIceGathering(pc, 400);
         const completeOffer = pc.localDescription || offer;
 
-        const res = await fetch('/api/calls', {
+        await fetch('/api/calls', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            action: 'initiate',
+            action: 'signal',
             callId,
-            callerUsername,
-            callerName: user.fullName || callerUsername,
-            callerAvatar: user.avatar || null,
-            receiverUsername,
-            receiverName: params.receiverName,
-            receiverAvatar: params.receiverAvatar || null,
-            isVideo: params.isVideo,
             sdpOffer: completeOffer,
+            sender: 'caller',
           }),
         });
 
-        if (!res.ok) {
-          throw new Error(`Server returned status ${res.status}. Call could not be connected.`);
-        }
-
-        const data = await res.json();
-        if (data.success && data.call) {
-          setActiveCall(data.call);
-          broadcastCallEvent({ type: 'CALL_INITIATED', call: data.call });
-        } else {
-          throw new Error(data.error || 'Call could not be placed. Please try again.');
-        }
+        flushCandidates();
       } catch (err: any) {
         console.error('Failed to initiate call:', err);
         cleanUpCallResources();
@@ -724,7 +795,7 @@ export function GlobalCallProvider() {
         }
       }
     },
-    [cleanUpCallResources, facingMode]
+    [cleanUpCallResources, facingMode, playOutgoingRingtone, setupMediaStream, waitForIceGathering, stopCallAudio]
   );
 
   // Listen for custom start call triggers across the app
@@ -783,11 +854,16 @@ export function GlobalCallProvider() {
             consecutiveMissedPollsRef.current = 0;
 
             // If we are caller and receiver has answered
-            if (isCaller && serverCall.status === 'connected') {
+            const hasAnswered = isCaller && (serverCall.status === 'connected' || Boolean(serverCall.sdpAnswer));
+            if (hasAnswered) {
               if (activeCall.status === 'ringing') {
+                console.log('[WebRTC] Receiver answered! Transitioning caller to connected...');
                 stopCallAudio();
                 playCallConnectedSound();
-                setActiveCall(serverCall);
+                setActiveCall({
+                  ...serverCall,
+                  status: 'connected',
+                });
               }
 
               // Apply remote description whenever sdpAnswer arrives and not yet applied
@@ -815,6 +891,15 @@ export function GlobalCallProvider() {
               stopCallAudio();
               handleEndCall();
               return;
+            } else if (isCaller && activeCall.status === 'ringing') {
+              // Ringing timeout guard while still ringing on server
+              const callAge = Date.now() - (activeCall.createdAt || Date.now());
+              if (callAge > 45000) {
+                stopCallAudio();
+                alert(`No answer from @${activeCall.receiverUsername}. They are currently unavailable.`);
+                handleEndCall();
+                return;
+              }
             }
 
             // SYMMETRIC ICE INGESTION: Both Caller and Receiver ingest remote candidates

@@ -44,24 +44,24 @@ function mergeCallSessions(
   const status =
     existing.status === 'connected' || incoming.status === 'connected'
       ? 'connected'
-      : (existing.status || incoming.status);
+      : (incoming.status || existing.status);
 
   // Merge ICE candidates without duplicates
   const candMap = new Map<string, any>();
-  (existing.iceCandidates || []).forEach((c) => {
+  (incoming.iceCandidates || []).forEach((c) => {
     if (c && c.candidate) candMap.set(JSON.stringify(c.candidate), c);
   });
-  (incoming.iceCandidates || []).forEach((c) => {
+  (existing.iceCandidates || []).forEach((c) => {
     if (c && c.candidate) candMap.set(JSON.stringify(c.candidate), c);
   });
 
   return {
-    ...incoming,
     ...existing,
+    ...incoming,
     status,
-    sdpOffer: existing.sdpOffer || incoming.sdpOffer || null,
-    sdpAnswer: existing.sdpAnswer || incoming.sdpAnswer || null,
-    connectedAt: existing.connectedAt || incoming.connectedAt,
+    sdpOffer: incoming.sdpOffer || existing.sdpOffer || null,
+    sdpAnswer: incoming.sdpAnswer || existing.sdpAnswer || null,
+    connectedAt: incoming.connectedAt || existing.connectedAt,
     iceCandidates: Array.from(candMap.values()),
   };
 }
@@ -173,6 +173,9 @@ export async function POST(req: NextRequest) {
       }
 
       const id = callId || `call-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+      // Check if any candidates or offer were pre-buffered in localCache
+      const existingStub = localCache.get(id);
+
       const newCall: CallSession = {
         callId: id,
         callerUsername: callerUsername.toLowerCase().trim(),
@@ -184,8 +187,8 @@ export async function POST(req: NextRequest) {
         isVideo: Boolean(isVideo),
         status: 'ringing',
         createdAt: Date.now(),
-        sdpOffer: sdpOffer || null,
-        iceCandidates: [],
+        sdpOffer: sdpOffer || existingStub?.sdpOffer || null,
+        iceCandidates: existingStub?.iceCandidates || [],
       };
 
       localCache.set(id, newCall);
@@ -251,24 +254,62 @@ export async function POST(req: NextRequest) {
     if (action === 'signal') {
       const cached = localCache.get(callId) || null;
       const serverCall = await getServerCall(callId);
-      const call = mergeCallSessions(cached, serverCall);
+      let call = mergeCallSessions(cached, serverCall);
+
+      // If call session was initiated but not yet written to serverStore, create memory stub so candidates are never lost
       if (!call) {
-        return NextResponse.json({ success: false, error: 'Call not found' }, { status: 404 });
+        call = {
+          callId,
+          callerUsername: sender === 'caller' ? (body.username || 'caller') : '',
+          callerName: '',
+          receiverUsername: '',
+          receiverName: '',
+          isVideo: false,
+          status: 'ringing',
+          createdAt: Date.now(),
+          sdpOffer: sdpOffer || null,
+          sdpAnswer: sdpAnswer || null,
+          iceCandidates: [],
+        };
+        localCache.set(callId, call);
       }
 
       const updates: Partial<CallSession> = {};
       if (sdpOffer) updates.sdpOffer = sdpOffer;
       if (sdpAnswer) updates.sdpAnswer = sdpAnswer;
 
+      const candidates = call.iceCandidates ? [...call.iceCandidates] : [];
+      let addedAny = false;
+
+      // Handle single candidate
       if (candidate && sender) {
-        const candidates = call.iceCandidates ? [...call.iceCandidates] : [];
+        const rawCandidate = candidate.candidate !== undefined ? candidate.candidate : candidate;
         const exists = candidates.some(
-          (c) => c.sender === sender && JSON.stringify(c.candidate) === JSON.stringify(candidate)
+          (c) => c.sender === sender && JSON.stringify(c.candidate) === JSON.stringify(rawCandidate)
         );
         if (!exists) {
-          candidates.push({ sender, candidate });
-          updates.iceCandidates = candidates;
+          candidates.push({ sender, candidate: rawCandidate });
+          addedAny = true;
         }
+      }
+
+      // Handle batch candidates array
+      if (body.candidates && Array.isArray(body.candidates) && sender) {
+        body.candidates.forEach((cand: any) => {
+          if (!cand) return;
+          const rawCandidate = cand.candidate !== undefined ? cand.candidate : cand;
+          const exists = candidates.some(
+            (c) => c.sender === sender && JSON.stringify(c.candidate) === JSON.stringify(rawCandidate)
+          );
+          if (!exists) {
+            candidates.push({ sender, candidate: rawCandidate });
+            addedAny = true;
+          }
+        });
+      }
+
+      if (addedAny) {
+        updates.iceCandidates = candidates;
       }
 
       if (Object.keys(updates).length > 0) {
