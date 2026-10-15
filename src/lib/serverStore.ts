@@ -793,6 +793,7 @@ export async function getServerCall(callId: string): Promise<CallSession | null>
 export async function findUserActiveCall(username: string): Promise<CallSession | null> {
   const clean = username.toLowerCase().trim();
   const calls = await getServerActiveCalls(true);
+  const now = Date.now();
   for (const call of Object.values(calls)) {
     if (
       (call.receiverUsername.toLowerCase().trim() === clean ||
@@ -800,6 +801,9 @@ export async function findUserActiveCall(username: string): Promise<CallSession 
       call.status !== 'ended' &&
       call.status !== 'rejected'
     ) {
+      if (call.status === 'ringing' && now - (call.createdAt || now) > 45000) {
+        continue;
+      }
       return call;
     }
   }

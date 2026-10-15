@@ -111,6 +111,7 @@ export function CallModal({
       if (remoteAudioRef.current.srcObject !== remoteStream) {
         remoteAudioRef.current.srcObject = remoteStream;
       }
+      remoteAudioRef.current.volume = 1.0;
       remoteAudioRef.current.muted = isSpeakerMuted;
       const playPromise = remoteAudioRef.current.play();
       if (playPromise !== undefined) {

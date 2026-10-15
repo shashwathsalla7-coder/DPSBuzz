@@ -72,11 +72,36 @@ export async function GET(req: NextRequest) {
     const username = searchParams.get('username')?.toLowerCase().trim();
     const callId = searchParams.get('callId');
 
+    const now = Date.now();
+    // Prune stale or expired sessions from memory cache
+    for (const [id, c] of localCache.entries()) {
+      if (!c || !c.callId) {
+        localCache.delete(id);
+        continue;
+      }
+      if ((c.status === 'ended' || c.status === 'rejected') && now - (c.endedAt || c.createdAt) > 15000) {
+        localCache.delete(id);
+        continue;
+      }
+      if (c.status === 'ringing' && now - c.createdAt > 45000) {
+        localCache.delete(id);
+        continue;
+      }
+      if (c.status === 'connected' && now - (c.connectedAt || c.createdAt) > 7200000) {
+        localCache.delete(id);
+        continue;
+      }
+    }
+
     if (callId) {
       const cached = localCache.get(callId) || null;
       const serverCall = await getServerCall(callId);
       const merged = mergeCallSessions(cached, serverCall);
       if (merged) {
+        if (merged.status === 'ringing' && now - merged.createdAt > 45000) {
+          localCache.delete(callId);
+          return NextResponse.json({ success: true, call: null, activeCall: null }, { headers: NO_CACHE_HEADERS });
+        }
         localCache.set(callId, merged);
         return NextResponse.json(
           { success: true, call: merged, activeCall: merged },
@@ -87,7 +112,7 @@ export async function GET(req: NextRequest) {
     }
 
     if (username) {
-      // Check local cache first for 0ms latency
+      // Check local cache first for valid non-expired active call
       for (const call of localCache.values()) {
         if (
           (call.receiverUsername.toLowerCase().trim() === username ||
@@ -95,12 +120,19 @@ export async function GET(req: NextRequest) {
           call.status !== 'ended' &&
           call.status !== 'rejected'
         ) {
+          if (call.status === 'ringing' && now - call.createdAt > 45000) {
+            localCache.delete(call.callId);
+            continue;
+          }
           return NextResponse.json({ success: true, activeCall: call }, { headers: NO_CACHE_HEADERS });
         }
       }
 
       const serverCall = await findUserActiveCall(username);
       if (serverCall) {
+        if (serverCall.status === 'ringing' && now - serverCall.createdAt > 45000) {
+          return NextResponse.json({ success: true, activeCall: null }, { headers: NO_CACHE_HEADERS });
+        }
         localCache.set(serverCall.callId, serverCall);
         return NextResponse.json(
           { success: true, activeCall: serverCall },
@@ -157,7 +189,7 @@ export async function POST(req: NextRequest) {
       };
 
       localCache.set(id, newCall);
-      saveServerCall(newCall).catch(() => {});
+      await saveServerCall(newCall);
       return NextResponse.json({ success: true, call: newCall });
     }
 
@@ -181,7 +213,7 @@ export async function POST(req: NextRequest) {
       };
 
       localCache.set(callId, updated);
-      updateServerCall(callId, updates).catch(() => {});
+      await updateServerCall(callId, updates);
       return NextResponse.json({ success: true, call: updated });
     }
 
@@ -192,7 +224,7 @@ export async function POST(req: NextRequest) {
         durationSeconds: 0,
       };
       localCache.delete(callId);
-      updateServerCall(callId, updates).catch(() => {});
+      await updateServerCall(callId, updates);
       return NextResponse.json({ success: true });
     }
 
@@ -212,7 +244,7 @@ export async function POST(req: NextRequest) {
         durationSeconds,
       };
       localCache.delete(callId);
-      updateServerCall(callId, updates).catch(() => {});
+      await updateServerCall(callId, updates);
       return NextResponse.json({ success: true, durationSeconds });
     }
 
@@ -245,7 +277,7 @@ export async function POST(req: NextRequest) {
           ...updates,
         };
         localCache.set(callId, updated);
-        updateServerCall(callId, updates).catch(() => {});
+        await updateServerCall(callId, updates);
       }
 
       return NextResponse.json({ success: true });

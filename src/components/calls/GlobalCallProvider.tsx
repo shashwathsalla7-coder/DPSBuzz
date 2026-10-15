@@ -184,6 +184,7 @@ export function GlobalCallProvider() {
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const peerConnRef = useRef<RTCPeerConnection | null>(null);
   const callTimerRef = useRef<any>(null);
+  const answeringCallIdRef = useRef<string | null>(null);
   const processedCandidatesRef = useRef<Set<string>>(new Set());
   const pendingRemoteCandidatesRef = useRef<any[]>([]);
   const consecutiveMissedPollsRef = useRef(0);
@@ -191,15 +192,23 @@ export function GlobalCallProvider() {
   // Ingest ICE candidate with automatic queueing if remote description is not yet set
   const ingestIceCandidate = useCallback(async (pc: RTCPeerConnection, cand: any) => {
     try {
-      if (!cand || !cand.candidate) return;
-      const key = typeof cand.candidate === 'string' ? cand.candidate : JSON.stringify(cand.candidate);
+      if (!cand) return;
+      const rawCandidate = cand.candidate !== undefined ? cand.candidate : cand;
+      if (!rawCandidate) return;
+
+      const key = typeof rawCandidate === 'string' ? rawCandidate : JSON.stringify(rawCandidate);
       if (processedCandidatesRef.current.has(key)) return;
       processedCandidatesRef.current.add(key);
 
+      let candidateInit: any = rawCandidate;
+      if (typeof rawCandidate === 'string') {
+        candidateInit = { candidate: rawCandidate };
+      }
+
       if (pc.remoteDescription && pc.remoteDescription.type) {
-        await pc.addIceCandidate(new RTCIceCandidate(cand.candidate));
+        await pc.addIceCandidate(new RTCIceCandidate(candidateInit));
       } else {
-        pendingRemoteCandidatesRef.current.push(cand.candidate);
+        pendingRemoteCandidatesRef.current.push(candidateInit);
       }
     } catch (err) {
       console.warn('[WebRTC] Candidate ingestion non-fatal error:', err);
@@ -465,15 +474,23 @@ export function GlobalCallProvider() {
     if (!incomingCall) return;
 
     const callToAccept = incomingCall;
+    answeringCallIdRef.current = callToAccept.callId;
+
+    // Immediately place call into connected state so activeCall is never null and UI immediately transitions
+    const answeringCall: CallSession = {
+      ...callToAccept,
+      status: 'connected',
+      connectedAt: Date.now(),
+    };
+    setActiveCall(answeringCall);
     setIncomingCall(null);
     setIsCaller(false);
     setIsMuted(false);
     setIsCameraOff(!callToAccept.isVideo);
     setDurationSeconds(0);
 
-    const stream = await setupMediaStream(callToAccept.isVideo);
-
     try {
+      const stream = await setupMediaStream(callToAccept.isVideo);
       const pc = new RTCPeerConnection(ICE_SERVERS);
       peerConnRef.current = pc;
 
@@ -482,19 +499,15 @@ export function GlobalCallProvider() {
 
       pc.ontrack = (event) => {
         console.log('[WebRTC] Receiver received remote track:', event.track.kind);
-        if (event.streams && event.streams[0]) {
-          remoteMediaStreamRef.current = event.streams[0];
-          setRemoteStream(event.streams[0]);
-        } else {
-          if (!remoteMediaStreamRef.current) {
-            remoteMediaStreamRef.current = new MediaStream();
-          }
-          const rStream = remoteMediaStreamRef.current;
-          if (!rStream.getTracks().some((t) => t.id === event.track.id)) {
-            rStream.addTrack(event.track);
-          }
-          setRemoteStream(new MediaStream(rStream.getTracks()));
+        let targetStream = remoteMediaStreamRef.current;
+        if (!targetStream) {
+          targetStream = event.streams && event.streams[0] ? event.streams[0] : new MediaStream();
+          remoteMediaStreamRef.current = targetStream;
         }
+        if (!targetStream.getTracks().some((t) => t.id === event.track.id)) {
+          targetStream.addTrack(event.track);
+        }
+        setRemoteStream(new MediaStream(targetStream.getTracks()));
       };
 
       pc.oniceconnectionstatechange = () => {
@@ -519,14 +532,29 @@ export function GlobalCallProvider() {
         }
       };
 
+      // Retrieve latest caller offer and ICE candidates from server
+      let activeOffer = callToAccept.sdpOffer;
+      let activeCandidates = callToAccept.iceCandidates || [];
+      try {
+        const freshRes = await fetch(`/api/calls?callId=${encodeURIComponent(callToAccept.callId)}&t=${Date.now()}`);
+        if (freshRes.ok) {
+          const freshData = await freshRes.json();
+          if (freshData.call?.sdpOffer) {
+            activeOffer = freshData.call.sdpOffer;
+          }
+          if (freshData.call?.iceCandidates) {
+            activeCandidates = freshData.call.iceCandidates;
+          }
+        }
+      } catch {}
+
       let sdpAnswer: any = null;
-      if (callToAccept.sdpOffer) {
-        await pc.setRemoteDescription(new RTCSessionDescription(callToAccept.sdpOffer));
+      if (activeOffer) {
+        await pc.setRemoteDescription(new RTCSessionDescription(activeOffer));
         await flushPendingCandidates(pc);
 
-        // Ingest any caller ICE candidates immediately
-        if (callToAccept.iceCandidates) {
-          for (const cand of callToAccept.iceCandidates) {
+        if (activeCandidates) {
+          for (const cand of activeCandidates) {
             if (cand.sender === 'caller') {
               await ingestIceCandidate(pc, cand);
             }
@@ -558,12 +586,16 @@ export function GlobalCallProvider() {
       setActiveCall(updatedCall);
       broadcastCallEvent({ type: 'CALL_ANSWERED', call: updatedCall });
 
-      callTimerRef.current = setInterval(() => {
-        setDurationSeconds((prev) => prev + 1);
-      }, 1000);
+      if (!callTimerRef.current) {
+        callTimerRef.current = setInterval(() => {
+          setDurationSeconds((prev) => prev + 1);
+        }, 1000);
+      }
     } catch (e) {
       console.error('Failed to answer call:', e);
       handleEndCall();
+    } finally {
+      answeringCallIdRef.current = null;
     }
   }, [incomingCall, facingMode, handleEndCall, ingestIceCandidate, flushPendingCandidates]);
 
@@ -607,19 +639,15 @@ export function GlobalCallProvider() {
 
         pc.ontrack = (event) => {
           console.log('[WebRTC] Caller received remote track:', event.track.kind);
-          if (event.streams && event.streams[0]) {
-            remoteMediaStreamRef.current = event.streams[0];
-            setRemoteStream(event.streams[0]);
-          } else {
-            if (!remoteMediaStreamRef.current) {
-              remoteMediaStreamRef.current = new MediaStream();
-            }
-            const rStream = remoteMediaStreamRef.current;
-            if (!rStream.getTracks().some((t) => t.id === event.track.id)) {
-              rStream.addTrack(event.track);
-            }
-            setRemoteStream(new MediaStream(rStream.getTracks()));
+          let targetStream = remoteMediaStreamRef.current;
+          if (!targetStream) {
+            targetStream = event.streams && event.streams[0] ? event.streams[0] : new MediaStream();
+            remoteMediaStreamRef.current = targetStream;
           }
+          if (!targetStream.getTracks().some((t) => t.id === event.track.id)) {
+            targetStream.addTrack(event.track);
+          }
+          setRemoteStream(new MediaStream(targetStream.getTracks()));
         };
 
         pc.oniceconnectionstatechange = () => {
@@ -731,7 +759,7 @@ export function GlobalCallProvider() {
 
         // Case 1: Incoming call arrived for current user while idle
         if (serverCall && serverCall.receiverUsername === currentUsername && serverCall.status === 'ringing') {
-          if (!activeCall && (!incomingCall || incomingCall.callId !== serverCall.callId)) {
+          if (!activeCall && !answeringCallIdRef.current && (!incomingCall || incomingCall.callId !== serverCall.callId)) {
             setIncomingCall(serverCall);
             playIncomingRingtone();
             showBackgroundNotification(`📞 Incoming ${serverCall.isVideo ? 'Video' : 'Voice'} Call`, {
@@ -825,7 +853,7 @@ export function GlobalCallProvider() {
       if (msg.type === 'CALL_INITIATED' && msg.call) {
         const serverCall: CallSession = msg.call;
         if (serverCall.receiverUsername === currentUsername && serverCall.status === 'ringing') {
-          if (!activeCall && (!incomingCall || incomingCall.callId !== serverCall.callId)) {
+          if (!activeCall && !answeringCallIdRef.current && (!incomingCall || incomingCall.callId !== serverCall.callId)) {
             setIncomingCall(serverCall);
             playIncomingRingtone();
             showBackgroundNotification(`📞 Incoming ${serverCall.isVideo ? 'Video' : 'Voice'} Call`, {
