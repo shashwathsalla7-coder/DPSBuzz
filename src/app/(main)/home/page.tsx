@@ -31,6 +31,7 @@ import { StarBoardTeaser } from '@/components/home/StarBoardTeaser';
 import { GetAppWidget } from '@/components/home/GetAppWidget';
 import { HomeFeedSkeleton } from '@/components/home/HomeFeedSkeleton';
 import { SuggestedAccountsList } from '@/components/suggestions';
+import { HomeStreakWidget } from '@/components/home/HomeStreakWidget';
 
 export default function HomePage() {
   return (
@@ -426,6 +427,9 @@ function HomeContent() {
       {/* 4. Feed tabs "Following" and "Whole School" as segmented control */}
       <FeedTabs activeTab={activeTab} onChange={setActiveTab} />
 
+      {/* Mini Streak & Strike Points Top Pill Bar */}
+      <HomeStreakWidget compact={true} />
+
       {/* 5. Upload-in-progress card at the top of the feed */}
       {uploadInProgress && (
         <div
@@ -470,6 +474,9 @@ function HomeContent() {
       ) : displayedPosts.length === 0 ? (
         /* QUIET FEED / NEW USER STATE: Prompt them to search & display suggested accounts */
         <div className="space-y-4 px-3 py-4 max-w-[480px] mx-auto">
+          {/* Daily Habit Streaks, Strike Points & Star Board Widget */}
+          <HomeStreakWidget />
+
           {/* 1. Prompt to Search & Discover Classmates */}
           <div
             className="p-5 rounded-[22px] border text-center space-y-3 shadow-xs"
@@ -584,6 +591,9 @@ function HomeContent() {
 
               {/* Compact Star Board & Streak Board Teaser between posts */}
               {postIdx === 1 && <StarBoardTeaser />}
+
+              {/* In-feed Daily Habit Streak & Strike Points Widget */}
+              {postIdx === 2 && <HomeStreakWidget />}
             </div>
           ))}
 
