@@ -454,6 +454,17 @@
         "is_read": false,
         "isSeen": false,
         "conversationId": "ashwith__shashwath71845"
+      },
+      {
+        "id": "msg-1792072297132-w0x3",
+        "text": "😀",
+        "sender": "me",
+        "senderUsername": "shashwath71845",
+        "time": "7:21 PM",
+        "isDelivered": false,
+        "is_read": false,
+        "isSeen": false,
+        "conversationId": "ashwith__shashwath71845"
       }
     ]
   },
@@ -465,11 +476,24 @@
       "ashwith"
     ]
   },
-  "notices": [],
+  "notices": [
+    {
+      "title": "bro see ths",
+      "content": "Can you do us a favor? Tag me and share your experience. Add a caption like, “DM me to send this app only for DPS students.”",
+      "category": "urgent",
+      "isUrgent": true,
+      "pinned": true,
+      "hasAttachment": false,
+      "date": "Today, Admin Post",
+      "seenBy": 1,
+      "id": "notice-1792071871900-dwgi"
+    }
+  ],
   "deletedPostIds": [
     "post-1791917869810",
     "post-1791976076481"
   ],
+  "deletedUsernames": [],
   "notifications": [
     {
       "id": "notif-srv-admin-1792065647220-wf1e",
@@ -532,5 +556,5 @@
       "link": "/home"
     }
   ],
-  "lastUpdated": 1792071667388
+  "lastUpdated": 1792072297359
 }

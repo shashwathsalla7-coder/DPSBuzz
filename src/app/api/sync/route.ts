@@ -34,6 +34,7 @@ export async function GET(req: NextRequest) {
       chatNotes: store.chatNotes,
       chatMessages: filteredChatMessages, // Never expose all messages globally!
       deletedPostIds: store.deletedPostIds || [],
+      deletedUsernames: store.deletedUsernames || [],
       notifications: store.notifications || [],
       notices: store.notices || [],
       lastUpdated: store.lastUpdated,
@@ -53,38 +54,41 @@ export async function POST(req: NextRequest) {
     const { posts, stories, profiles, comments, likes } = body;
     const current = await getServerStore({ forceRefresh: true });
     const deletedIds = new Set(current.deletedPostIds || []);
+    const deletedUsernames = new Set((current.deletedUsernames || []).map((u) => u.toLowerCase().trim()));
 
-    // Merge posts (keep unique by id, newest first, exclude deleted posts)
+    // Merge posts (keep unique by id, newest first, exclude deleted posts and deleted authors)
     let mergedPosts = [...current.posts];
     if (Array.isArray(posts)) {
       const existingIds = new Set(mergedPosts.map((p) => p.id));
       for (const p of posts) {
-        if (!existingIds.has(p.id) && !deletedIds.has(p.id)) {
+        const author = (p.username || '').toLowerCase().trim();
+        if (!existingIds.has(p.id) && !deletedIds.has(p.id) && !deletedUsernames.has(author)) {
           mergedPosts.unshift(p);
           existingIds.add(p.id);
         }
       }
     }
 
-    // Merge stories
+    // Merge stories (exclude deleted authors)
     let mergedStories = [...current.stories];
     if (Array.isArray(stories)) {
       const existingIds = new Set(mergedStories.map((s) => s.id));
       for (const s of stories) {
-        if (!existingIds.has(s.id)) {
+        const author = (s.username || '').toLowerCase().trim();
+        if (!existingIds.has(s.id) && !deletedUsernames.has(author)) {
           mergedStories.unshift(s);
           existingIds.add(s.id);
         }
       }
     }
 
-    // Merge profiles
+    // Merge profiles (exclude deleted usernames)
     let mergedProfiles = [...current.profiles];
     if (Array.isArray(profiles)) {
-      const existingUsernames = new Set(mergedProfiles.map((pr) => pr.username.toLowerCase()));
+      const existingUsernames = new Set(mergedProfiles.map((pr) => pr.username.toLowerCase().trim()));
       for (const pr of profiles) {
-        const u = pr.username?.toLowerCase();
-        if (u && !existingUsernames.has(u)) {
+        const u = pr.username?.toLowerCase()?.trim();
+        if (u && !existingUsernames.has(u) && !deletedUsernames.has(u)) {
           mergedProfiles.push(pr);
           existingUsernames.add(u);
         }
@@ -138,6 +142,7 @@ export async function POST(req: NextRequest) {
       comments: updated.comments,
       likes: updated.likes,
       notices: updated.notices,
+      deletedUsernames: updated.deletedUsernames || [],
       lastUpdated: updated.lastUpdated,
     });
   } catch (error: any) {

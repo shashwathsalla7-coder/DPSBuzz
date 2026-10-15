@@ -37,12 +37,14 @@ export const StarBoardTeaser: React.FC<StarBoardTeaserProps> = ({
   useEffect(() => {
     const loadData = () => {
       // 1. Load profiles and rank by followers and activity
+      const deletedUsers = DataStore.getDeletedUsernames();
       const allProfiles = DataStore.getProfiles();
       const validProfiles = allProfiles.filter(
         (p) =>
           p &&
           p.username &&
-          !DUMMY_TEST_USERNAMES.has(p.username.toLowerCase()) &&
+          !DUMMY_TEST_USERNAMES.has(p.username.toLowerCase().trim()) &&
+          !deletedUsers.has(p.username.toLowerCase().trim()) &&
           p.username.toLowerCase() !== 'admin'
       );
 
@@ -64,7 +66,11 @@ export const StarBoardTeaser: React.FC<StarBoardTeaserProps> = ({
       setTopStudents(ranked);
 
       // 2. Load habit streaks
-      const liveStreaks = DataStore.getHabitStreaks();
+      const liveStreaks = DataStore.getHabitStreaks().filter((s) => {
+        if (!s || !s.username) return false;
+        const u = s.username.toLowerCase().trim();
+        return !deletedUsers.has(u) && !DUMMY_TEST_USERNAMES.has(u);
+      });
       setHabitStreaks(liveStreaks.slice(0, 3));
     };
 

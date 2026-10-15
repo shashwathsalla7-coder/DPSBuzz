@@ -71,6 +71,16 @@ export default function ProfileClient({ username }: { username: string }) {
   const [activeTab, setActiveTab] = useState<'posts' | 'reposts' | 'tagged' | 'saved'>('posts');
   const [postsVersion, setPostsVersion] = useState(0);
 
+  const isDeletedOrMissing = useMemo(() => {
+    const clean = (username || '').toLowerCase().trim();
+    if (!clean) return true;
+    if (DataStore.getDeletedUsernames().has(clean)) return true;
+    const profileExists = DataStore.getProfiles().some(
+      (p) => p && p.username && p.username.toLowerCase().trim() === clean
+    );
+    return !profileExists;
+  }, [username, postsVersion]);
+
   // Persistent follow status check for the viewer and the profile on load
   const [isFollowing, setIsFollowing] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
@@ -710,6 +720,32 @@ export default function ProfileClient({ username }: { username: string }) {
     setPostsVersion((v) => v + 1);
     showToast(isNow ? `Following @${targetUsername}! 🤝` : `Unfollowed @${targetUsername}`);
   };
+
+  if (isDeletedOrMissing) {
+    return (
+      <div className="min-h-dvh flex flex-col items-center justify-center p-6 text-center select-none bg-[var(--surface)] text-[var(--text)]">
+        <div
+          className="w-20 h-20 rounded-full flex items-center justify-center mb-4 border shadow-sm"
+          style={{
+            backgroundColor: 'var(--surface-sunken)',
+            borderColor: 'var(--line)',
+          }}
+        >
+          <UserX size={38} className="text-[var(--text-muted)] opacity-70" />
+        </div>
+        <h1 className="text-xl font-bold mb-2">User Not Found</h1>
+        <p className="text-sm text-[var(--text-muted)] max-w-xs mb-6">
+          This account does not exist or has been permanently deleted from DPS Buzz.
+        </p>
+        <Link
+          href="/home"
+          className="px-6 py-2.5 rounded-full font-semibold text-sm gradient-bg text-white shadow-md active:scale-95 transition-all"
+        >
+          Back to Home
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-dvh pb-20 select-none bg-[var(--surface)] text-[var(--text)]">

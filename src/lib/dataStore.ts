@@ -666,7 +666,7 @@ export const DataStore = {
 
       let changed = false;
 
-      // 1. Merge posts (exclude any permanently deleted posts)
+      // 1. Merge posts (exclude any permanently deleted posts and deleted user accounts)
       const deletedIds = new Set<string>();
       try {
         const localDeleted = JSON.parse(localStorage.getItem('dpsbuzz_deleted_post_ids_v1') || '[]');
@@ -679,18 +679,33 @@ export const DataStore = {
         } catch {}
       }
 
+      // Process permanently deleted student accounts from server
+      const deletedUsers = new Set<string>();
+      try {
+        const localDeletedUsers = JSON.parse(localStorage.getItem('dpsbuzz_deleted_usernames_v1') || '[]');
+        if (Array.isArray(localDeletedUsers)) localDeletedUsers.forEach((u: string) => deletedUsers.add(u.toLowerCase().trim()));
+      } catch {}
+      if (Array.isArray(data.deletedUsernames)) {
+        data.deletedUsernames.forEach((u: string) => deletedUsers.add(u.toLowerCase().trim()));
+        try {
+          localStorage.setItem('dpsbuzz_deleted_usernames_v1', JSON.stringify(Array.from(deletedUsers)));
+        } catch {}
+      }
+
       if (Array.isArray(data.posts)) {
         const localPosts = getStorage<Post[]>(STORAGE_KEYS.POSTS, []);
         const postMap = new Map<string, Post>();
         for (const p of localPosts) {
-          if (p && p.id && !DUMMY_TEST_USERNAMES.has(p.username?.toLowerCase()) && !deletedIds.has(p.id)) {
+          const author = (p.username || '').toLowerCase().trim();
+          if (p && p.id && !DUMMY_TEST_USERNAMES.has(author) && !deletedIds.has(p.id) && !deletedUsers.has(author)) {
             postMap.set(p.id, p);
-          } else if (p && p.id && deletedIds.has(p.id)) {
+          } else if (p && p.id && (deletedIds.has(p.id) || deletedUsers.has(author))) {
             changed = true;
           }
         }
         for (const p of data.posts) {
-          if (p && p.id && !DUMMY_TEST_USERNAMES.has(p.username?.toLowerCase()) && !deletedIds.has(p.id)) {
+          const author = (p.username || '').toLowerCase().trim();
+          if (p && p.id && !DUMMY_TEST_USERNAMES.has(author) && !deletedIds.has(p.id) && !deletedUsers.has(author)) {
             if (!postMap.has(p.id)) changed = true;
             postMap.set(p.id, p);
           }
@@ -706,10 +721,13 @@ export const DataStore = {
         const localStories = getStorage<Story[]>(STORAGE_KEYS.STORIES, []);
         const storyMap = new Map<string, Story>();
         for (const s of localStories) {
-          if (s && s.id) storyMap.set(s.id, s);
+          const author = (s.username || '').toLowerCase().trim();
+          if (s && s.id && !deletedUsers.has(author)) storyMap.set(s.id, s);
+          else if (s && s.id && deletedUsers.has(author)) changed = true;
         }
         for (const s of data.stories) {
-          if (s && s.id) {
+          const author = (s.username || '').toLowerCase().trim();
+          if (s && s.id && !deletedUsers.has(author)) {
             if (!storyMap.has(s.id)) changed = true;
             storyMap.set(s.id, s);
           }
@@ -722,18 +740,33 @@ export const DataStore = {
         const localProfiles = getStorage<Profile[]>(STORAGE_KEYS.PROFILES, []);
         const profileMap = new Map<string, Profile>();
         for (const p of localProfiles) {
-          if (p && p.username && !DUMMY_TEST_USERNAMES.has(p.username.toLowerCase())) {
-            profileMap.set(p.username.toLowerCase(), p);
+          const u = (p.username || '').toLowerCase().trim();
+          if (p && p.username && !DUMMY_TEST_USERNAMES.has(u) && !deletedUsers.has(u)) {
+            profileMap.set(u, p);
+          } else if (p && p.username && deletedUsers.has(u)) {
+            changed = true;
           }
         }
         for (const p of data.profiles) {
-          const u = p.username?.toLowerCase();
-          if (u && !DUMMY_TEST_USERNAMES.has(u)) {
+          const u = p.username?.toLowerCase()?.trim();
+          if (u && !DUMMY_TEST_USERNAMES.has(u) && !deletedUsers.has(u)) {
             if (!profileMap.has(u)) changed = true;
             profileMap.set(u, p);
           }
         }
         setStorage(STORAGE_KEYS.PROFILES, Array.from(profileMap.values()));
+      }
+
+      // Clean local habit streaks for deleted users (Strict Leaderboard purge)
+      if (deletedUsers.size > 0) {
+        const localStreaks = getStorage<HabitStreak[]>(STORAGE_KEYS.HABIT_STREAKS, []);
+        const filteredStreaks = localStreaks.filter(
+          (s) => s && s.username && !deletedUsers.has(s.username.toLowerCase().trim())
+        );
+        if (filteredStreaks.length !== localStreaks.length) {
+          setStorage(STORAGE_KEYS.HABIT_STREAKS, filteredStreaks);
+          changed = true;
+        }
       }
 
       // 4. Merge comments
@@ -910,14 +943,31 @@ export const DataStore = {
     return activeSyncPromise;
   },
 
+  // Permanently deleted accounts registry (tombstone)
+  getDeletedUsernames(): Set<string> {
+    const list = getStorage<string[]>('dpsbuzz_deleted_usernames_v1', []);
+    return new Set(list.map((u) => (u || '').toLowerCase().trim()));
+  },
+
+  addDeletedUsername(username: string): void {
+    const clean = (username || '').toLowerCase().trim();
+    if (!clean) return;
+    const list = getStorage<string[]>('dpsbuzz_deleted_usernames_v1', []);
+    if (!list.map((u) => u.toLowerCase().trim()).includes(clean)) {
+      list.push(clean);
+      setStorage('dpsbuzz_deleted_usernames_v1', list);
+    }
+  },
+
   // Profiles (Only real registered students and admins - with strictly accurate real follower counts)
   getProfiles(): Profile[] {
     const saved = getStorage<Profile[]>(STORAGE_KEYS.PROFILES, []);
+    const deletedUsers = this.getDeletedUsernames();
     const cleanProfiles = saved
       .filter((p) => {
         if (!p || !p.username) return false;
         const clean = p.username.toLowerCase().trim();
-        return !DUMMY_TEST_USERNAMES.has(clean);
+        return !DUMMY_TEST_USERNAMES.has(clean) && !deletedUsers.has(clean);
       });
 
     // Always guarantee shashwath super admin account exists
@@ -926,14 +976,15 @@ export const DataStore = {
     const result = [...cleanProfiles];
     if (!hasShashwath) result.unshift(SHASHWATH_ADMIN_ACCOUNT);
 
-    // If there is an active logged-in user in localStorage, ensure they are in the profiles list
+    // If there is an active logged-in user in localStorage, ensure they are in the profiles list (unless deleted)
     if (typeof window !== 'undefined') {
       try {
         const stored = localStorage.getItem('dpsbuzz_user');
         if (stored) {
           const activeUser = JSON.parse(stored);
-          if (activeUser && activeUser.username && !DUMMY_TEST_USERNAMES.has(activeUser.username.toLowerCase())) {
-            if (!result.some((p) => p.username.toLowerCase() === activeUser.username.toLowerCase())) {
+          const activeUsername = (activeUser?.username || '').toLowerCase().trim();
+          if (activeUser && activeUsername && !DUMMY_TEST_USERNAMES.has(activeUsername) && !deletedUsers.has(activeUsername)) {
+            if (!result.some((p) => p.username.toLowerCase() === activeUsername)) {
               result.push(activeUser);
             }
           }
@@ -948,7 +999,13 @@ export const DataStore = {
           if (!f || !f.follower || !f.following) return false;
           const fol = f.follower.toLowerCase().trim();
           const fing = f.following.toLowerCase().trim();
-          return fol !== fing && !DUMMY_TEST_USERNAMES.has(fol) && !DUMMY_TEST_USERNAMES.has(fing);
+          return (
+            fol !== fing &&
+            !DUMMY_TEST_USERNAMES.has(fol) &&
+            !DUMMY_TEST_USERNAMES.has(fing) &&
+            !deletedUsers.has(fol) &&
+            !deletedUsers.has(fing)
+          );
         })
       : [];
 
@@ -1015,8 +1072,10 @@ export const DataStore = {
   },
 
   getProfileByUsername(username: string): Profile | null {
+    const clean = (username || '').toLowerCase().trim();
+    if (!clean || this.getDeletedUsernames().has(clean) || DUMMY_TEST_USERNAMES.has(clean)) return null;
     const profiles = this.getProfiles();
-    return profiles.find((p) => p.username.toLowerCase() === username.toLowerCase()) || null;
+    return profiles.find((p) => p.username.toLowerCase().trim() === clean) || null;
   },
 
   updateProfile(username: string, updates: Partial<Profile>): Profile | null {
@@ -1068,10 +1127,12 @@ export const DataStore = {
 
     const stored = getStorage<Post[]>(STORAGE_KEYS.POSTS, []);
     const banned = this.getBannedUsers();
+    const deletedUsers = this.getDeletedUsernames();
     const filtered = stored.filter((p) => {
       if (!p || !p.username) return false;
       const clean = p.username.toLowerCase().trim();
-      if (DUMMY_TEST_USERNAMES.has(clean)) return false;
+      if (DUMMY_TEST_USERNAMES.has(clean) || deletedUsers.has(clean)) return false;
+      if (p.repostedFrom?.username && deletedUsers.has(p.repostedFrom.username.toLowerCase().trim())) return false;
       if (!includeBanned && banned.includes(clean)) return false;
       return true;
     });
@@ -1645,11 +1706,12 @@ export const DataStore = {
 
     const stored = getStorage<Story[]>(STORAGE_KEYS.STORIES, []);
     const banned = this.getBannedUsers();
+    const deletedUsers = this.getDeletedUsernames();
     const now = Date.now();
     return stored.filter((s) => {
       if (!s || !s.username) return false;
       const clean = s.username.toLowerCase().trim();
-      if (DUMMY_TEST_USERNAMES.has(clean)) return false;
+      if (DUMMY_TEST_USERNAMES.has(clean) || deletedUsers.has(clean)) return false;
       if (!includeBanned && banned.includes(clean)) return false;
       // Filter out expired stories (24-hour lifetime)
       if (s.expiresAt && new Date(s.expiresAt).getTime() <= now) return false;
@@ -2308,13 +2370,20 @@ export const DataStore = {
     const clean = username.toLowerCase().trim();
     if (!clean) return;
 
+    // 0. Register tombstone so this account cannot be resurrected by cross-sync
+    this.addDeletedUsername(clean);
+
     // 1. Remove from Profiles
     const currentProfiles = this.getProfiles();
     const targetProfile = currentProfiles.find((p) => p.username.toLowerCase().trim() === clean);
     const updatedProfiles = currentProfiles.filter((p) => p.username.toLowerCase().trim() !== clean);
 
-    // 2. Remove all posts authored by this user
-    const posts = this.getPosts(true).filter((p) => p.username.toLowerCase().trim() !== clean);
+    // 2. Remove all posts authored by this user, or reposted from this user
+    const posts = this.getPosts(true).filter(
+      (p) =>
+        p.username.toLowerCase().trim() !== clean &&
+        (!p.repostedFrom || (p.repostedFrom.username || '').toLowerCase().trim() !== clean)
+    );
 
     // 3. Remove all stories authored by this user
     const stories = this.getStories().filter((s) => s.username.toLowerCase().trim() !== clean);
@@ -2420,7 +2489,75 @@ export const DataStore = {
     const notes = this.getChatNotes().filter((n) => (n.username || '').toLowerCase().trim() !== clean);
     setStorage(STORAGE_KEYS.CHAT_NOTES, notes);
 
-    // 11. Unclaim student roster record if present
+    // 11. Clean Groups & Group Memberships
+    const groupMembersMap = getStorage<Record<string, string[]>>(STORAGE_KEYS.GROUP_MEMBERS, {});
+    let membersChanged = false;
+    for (const [gid, members] of Object.entries(groupMembersMap)) {
+      if (Array.isArray(members)) {
+        const filteredMembers = members.filter((m) => m && m.toLowerCase().trim() !== clean);
+        if (filteredMembers.length !== members.length) {
+          groupMembersMap[gid] = filteredMembers;
+          membersChanged = true;
+        }
+      }
+    }
+    if (membersChanged) {
+      setStorage(STORAGE_KEYS.GROUP_MEMBERS, groupMembersMap);
+    }
+
+    const groupsList = getStorage<Group[]>(STORAGE_KEYS.GROUPS, []);
+    const updatedGroups = groupsList.map((g) => {
+      const activeMembers = groupMembersMap[g.id] || [];
+      return {
+        ...g,
+        memberCount: activeMembers.length,
+      };
+    });
+    setStorage(STORAGE_KEYS.GROUPS, updatedGroups);
+
+    // 12. Clean Group Join Requests
+    const groupJoinReqs = getStorage<GroupJoinRequest[]>(STORAGE_KEYS.GROUP_JOIN_REQUESTS, []);
+    const remainingGroupJoinReqs = groupJoinReqs.filter(
+      (r) => (r.username || '').toLowerCase().trim() !== clean
+    );
+    setStorage(STORAGE_KEYS.GROUP_JOIN_REQUESTS, remainingGroupJoinReqs);
+
+    // 13. Clean Story Replies
+    const storyReplies = getStorage<any[]>(STORAGE_KEYS.STORY_REPLIES, []);
+    const remainingStoryReplies = storyReplies.filter(
+      (r) =>
+        (r.senderUsername || '').toLowerCase().trim() !== clean &&
+        (r.storyOwnerUsername || '').toLowerCase().trim() !== clean
+    );
+    setStorage(STORAGE_KEYS.STORY_REPLIES, remainingStoryReplies);
+
+    // 14. Clean Highlights
+    const highlights = getStorage<ProfileHighlight[]>(STORAGE_KEYS.HIGHLIGHTS, []);
+    const remainingHighlights = highlights.filter(
+      (h) => (h.username || '').toLowerCase().trim() !== clean
+    );
+    setStorage(STORAGE_KEYS.HIGHLIGHTS, remainingHighlights);
+
+    // 15. Clean Blocks
+    const blocks = getStorage<Array<{ blocker: string; blocked: string }>>(STORAGE_KEYS.BLOCKS, []);
+    const remainingBlocks = blocks.filter(
+      (b) =>
+        (b.blocker || '').toLowerCase().trim() !== clean &&
+        (b.blocked || '').toLowerCase().trim() !== clean
+    );
+    setStorage(STORAGE_KEYS.BLOCKS, remainingBlocks);
+
+    // 16. Clean Moderation Lists
+    const banned = getStorage<string[]>(STORAGE_KEYS.BANNED_USERS, []);
+    setStorage(STORAGE_KEYS.BANNED_USERS, banned.filter((u) => u.toLowerCase().trim() !== clean));
+
+    const muted = getStorage<string[]>(STORAGE_KEYS.MUTED_USERS, []);
+    setStorage(STORAGE_KEYS.MUTED_USERS, muted.filter((u) => u.toLowerCase().trim() !== clean));
+
+    const banAppeals = getStorage<BanAppeal[]>(STORAGE_KEYS.BAN_APPEALS, []);
+    setStorage(STORAGE_KEYS.BAN_APPEALS, banAppeals.filter((a) => (a.username || '').toLowerCase().trim() !== clean));
+
+    // 17. Unclaim student roster record if present
     const roster = this.getRoster();
     let rosterChanged = false;
     for (const r of roster) {
@@ -4268,7 +4405,13 @@ export const DataStore = {
   // ==========================================
   getHabitStreaks(): HabitStreak[] {
     const list = getStorage<HabitStreak[]>(STORAGE_KEYS.HABIT_STREAKS, []);
-    const cleanList = list.filter((s) => s && s.username && !DUMMY_TEST_USERNAMES.has(s.username.toLowerCase()));
+    const deletedUsers = this.getDeletedUsernames();
+    const activeProfiles = new Set(this.getProfiles().map((p) => p.username.toLowerCase().trim()));
+    const cleanList = list.filter((s) => {
+      if (!s || !s.username) return false;
+      const u = s.username.toLowerCase().trim();
+      return !DUMMY_TEST_USERNAMES.has(u) && !deletedUsers.has(u) && activeProfiles.has(u);
+    });
     // Sort descending by streakDays first, then by habitPoints
     return [...cleanList].sort((a, b) => {
       if (b.streakDays !== a.streakDays) {

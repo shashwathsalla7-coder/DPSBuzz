@@ -13,6 +13,7 @@ export interface ServerStoreData {
   likes: Record<string, string[]>; // postId -> array of usernames who liked
   notices: Notice[];
   deletedPostIds?: string[]; // IDs of posts deleted permanently
+  deletedUsernames?: string[]; // Usernames deleted permanently - NEVER re-add to profiles/posts/leaderboard
   notifications?: NotificationItem[];
   lastUpdated: number;
 }
@@ -61,6 +62,7 @@ function createInitialStore(): ServerStoreData {
     likes: {},
     notices: [],
     deletedPostIds: [],
+    deletedUsernames: [],
     notifications: [],
     lastUpdated: Date.now(),
   };
@@ -116,6 +118,7 @@ function normalizeStore(parsed: any): ServerStoreData {
     likes: parsed.likes && typeof parsed.likes === 'object' ? parsed.likes : {},
     notices: Array.isArray(parsed.notices) ? parsed.notices : [],
     deletedPostIds: Array.isArray(parsed.deletedPostIds) ? parsed.deletedPostIds : [],
+    deletedUsernames: Array.isArray(parsed.deletedUsernames) ? parsed.deletedUsernames : [],
     notifications: Array.isArray(parsed.notifications) ? parsed.notifications : [],
     lastUpdated: typeof parsed.lastUpdated === 'number' ? parsed.lastUpdated : Date.now(),
   };
@@ -557,9 +560,13 @@ export async function deleteServerAccount(username: string): Promise<ServerStore
     (p) => p && p.username && p.username.toLowerCase().trim() !== clean
   );
 
-  // 2. Filter out posts
+  // 2. Filter out posts (authored by user or reposted from user)
   const posts = (current.posts || []).filter(
-    (p) => p && p.username && p.username.toLowerCase().trim() !== clean
+    (p) =>
+      p &&
+      p.username &&
+      p.username.toLowerCase().trim() !== clean &&
+      (!p.repostedFrom || (p.repostedFrom.username || '').toLowerCase().trim() !== clean)
   );
 
   // 3. Filter out stories
@@ -626,6 +633,12 @@ export async function deleteServerAccount(username: string): Promise<ServerStore
       !(n.body && n.body.toLowerCase().includes(`@${clean}`))
   );
 
+  // 9. Add to deletedUsernames list so account cannot be resurrected by sync
+  const deletedUsernames = Array.isArray(current.deletedUsernames) ? [...current.deletedUsernames] : [];
+  if (!deletedUsernames.includes(clean)) {
+    deletedUsernames.push(clean);
+  }
+
   return await saveServerStore({
     profiles,
     posts: updatedPosts,
@@ -635,5 +648,6 @@ export async function deleteServerAccount(username: string): Promise<ServerStore
     chatMessages: updatedChatMessages,
     chatNotes,
     notifications,
+    deletedUsernames,
   });
 }

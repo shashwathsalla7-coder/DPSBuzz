@@ -106,10 +106,13 @@ export default function LeaderboardPage() {
 
   // Filtered streaks based on habit category filter (deduplicated by username)
   const filteredStreaks = useMemo(() => {
+    const deletedUsers = DataStore.getDeletedUsernames();
+    const activeProfiles = new Set(profiles.map((p) => p.username.toLowerCase().trim()));
     const map = new Map<string, HabitStreak>();
     for (const s of streaks) {
-      if (!s || !s.username || DUMMY_TEST_USERNAMES.has(s.username.toLowerCase())) continue;
-      const key = s.username.toLowerCase();
+      if (!s || !s.username) continue;
+      const key = s.username.toLowerCase().trim();
+      if (DUMMY_TEST_USERNAMES.has(key) || deletedUsers.has(key) || !activeProfiles.has(key)) continue;
       if (!map.has(key)) {
         map.set(key, s);
       }
@@ -123,13 +126,15 @@ export default function LeaderboardPage() {
     return unique.filter(
       (s) => s.primaryHabit.toLowerCase() === selectedHabitFilter.toLowerCase()
     );
-  }, [streaks, selectedHabitFilter]);
+  }, [streaks, profiles, selectedHabitFilter]);
 
   // Current logged in user streak details
   const myStreak = useMemo(() => {
     if (!currentUser) return null;
+    const cleanCur = (currentUser.username || '').toLowerCase().trim();
+    if (!cleanCur || cleanCur === 'guest' || DataStore.getDeletedUsernames().has(cleanCur)) return null;
     return (
-      streaks.find((s) => s.username.toLowerCase() === currentUser.username.toLowerCase()) || {
+      streaks.find((s) => s.username.toLowerCase().trim() === cleanCur) || {
         id: 'streak-' + currentUser.username,
         username: currentUser.username,
         fullName: currentUser.fullName,
@@ -161,13 +166,15 @@ export default function LeaderboardPage() {
   // 1. Primary Sort: Highest followers gets Rank #1 (highest followers gets the gold podium)
   // 2. Secondary Sort (Tie-Breaker): Genuine engagement (Views + Likes + Comments + Posts)
   const studentLeaders = useMemo(() => {
+    const deletedUsers = DataStore.getDeletedUsernames();
     const realUsers = profiles.filter(
       (p) =>
         p &&
         p.username &&
         p.username.toLowerCase() !== 'admin' &&
         p.username.toLowerCase() !== 'principal' &&
-        !DUMMY_TEST_USERNAMES.has(p.username.toLowerCase())
+        !DUMMY_TEST_USERNAMES.has(p.username.toLowerCase().trim()) &&
+        !deletedUsers.has(p.username.toLowerCase().trim())
     );
 
     return realUsers
