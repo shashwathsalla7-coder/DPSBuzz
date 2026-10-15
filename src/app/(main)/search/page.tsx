@@ -166,13 +166,26 @@ function SearchContent() {
     }));
   }, [allProfiles]);
 
-  // 2. Trending posts (highest likes/comments)
+  // 2. Trending posts (highest likes/comments from public accounts or followed accounts)
   const trendingPosts = useMemo(() => {
+    const profileMap = new Map(allProfiles.map((p) => [p.username.toLowerCase(), p]));
+    const myUser = currentUser?.username?.toLowerCase().trim() || '';
+
     return [...posts]
-      .filter((p) => Boolean(p.imageUrl || (p.images && p.images.length > 0)))
+      .filter((p) => {
+        if (!p || !p.username) return false;
+        const author = p.username.toLowerCase().trim();
+        if (author !== myUser) {
+          const authorProf = profileMap.get(author);
+          if (authorProf?.isPrivate && !isFollowing(author)) {
+            return false; // Private posts only showed to their followers
+          }
+        }
+        return Boolean(p.imageUrl || (p.images && p.images.length > 0));
+      })
       .sort((a, b) => b.likes - a.likes)
       .slice(0, 6);
-  }, [posts]);
+  }, [posts, allProfiles, currentUser, follows]);
 
   // 3. Suggested accounts: Always feature official Admin @shashwath71845 and classmates
   const suggestedClassmates = useMemo(() => {
@@ -258,9 +271,19 @@ function SearchContent() {
       return matchKeyword && matchClass && matchSection;
     });
 
+    const profileMap = new Map(allProfiles.map((p) => [p.username.toLowerCase(), p]));
+    const myUser = currentUser?.username?.toLowerCase().trim() || '';
+
     // Filter Posts (matching caption, author username, author full name, author class like 6, 7, 10, hashtags, songs)
     const matchedPosts = posts.filter((p) => {
-      if (!p) return false;
+      if (!p || !p.username) return false;
+      const author = p.username.toLowerCase().trim();
+      if (author !== myUser) {
+        const authorProf = profileMap.get(author);
+        if (authorProf?.isPrivate && !isFollowing(author)) {
+          return false; // Private posts only showed to their followers
+        }
+      }
       if (!q) {
         if (selectedClass === 'All') return true;
         return (p.class || '').toLowerCase().includes(selectedClass.toLowerCase());
