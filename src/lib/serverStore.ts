@@ -701,6 +701,26 @@ function cleanCallsMap(calls: Record<string, CallSession>): Record<string, CallS
   return cleaned;
 }
 
+function readLocalCalls(): Record<string, CallSession> | null {
+  try {
+    if (fs.existsSync(CALLS_LOCAL_FILE)) {
+      const content = fs.readFileSync(CALLS_LOCAL_FILE, 'utf-8');
+      const parsed = JSON.parse(content);
+      if (parsed && typeof parsed === 'object') {
+        return cleanCallsMap(parsed);
+      }
+    }
+  } catch {}
+  return null;
+}
+
+function writeLocalCalls(calls: Record<string, CallSession>): void {
+  try {
+    ensureDataDirectory();
+    fs.writeFileSync(CALLS_LOCAL_FILE, JSON.stringify(calls, null, 2), 'utf-8');
+  } catch {}
+}
+
 async function fetchCloudCalls(): Promise<Record<string, CallSession> | null> {
   try {
     const url = `https://res.cloudinary.com/${CLOUD_NAME}/raw/upload/${CLOUD_CALLS_PUBLIC_ID}?t=${Date.now()}`;
@@ -714,15 +734,22 @@ async function fetchCloudCalls(): Promise<Record<string, CallSession> | null> {
     if (res.ok) {
       const data = await res.json();
       if (data && typeof data === 'object') {
-        return cleanCallsMap(data);
+        const cleaned = cleanCallsMap(data);
+        writeLocalCalls(cleaned);
+        return cleaned;
       }
     }
   } catch {}
+
+  const local = readLocalCalls();
+  if (local) return local;
+
   return null;
 }
 
 async function uploadCloudCalls(calls: Record<string, CallSession>): Promise<void> {
   try {
+    writeLocalCalls(calls);
     const jsonStr = JSON.stringify(calls);
     const base64Data = 'data:application/json;base64,' + Buffer.from(jsonStr).toString('base64');
     await cloudinary.uploader.upload(base64Data, {
@@ -788,12 +815,26 @@ export async function updateServerCall(
   updates: Partial<CallSession>
 ): Promise<CallSession | null> {
   const current = await getServerActiveCalls(true);
-  const existing = current[callId];
+  const existing = current[callId] || callsCache[callId];
   if (!existing) return null;
+
+  // Merge iceCandidates if present
+  let mergedCandidates = existing.iceCandidates || [];
+  if (updates.iceCandidates) {
+    const candMap = new Map<string, any>();
+    mergedCandidates.forEach((c) => {
+      if (c && c.candidate) candMap.set(JSON.stringify(c.candidate), c);
+    });
+    updates.iceCandidates.forEach((c) => {
+      if (c && c.candidate) candMap.set(JSON.stringify(c.candidate), c);
+    });
+    mergedCandidates = Array.from(candMap.values());
+  }
 
   const updatedCall: CallSession = {
     ...existing,
     ...updates,
+    ...(mergedCandidates.length > 0 ? { iceCandidates: mergedCandidates } : {}),
   };
   const updatedMap = { ...current, [callId]: updatedCall };
   callsCache = updatedMap;

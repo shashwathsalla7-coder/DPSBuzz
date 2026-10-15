@@ -1270,6 +1270,17 @@
         "is_read": true,
         "isSeen": true,
         "readAt": 1792075176159
+      },
+      {
+        "id": "msg-1792080016756-5p2n",
+        "text": "HI",
+        "sender": "me",
+        "senderUsername": "shashwath71845",
+        "time": "9:30 PM",
+        "isDelivered": false,
+        "is_read": false,
+        "isSeen": false,
+        "conversationId": "rishi_one9__shashwath71845"
       }
     ],
     "mokshith7b__shashwath71845": [
@@ -1772,7 +1783,8 @@
         "isSeen": false,
         "conversationId": "rishi_one9__rohan728"
       }
-    ]
+    ],
+    "conv-group-1792080100524": []
   },
   "comments": {},
   "likes": {
@@ -1924,5 +1936,5 @@
     }
   ],
   "activeCalls": {},
-  "lastUpdated": 1792079133786
+  "lastUpdated": 1792080122141
 }

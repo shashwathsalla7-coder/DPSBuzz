@@ -17,14 +17,57 @@ import { showBackgroundNotification } from '@/lib/pushNotifications';
 
 const ICE_SERVERS: RTCConfiguration = {
   iceServers: [
+    // 1. Google High-Availability Global STUN
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
     { urls: 'stun:stun2.l.google.com:19302' },
     { urls: 'stun:stun3.l.google.com:19302' },
     { urls: 'stun:stun4.l.google.com:19302' },
+    // 2. Cloudflare Global STUN
     { urls: 'stun:stun.cloudflare.com:3478' },
-    { urls: 'stun:stun.metered.ca:80' },
+    // 3. Metered Open Relay STUN
+    { urls: 'stun:openrelay.metered.ca:80' },
     { urls: 'stun:relay.metered.ca:80' },
+    // 4. Metered Open Relay TURN over UDP port 80 (bypasses restrictive UDP port blocks)
+    {
+      urls: 'turn:openrelay.metered.ca:80',
+      username: 'openrelayproject',
+      credential: 'openrelayproject',
+    },
+    // 5. Metered Open Relay TURN over UDP port 443
+    {
+      urls: 'turn:openrelay.metered.ca:443',
+      username: 'openrelayproject',
+      credential: 'openrelayproject',
+    },
+    // 6. Metered Open Relay TURN over TCP port 443 (vital for mobile 4G/5G carriers with UDP throttling)
+    {
+      urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+      username: 'openrelayproject',
+      credential: 'openrelayproject',
+    },
+    // 7. Metered Open Relay TURNS over TLS/TCP port 443 (deep packet inspection traversal)
+    {
+      urls: 'turns:openrelay.metered.ca:443?transport=tcp',
+      username: 'openrelayproject',
+      credential: 'openrelayproject',
+    },
+    // 8. Static Auth Open Relay fallback
+    {
+      urls: 'turn:staticauth.openrelay.metered.ca:80',
+      username: 'openrelayprojectusername',
+      credential: 'openrelayprojectsecret',
+    },
+    {
+      urls: 'turn:staticauth.openrelay.metered.ca:443',
+      username: 'openrelayprojectusername',
+      credential: 'openrelayprojectsecret',
+    },
+    {
+      urls: 'turn:staticauth.openrelay.metered.ca:443?transport=tcp',
+      username: 'openrelayprojectusername',
+      credential: 'openrelayprojectsecret',
+    },
   ],
   iceCandidatePoolSize: 10,
   bundlePolicy: 'max-bundle',
@@ -44,7 +87,7 @@ function broadcastCallEvent(payload?: any) {
   } catch {}
 }
 
-async function waitForIceGathering(pc: RTCPeerConnection, maxTimeoutMs = 1200): Promise<void> {
+async function waitForIceGathering(pc: RTCPeerConnection, maxTimeoutMs = 2500): Promise<void> {
   if (pc.iceGatheringState === 'complete') return;
   return new Promise((resolve) => {
     let timer: any = null;
@@ -142,7 +185,39 @@ export function GlobalCallProvider() {
   const peerConnRef = useRef<RTCPeerConnection | null>(null);
   const callTimerRef = useRef<any>(null);
   const processedCandidatesRef = useRef<Set<string>>(new Set());
+  const pendingRemoteCandidatesRef = useRef<any[]>([]);
   const consecutiveMissedPollsRef = useRef(0);
+
+  // Ingest ICE candidate with automatic queueing if remote description is not yet set
+  const ingestIceCandidate = useCallback(async (pc: RTCPeerConnection, cand: any) => {
+    try {
+      if (!cand || !cand.candidate) return;
+      const key = typeof cand.candidate === 'string' ? cand.candidate : JSON.stringify(cand.candidate);
+      if (processedCandidatesRef.current.has(key)) return;
+      processedCandidatesRef.current.add(key);
+
+      if (pc.remoteDescription && pc.remoteDescription.type) {
+        await pc.addIceCandidate(new RTCIceCandidate(cand.candidate));
+      } else {
+        pendingRemoteCandidatesRef.current.push(cand.candidate);
+      }
+    } catch (err) {
+      console.warn('[WebRTC] Candidate ingestion non-fatal error:', err);
+    }
+  }, []);
+
+  // Flush queued candidates once remote description is set
+  const flushPendingCandidates = useCallback(async (pc: RTCPeerConnection) => {
+    if (!pc.remoteDescription || !pc.remoteDescription.type) return;
+    while (pendingRemoteCandidatesRef.current.length > 0) {
+      const cand = pendingRemoteCandidatesRef.current.shift();
+      if (cand) {
+        try {
+          await pc.addIceCandidate(new RTCIceCandidate(cand));
+        } catch {}
+      }
+    }
+  }, []);
 
   // Log call record into chat history
   const logCallToChat = useCallback(
@@ -242,6 +317,7 @@ export function GlobalCallProvider() {
     setLocalStream(null);
     setRemoteStream(null);
     processedCandidatesRef.current.clear();
+    pendingRemoteCandidatesRef.current = [];
   }, []);
 
   // Terminate active call
@@ -298,16 +374,22 @@ export function GlobalCallProvider() {
     setIncomingCall(null);
   }, [incomingCall, logCallToChat]);
 
-  // Resilient media stream setup with hardware fallback
+  // Resilient media stream setup with optimal audio constraints and hardware fallback
   const setupMediaStream = async (wantVideo: boolean) => {
     let audioTrack: MediaStreamTrack | null = null;
     let videoTrack: MediaStreamTrack | null = null;
+
+    const audioConstraints = {
+      echoCancellation: true,
+      noiseSuppression: true,
+      autoGainControl: true,
+    };
 
     if (typeof navigator !== 'undefined' && navigator.mediaDevices?.getUserMedia) {
       if (wantVideo) {
         try {
           const stream = await navigator.mediaDevices.getUserMedia({
-            audio: true,
+            audio: audioConstraints,
             video: {
               facingMode,
               width: { ideal: 1280 },
@@ -319,18 +401,29 @@ export function GlobalCallProvider() {
         } catch (mediaErr: any) {
           console.warn('Camera/mic access error, attempting audio-only fallback:', mediaErr);
           try {
-            const audioOnly = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const audioOnly = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
             audioTrack = audioOnly.getAudioTracks()[0] || null;
           } catch (aErr: any) {
-            console.warn('Microphone access restricted, falling back to synthetic track:', aErr);
+            try {
+              const basicAudio = await navigator.mediaDevices.getUserMedia({ audio: true });
+              audioTrack = basicAudio.getAudioTracks()[0] || null;
+            } catch (fallbackErr: any) {
+              console.warn('Microphone access restricted, falling back to synthetic track:', fallbackErr);
+            }
           }
         }
       } else {
         try {
-          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
           audioTrack = stream.getAudioTracks()[0] || null;
         } catch (mediaErr: any) {
-          console.warn('Microphone access restricted, falling back to synthetic track:', mediaErr);
+          console.warn('Optimized mic setup failed, attempting basic audio:', mediaErr);
+          try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            audioTrack = stream.getAudioTracks()[0] || null;
+          } catch (aErr: any) {
+            console.warn('Microphone access restricted, falling back to synthetic track:', aErr);
+          }
         }
       }
     }
@@ -338,6 +431,8 @@ export function GlobalCallProvider() {
     // Ensure valid tracks exist so WebRTC negotiation can always complete
     if (!audioTrack) {
       audioTrack = createSyntheticAudioTrack();
+    } else {
+      audioTrack.enabled = true;
     }
     if (wantVideo && !videoTrack) {
       videoTrack = createSyntheticVideoTrack('Camera Off');
@@ -354,6 +449,17 @@ export function GlobalCallProvider() {
 
   // Accept incoming call
   const handleAcceptIncomingCall = useCallback(async () => {
+    // Unlock Web Audio immediately within the user tap gesture
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (AudioCtx) {
+        const unlockCtx = new AudioCtx();
+        if (unlockCtx.state === 'suspended') {
+          unlockCtx.resume().catch(() => {});
+        }
+      }
+    } catch {}
+
     stopCallAudio();
     playCallConnectedSound();
     if (!incomingCall) return;
@@ -375,21 +481,27 @@ export function GlobalCallProvider() {
       stream.getTracks().forEach((track) => pc.addTrack(track, stream));
 
       pc.ontrack = (event) => {
-        if (!remoteMediaStreamRef.current) {
-          remoteMediaStreamRef.current = new MediaStream();
-        }
-        const rStream = remoteMediaStreamRef.current;
-        if (event.track && !rStream.getTracks().some((t) => t.id === event.track.id)) {
-          rStream.addTrack(event.track);
-        }
+        console.log('[WebRTC] Receiver received remote track:', event.track.kind);
         if (event.streams && event.streams[0]) {
-          event.streams[0].getTracks().forEach((track) => {
-            if (!rStream.getTracks().some((t) => t.id === track.id)) {
-              rStream.addTrack(track);
-            }
-          });
+          remoteMediaStreamRef.current = event.streams[0];
+          setRemoteStream(event.streams[0]);
+        } else {
+          if (!remoteMediaStreamRef.current) {
+            remoteMediaStreamRef.current = new MediaStream();
+          }
+          const rStream = remoteMediaStreamRef.current;
+          if (!rStream.getTracks().some((t) => t.id === event.track.id)) {
+            rStream.addTrack(event.track);
+          }
+          setRemoteStream(new MediaStream(rStream.getTracks()));
         }
-        setRemoteStream(new MediaStream(rStream.getTracks()));
+      };
+
+      pc.oniceconnectionstatechange = () => {
+        console.log('[WebRTC] Receiver ICE connection state:', pc.iceConnectionState);
+        if (pc.iceConnectionState === 'failed') {
+          try { pc.restartIce(); } catch {}
+        }
       };
 
       pc.onicecandidate = (event) => {
@@ -410,29 +522,24 @@ export function GlobalCallProvider() {
       let sdpAnswer: any = null;
       if (callToAccept.sdpOffer) {
         await pc.setRemoteDescription(new RTCSessionDescription(callToAccept.sdpOffer));
+        await flushPendingCandidates(pc);
 
         // Ingest any caller ICE candidates immediately
         if (callToAccept.iceCandidates) {
           for (const cand of callToAccept.iceCandidates) {
             if (cand.sender === 'caller') {
-              const key = JSON.stringify(cand);
-              if (!processedCandidatesRef.current.has(key)) {
-                processedCandidatesRef.current.add(key);
-                try {
-                  await pc.addIceCandidate(new RTCIceCandidate(cand.candidate));
-                } catch {}
-              }
+              await ingestIceCandidate(pc, cand);
             }
           }
         }
 
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
-        await waitForIceGathering(pc, 1200);
+        await waitForIceGathering(pc, 2500);
         sdpAnswer = pc.localDescription || answer;
       }
 
-      const res = await fetch('/api/calls', {
+      await fetch('/api/calls', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -458,7 +565,7 @@ export function GlobalCallProvider() {
       console.error('Failed to answer call:', e);
       handleEndCall();
     }
-  }, [incomingCall, facingMode, handleEndCall]);
+  }, [incomingCall, facingMode, handleEndCall, ingestIceCandidate, flushPendingCandidates]);
 
   // Initiate outgoing call
   const startCall = useCallback(
@@ -499,21 +606,27 @@ export function GlobalCallProvider() {
         stream.getTracks().forEach((track) => pc.addTrack(track, stream));
 
         pc.ontrack = (event) => {
-          if (!remoteMediaStreamRef.current) {
-            remoteMediaStreamRef.current = new MediaStream();
-          }
-          const rStream = remoteMediaStreamRef.current;
-          if (event.track && !rStream.getTracks().some((t) => t.id === event.track.id)) {
-            rStream.addTrack(event.track);
-          }
+          console.log('[WebRTC] Caller received remote track:', event.track.kind);
           if (event.streams && event.streams[0]) {
-            event.streams[0].getTracks().forEach((track) => {
-              if (!rStream.getTracks().some((t) => t.id === track.id)) {
-                rStream.addTrack(track);
-              }
-            });
+            remoteMediaStreamRef.current = event.streams[0];
+            setRemoteStream(event.streams[0]);
+          } else {
+            if (!remoteMediaStreamRef.current) {
+              remoteMediaStreamRef.current = new MediaStream();
+            }
+            const rStream = remoteMediaStreamRef.current;
+            if (!rStream.getTracks().some((t) => t.id === event.track.id)) {
+              rStream.addTrack(event.track);
+            }
+            setRemoteStream(new MediaStream(rStream.getTracks()));
           }
-          setRemoteStream(new MediaStream(rStream.getTracks()));
+        };
+
+        pc.oniceconnectionstatechange = () => {
+          console.log('[WebRTC] Caller ICE connection state:', pc.iceConnectionState);
+          if (pc.iceConnectionState === 'failed') {
+            try { pc.restartIce(); } catch {}
+          }
         };
 
         pc.onicecandidate = (event) => {
@@ -536,7 +649,7 @@ export function GlobalCallProvider() {
           offerToReceiveVideo: params.isVideo,
         });
         await pc.setLocalDescription(offer);
-        await waitForIceGathering(pc, 1200);
+        await waitForIceGathering(pc, 2500);
         const completeOffer = pc.localDescription || offer;
 
         const res = await fetch('/api/calls', {
@@ -641,26 +754,22 @@ export function GlobalCallProvider() {
           if (serverCall && serverCall.callId === activeCall.callId) {
             consecutiveMissedPollsRef.current = 0;
 
-            // If we are caller waiting for receiver to answer
-            if (isCaller && activeCall.status === 'ringing' && serverCall.status === 'connected') {
-              stopCallAudio();
-              playCallConnectedSound();
-              setActiveCall(serverCall);
+            // If we are caller and receiver has answered
+            if (isCaller && serverCall.status === 'connected') {
+              if (activeCall.status === 'ringing') {
+                stopCallAudio();
+                playCallConnectedSound();
+                setActiveCall(serverCall);
+              }
 
+              // Apply remote description whenever sdpAnswer arrives and not yet applied
               if (serverCall.sdpAnswer && peerConnRef.current && !peerConnRef.current.currentRemoteDescription) {
-                await peerConnRef.current.setRemoteDescription(new RTCSessionDescription(serverCall.sdpAnswer));
-                if (serverCall.iceCandidates) {
-                  for (const cand of serverCall.iceCandidates) {
-                    if (cand.sender === 'receiver') {
-                      const key = JSON.stringify(cand);
-                      if (!processedCandidatesRef.current.has(key)) {
-                        processedCandidatesRef.current.add(key);
-                        try {
-                          await peerConnRef.current.addIceCandidate(new RTCIceCandidate(cand.candidate));
-                        } catch {}
-                      }
-                    }
-                  }
+                try {
+                  await peerConnRef.current.setRemoteDescription(new RTCSessionDescription(serverCall.sdpAnswer));
+                  console.log('[WebRTC] Caller applied receiver SDP answer');
+                  await flushPendingCandidates(peerConnRef.current);
+                } catch (e) {
+                  console.error('[WebRTC] Error setting caller remote description:', e);
                 }
               }
 
@@ -682,16 +791,10 @@ export function GlobalCallProvider() {
 
             // SYMMETRIC ICE INGESTION: Both Caller and Receiver ingest remote candidates
             const myRole = isCaller ? 'caller' : 'receiver';
-            if (serverCall.iceCandidates && peerConnRef.current && peerConnRef.current.remoteDescription) {
+            if (serverCall.iceCandidates && peerConnRef.current) {
               for (const cand of serverCall.iceCandidates) {
-                const key = JSON.stringify(cand);
-                if (cand.sender !== myRole && !processedCandidatesRef.current.has(key)) {
-                  processedCandidatesRef.current.add(key);
-                  try {
-                    await peerConnRef.current.addIceCandidate(new RTCIceCandidate(cand.candidate));
-                  } catch (err) {
-                    console.warn('ICE candidate addition non-fatal error:', err);
-                  }
+                if (cand.sender !== myRole) {
+                  await ingestIceCandidate(peerConnRef.current, cand);
                 }
               }
             }
@@ -743,19 +846,21 @@ export function GlobalCallProvider() {
           playCallConnectedSound();
           setActiveCall(serverCall);
           if (serverCall.sdpAnswer && peerConnRef.current && !peerConnRef.current.currentRemoteDescription) {
-            peerConnRef.current.setRemoteDescription(new RTCSessionDescription(serverCall.sdpAnswer)).then(() => {
-              if (serverCall.iceCandidates && peerConnRef.current) {
-                for (const cand of serverCall.iceCandidates) {
-                  if (cand.sender === 'receiver') {
-                    const key = JSON.stringify(cand);
-                    if (!processedCandidatesRef.current.has(key)) {
-                      processedCandidatesRef.current.add(key);
-                      peerConnRef.current.addIceCandidate(new RTCIceCandidate(cand.candidate)).catch(() => {});
+            peerConnRef.current
+              .setRemoteDescription(new RTCSessionDescription(serverCall.sdpAnswer))
+              .then(async () => {
+                if (peerConnRef.current) {
+                  await flushPendingCandidates(peerConnRef.current);
+                  if (serverCall.iceCandidates) {
+                    for (const cand of serverCall.iceCandidates) {
+                      if (cand.sender === 'receiver') {
+                        await ingestIceCandidate(peerConnRef.current, cand);
+                      }
                     }
                   }
                 }
-              }
-            }).catch(() => {});
+              })
+              .catch(() => {});
           }
           if (!callTimerRef.current) {
             callTimerRef.current = setInterval(() => {

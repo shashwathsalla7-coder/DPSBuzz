@@ -28,6 +28,44 @@ if (!globalThis.__dpsbuzz_active_calls) {
 
 const localCache = globalThis.__dpsbuzz_active_calls;
 
+// Helper to safely merge call sessions and prevent reverting connected states
+function mergeCallSessions(
+  existing: CallSession | null | undefined,
+  incoming: CallSession | null | undefined
+): CallSession | null {
+  if (!existing) return incoming || null;
+  if (!incoming) return existing || null;
+
+  // Terminal states preserve termination
+  if (existing.status === 'ended' || existing.status === 'rejected') return existing;
+  if (incoming.status === 'ended' || incoming.status === 'rejected') return incoming;
+
+  // Never revert a connected call back to ringing
+  const status =
+    existing.status === 'connected' || incoming.status === 'connected'
+      ? 'connected'
+      : (existing.status || incoming.status);
+
+  // Merge ICE candidates without duplicates
+  const candMap = new Map<string, any>();
+  (existing.iceCandidates || []).forEach((c) => {
+    if (c && c.candidate) candMap.set(JSON.stringify(c.candidate), c);
+  });
+  (incoming.iceCandidates || []).forEach((c) => {
+    if (c && c.candidate) candMap.set(JSON.stringify(c.candidate), c);
+  });
+
+  return {
+    ...incoming,
+    ...existing,
+    status,
+    sdpOffer: existing.sdpOffer || incoming.sdpOffer || null,
+    sdpAnswer: existing.sdpAnswer || incoming.sdpAnswer || null,
+    connectedAt: existing.connectedAt || incoming.connectedAt,
+    iceCandidates: Array.from(candMap.values()),
+  };
+}
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
@@ -35,22 +73,32 @@ export async function GET(req: NextRequest) {
     const callId = searchParams.get('callId');
 
     if (callId) {
+      const cached = localCache.get(callId) || null;
       const serverCall = await getServerCall(callId);
-      if (serverCall) {
-        localCache.set(callId, serverCall);
+      const merged = mergeCallSessions(cached, serverCall);
+      if (merged) {
+        localCache.set(callId, merged);
         return NextResponse.json(
-          { success: true, call: serverCall, activeCall: serverCall },
+          { success: true, call: merged, activeCall: merged },
           { headers: NO_CACHE_HEADERS }
         );
       }
-      const call = localCache.get(callId) || null;
-      return NextResponse.json(
-        { success: true, call, activeCall: call },
-        { headers: NO_CACHE_HEADERS }
-      );
+      return NextResponse.json({ success: true, call: null, activeCall: null }, { headers: NO_CACHE_HEADERS });
     }
 
     if (username) {
+      // Check local cache first for 0ms latency
+      for (const call of localCache.values()) {
+        if (
+          (call.receiverUsername.toLowerCase().trim() === username ||
+            call.callerUsername.toLowerCase().trim() === username) &&
+          call.status !== 'ended' &&
+          call.status !== 'rejected'
+        ) {
+          return NextResponse.json({ success: true, activeCall: call }, { headers: NO_CACHE_HEADERS });
+        }
+      }
+
       const serverCall = await findUserActiveCall(username);
       if (serverCall) {
         localCache.set(serverCall.callId, serverCall);
@@ -109,12 +157,14 @@ export async function POST(req: NextRequest) {
       };
 
       localCache.set(id, newCall);
-      await saveServerCall(newCall);
+      saveServerCall(newCall).catch(() => {});
       return NextResponse.json({ success: true, call: newCall });
     }
 
     if (action === 'answer') {
-      let call = localCache.get(callId) || (await getServerCall(callId));
+      const cached = localCache.get(callId) || null;
+      const serverCall = await getServerCall(callId);
+      const call = mergeCallSessions(cached, serverCall);
       if (!call) {
         return NextResponse.json({ success: false, error: 'Call session not found' }, { status: 404 });
       }
@@ -125,11 +175,14 @@ export async function POST(req: NextRequest) {
         ...(sdpAnswer ? { sdpAnswer } : {}),
       };
 
-      const updated = await updateServerCall(callId, updates);
-      if (updated) {
-        localCache.set(callId, updated);
-      }
-      return NextResponse.json({ success: true, call: updated || call });
+      const updated: CallSession = {
+        ...call,
+        ...updates,
+      };
+
+      localCache.set(callId, updated);
+      updateServerCall(callId, updates).catch(() => {});
+      return NextResponse.json({ success: true, call: updated });
     }
 
     if (action === 'reject') {
@@ -138,13 +191,15 @@ export async function POST(req: NextRequest) {
         endedAt: Date.now(),
         durationSeconds: 0,
       };
-      await updateServerCall(callId, updates);
       localCache.delete(callId);
+      updateServerCall(callId, updates).catch(() => {});
       return NextResponse.json({ success: true });
     }
 
     if (action === 'end') {
-      let call = localCache.get(callId) || (await getServerCall(callId));
+      const cached = localCache.get(callId) || null;
+      const serverCall = await getServerCall(callId);
+      const call = mergeCallSessions(cached, serverCall);
       const endedAt = Date.now();
       let durationSeconds = 0;
       if (call?.connectedAt) {
@@ -156,13 +211,15 @@ export async function POST(req: NextRequest) {
         endedAt,
         durationSeconds,
       };
-      await updateServerCall(callId, updates);
       localCache.delete(callId);
+      updateServerCall(callId, updates).catch(() => {});
       return NextResponse.json({ success: true, durationSeconds });
     }
 
     if (action === 'signal') {
-      let call = localCache.get(callId) || (await getServerCall(callId));
+      const cached = localCache.get(callId) || null;
+      const serverCall = await getServerCall(callId);
+      const call = mergeCallSessions(cached, serverCall);
       if (!call) {
         return NextResponse.json({ success: false, error: 'Call not found' }, { status: 404 });
       }
@@ -183,10 +240,12 @@ export async function POST(req: NextRequest) {
       }
 
       if (Object.keys(updates).length > 0) {
-        const updated = await updateServerCall(callId, updates);
-        if (updated) {
-          localCache.set(callId, updated);
-        }
+        const updated: CallSession = {
+          ...call,
+          ...updates,
+        };
+        localCache.set(callId, updated);
+        updateServerCall(callId, updates).catch(() => {});
       }
 
       return NextResponse.json({ success: true });

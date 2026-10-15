@@ -105,20 +105,26 @@ export function CallModal({
     };
   }, [remoteStream]);
 
-  // Voice Call Audio Element: only bound when NOT a video call to avoid mobile audio sink conflicts
+  // Dedicated Remote Audio Playback: active for both Voice and Video calls
   useEffect(() => {
-    if (!call.isVideo && remoteAudioRef.current && remoteStream) {
+    if (remoteAudioRef.current && remoteStream) {
       if (remoteAudioRef.current.srcObject !== remoteStream) {
         remoteAudioRef.current.srcObject = remoteStream;
       }
-      remoteAudioRef.current.play().catch((err) => {
-        console.warn('Audio play restricted on mobile:', err);
-        setNeedsAudioUnlock(true);
-      });
+      remoteAudioRef.current.muted = isSpeakerMuted;
+      const playPromise = remoteAudioRef.current.play();
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => setNeedsAudioUnlock(false))
+          .catch((err) => {
+            console.warn('Audio play restricted on mobile:', err);
+            setNeedsAudioUnlock(true);
+          });
+      }
     }
-  }, [call.isVideo, remoteStream, isSpeakerMuted]);
+  }, [remoteStream, isSpeakerMuted]);
 
-  // Video Call Main Video Element
+  // Video Call Main Video Element (Visual only, strictly muted)
   useEffect(() => {
     if (!call.isVideo) return;
     const targetStream = isPipSwapped ? localStream : remoteStream;
@@ -126,16 +132,12 @@ export function CallModal({
       if (mainVideoRef.current.srcObject !== targetStream) {
         mainVideoRef.current.srcObject = targetStream;
       }
-      mainVideoRef.current.play().catch((err) => {
-        if (!isPipSwapped) {
-          console.warn('Main video play restricted:', err);
-          setNeedsAudioUnlock(true);
-        }
-      });
+      mainVideoRef.current.muted = true;
+      mainVideoRef.current.play().catch(() => {});
     }
-  }, [call.isVideo, localStream, remoteStream, isPipSwapped, isSpeakerMuted]);
+  }, [call.isVideo, localStream, remoteStream, isPipSwapped]);
 
-  // Video Call Floating PIP Video Element
+  // Video Call Floating PIP Video Element (Visual only, strictly muted)
   useEffect(() => {
     if (!call.isVideo) return;
     const pipStream = isPipSwapped ? remoteStream : localStream;
@@ -143,26 +145,24 @@ export function CallModal({
       if (pipVideoRef.current.srcObject !== pipStream) {
         pipVideoRef.current.srcObject = pipStream;
       }
+      pipVideoRef.current.muted = true;
       pipVideoRef.current.play().catch(() => {});
     }
-  }, [call.isVideo, localStream, remoteStream, isPipSwapped, isSpeakerMuted]);
+  }, [call.isVideo, localStream, remoteStream, isPipSwapped]);
 
-  // Global user interaction listener to unlock any blocked audio/video on mobile browsers
+  // Global user interaction listener to unlock any blocked audio on mobile browsers
   useEffect(() => {
     const handleUnlock = () => {
       if (remoteAudioRef.current) {
-        remoteAudioRef.current.play().then(() => setNeedsAudioUnlock(false)).catch(() => {});
-      }
-      if (mainVideoRef.current) {
-        mainVideoRef.current.play().then(() => setNeedsAudioUnlock(false)).catch(() => {});
-      }
-      if (pipVideoRef.current) {
-        pipVideoRef.current.play().catch(() => {});
+        remoteAudioRef.current
+          .play()
+          .then(() => setNeedsAudioUnlock(false))
+          .catch(() => {});
       }
     };
 
-    window.addEventListener('click', handleUnlock);
-    window.addEventListener('touchstart', handleUnlock);
+    window.addEventListener('click', handleUnlock, { passive: true });
+    window.addEventListener('touchstart', handleUnlock, { passive: true });
 
     return () => {
       window.removeEventListener('click', handleUnlock);
@@ -184,24 +184,22 @@ export function CallModal({
       aria-modal="true"
       aria-label={`${call.isVideo ? 'Video' : 'Voice'} call with ${otherPersonName}`}
     >
-      {/* Voice-only Dedicated Audio Sink (Offscreen) */}
-      {!call.isVideo && (
-        <audio
-          ref={remoteAudioRef}
-          autoPlay
-          playsInline
-          muted={isSpeakerMuted}
-          style={{
-            position: 'fixed',
-            top: '-200px',
-            left: '-200px',
-            width: '1px',
-            height: '1px',
-            opacity: 0.001,
-            pointerEvents: 'none',
-          }}
-        />
-      )}
+      {/* Dedicated Remote Audio Element (Offscreen) - Always active for both Voice and Video calls */}
+      <audio
+        ref={remoteAudioRef}
+        autoPlay
+        playsInline
+        muted={isSpeakerMuted}
+        style={{
+          position: 'fixed',
+          top: '-200px',
+          left: '-200px',
+          width: '1px',
+          height: '1px',
+          opacity: 0.001,
+          pointerEvents: 'none',
+        }}
+      />
 
       {/* Top Header Bar */}
       <header className="relative z-20 flex items-center justify-between gap-3 pt-2">
@@ -252,7 +250,7 @@ export function CallModal({
               ref={mainVideoRef}
               autoPlay
               playsInline
-              muted={isPipSwapped ? true : isSpeakerMuted}
+              muted={true}
               className={`w-full h-full object-cover transition-opacity duration-300 ${
                 (isPipSwapped && !isCameraOff) || (!isPipSwapped && hasRemoteVideo)
                   ? 'opacity-100'
@@ -297,7 +295,7 @@ export function CallModal({
                   ref={pipVideoRef}
                   autoPlay
                   playsInline
-                  muted={isPipSwapped ? isSpeakerMuted : true}
+                  muted={true}
                   className={`w-full h-full object-cover ${
                     (!isPipSwapped && !isCameraOff) || (isPipSwapped && hasRemoteVideo)
                       ? 'block'
