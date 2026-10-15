@@ -131,6 +131,7 @@ export const StoriesRow: React.FC<StoriesRowProps> = ({ currentUser }) => {
             name={effectiveUser?.fullName || 'You'}
             avatarUrl={effectiveUser?.avatar}
             hasStory={hasMyStory}
+            isActive={true}
             onClick={() => {
               if (hasMyStory) {
                 const myIdx = userGroups.allGroups.findIndex(
@@ -170,6 +171,7 @@ export const StoriesRow: React.FC<StoriesRowProps> = ({ currentUser }) => {
                 name={group.fullName}
                 avatarUrl={group.avatar}
                 isNew={group.hasUnseen}
+                isActive={DataStore.isUserActive(group.username)}
                 onClick={() => {
                   const uIdx = userGroups.allGroups.findIndex(
                     (g) => g.username.toLowerCase() === group.username.toLowerCase()

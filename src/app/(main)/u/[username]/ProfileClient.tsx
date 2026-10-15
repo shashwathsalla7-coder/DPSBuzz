@@ -872,7 +872,7 @@ export default function ProfileClient({ username }: { username: string }) {
             <div
               className={`relative rounded-full transition-all ${
                 hasActiveStory
-                  ? 'story-ring p-[3px] bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-600 shadow-md cursor-pointer'
+                  ? 'story-ring p-[3px] bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] shadow-md cursor-pointer'
                   : ''
               }`}
               onClick={() => setShowEnlargedPhoto(true)}
@@ -896,6 +896,14 @@ export default function ProfileClient({ username }: { username: string }) {
                   profile.fullName.slice(0, 2).toUpperCase()
                 )}
               </div>
+
+              {/* Active Online Indicator */}
+              {!isOwnProfile && DataStore.isUserActive(profile.username) && (
+                <span
+                  className="absolute bottom-0 right-0 w-4 h-4 rounded-full bg-emerald-500 ring-2 ring-[var(--surface,#171C26)] z-20 pointer-events-none shadow-sm"
+                  title={`@${profile.username} is active now`}
+                />
+              )}
 
               {/* Camera upload badge for own profile ONLY */}
               {isOwnProfile && (

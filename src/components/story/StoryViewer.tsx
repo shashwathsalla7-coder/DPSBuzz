@@ -685,8 +685,8 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
               </div>
               <div className="flex flex-col text-left">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-white font-semibold text-xs sm:text-sm tracking-tight leading-tight drop-shadow-sm">
-                    {currentGroup.fullName || currentGroup.username}
+                  <span className="text-white font-bold text-xs sm:text-sm tracking-tight leading-tight drop-shadow-sm">
+                    {currentGroup.username}
                   </span>
                   {/* Indicator showing which story of this user */}
                   {currentStories.length > 1 && (
@@ -696,7 +696,7 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
                   )}
                 </div>
                 <span className="text-white/75 text-[11px] leading-tight">
-                  @{currentGroup.username} • 24h story
+                  @{currentGroup.username} • {currentStory.createdAt ? `${Math.max(1, Math.floor((Date.now() - new Date(currentStory.createdAt).getTime()) / 3600000))}h` : '24h story'}
                 </span>
               </div>
             </div>

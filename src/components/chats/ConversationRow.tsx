@@ -4,6 +4,7 @@ import React, { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Pin, VolumeX, Trash2, MoreVertical, BellOff } from 'lucide-react';
 import { getAvatarColorPair } from '@/config/tokens';
+import { DataStore } from '@/lib/dataStore';
 
 export interface ConversationItem {
   id: string;
@@ -168,11 +169,13 @@ export const ConversationRow: React.FC<ConversationRowProps> = ({
             title={!isGroup ? `View ${conversation.name}'s profile` : undefined}
           >
             {hasStory && !isGroup ? (
-              /* Neon story ring wrapper */
+              /* Instagram orange gradient story ring wrapper */
               <div
                 className="w-[56px] h-[56px] rounded-full p-[2.5px] flex items-center justify-center -m-0.5"
                 style={{
-                  background: 'linear-gradient(135deg, #FF8A1F 0%, #FF2E93 35%, #A855F7 68%, #3B82F6 100%)',
+                  background: conversation.hasUnseenStory !== false
+                    ? 'linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)'
+                    : '#737373',
                 }}
               >
                 <div className="w-full h-full rounded-full border-2 border-[var(--surface)] overflow-hidden flex items-center justify-center">
@@ -213,6 +216,13 @@ export const ConversationRow: React.FC<ConversationRowProps> = ({
                 )}
               </div>
             )}
+            {/* Active Online Indicator (Green Dot) */}
+            {!isGroup && conversation.username && DataStore.isUserActive(conversation.username) && (
+              <span
+                className="absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full bg-emerald-500 ring-2 ring-[var(--surface,#171C26)] z-20 pointer-events-none shadow-xs"
+                title="Active now"
+              />
+            )}
           </div>
 
           {/* Name & Preview line */}
@@ -229,8 +239,13 @@ export const ConversationRow: React.FC<ConversationRowProps> = ({
                   fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF UI Display", "SF Pro Text", "Helvetica Neue", sans-serif',
                 }}
               >
-                {conversation.name}
+                {conversation.username ? `@${conversation.username}` : conversation.name}
               </h3>
+              {conversation.inboxTier === 'REQUESTS' && (
+                <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-500/20 text-amber-400 shrink-0">
+                  Request
+                </span>
+              )}
               {conversation.class && (
                 <span className="text-xs text-[var(--text-muted)] shrink-0 font-medium font-sf-display">
                   Class {conversation.class}

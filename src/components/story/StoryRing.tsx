@@ -12,20 +12,17 @@ export interface StoryRingProps {
   size?: 'md' | 'lg'; // 'md' for compact (62px), 'lg' for enlarged prominent stories (74px)
   className?: string;
   hasStory?: boolean;
+  isActive?: boolean;
   onAddStory?: () => void;
   onClick?: () => void;
 }
 
 /**
- * StoryRing Component (DESIGN.md Section 9.3 & Master Prompt Quality Pass Override)
- * 
- * - Exception to "no orange": orange allowed inside story rings & text backgrounds only.
- * - Unseen ring: outer ring with 3px linear-gradient(135deg, #FF8A1F 0%, #FF2E93 35%, #A855F7 68%, #3B82F6 100%),
- *   then 2px WHITE (#FFFFFF) inner ring in both light and dark mode.
- * - Dark mode only: 0 0 10px rgba(255,70,150,.45) glow on unseen ring.
- * - Seen ring: flat #C4CCD8 in light, #3A4357 in dark. Inner ring is page colour in dark mode, not white.
- * - Your story: dashed ring in line-strong colour, primary plus badge with 2px white border.
- * - New story: one 1s pulse of the ring (scale 1 > 1.04 > 1), then still. Respects reduced-motion.
+ * StoryRing Component
+ * - Unseen ring: Instagram vibrant orange-pink gradient ring
+ * - Seen ring: Clean grey ring (never white)
+ * - Active indicator: Green dot badge showing user is active
+ * - Displays username consistently
  */
 export const StoryRing: React.FC<StoryRingProps> = ({
   variant,
@@ -36,6 +33,7 @@ export const StoryRing: React.FC<StoryRingProps> = ({
   size = 'lg',
   className = '',
   hasStory = false,
+  isActive = false,
   onAddStory,
   onClick,
 }) => {
@@ -137,16 +135,27 @@ export const StoryRing: React.FC<StoryRingProps> = ({
       : 'story-ring-reward';
 
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`${ringClass} ${outerRingClass} cursor-pointer transition-transform duration-150 hover:scale-[1.03] active:scale-[0.97] ${className}`}
-      aria-label={`View story by ${username}`}
-    >
-      <div className={`story-ring-inner ${isLg ? 'p-[3px]' : ''}`}>
-        {innerAvatar}
-      </div>
-    </button>
+    <div className="relative inline-block">
+      <button
+        type="button"
+        onClick={onClick}
+        className={`${ringClass} ${outerRingClass} cursor-pointer transition-transform duration-150 hover:scale-[1.03] active:scale-[0.97] ${className}`}
+        aria-label={`View story by ${username}`}
+      >
+        <div className={`story-ring-inner ${isLg ? 'p-[3px]' : ''}`}>
+          {innerAvatar}
+        </div>
+      </button>
+      {isActive && (
+        <span
+          className={`absolute bottom-0.5 right-0.5 rounded-full bg-emerald-500 ring-[2.5px] ring-[var(--surface,#171C26)] z-20 pointer-events-none shadow-sm ${
+            isLg ? 'w-4 h-4' : 'w-3 h-3'
+          }`}
+          title={`@${username} is active now`}
+          aria-label={`@${username} is active now`}
+        />
+      )}
+    </div>
   );
 };
 
