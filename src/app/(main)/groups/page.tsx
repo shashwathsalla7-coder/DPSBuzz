@@ -15,6 +15,8 @@ import {
   Sparkles,
   ShieldAlert,
   UserPlus,
+  Plus,
+  Search,
 } from 'lucide-react';
 import { school } from '@/config/school';
 import {
@@ -48,6 +50,8 @@ export default function GroupsPage() {
   const [myInvites, setMyInvites] = useState<GroupJoinRequest[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isAddGroupFriendsOpen, setIsAddGroupFriendsOpen] = useState(false);
+  const [addFriendsSearchQuery, setAddFriendsSearchQuery] = useState('');
   const [tick, setTick] = useState(0);
 
   const currentUser = useMemo(() => DataStore.getCurrentUser(), []);
@@ -175,6 +179,13 @@ export default function GroupsPage() {
     reloadData();
   };
 
+  const handleInviteFriendToSelectedGroup = (friendUsername: string) => {
+    if (!selectedGroup) return;
+    DataStore.sendGroupInvite(selectedGroup.id, friendUsername, currentUser.username);
+    showToast(`Invitation sent to @${friendUsername}! They will join when they accept. 📬`);
+    reloadData();
+  };
+
   return (
     <div className="min-h-dvh pb-24 select-none">
       {/* Toast Notification */}
@@ -292,23 +303,310 @@ export default function GroupsPage() {
 
             {/* Hub Tab Content */}
             <div
-              className="p-6 rounded-[20px] border text-center space-y-2 shadow-xs"
+              className="p-5 rounded-[22px] border space-y-4 shadow-xs"
               style={{
                 backgroundColor: 'var(--surface)',
                 borderColor: 'var(--line)',
               }}
             >
-              <p className="text-xs font-bold" style={{ color: 'var(--text)' }}>
-                {activeTab === 'feed'
-                  ? 'No posts shared yet.'
-                  : activeTab === 'chat'
-                  ? 'Group chat is active and protected.'
-                  : `Members enrolled in ${selectedGroup.name}.`}
-              </p>
-              <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
-                Only verified members of {selectedGroup.name} can participate.
-              </p>
+              {activeTab === 'feed' && (
+                <div className="py-8 text-center space-y-1.5">
+                  <p className="text-xs font-bold" style={{ color: 'var(--text)' }}>
+                    No posts shared yet in {selectedGroup.name}.
+                  </p>
+                  <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                    Only verified members of {selectedGroup.name} can participate and post updates.
+                  </p>
+                </div>
+              )}
+
+              {activeTab === 'chat' && (
+                <div className="py-6 text-center space-y-3">
+                  <div className="w-12 h-12 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center mx-auto">
+                    <MessageSquare size={22} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold" style={{ color: 'var(--text)' }}>
+                      Official Group Chat
+                    </h3>
+                    <p className="text-xs max-w-xs mx-auto mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                      Encrypted and real-time chat with fellow enrolled members of {selectedGroup.name}.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => router.push(`/chats?conv=conv-${selectedGroup.id}`)}
+                    className="px-5 py-2.5 rounded-full text-xs font-bold text-white bg-[var(--primary)] hover:opacity-90 active:scale-95 transition-all cursor-pointer inline-flex items-center gap-2 shadow-xs"
+                  >
+                    <MessageSquare size={14} />
+                    <span>Open Group Chat</span>
+                  </button>
+                </div>
+              )}
+
+              {activeTab === 'members' && (() => {
+                const members = DataStore.getGroupMembers(selectedGroup.id);
+                const pendingInvites = DataStore.getGroupPendingInvites(selectedGroup.id);
+
+                return (
+                  <div className="space-y-4 text-left">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-xs font-bold" style={{ color: 'var(--text)' }}>
+                          Enrolled Members
+                        </h3>
+                        <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
+                          {members.length} student{members.length !== 1 ? 's' : ''} enrolled
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setIsAddGroupFriendsOpen(true)}
+                        className="px-3.5 py-1.5 rounded-full text-xs font-bold bg-[var(--primary)] text-white hover:opacity-90 active:scale-95 transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
+                      >
+                        <UserPlus size={13} strokeWidth={2.5} />
+                        <span>+ Add Friends</span>
+                      </button>
+                    </div>
+
+                    <div className="space-y-2">
+                      {members.map((m) => {
+                        const prof = DataStore.getProfileByUsername(m);
+                        const effectiveAvatar = prof?.avatar || null;
+                        const fullName = prof?.fullName || m;
+                        const pair = getAvatarColorPair(m);
+                        const isMe = m.toLowerCase() === currentUser.username.toLowerCase();
+                        const isCreator = selectedGroup.members?.[0]?.toLowerCase() === m.toLowerCase();
+
+                        return (
+                          <div
+                            key={m}
+                            className="p-2.5 rounded-[16px] border flex items-center justify-between bg-[var(--surface-sunken)] border-[var(--line)]"
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0 flex-1 mr-2">
+                              <div
+                                className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs shrink-0 overflow-hidden"
+                                style={{ backgroundColor: pair.bg, color: pair.text }}
+                              >
+                                {effectiveAvatar ? (
+                                  <img src={effectiveAvatar} alt={fullName} className="w-full h-full object-cover" />
+                                ) : (
+                                  fullName.slice(0, 2).toUpperCase()
+                                )}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-xs font-bold text-[var(--text)] truncate">
+                                  {fullName} {isMe && <span className="text-[10px] text-[var(--primary)] font-semibold">(You)</span>}
+                                </p>
+                                <p className="text-[10px] text-[var(--text-muted)] truncate">
+                                  @{m} {prof?.class && `· Class ${prof.class}-${prof.section || 'A'}`}
+                                </p>
+                              </div>
+                            </div>
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/10 text-[var(--text-muted)]">
+                              {isCreator ? 'Admin' : 'Member'}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {pendingInvites.length > 0 && (
+                      <div className="space-y-2 pt-3 border-t" style={{ borderColor: 'var(--line)' }}>
+                        <div className="flex items-center justify-between text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">
+                          <span>Pending Invitations ({pendingInvites.length})</span>
+                          <span className="text-[10px] text-amber-500 font-semibold lowercase">waiting to join</span>
+                        </div>
+                        <div className="space-y-1.5">
+                          {pendingInvites.map((inv) => (
+                            <div
+                              key={inv.id}
+                              className="p-2 rounded-[14px] border flex items-center justify-between bg-[var(--surface-sunken)]/60 border-[var(--line)]"
+                            >
+                              <div className="min-w-0">
+                                <p className="text-xs font-semibold text-[var(--text)] truncate">@{inv.username}</p>
+                                <p className="text-[10px] text-[var(--text-muted)]">Invited by @{inv.invitedBy}</p>
+                              </div>
+                              <span className="text-[10px] text-amber-500 font-medium flex items-center gap-1">
+                                <Clock size={10} /> Pending
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
+
+            {/* Add Friends Modal for Selected Group */}
+            {isAddGroupFriendsOpen && (() => {
+              const members = DataStore.getGroupMembers(selectedGroup.id);
+              const pendingInvites = DataStore.getGroupPendingInvites(selectedGroup.id);
+              const memberSet = new Set(members.map((m: string) => m.toLowerCase().trim()));
+              const pendingSet = new Set(pendingInvites.map((r) => r.username.toLowerCase().trim()));
+
+              const candidates = liveFollowing.concat(
+                DataStore.getProfiles()
+                  .filter((p) => p.username.toLowerCase() !== currentUser.username.toLowerCase() && p.role === 'student')
+                  .map((p) => ({
+                    id: p.id || p.username,
+                    name: p.fullName,
+                    username: p.username,
+                    studentClass: p.class ? `Class ${p.class}-${p.section || ''}` : 'DPS Student',
+                    avatarUrl: p.avatar,
+                  }))
+              );
+              // Deduplicate
+              const seen = new Set<string>();
+              const dedupedCandidates = candidates.filter((c) => {
+                const u = c.username.toLowerCase();
+                if (seen.has(u)) return false;
+                seen.add(u);
+                return true;
+              });
+
+              const filtered = dedupedCandidates.filter((cand) => {
+                if (cand.username.toLowerCase() === currentUser.username.toLowerCase()) return false;
+                if (!addFriendsSearchQuery.trim()) return true;
+                const q = addFriendsSearchQuery.toLowerCase();
+                return (
+                  cand.name.toLowerCase().includes(q) ||
+                  cand.username.toLowerCase().includes(q) ||
+                  cand.studentClass.toLowerCase().includes(q)
+                );
+              });
+
+              return (
+                <div
+                  className="fixed inset-0 z-[65] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4 animate-fade-in"
+                  onClick={() => {
+                    setIsAddGroupFriendsOpen(false);
+                    setAddFriendsSearchQuery('');
+                  }}
+                >
+                  <div
+                    className="relative w-full max-w-md rounded-t-[28px] sm:rounded-[28px] border p-5 shadow-2xl z-10 space-y-4 max-h-[85vh] overflow-y-auto"
+                    style={{
+                      backgroundColor: 'var(--surface)',
+                      borderColor: 'var(--line)',
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="w-9 h-1 rounded-full bg-[var(--line-strong)] mx-auto sm:hidden" />
+
+                    <div className="flex items-center justify-between pb-1">
+                      <div className="flex items-center gap-2">
+                        <span className="p-1.5 rounded-full bg-emerald-500/10 text-emerald-500">
+                          <UserPlus size={18} />
+                        </span>
+                        <div>
+                          <h3 className="text-base font-bold text-[var(--text)]">Add Friends</h3>
+                          <p className="text-[11px] text-[var(--text-muted)]">
+                            Invite classmates to {selectedGroup.name}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsAddGroupFriendsOpen(false);
+                          setAddFriendsSearchQuery('');
+                        }}
+                        className="p-1 rounded-full text-[var(--text-muted)] hover:text-[var(--text)] cursor-pointer"
+                        aria-label="Close"
+                      >
+                        <X size={18} />
+                      </button>
+                    </div>
+
+                    <div className="relative">
+                      <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
+                      <input
+                        type="text"
+                        placeholder="Search classmates by name or @username..."
+                        value={addFriendsSearchQuery}
+                        onChange={(e) => setAddFriendsSearchQuery(e.target.value)}
+                        className="w-full h-10 pl-9 pr-4 rounded-full text-xs outline-none border transition-colors focus:border-[var(--primary)]"
+                        style={{
+                          backgroundColor: 'var(--surface-sunken)',
+                          borderColor: 'var(--line)',
+                          color: 'var(--text)',
+                        }}
+                      />
+                    </div>
+
+                    <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
+                      Invitations will be sent. When your classmate accepts (&ldquo;Yes, I want to join&rdquo;), they will be added automatically.
+                    </p>
+
+                    <div className="max-h-64 overflow-y-auto space-y-2 pr-1">
+                      {filtered.length === 0 ? (
+                        <div className="py-8 text-center text-xs text-[var(--text-muted)]">
+                          No classmates found matching &ldquo;{addFriendsSearchQuery}&rdquo;
+                        </div>
+                      ) : (
+                        filtered.map((st) => {
+                          const isMember = memberSet.has(st.username.toLowerCase());
+                          const isInvited = pendingSet.has(st.username.toLowerCase());
+                          const liveProf = DataStore.getProfileByUsername(st.username);
+                          const effectiveAvatar = liveProf?.avatar || st.avatarUrl || null;
+                          const pair = getAvatarColorPair(st.username);
+
+                          return (
+                            <div
+                              key={st.username}
+                              className="p-2.5 rounded-[18px] border flex items-center justify-between transition-colors bg-[var(--surface-sunken)] border-[var(--line)]"
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0 flex-1 mr-2">
+                                <div
+                                  className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs shrink-0 overflow-hidden"
+                                  style={{ backgroundColor: pair.bg, color: pair.text }}
+                                >
+                                  {effectiveAvatar ? (
+                                    <img src={effectiveAvatar} alt={st.name} className="w-full h-full object-cover" />
+                                  ) : (
+                                    st.name.slice(0, 2).toUpperCase()
+                                  )}
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="text-xs font-bold text-[var(--text)] truncate">{st.name}</p>
+                                  <p className="text-[10px] text-[var(--text-muted)] truncate">
+                                    @{st.username} · {st.studentClass}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="shrink-0">
+                                {isMember ? (
+                                  <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-500/15 text-emerald-600 border border-emerald-500/30">
+                                    ✓ Member
+                                  </span>
+                                ) : isInvited ? (
+                                  <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-500/15 text-amber-600 border border-amber-500/30 flex items-center gap-1">
+                                    <Clock size={11} /> Invited
+                                  </span>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleInviteFriendToSelectedGroup(st.username)}
+                                    className="px-3.5 py-1.5 rounded-full text-xs font-bold text-white bg-[var(--primary)] hover:opacity-90 active:scale-95 transition-all cursor-pointer flex items-center gap-1 shadow-xs"
+                                  >
+                                    <Plus size={13} strokeWidth={2.5} />
+                                    <span>Invite</span>
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
       ) : (
