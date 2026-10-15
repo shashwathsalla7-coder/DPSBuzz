@@ -394,8 +394,23 @@ function HomeContent() {
       return [...filtered].sort(sortFn);
     }
 
-    // Whole school: all public posts
-    return [...posts].sort(sortFn);
+    // Whole school: all public posts + private posts only if followed by viewer
+    const allProfiles = DataStore.getProfiles();
+    const profileMap = new Map(allProfiles.map((p) => [p.username.toLowerCase(), p]));
+
+    const isPostVisible = (p: Post) => {
+      const u = (p.username || '').toLowerCase().trim();
+      if (!u || u === myUsername || u === 'dpsbuzz' || u === 'dps_official') return true;
+      const authorProfile = profileMap.get(u);
+      const isPrivate = Boolean(authorProfile?.isPrivate);
+      if (isPrivate) {
+        return followedUsernames.includes(u);
+      }
+      return true; // Public posts are visible to all students
+    };
+
+    const publicAndFollowedPosts = posts.filter(isPostVisible);
+    return [...publicAndFollowedPosts].sort(sortFn);
   }, [activeTab, posts, followedUsernames, currentUser.username, demoState]);
 
   if (!currentUser || !currentUser.username || currentUser.username.toLowerCase() === 'guest') {

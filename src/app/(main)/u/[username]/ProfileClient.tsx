@@ -143,6 +143,19 @@ export default function ProfileClient({ username }: { username: string }) {
   // Post Detail & Repost Modals
   const [selectedPostDetail, setSelectedPostDetail] = useState<Post | null>(null);
   const [showDetailRepostSheet, setShowDetailRepostSheet] = useState(false);
+  const [showDetailComments, setShowDetailComments] = useState(false);
+  const [detailCommentText, setDetailCommentText] = useState('');
+  const [detailCommentsMap, setDetailCommentsMap] = useState<Record<string, any[]>>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('dpsbuzz_comments_v1');
+        return stored ? JSON.parse(stored) : {};
+      } catch {
+        return {};
+      }
+    }
+    return {};
+  });
 
   // Long-press peek & pop preview state (Instagram-style Peek & Pop with quick actions)
   const [peekPost, setPeekPost] = useState<Post | null>(null);
@@ -379,6 +392,53 @@ export default function ProfileClient({ username }: { username: string }) {
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 2500);
+  };
+
+  const handleAddDetailComment = (postId: string) => {
+    const trimmed = detailCommentText.trim();
+    if (!trimmed) return;
+    const cur = DataStore.getCurrentUser();
+    const newComment = {
+      id: 'c-' + Date.now(),
+      username: cur.username || 'student',
+      text: trimmed,
+      timeAgo: 'Just now',
+      createdAt: new Date().toISOString(),
+    };
+    const updated = {
+      ...detailCommentsMap,
+      [postId]: [...(detailCommentsMap[postId] || []), newComment],
+    };
+    setDetailCommentsMap(updated);
+    try {
+      localStorage.setItem('dpsbuzz_comments_v1', JSON.stringify(updated));
+    } catch {}
+    setDetailCommentText('');
+
+    // Update post comments count in posts storage
+    const posts = DataStore.getPosts(true);
+    const updatedPosts = posts.map((p) =>
+      p.id === postId ? { ...p, comments: (p.comments || 0) + 1 } : p
+    );
+    try {
+      localStorage.setItem('dpsbuzz_posts_v2', JSON.stringify(updatedPosts));
+    } catch {}
+
+    if (selectedPostDetail && selectedPostDetail.id === postId) {
+      setSelectedPostDetail({
+        ...selectedPostDetail,
+        comments: (selectedPostDetail.comments || 0) + 1,
+      });
+    }
+
+    setPostsVersion((v) => v + 1);
+    showToast('Comment posted! 💬');
+
+    fetch(`/api/posts/${postId}/comment`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ comment: newComment }),
+    }).catch(() => {});
   };
 
   const handleUpdateProfileSong = (song: SongTrack | undefined) => {
@@ -1204,7 +1264,7 @@ export default function ProfileClient({ username }: { username: string }) {
                   if (updated) setProfile(updated);
                   showToast(isFollowedBy ? `You and @${profile.username} are now friends! 🤝` : `Following @${profile.username}`);
                 }}
-                className="flex-1 h-9 rounded-full text-xs font-semibold btn-press flex items-center justify-center cursor-pointer shadow-xs"
+                className={`${isFollowing ? 'flex-1' : 'w-full'} h-9 rounded-full text-xs font-semibold btn-press flex items-center justify-center cursor-pointer shadow-xs`}
                 style={{
                   backgroundColor: (isFollowing || isRequested) && !hasIncomingRequest ? 'var(--surface-sunken)' : 'var(--accent-cta)',
                   color: (isFollowing || isRequested) && !hasIncomingRequest ? 'var(--text)' : 'var(--on-accent-cta)',
@@ -1217,95 +1277,99 @@ export default function ProfileClient({ username }: { username: string }) {
                   ? 'Follow Back'
                   : isFollowing ? 'Following' : isRequested ? 'Requested' : 'Follow'}
               </button>
-              <Link
-                href={`/chats?user=${profile.username}`}
-                className="flex-1 h-9 rounded-full text-xs font-semibold border flex items-center justify-center btn-press"
-                style={{
-                  backgroundColor: 'var(--surface-sunken)',
-                  borderColor: 'var(--line)',
-                  color: 'var(--text)',
-                }}
-              >
-                Message
-              </Link>
-              <button
-                type="button"
-                onClick={() => {
-                  const cur = DataStore.getCurrentUser();
-                  if (!cur || !cur.username || cur.username.toLowerCase() === 'guest') {
-                    showToast('Please log in to place voice calls 📞');
-                    return;
-                  }
-                  if (cur.username.toLowerCase().trim() === profile.username.toLowerCase().trim()) {
-                    showToast('You cannot call your own account 🙅');
-                    return;
-                  }
-                  const now = Date.now();
-                  if ((window as any).__dpsbuzz_last_call_click && now - (window as any).__dpsbuzz_last_call_click < 2500) {
-                    return;
-                  }
-                  (window as any).__dpsbuzz_last_call_click = now;
-                  showToast(`Calling @${profile.username}...`);
-                  window.dispatchEvent(
-                    new CustomEvent('dpsbuzz:start_call', {
-                      detail: {
-                        receiverUsername: profile.username,
-                        receiverName: profile.fullName,
-                        receiverAvatar: profile.avatar,
-                        isVideo: false,
-                      },
-                    })
-                  );
-                }}
-                className="w-9 h-9 rounded-full border flex items-center justify-center btn-press cursor-pointer text-[var(--text-muted)] hover:text-[#007AFF] transition-colors"
-                style={{
-                  backgroundColor: 'var(--surface-sunken)',
-                  borderColor: 'var(--line)',
-                }}
-                title="Voice Call"
-                aria-label="Voice Call"
-              >
-                <Phone size={15} />
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  const cur = DataStore.getCurrentUser();
-                  if (!cur || !cur.username || cur.username.toLowerCase() === 'guest') {
-                    showToast('Please log in to place video calls 📹');
-                    return;
-                  }
-                  if (cur.username.toLowerCase().trim() === profile.username.toLowerCase().trim()) {
-                    showToast('You cannot call your own account 🙅');
-                    return;
-                  }
-                  const now = Date.now();
-                  if ((window as any).__dpsbuzz_last_call_click && now - (window as any).__dpsbuzz_last_call_click < 2500) {
-                    return;
-                  }
-                  (window as any).__dpsbuzz_last_call_click = now;
-                  showToast(`Video calling @${profile.username}...`);
-                  window.dispatchEvent(
-                    new CustomEvent('dpsbuzz:start_call', {
-                      detail: {
-                        receiverUsername: profile.username,
-                        receiverName: profile.fullName,
-                        receiverAvatar: profile.avatar,
-                        isVideo: true,
-                      },
-                    })
-                  );
-                }}
-                className="w-9 h-9 rounded-full border flex items-center justify-center btn-press cursor-pointer text-[var(--text-muted)] hover:text-[#007AFF] transition-colors"
-                style={{
-                  backgroundColor: 'var(--surface-sunken)',
-                  borderColor: 'var(--line)',
-                }}
-                title="Video Call"
-                aria-label="Video Call"
-              >
-                <Video size={16} />
-              </button>
+              {isFollowing && (
+                <>
+                  <Link
+                    href={`/chats?user=${profile.username}`}
+                    className="flex-1 h-9 rounded-full text-xs font-semibold border flex items-center justify-center btn-press"
+                    style={{
+                      backgroundColor: 'var(--surface-sunken)',
+                      borderColor: 'var(--line)',
+                      color: 'var(--text)',
+                    }}
+                  >
+                    Message
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const cur = DataStore.getCurrentUser();
+                      if (!cur || !cur.username || cur.username.toLowerCase() === 'guest') {
+                        showToast('Please log in to place voice calls 📞');
+                        return;
+                      }
+                      if (cur.username.toLowerCase().trim() === profile.username.toLowerCase().trim()) {
+                        showToast('You cannot call your own account 🙅');
+                        return;
+                      }
+                      const now = Date.now();
+                      if ((window as any).__dpsbuzz_last_call_click && now - (window as any).__dpsbuzz_last_call_click < 2500) {
+                        return;
+                      }
+                      (window as any).__dpsbuzz_last_call_click = now;
+                      showToast(`Calling @${profile.username}...`);
+                      window.dispatchEvent(
+                        new CustomEvent('dpsbuzz:start_call', {
+                          detail: {
+                            receiverUsername: profile.username,
+                            receiverName: profile.fullName,
+                            receiverAvatar: profile.avatar,
+                            isVideo: false,
+                          },
+                        })
+                      );
+                    }}
+                    className="w-9 h-9 rounded-full border flex items-center justify-center btn-press cursor-pointer text-[var(--text-muted)] hover:text-[#007AFF] transition-colors"
+                    style={{
+                      backgroundColor: 'var(--surface-sunken)',
+                      borderColor: 'var(--line)',
+                    }}
+                    title="Voice Call"
+                    aria-label="Voice Call"
+                  >
+                    <Phone size={15} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const cur = DataStore.getCurrentUser();
+                      if (!cur || !cur.username || cur.username.toLowerCase() === 'guest') {
+                        showToast('Please log in to place video calls 📹');
+                        return;
+                      }
+                      if (cur.username.toLowerCase().trim() === profile.username.toLowerCase().trim()) {
+                        showToast('You cannot call your own account 🙅');
+                        return;
+                      }
+                      const now = Date.now();
+                      if ((window as any).__dpsbuzz_last_call_click && now - (window as any).__dpsbuzz_last_call_click < 2500) {
+                        return;
+                      }
+                      (window as any).__dpsbuzz_last_call_click = now;
+                      showToast(`Video calling @${profile.username}...`);
+                      window.dispatchEvent(
+                        new CustomEvent('dpsbuzz:start_call', {
+                          detail: {
+                            receiverUsername: profile.username,
+                            receiverName: profile.fullName,
+                            receiverAvatar: profile.avatar,
+                            isVideo: true,
+                          },
+                        })
+                      );
+                    }}
+                    className="w-9 h-9 rounded-full border flex items-center justify-center btn-press cursor-pointer text-[var(--text-muted)] hover:text-[#007AFF] transition-colors"
+                    style={{
+                      backgroundColor: 'var(--surface-sunken)',
+                      borderColor: 'var(--line)',
+                    }}
+                    title="Video Call"
+                    aria-label="Video Call"
+                  >
+                    <Video size={16} />
+                  </button>
+                </>
+              )}
             </>
           )}
         </div>
@@ -2194,12 +2258,16 @@ export default function ProfileClient({ username }: { username: string }) {
                 </button>
                 <button
                   type="button"
-                  onClick={() => showToast('Comments available on Home feed 💬')}
-                  className="flex items-center gap-1 text-xs font-semibold hover:text-[var(--primary)] transition-colors cursor-pointer"
-                  style={{ color: 'var(--text)' }}
+                  onClick={() => setShowDetailComments((prev) => !prev)}
+                  className={`flex items-center gap-1 text-xs font-semibold hover:text-[var(--primary)] transition-colors cursor-pointer ${
+                    showDetailComments ? 'text-[var(--primary)]' : ''
+                  }`}
+                  style={{ color: showDetailComments ? 'var(--primary)' : 'var(--text)' }}
+                  title="View and post comments"
+                  aria-label="View comments"
                 >
                   <MessageCircle size={20} />
-                  <span>{selectedPostDetail.comments || 0}</span>
+                  <span>{detailCommentsMap[selectedPostDetail.id]?.length || selectedPostDetail.comments || 0}</span>
                 </button>
                 {/* Repost Trigger */}
                 <button
@@ -2284,6 +2352,78 @@ export default function ProfileClient({ username }: { username: string }) {
                 </div>
               );
             })()}
+
+            {/* Interactive Comments Drawer inside Post Modal */}
+            {showDetailComments && (
+              <div
+                className="border-t animate-slide-up flex flex-col"
+                style={{
+                  backgroundColor: 'var(--surface-sunken)',
+                  borderColor: 'var(--line)',
+                }}
+              >
+                <div className="px-4 py-2 border-b flex items-center justify-between" style={{ borderColor: 'var(--line)' }}>
+                  <span className="text-xs font-bold" style={{ color: 'var(--text)' }}>
+                    Comments ({detailCommentsMap[selectedPostDetail.id]?.length || selectedPostDetail.comments || 0})
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowDetailComments(false)}
+                    className="text-[11px] font-semibold text-[var(--text-muted)] hover:text-[var(--text)] cursor-pointer"
+                  >
+                    Hide
+                  </button>
+                </div>
+
+                {/* Comments List */}
+                <div className="max-h-48 overflow-y-auto p-4 space-y-3 no-scrollbar">
+                  {(!detailCommentsMap[selectedPostDetail.id] || detailCommentsMap[selectedPostDetail.id].length === 0) ? (
+                    <p className="text-xs text-center py-4 text-[var(--text-muted)]">
+                      No comments yet. Be the first to comment! 💬
+                    </p>
+                  ) : (
+                    detailCommentsMap[selectedPostDetail.id].map((c: any) => (
+                      <div key={c.id || c.createdAt} className="flex items-start gap-2 text-xs">
+                        <span className="font-bold text-[var(--text)] shrink-0">@{c.username}</span>
+                        <span className="text-[var(--text-secondary)] break-words flex-1">{c.text}</span>
+                        <span className="text-[10px] text-[var(--text-muted)] shrink-0">{c.timeAgo || 'Just now'}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                {/* Add Comment Input Form */}
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    handleAddDetailComment(selectedPostDetail.id);
+                  }}
+                  className="p-3 border-t flex items-center gap-2"
+                  style={{ borderColor: 'var(--line)', backgroundColor: 'var(--surface)' }}
+                >
+                  <input
+                    type="text"
+                    placeholder="Add a comment..."
+                    value={detailCommentText}
+                    onChange={(e) => setDetailCommentText(e.target.value)}
+                    className="flex-1 h-9 px-3 rounded-full text-xs border outline-none font-medium transition-all"
+                    style={{
+                      backgroundColor: 'var(--surface-sunken)',
+                      borderColor: 'var(--line)',
+                      color: 'var(--text)',
+                    }}
+                  />
+                  <button
+                    type="submit"
+                    disabled={!detailCommentText.trim()}
+                    className="h-9 px-4 rounded-full text-xs font-bold text-white transition-opacity disabled:opacity-40 cursor-pointer shadow-xs"
+                    style={{ backgroundColor: 'var(--primary)' }}
+                  >
+                    Post
+                  </button>
+                </form>
+              </div>
+            )}
 
             {/* Repost Options Bottom Sheet */}
             {showDetailRepostSheet && (
@@ -2948,7 +3088,7 @@ export default function ProfileClient({ username }: { username: string }) {
       )}
 
       {/* ─── 4B. Interactive Highlight Story Viewer Modal ──────────────────── */}
-      {activeHighlight && (
+      {activeHighlight && (isOwnProfile || (!profile.isPrivate || isFollowing)) && (
         <div
           className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-fade-in select-none"
           onClick={() => setActiveHighlight(null)}
@@ -3658,6 +3798,7 @@ export default function ProfileClient({ username }: { username: string }) {
                   const target = peekPost;
                   setPeekPost(null);
                   setSelectedPostDetail(target);
+                  setShowDetailComments(true);
                 }}
                 className="w-full px-4 py-3 flex items-center gap-3 text-left text-xs font-semibold hover:bg-[var(--surface-sunken)] transition-colors cursor-pointer text-[var(--text)] group"
               >
