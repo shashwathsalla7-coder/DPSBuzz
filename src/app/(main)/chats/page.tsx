@@ -343,45 +343,6 @@ function ChatsContent() {
     setTimeout(() => setGroupToast(null), 2500);
   };
 
-  const [pendingGroupInvites, setPendingGroupInvites] = useState<GroupJoinRequest[]>(() => {
-    if (typeof window !== 'undefined' && currentUsername && currentUsername !== 'guest') {
-      return DataStore.getGroupInvitesForUser(currentUsername);
-    }
-    return [];
-  });
-
-  useEffect(() => {
-    const handleUpdate = () => {
-      if (currentUsername && currentUsername !== 'guest') {
-        setPendingGroupInvites(DataStore.getGroupInvitesForUser(currentUsername));
-      }
-    };
-    handleUpdate();
-    window.addEventListener('dpsbuzz:content_updated', handleUpdate);
-    return () => window.removeEventListener('dpsbuzz:content_updated', handleUpdate);
-  }, [currentUsername]);
-
-  const handleAcceptGroupInviteInChats = (inv: GroupJoinRequest) => {
-    const res = DataStore.acceptGroupInvite(inv.id, currentUsername);
-    if (res.success) {
-      showGroupToast(`Joined "${inv.groupName}"! 🎉`);
-      try {
-        const saved = localStorage.getItem(`dpsbuzz_chat_conversations_${currentUsername}_v3`);
-        if (saved) setConversations(JSON.parse(saved));
-      } catch {}
-      setPendingGroupInvites(DataStore.getGroupInvitesForUser(currentUsername));
-      setActiveChip('groups');
-    }
-  };
-
-  const handleDeclineGroupInviteInChats = (inv: GroupJoinRequest) => {
-    const res = DataStore.declineGroupInvite(inv.id);
-    if (res.success) {
-      showGroupToast(`Declined invitation to join "${inv.groupName}".`);
-      setPendingGroupInvites(DataStore.getGroupInvitesForUser(currentUsername));
-    }
-  };
-
   const handleCreateGroupSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newGroupName.trim()) return;
@@ -2686,73 +2647,6 @@ function ChatsContent() {
       ) : (
         /* Conversation Rows & States */
         <div className="flex-1 divide-y" style={{ borderColor: 'var(--line)' }}>
-          {/* Group Invitations with Explicit Consent Options: "Yes, I want to join" / "No, I don't want to join" */}
-          {pendingGroupInvites.length > 0 && (
-            <div className="mx-3.5 my-2.5 p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 space-y-2.5 animate-fade-in shadow-xs">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-base">📬</span>
-                  <div>
-                    <h3 className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                      Group Invitation{pendingGroupInvites.length > 1 ? 's' : ''} for You
-                    </h3>
-                    <p className="text-[10px] text-[var(--text-muted)]">
-                      Decide whether you want to join these groups
-                    </p>
-                  </div>
-                </div>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-600 border border-emerald-500/30">
-                  {pendingGroupInvites.length} pending
-                </span>
-              </div>
-
-              <div className="space-y-2">
-                {pendingGroupInvites.map((inv) => (
-                  <div
-                    key={inv.id}
-                    className="p-2.5 rounded-xl bg-[var(--surface)] border border-[var(--line)] flex flex-col gap-2"
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div
-                        className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs text-white shrink-0 shadow-xs"
-                        style={{ backgroundColor: 'var(--primary)' }}
-                      >
-                        {inv.groupName.slice(0, 2).toUpperCase()}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs font-bold truncate text-[var(--text)]">
-                          {inv.groupName}
-                        </p>
-                        <p className="text-[10px] text-[var(--text-muted)] truncate">
-                          Invited by @{inv.invitedBy || 'Creator'}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 pt-1 border-t border-[var(--line)]">
-                      <button
-                        type="button"
-                        onClick={() => handleAcceptGroupInviteInChats(inv)}
-                        className="flex-1 py-1 px-3 rounded-full text-[11px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer transition-all flex items-center justify-center gap-1 shadow-xs"
-                      >
-                        <Check size={12} />
-                        <span>Yes, I want to join</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDeclineGroupInviteInChats(inv)}
-                        className="py-1 px-3 rounded-full text-[11px] font-semibold border border-red-500/30 text-red-500 hover:bg-red-500/10 cursor-pointer transition-all flex items-center justify-center gap-1"
-                      >
-                        <X size={12} />
-                        <span>No, I don&apos;t want to join</span>
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
           {/* Prominent Instagram-Style Message Request Alert Strip */}
           {activeChip === 'all' && computedRequests.length > 0 && (
             <div
