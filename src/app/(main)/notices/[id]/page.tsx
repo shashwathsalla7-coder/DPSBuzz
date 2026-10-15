@@ -2,7 +2,7 @@
 
 import { use, Suspense, useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, CheckCircle2, FileText, Download, Share2 } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, FileText, Download, Share2, Eye, FileQuestion } from 'lucide-react';
 import { DataStore, type Notice } from '@/lib/dataStore';
 import { colors } from '@/config/tokens';
 
@@ -14,37 +14,104 @@ export default function NoticeDetailPage({ params }: { params: Promise<{ id: str
   );
 }
 
+function dataUrlToBlob(dataUrl: string): Blob {
+  try {
+    const arr = dataUrl.split(',');
+    const mime = arr[0].match(/:(.*?);/)?.[1] || 'application/pdf';
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new Blob([u8arr], { type: mime });
+  } catch {
+    return new Blob([dataUrl], { type: 'application/pdf' });
+  }
+}
+
 function NoticeDetailContent({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const [notice, setNotice] = useState<Notice | null>(null);
-  const [isMarkedSeen, setIsMarkedSeen] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
     DataStore.markNoticeAsRead(id);
     const list = DataStore.getNotices();
     const found = list.find((n) => n.id === id);
+
     if (found) {
       setNotice(found);
+      setLoading(false);
     } else {
-      setNotice({
-        id,
-        title: 'Morning assembly timing adjusted for sports day march-past',
-        content:
-          'Morning assembly starts 15 minutes early tomorrow for sports day march-past rehearsal. All students from Class 6 to Class 10 must assemble on the senior turf ground by 7:45 AM sharp in complete white uniform and PT shoes.\n\nAttendance will be recorded directly on the field. Students exempt on medical grounds must report to Room 104 with a signed slip from their class teacher.',
-        category: 'urgent',
-        isUrgent: true,
-        pinned: true,
-        date: 'Today, 8:15 AM',
-        seenBy: 343,
-        hasAttachment: true,
-      });
+      // Attempt to fetch from server API
+      fetch(`/api/notices?id=${encodeURIComponent(id)}`)
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (data && data.notice) {
+            setNotice(data.notice);
+          } else {
+            setNotFound(true);
+          }
+        })
+        .catch(() => {
+          setNotFound(true);
+        })
+        .finally(() => {
+          setLoading(false);
+        });
     }
   }, [id]);
 
-  if (!notice) {
+  if (loading) {
     return (
-      <div className="p-8 text-center text-xs" style={{ color: 'var(--text-muted)' }}>
+      <div className="min-h-[50vh] flex items-center justify-center p-8 text-center text-xs" style={{ color: 'var(--text-muted)' }}>
         Loading notice...
+      </div>
+    );
+  }
+
+  if (notFound || !notice) {
+    return (
+      <div className="min-h-dvh pb-20 select-none">
+        <div
+          className="flex items-center px-4 h-14 border-b sticky top-0 z-20"
+          style={{
+            backgroundColor: 'var(--surface)',
+            borderColor: 'var(--line)',
+          }}
+        >
+          <Link href="/notices" className="w-9 h-9 flex items-center justify-center btn-press" style={{ color: 'var(--text)' }}>
+            <ArrowLeft size={20} />
+          </Link>
+          <div className="text-xs font-bold uppercase tracking-wider ml-2" style={{ color: 'var(--text-muted)' }}>
+            Notice Not Found
+          </div>
+        </div>
+        <main className="p-8 max-w-[480px] mx-auto text-center space-y-4">
+          <div className="w-14 h-14 rounded-full bg-[var(--surface-sunken)] border border-[var(--line)] flex items-center justify-center mx-auto text-amber-500">
+            <FileQuestion size={28} />
+          </div>
+          <h1 className="text-base font-bold" style={{ color: 'var(--text)' }}>
+            This notice is no longer available
+          </h1>
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+            The school circular you are looking for may have expired, been updated, or was removed by the admin office.
+          </p>
+          <div className="pt-2">
+            <Link
+              href="/notices"
+              className="inline-flex items-center justify-center px-4 py-2 text-xs font-semibold rounded-full btn-press"
+              style={{
+                backgroundColor: 'var(--primary)',
+                color: 'var(--on-primary)',
+              }}
+            >
+              Back to Notice Board
+            </Link>
+          </div>
+        </main>
       </div>
     );
   }
@@ -52,6 +119,48 @@ function NoticeDetailContent({ params }: { params: Promise<{ id: string }> }) {
   const catKey = (notice.category || 'urgent').toLowerCase();
   const map = colors.notices as Record<string, { light: string; dark: string }>;
   const catColor = map[catKey]?.light || colors.light.primary;
+
+  const handleDownloadPdf = () => {
+    if (!notice.pdfUrl) {
+      alert('Attachment file is not available.');
+      return;
+    }
+
+    const downloadFileName = notice.pdfName || `school_circular_${notice.id}.pdf`;
+
+    if (notice.pdfUrl.startsWith('data:application/pdf') || notice.pdfUrl.startsWith('data:')) {
+      const blob = dataUrlToBlob(notice.pdfUrl);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = downloadFileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    } else {
+      const a = document.createElement('a');
+      a.href = notice.pdfUrl;
+      a.download = downloadFileName;
+      a.target = '_blank';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+  };
+
+  const handleViewPdf = () => {
+    if (!notice.pdfUrl) return;
+
+    if (notice.pdfUrl.startsWith('data:application/pdf') || notice.pdfUrl.startsWith('data:')) {
+      const blob = dataUrlToBlob(notice.pdfUrl);
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } else {
+      window.open(notice.pdfUrl, '_blank');
+    }
+  };
 
   return (
     <div className="min-h-dvh pb-20 select-none">
@@ -92,10 +201,10 @@ function NoticeDetailContent({ params }: { params: Promise<{ id: string }> }) {
         </button>
       </div>
 
-      {/* Notice Detail Content (DESIGN.md Section 9.5) */}
+      {/* Notice Detail Content */}
       <main className="p-4 max-w-[480px] mx-auto space-y-4">
         <article
-          className="p-5 border space-y-4"
+          className="p-5 border space-y-4 rounded-xl"
           style={{
             backgroundColor: 'var(--surface)',
             borderColor: 'var(--line)',
@@ -111,7 +220,7 @@ function NoticeDetailContent({ params }: { params: Promise<{ id: string }> }) {
             <span className="tabular-nums">{notice.date}</span>
           </div>
 
-          {/* Title in title size (22/28) */}
+          {/* Title */}
           <h1
             className="text-xl font-bold tracking-[-0.02em] leading-[1.15]"
             style={{
@@ -126,64 +235,78 @@ function NoticeDetailContent({ params }: { params: Promise<{ id: string }> }) {
             Published by Admin Office • Dilsukhnagar Public School
           </div>
 
-          {/* Body in body-l (16px) with 24px line height */}
+          {/* Body */}
           <div className="text-sm leading-relaxed whitespace-pre-line space-y-3" style={{ color: 'var(--text)' }}>
             {notice.content}
           </div>
 
-          {/* Attachments Section */}
-          <div className="pt-3 border-t space-y-2" style={{ borderColor: 'var(--line)' }}>
-            <div className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
-              Attached Documents
-            </div>
-            <div
-              className="p-3 border flex items-center justify-between text-xs"
-              style={{
-                backgroundColor: 'var(--surface-sunken)',
-                borderColor: 'var(--line)',
-              }}
-            >
-              <div className="flex items-center gap-2.5">
-                <FileText size={18} style={{ color: 'var(--primary)' }} />
-                <div>
-                  <div className="font-semibold" style={{ color: 'var(--text)' }}>
-                    circular_march_past_instructions.pdf
+          {/* Attachments Section - STRICTLY ONLY SHOWN IF REAL ATTACHMENT EXISTS */}
+          {notice.hasAttachment && (notice.pdfUrl || notice.pdfName) && (
+            <div className="pt-3 border-t space-y-2" style={{ borderColor: 'var(--line)' }}>
+              <div className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+                Attached Documents
+              </div>
+              <div
+                className="p-3 border flex items-center justify-between text-xs rounded-xl"
+                style={{
+                  backgroundColor: 'var(--surface-sunken)',
+                  borderColor: 'var(--line)',
+                }}
+              >
+                <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                  <div className="w-8 h-8 rounded-lg bg-red-500/10 text-red-500 flex items-center justify-center shrink-0 border border-red-500/20">
+                    <FileText size={18} />
                   </div>
-                  <div className="text-[10px] tabular-nums" style={{ color: 'var(--text-muted)' }}>
-                    142 KB • Official PDF
+                  <div className="min-w-0">
+                    <div className="font-semibold text-xs truncate" style={{ color: 'var(--text)' }}>
+                      {notice.pdfName || 'school_circular.pdf'}
+                    </div>
+                    <div className="text-[10px] tabular-nums" style={{ color: 'var(--text-muted)' }}>
+                      {notice.pdfSize || 'Official PDF'} • Official School Circular
+                    </div>
                   </div>
                 </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  {notice.pdfUrl && (
+                    <button
+                      type="button"
+                      onClick={handleViewPdf}
+                      className="px-2.5 h-8 border rounded-lg flex items-center gap-1.5 text-xs font-semibold btn-press cursor-pointer hover:bg-[var(--surface)] transition-colors"
+                      style={{
+                        borderColor: 'var(--line)',
+                        backgroundColor: 'var(--surface)',
+                        color: 'var(--text)',
+                      }}
+                      title="View PDF Document"
+                    >
+                      <Eye size={13} />
+                      <span>View</span>
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={handleDownloadPdf}
+                    className="w-8 h-8 border rounded-lg flex items-center justify-center btn-press cursor-pointer shrink-0 shadow-xs"
+                    style={{
+                      borderColor: 'var(--primary)',
+                      backgroundColor: 'var(--primary)',
+                      color: 'var(--on-primary)',
+                    }}
+                    aria-label="Download attachment"
+                    title="Download Attached PDF"
+                  >
+                    <Download size={14} />
+                  </button>
+                </div>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  const pdfHeader = `%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n3 0 obj<</Type/Page/MediaBox[0 0 612 792]/Parent 2 0 R/Resources<<>>/Contents 4 0 R>>endobj\n4 0 obj<</Length 120>>stream\nBT /F1 14 Tf 72 720 Td (DILSUKHNAGAR PUBLIC SCHOOL) Tj ET\nBT /F1 10 Tf 72 690 Td (Official Notice: ${notice.title.replace(/[()]/g, '')}) Tj ET\nendstream\nendobj\nxref\n0 5\n0000000000 65535 f \n0000000009 00000 n \n0000000058 00000 n \n0000000115 00000 n \n0000000215 00000 n \ntrailer<</Size 5/Root 1 0 R>>\nstartxref\n386\n%%EOF`;
-                  const blob = new Blob([pdfHeader], { type: 'application/pdf' });
-                  const url = URL.createObjectURL(blob);
-                  const link = document.createElement('a');
-                  link.href = url;
-                  link.download = `circular_${notice.id || 'official'}.pdf`;
-                  document.body.appendChild(link);
-                  link.click();
-                  document.body.removeChild(link);
-                  URL.revokeObjectURL(url);
-                }}
-                className="w-8 h-8 border flex items-center justify-center btn-press cursor-pointer"
-                style={{
-                  borderColor: 'var(--line-strong)',
-                  backgroundColor: 'var(--surface)',
-                  color: 'var(--primary)',
-                }}
-                aria-label="Download attachment"
-              >
-                <Download size={14} />
-              </button>
             </div>
-          </div>
+          )}
 
           {/* Mark as Seen confirmation */}
           <div
-            className="p-3 border flex items-center gap-2 text-xs"
+            className="p-3 border flex items-center gap-2 text-xs rounded-lg"
             style={{
               backgroundColor: 'var(--primary-tint)',
               borderColor: 'var(--primary)',

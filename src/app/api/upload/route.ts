@@ -24,7 +24,8 @@ export async function POST(req: NextRequest) {
         fs.mkdirSync(uploadsDir, { recursive: true });
       }
 
-      const extension = file.type.includes('png') ? 'png' : file.type.includes('webp') ? 'webp' : 'jpg';
+      const isPdf = file.type.includes('pdf') || file.name.toLowerCase().endsWith('.pdf');
+      const extension = isPdf ? 'pdf' : file.type.includes('png') ? 'png' : file.type.includes('webp') ? 'webp' : 'jpg';
       const filename = `${folder}_${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${extension}`;
       const filePath = path.join(uploadsDir, filename);
 
@@ -61,7 +62,8 @@ export async function POST(req: NextRequest) {
       fs.mkdirSync(uploadsDir, { recursive: true });
     }
 
-    const extension = mimeType.includes('png') ? 'png' : mimeType.includes('webp') ? 'webp' : 'jpg';
+    const isPdf = mimeType.includes('pdf');
+    const extension = isPdf ? 'pdf' : mimeType.includes('png') ? 'png' : mimeType.includes('webp') ? 'webp' : 'jpg';
     const filename = customFilename || `${folder}_${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${extension}`;
     const filePath = path.join(uploadsDir, filename);
 

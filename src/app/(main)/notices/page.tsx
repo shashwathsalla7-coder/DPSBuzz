@@ -265,9 +265,9 @@ export default function NoticesPage() {
                           <span className="tabular-nums">Seen by {notice.seenBy || 0}</span>
                         </div>
                         {notice.hasAttachment && (
-                          <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-[var(--surface-sunken)]">
-                            <Paperclip size={12} />
-                            <span>PDF circular</span>
+                          <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[var(--surface-sunken)] border border-[var(--line)] text-[11px] font-semibold text-[var(--text)]">
+                            <Paperclip size={12} className="text-red-500" />
+                            <span className="truncate max-w-[140px]">{notice.pdfName || 'PDF circular'}</span>
                           </div>
                         )}
                       </div>

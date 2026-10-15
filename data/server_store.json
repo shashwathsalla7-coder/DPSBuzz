@@ -24,7 +24,7 @@
       "id": "post-1791976342088",
       "createdAt": "2026-10-14T11:12:22.088Z",
       "timeAgo": "Just now",
-      "likes": 4,
+      "likes": 3,
       "comments": 0,
       "views": 0,
       "imageUrl": "https://res.cloudinary.com/ogfaxmjw/image/upload/v1791976299/dpsbuzz/posts/vou5x2twzxfsttgbemib.webp",
@@ -108,25 +108,6 @@
       "postCount": 1,
       "spiritPoints": 0,
       "createdAt": "2026-10-01T00:00:00.000Z"
-    },
-    {
-      "id": "student-1792045959887",
-      "username": "viah",
-      "fullName": "ejld",
-      "avatar": null,
-      "bio": "Class 8-E • DPS Student 🐝",
-      "class": "8",
-      "section": "E",
-      "role": "student",
-      "isVerified": true,
-      "isApproved": true,
-      "isPrivate": false,
-      "followerCount": 0,
-      "followingCount": 0,
-      "postCount": 0,
-      "spiritPoints": 50,
-      "referralCount": 0,
-      "createdAt": "2026-10-15T06:32:39.887Z"
     }
   ],
   "chatNotes": [],
@@ -164,240 +145,6 @@
         "time": "2:22 PM",
         "isCallLog": true,
         "conversationId": "arjun_8a__shashwath71845"
-      }
-    ],
-    "shashwath71845__viah": [
-      {
-        "id": "msg-1792045990786-dusm",
-        "text": "namaste broooo",
-        "sender": "me",
-        "senderUsername": "viah",
-        "time": "12:03 PM",
-        "conversationId": "shashwath71845__viah"
-      },
-      {
-        "id": "msg-1792045997407-ffkm",
-        "text": "fire",
-        "sender": "me",
-        "senderUsername": "shashwath71845",
-        "time": "12:03 PM",
-        "conversationId": "shashwath71845__viah"
-      },
-      {
-        "id": "msg-1792045998818-stvo",
-        "text": "vibe coder iyyyuuuu",
-        "sender": "me",
-        "senderUsername": "viah",
-        "time": "12:03 PM",
-        "conversationId": "shashwath71845__viah"
-      },
-      {
-        "id": "msg-1792046002063-10wx",
-        "text": "how is the app",
-        "sender": "me",
-        "senderUsername": "shashwath71845",
-        "time": "12:03 PM",
-        "reaction": "❤️",
-        "conversationId": "shashwath71845__viah"
-      },
-      {
-        "id": "msg-1792046017980-csqo",
-        "text": "emo bro theda theda undi koncham",
-        "sender": "me",
-        "senderUsername": "viah",
-        "time": "12:03 PM",
-        "conversationId": "shashwath71845__viah"
-      },
-      {
-        "id": "msg-1792046063468-mk7k",
-        "text": "o",
-        "sender": "me",
-        "senderUsername": "shashwath71845",
-        "time": "12:04 PM",
-        "conversationId": "shashwath71845__viah"
-      },
-      {
-        "id": "msg-1792046070622-zt8u",
-        "text": "give me suggestions",
-        "sender": "me",
-        "senderUsername": "shashwath71845",
-        "time": "12:04 PM",
-        "conversationId": "shashwath71845__viah"
-      },
-      {
-        "id": "call-log-1792046141587-yszh",
-        "text": "📞 Missed voice call",
-        "sender": "me",
-        "senderUsername": "shashwath71845",
-        "time": "12:05 PM",
-        "isCallLog": true,
-        "conversationId": "shashwath71845__viah"
-      },
-      {
-        "id": "call-log-1792046150349-d71f",
-        "text": "📞 Missed voice call",
-        "sender": "me",
-        "senderUsername": "shashwath71845",
-        "time": "12:05 PM",
-        "isCallLog": true,
-        "conversationId": "shashwath71845__viah"
-      },
-      {
-        "id": "call-log-1792046160126-939y",
-        "text": "📞 Missed voice call",
-        "sender": "me",
-        "senderUsername": "viah",
-        "time": "12:06 PM",
-        "isCallLog": true,
-        "conversationId": "shashwath71845__viah"
-      },
-      {
-        "id": "call-log-1792046165260-11tp",
-        "text": "📞 Missed voice call",
-        "sender": "me",
-        "senderUsername": "shashwath71845",
-        "time": "12:06 PM",
-        "isCallLog": true,
-        "conversationId": "shashwath71845__viah"
-      },
-      {
-        "id": "call-log-1792046197346-x84q",
-        "text": "📞 Voice call · 7s",
-        "sender": "me",
-        "senderUsername": "shashwath71845",
-        "time": "12:06 PM",
-        "isCallLog": true,
-        "conversationId": "shashwath71845__viah"
-      },
-      {
-        "id": "call-log-1792046207436-6795",
-        "text": "📹 Missed video call",
-        "sender": "me",
-        "senderUsername": "shashwath71845",
-        "time": "12:06 PM",
-        "isCallLog": true,
-        "conversationId": "shashwath71845__viah"
-      },
-      {
-        "id": "call-log-1792046212215-47k1",
-        "text": "📞 Voice call · 8s",
-        "sender": "me",
-        "senderUsername": "viah",
-        "time": "12:06 PM",
-        "isCallLog": true,
-        "conversationId": "shashwath71845__viah"
-      },
-      {
-        "id": "call-log-1792046218525-fuei",
-        "text": "📞 Missed voice call",
-        "sender": "me",
-        "senderUsername": "viah",
-        "time": "12:06 PM",
-        "isCallLog": true,
-        "conversationId": "shashwath71845__viah"
-      },
-      {
-        "id": "call-log-1792046230831-zxyp",
-        "text": "📞 Missed voice call",
-        "sender": "me",
-        "senderUsername": "viah",
-        "time": "12:07 PM",
-        "isCallLog": true,
-        "conversationId": "shashwath71845__viah"
-      },
-      {
-        "id": "call-log-1792046310644-4hae",
-        "text": "📹 Missed video call",
-        "sender": "me",
-        "senderUsername": "shashwath71845",
-        "time": "12:08 PM",
-        "isCallLog": true,
-        "conversationId": "shashwath71845__viah"
-      },
-      {
-        "id": "msg-1792050291381-6ota",
-        "text": "❤️",
-        "sender": "me",
-        "senderUsername": "shashwath71845",
-        "time": "1:14 PM",
-        "conversationId": "shashwath71845__viah"
-      },
-      {
-        "id": "call-log-1792050312941-bfkk",
-        "text": "📞 Missed voice call",
-        "sender": "me",
-        "senderUsername": "shashwath71845",
-        "time": "1:15 PM",
-        "isCallLog": true,
-        "conversationId": "shashwath71845__viah"
-      },
-      {
-        "id": "call-log-1792050331360-l69b",
-        "text": "📹 Missed video call",
-        "sender": "me",
-        "senderUsername": "shashwath71845",
-        "time": "1:15 PM",
-        "isCallLog": true,
-        "conversationId": "shashwath71845__viah"
-      },
-      {
-        "id": "msg-1792050627986-ogmh",
-        "text": "Hi",
-        "sender": "me",
-        "senderUsername": "shashwath71845",
-        "time": "1:20 PM",
-        "conversationId": "shashwath71845__viah"
-      },
-      {
-        "id": "call-log-1792051361242-vz1d",
-        "text": "📞 Missed voice call",
-        "sender": "me",
-        "senderUsername": "shashwath71845",
-        "time": "1:32 PM",
-        "isCallLog": true,
-        "conversationId": "shashwath71845__viah"
-      },
-      {
-        "id": "call-log-1792054321493-mqg6",
-        "text": "📹 Missed video call",
-        "sender": "me",
-        "senderUsername": "shashwath71845",
-        "time": "2:22 PM",
-        "isCallLog": true,
-        "conversationId": "shashwath71845__viah"
-      },
-      {
-        "id": "call-log-1792055744162-tiq8",
-        "text": "📞 Missed voice call",
-        "sender": "me",
-        "senderUsername": "shashwath71845",
-        "time": "2:45 PM",
-        "isCallLog": true,
-        "conversationId": "shashwath71845__viah"
-      },
-      {
-        "id": "msg-1792062389129-fgw2",
-        "text": "hi",
-        "sender": "me",
-        "senderUsername": "shashwath71845",
-        "time": "4:36 PM",
-        "conversationId": "shashwath71845__viah"
-      },
-      {
-        "id": "msg-1792062896228-ns8l",
-        "text": "hi",
-        "sender": "me",
-        "senderUsername": "shashwath71845",
-        "time": "4:44 PM",
-        "conversationId": "shashwath71845__viah"
-      },
-      {
-        "id": "msg-1792062911028-b53z",
-        "text": "hi br o whats up",
-        "sender": "me",
-        "senderUsername": "shashwath71845",
-        "time": "4:45 PM",
-        "conversationId": "shashwath71845__viah"
       }
     ],
     "hi__shashwath71845": [
@@ -626,17 +373,6 @@
         "conversationId": "hi__shashwath71845"
       }
     ],
-    "hi__viah": [
-      {
-        "id": "call-log-1792064141389-dpqu",
-        "text": "📞 Missed voice call",
-        "sender": "me",
-        "senderUsername": "hi",
-        "time": "5:05 PM",
-        "isCallLog": true,
-        "conversationId": "hi__viah"
-      }
-    ],
     "rohan728__shashwath71845": [
       {
         "id": "msg-1792066679455-hlos",
@@ -725,7 +461,6 @@
   "likes": {
     "post-1791976342088": [
       "shashwath71845",
-      "viah",
       "hi",
       "ashwith"
     ]
@@ -797,5 +532,5 @@
       "link": "/home"
     }
   ],
-  "lastUpdated": 1792070460082
+  "lastUpdated": 1792071667388
 }

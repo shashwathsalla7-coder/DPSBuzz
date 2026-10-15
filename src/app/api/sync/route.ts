@@ -35,6 +35,7 @@ export async function GET(req: NextRequest) {
       chatMessages: filteredChatMessages, // Never expose all messages globally!
       deletedPostIds: store.deletedPostIds || [],
       notifications: store.notifications || [],
+      notices: store.notices || [],
       lastUpdated: store.lastUpdated,
     });
   } catch (error: any) {
@@ -108,12 +109,25 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Merge notices
+    let mergedNotices = Array.isArray(current.notices) ? [...current.notices] : [];
+    if (Array.isArray(body.notices)) {
+      const existingNoticeIds = new Set(mergedNotices.map((n) => n.id));
+      for (const n of body.notices) {
+        if (!existingNoticeIds.has(n.id)) {
+          mergedNotices.unshift(n);
+          existingNoticeIds.add(n.id);
+        }
+      }
+    }
+
     const updated = await saveServerStore({
       posts: mergedPosts,
       stories: mergedStories,
       profiles: mergedProfiles,
       comments: mergedComments,
       likes: { ...current.likes, ...(likes || {}) },
+      notices: mergedNotices,
     });
 
     return NextResponse.json({
@@ -123,6 +137,7 @@ export async function POST(req: NextRequest) {
       profiles: updated.profiles,
       comments: updated.comments,
       likes: updated.likes,
+      notices: updated.notices,
       lastUpdated: updated.lastUpdated,
     });
   } catch (error: any) {

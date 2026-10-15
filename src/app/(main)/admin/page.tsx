@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -17,6 +17,8 @@ import {
   UserX,
   AlertOctagon,
   FileSpreadsheet,
+  FileText,
+  Paperclip,
   RotateCcw,
   Check,
   X,
@@ -148,6 +150,12 @@ export default function AdminPage() {
   const [newNoticeIsUrgent, setNewNoticeIsUrgent] = useState(true);
   const [newNoticePinned, setNewNoticePinned] = useState(true);
   const [newNoticeAttachment, setNewNoticeAttachment] = useState(false);
+  const [newNoticePdfFile, setNewNoticePdfFile] = useState<File | null>(null);
+  const [newNoticePdfDataUrl, setNewNoticePdfDataUrl] = useState<string>('');
+  const [newNoticePdfName, setNewNoticePdfName] = useState<string>('');
+  const [newNoticePdfSize, setNewNoticePdfSize] = useState<string>('');
+  const [newNoticePdfExternalUrl, setNewNoticePdfExternalUrl] = useState<string>('');
+  const pdfFileInputRef = useRef<HTMLInputElement>(null);
   const [broadcastToHome, setBroadcastToHome] = useState(true);
   const [activeBroadcast, setActiveBroadcast] = useState<any>(null);
 
@@ -460,13 +468,21 @@ export default function AdminPage() {
       setStatusMessage({ type: 'error', text: 'Title and content are required.' });
       return;
     }
+    const hasAttachment = Boolean(newNoticePdfDataUrl || newNoticePdfExternalUrl.trim() || newNoticeAttachment);
+    const pdfUrl = newNoticePdfExternalUrl.trim() || newNoticePdfDataUrl || undefined;
+    const pdfName = newNoticePdfName.trim() || (newNoticePdfExternalUrl.trim() ? 'school_circular.pdf' : undefined);
+    const pdfSize = newNoticePdfSize.trim() || undefined;
+
     const created = DataStore.addNotice({
       title: newNoticeTitle.trim(),
       content: newNoticeContent.trim(),
       category: newNoticeCategory,
       isUrgent: newNoticeIsUrgent,
       pinned: newNoticePinned,
-      hasAttachment: newNoticeAttachment,
+      hasAttachment,
+      pdfUrl,
+      pdfName,
+      pdfSize,
       date: 'Today, Admin Post',
       seenBy: 1,
     });
@@ -482,9 +498,18 @@ export default function AdminPage() {
     setShowNewNoticeModal(false);
     setNewNoticeTitle('');
     setNewNoticeContent('');
+    setNewNoticePdfFile(null);
+    setNewNoticePdfDataUrl('');
+    setNewNoticePdfName('');
+    setNewNoticePdfSize('');
+    setNewNoticePdfExternalUrl('');
+    setNewNoticeAttachment(false);
+    if (pdfFileInputRef.current) pdfFileInputRef.current.value = '';
     setStatusMessage({
       type: 'success',
       text: `Published official notice: "${created.title}". ${
+        hasAttachment ? `Attached PDF: ${pdfName || 'circular.pdf'}. ` : ''
+      }${
         broadcastToHome ? 'Broadcasted to live Home feed for ALL students!' : 'Added to notice board.'
       }`,
     });
@@ -2002,25 +2027,140 @@ export default function AdminPage() {
                 />
               </div>
 
-              <div className="flex flex-col gap-2 text-xs">
-                <div className="flex items-center gap-4">
-                  <label className="flex items-center gap-1.5 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={newNoticePinned}
-                      onChange={(e) => setNewNoticePinned(e.target.checked)}
-                    />
-                    <span>Pin to top</span>
+              {/* PDF Document Attachment Section */}
+              <div className="space-y-2 p-3 bg-[var(--surface-sunken)] border border-[var(--line)] rounded-none">
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-bold text-[var(--text)] uppercase flex items-center gap-1.5">
+                    <FileText size={14} className="text-red-500" />
+                    Attach Official PDF Circular
                   </label>
-                  <label className="flex items-center gap-1.5 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={newNoticeAttachment}
-                      onChange={(e) => setNewNoticeAttachment(e.target.checked)}
-                    />
-                    <span>Attach PDF badge</span>
-                  </label>
+                  {newNoticePdfName && (
+                    <span className="text-[10px] font-bold text-emerald-500 uppercase flex items-center gap-1">
+                      <Check size={12} /> Ready
+                    </span>
+                  )}
                 </div>
+
+                <input
+                  ref={pdfFileInputRef}
+                  type="file"
+                  accept="application/pdf,.pdf"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+
+                    if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+                      setStatusMessage({ type: 'error', text: 'Please select a valid PDF file (.pdf)' });
+                      return;
+                    }
+
+                    if (file.size > 8 * 1024 * 1024) {
+                      setStatusMessage({ type: 'error', text: 'PDF is too large (max 8MB). Please choose a smaller file.' });
+                      return;
+                    }
+
+                    const sizeKb = Math.round(file.size / 1024);
+                    const formattedSize = sizeKb > 1024 ? `${(sizeKb / 1024).toFixed(1)} MB` : `${sizeKb} KB`;
+
+                    setNewNoticePdfFile(file);
+                    setNewNoticePdfName(file.name);
+                    setNewNoticePdfSize(formattedSize);
+                    setNewNoticeAttachment(true);
+
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                      if (typeof reader.result === 'string') {
+                        setNewNoticePdfDataUrl(reader.result);
+                      }
+                    };
+                    reader.readAsDataURL(file);
+                  }}
+                />
+
+                {newNoticePdfName ? (
+                  <div className="flex items-center justify-between p-2.5 bg-[var(--surface)] border border-[var(--line)]">
+                    <div className="flex items-center gap-2 min-w-0 pr-2">
+                      <div className="w-8 h-8 bg-red-500/10 text-red-500 flex items-center justify-center shrink-0 border border-red-500/20">
+                        <FileText size={16} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-[var(--text)] truncate">{newNoticePdfName}</p>
+                        <p className="text-[10px] text-[var(--text-muted)]">{newNoticePdfSize || 'Official PDF Attachment'}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {newNoticePdfDataUrl && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            window.open(newNoticePdfDataUrl, '_blank');
+                          }}
+                          className="px-2.5 h-7 text-[11px] font-semibold bg-[var(--surface-sunken)] border border-[var(--line)] text-[var(--text)] hover:bg-[var(--line)] cursor-pointer"
+                        >
+                          Preview
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setNewNoticePdfFile(null);
+                          setNewNoticePdfDataUrl('');
+                          setNewNoticePdfName('');
+                          setNewNoticePdfSize('');
+                          setNewNoticeAttachment(false);
+                          if (pdfFileInputRef.current) pdfFileInputRef.current.value = '';
+                        }}
+                        className="w-7 h-7 flex items-center justify-center text-red-400 hover:text-red-500 hover:bg-red-500/10 cursor-pointer"
+                        title="Remove attached PDF"
+                      >
+                        <X size={15} />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    onClick={() => pdfFileInputRef.current?.click()}
+                    className="p-3 border border-dashed text-center cursor-pointer hover:border-[var(--primary)] transition-colors group bg-[var(--surface)]"
+                    style={{ borderColor: 'var(--line)' }}
+                  >
+                    <div className="flex flex-col items-center gap-1">
+                      <Upload size={18} className="text-[var(--text-muted)] group-hover:text-[var(--primary)] transition-colors" />
+                      <p className="text-xs font-semibold text-[var(--text)]">
+                        Click to upload official school PDF circular
+                      </p>
+                      <p className="text-[10px] text-[var(--text-muted)]">
+                        Exam timetables, date sheets, holiday letters, rules & guidelines (PDF up to 8MB)
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Optional online link */}
+                <input
+                  type="url"
+                  value={newNoticePdfExternalUrl}
+                  onChange={(e) => {
+                    setNewNoticePdfExternalUrl(e.target.value);
+                    if (e.target.value.trim()) {
+                      setNewNoticeAttachment(true);
+                      if (!newNoticePdfName) setNewNoticePdfName('Official_Notice_Circular.pdf');
+                    }
+                  }}
+                  placeholder="Or paste external PDF URL (Google Drive / web link)..."
+                  className="w-full h-8 px-2.5 bg-[var(--surface)] border border-[var(--line)] text-[11px] text-[var(--text)] focus:outline-none"
+                />
+              </div>
+
+              <div className="flex flex-col gap-2 text-xs">
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={newNoticePinned}
+                    onChange={(e) => setNewNoticePinned(e.target.checked)}
+                  />
+                  <span>Pin to top</span>
+                </label>
 
                 {/* Option: Urgent Notice */}
                 <label className="flex items-center gap-2 cursor-pointer p-2.5 bg-red-500/10 border border-red-500/40 rounded-xl">

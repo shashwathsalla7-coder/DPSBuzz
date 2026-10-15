@@ -259,6 +259,9 @@ export interface Notice {
   pinned?: boolean;
   seenBy?: number;
   hasAttachment?: boolean;
+  pdfUrl?: string;
+  pdfName?: string;
+  pdfSize?: string;
 }
 
 export interface Group {
@@ -874,6 +877,22 @@ export const DataStore = {
         }
         const mergedNotifs = Array.from(notifMap.values());
         setStorage(STORAGE_KEYS.NOTIFICATIONS, mergedNotifs);
+      }
+
+      // 9. Merge server notices
+      if (Array.isArray(data.notices)) {
+        const localNotices = getStorage<Notice[]>(STORAGE_KEYS.NOTICES, []);
+        const noticeMap = new Map<string, Notice>();
+        for (const n of localNotices) {
+          if (n && n.id && !FAKE_NOTICE_IDS.has(n.id)) noticeMap.set(n.id, n);
+        }
+        for (const n of data.notices) {
+          if (n && n.id && !FAKE_NOTICE_IDS.has(n.id)) {
+            if (!noticeMap.has(n.id)) changed = true;
+            noticeMap.set(n.id, n);
+          }
+        }
+        setStorage(STORAGE_KEYS.NOTICES, Array.from(noticeMap.values()));
       }
 
       if (changed) {
@@ -2013,6 +2032,11 @@ export const DataStore = {
     }
 
     if (typeof window !== 'undefined') {
+      fetch('/api/notices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notice: created }),
+      }).catch(() => {});
       window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated', { detail: { type: 'notice', notice: created } }));
     }
     return created;
@@ -2023,6 +2047,9 @@ export const DataStore = {
     const filtered = list.filter((n) => n.id !== id);
     setStorage(STORAGE_KEYS.NOTICES, filtered);
     if (typeof window !== 'undefined') {
+      fetch(`/api/notices?id=${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+      }).catch(() => {});
       window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated', { detail: { type: 'notice', deletedId: id } }));
     }
   },
