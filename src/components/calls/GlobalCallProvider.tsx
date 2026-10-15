@@ -16,6 +16,24 @@ import {
 } from '@/lib/callAudio';
 import { showBackgroundNotification } from '@/lib/pushNotifications';
 
+function dismissCallNotifications() {
+  try {
+    if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator && navigator.serviceWorker.ready) {
+      navigator.serviceWorker.ready
+        .then((reg) => {
+          reg.getNotifications().then((notifs) => {
+            notifs.forEach((n) => {
+              if (n.tag && n.tag.startsWith('call-')) {
+                n.close();
+              }
+            });
+          });
+        })
+        .catch(() => {});
+    }
+  } catch {}
+}
+
 function broadcastCallEvent(payload?: any) {
   try {
     if (typeof window !== 'undefined') {
@@ -44,7 +62,6 @@ export function GlobalCallProvider() {
   const answeringCallIdRef = useRef<string | null>(null);
   const consecutiveMissedPollsRef = useRef(0);
   const notifiedIncomingCallIdsRef = useRef<Set<string>>(new Set());
-  const missedIncomingPollsRef = useRef(0);
 
   // Log call record into chat history
   const logCallToChat = useCallback(
@@ -110,6 +127,7 @@ export function GlobalCallProvider() {
   // Clean up any remaining resources and stop ringtones
   const cleanUpCallResources = useCallback(() => {
     stopCallAudio();
+    dismissCallNotifications();
 
     if (callTimerRef.current) {
       clearInterval(callTimerRef.current);
@@ -122,6 +140,8 @@ export function GlobalCallProvider() {
   // Terminate active call
   const handleEndCall = useCallback(async () => {
     playCallEndedSound();
+    dismissCallNotifications();
+
     const currentCall = activeCall;
     const dur = durationSeconds;
 
@@ -155,6 +175,8 @@ export function GlobalCallProvider() {
   const handleRejectIncomingCall = useCallback(async () => {
     stopCallAudio();
     playCallEndedSound();
+    dismissCallNotifications();
+
     if (!incomingCall) return;
 
     const caller = incomingCall.callerUsername;
@@ -191,28 +213,45 @@ export function GlobalCallProvider() {
     } catch {}
 
     stopCallAudio();
+    dismissCallNotifications();
+
     if (!incomingCall) return;
 
     const callToAccept = incomingCall;
     cleanUpCallResources();
-    playCallConnectedSound();
     answeringCallIdRef.current = callToAccept.callId;
 
-    // Immediately place call into connected state so activeCall is never null and ZegoCallRoom immediately mounts
-    const answeringCall: CallSession = {
-      ...callToAccept,
-      status: 'connected',
-      connectedAt: Date.now(),
-    };
-    setActiveCall(answeringCall);
-    setIncomingCall(null);
-    setIsCaller(false);
-    setIsMuted(false);
-    setIsCameraOff(!callToAccept.isVideo);
-    setDurationSeconds(0);
-
     try {
-      // Notify server of answer so caller immediately connects
+      // 1. Double check server: Did caller cancel before we pressed answer?
+      const checkRes = await fetch(`/api/calls?callId=${encodeURIComponent(callToAccept.callId)}&t=${Date.now()}`);
+      if (checkRes.ok) {
+        const checkData = await checkRes.json();
+        const sc = checkData.call || checkData.activeCall;
+        if (!sc || sc.status === 'ended' || sc.status === 'rejected') {
+          stopCallAudio();
+          playCallEndedSound();
+          setIncomingCall(null);
+          alert('This call was already ended by the caller.');
+          return;
+        }
+      }
+
+      // 2. Play connected sound and place call into connected state
+      playCallConnectedSound();
+
+      const answeringCall: CallSession = {
+        ...callToAccept,
+        status: 'connected',
+        connectedAt: Date.now(),
+      };
+      setActiveCall(answeringCall);
+      setIncomingCall(null);
+      setIsCaller(false);
+      setIsMuted(false);
+      setIsCameraOff(!callToAccept.isVideo);
+      setDurationSeconds(0);
+
+      // 3. Notify server of answer so caller immediately connects
       await fetch('/api/calls', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -236,7 +275,7 @@ export function GlobalCallProvider() {
         }, 1000);
       }
     } catch (e) {
-      console.error('[Calls] Failed to notify server of call answer:', e);
+      console.error('[Calls] Failed to answer call:', e);
       handleEndCall();
     } finally {
       answeringCallIdRef.current = null;
@@ -389,22 +428,12 @@ export function GlobalCallProvider() {
 
         // Case 2: Incoming call was cancelled or timed out
         if (incomingCall) {
-          if (serverCall && (serverCall.status === 'ended' || serverCall.status === 'rejected')) {
+          if (!serverCall || serverCall.status === 'ended' || serverCall.status === 'rejected') {
             console.log('[Calls] Incoming call cancelled or ended by caller');
             setIncomingCall(null);
             stopCallAudio();
             playCallEndedSound();
-            missedIncomingPollsRef.current = 0;
-          } else if (!serverCall) {
-            missedIncomingPollsRef.current = (missedIncomingPollsRef.current || 0) + 1;
-            if (missedIncomingPollsRef.current >= 4) {
-              console.log('[Calls] Incoming call timed out after 4 missed polls');
-              setIncomingCall(null);
-              stopCallAudio();
-              missedIncomingPollsRef.current = 0;
-            }
-          } else {
-            missedIncomingPollsRef.current = 0;
+            dismissCallNotifications();
           }
         }
 
@@ -462,8 +491,8 @@ export function GlobalCallProvider() {
             // serverCall is absent or mismatched
             if (activeCall.status === 'connected') {
               consecutiveMissedPollsRef.current += 1;
-              if (consecutiveMissedPollsRef.current >= 15) {
-                console.log('[Calls] Active call ended or missing from server for 15 polls. Terminating locally.');
+              if (consecutiveMissedPollsRef.current >= 8) {
+                console.log('[Calls] Active call ended or missing from server. Terminating locally.');
                 stopCallAudio();
                 playCallEndedSound();
                 cleanUpCallResources();
@@ -537,6 +566,7 @@ export function GlobalCallProvider() {
           stopCallAudio();
           playCallEndedSound();
           cleanUpCallResources();
+          dismissCallNotifications();
           setActiveCall(null);
           setIncomingCall(null);
           setDurationSeconds(0);
