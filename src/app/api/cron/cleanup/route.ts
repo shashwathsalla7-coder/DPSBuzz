@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { deleteR2Object, deleteR2Objects } from '@/lib/r2';
+import { pruneExpiredServerChatPhotos } from '@/lib/serverStore';
 
 /**
  * Cleanup job endpoint for free schedulers (GitHub Actions, Vercel Cron, or Admin trigger)
  * 1. Purges story media 24 hours after expiry (48h total lifetime)
- * 2. Prunes chat messages older than retention days (default 90 days)
+ * 2. Prunes chat photos older than 10 days (keeping posts permanent)
  * 3. Deletes post photos older than N months if retention is enabled
  * 4. Sweeps unlinked orphan files
  */
@@ -30,8 +31,9 @@ export async function POST(req: NextRequest) {
 
     // Specific maintenance actions or full daily sweep
     if (!action || action === 'all' || action === 'prune_chats') {
-      // In production with Supabase, calls admin_prune_old_chat_messages()
-      results.chatMessagesPruned = 0;
+      // 10-day chat photo expiration policy
+      const { prunedCount } = await pruneExpiredServerChatPhotos(10);
+      results.chatMessagesPruned = prunedCount;
     }
 
     if (!action || action === 'all' || action === 'expired_stories') {
