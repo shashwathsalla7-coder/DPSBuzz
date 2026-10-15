@@ -6,6 +6,7 @@ import { DataStore } from '@/lib/dataStore';
 import { getAvatarColorPair } from '@/config/tokens';
 import type { CallSession } from '@/app/api/calls/route';
 import { CallModal } from './CallModal';
+import { ZegoCallRoom } from './ZegoCallRoom';
 import {
   playOutgoingRingtone,
   playIncomingRingtone,
@@ -1328,7 +1329,15 @@ export function GlobalCallProvider() {
       )}
 
       {/* 2. FULL SCREEN CALL MODAL */}
-      {activeCall && (
+      {activeCall && activeCall.status === 'connected' && (
+        <ZegoCallRoom
+          call={activeCall}
+          isCaller={isCaller}
+          onEndCall={handleEndCall}
+        />
+      )}
+
+      {activeCall && activeCall.status === 'ringing' && (
         <CallModal
           call={activeCall}
           isCaller={isCaller}

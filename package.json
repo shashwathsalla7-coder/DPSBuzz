@@ -13,6 +13,7 @@
     "@aws-sdk/s3-request-presigner": "^3.1150.0",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.117.3",
+    "@zegocloud/zego-uikit-prebuilt": "^2.18.4",
     "browser-image-compression": "^2.0.2",
     "cloudinary": "^2.11.0",
     "date-fns": "^4.4.0",
