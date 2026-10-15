@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import fs from 'fs';
+import path from 'path';
 
 export interface CallSession {
   callId: string;
@@ -19,7 +21,10 @@ export interface CallSession {
   iceCandidates?: Array<{ sender: string; candidate: any }>;
 }
 
-// In-memory active calls map (scoped across serverless invocations within process)
+const DATA_DIR = path.join(process.cwd(), 'data');
+const CALLS_FILE = path.join(DATA_DIR, 'active_calls.json');
+
+// In-memory active calls map + persistent disk fallback
 declare global {
   var __dpsbuzz_active_calls: Map<string, CallSession> | undefined;
 }
@@ -30,13 +35,50 @@ if (!globalThis.__dpsbuzz_active_calls) {
 
 const activeCalls = globalThis.__dpsbuzz_active_calls;
 
+// Helper to load calls from disk if map is empty (e.g. across worker processes)
+function loadCallsFromDisk() {
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    if (fs.existsSync(CALLS_FILE)) {
+      const data = fs.readFileSync(CALLS_FILE, 'utf-8');
+      const parsed = JSON.parse(data);
+      if (Array.isArray(parsed)) {
+        for (const call of parsed) {
+          if (call && call.callId && !activeCalls.has(call.callId)) {
+            activeCalls.set(call.callId, call);
+          }
+        }
+      }
+    }
+  } catch {}
+}
+
+// Helper to save calls to disk
+function saveCallsToDisk() {
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    const callsArray = Array.from(activeCalls.values());
+    fs.writeFileSync(CALLS_FILE, JSON.stringify(callsArray), 'utf-8');
+  } catch {}
+}
+
+// Initial load
+loadCallsFromDisk();
+
 function cleanupOldCalls() {
   const now = Date.now();
+  let changed = false;
+
   for (const [id, call] of activeCalls.entries()) {
     // If call has ended and is older than 20 seconds, purge
     if (call.status === 'ended' || call.status === 'rejected') {
       if (now - (call.endedAt || call.createdAt) > 20000) {
         activeCalls.delete(id);
+        changed = true;
       }
     } else if (call.status === 'ringing') {
       // Ringing timeout after 45 seconds -> auto-end as missed call
@@ -44,13 +86,20 @@ function cleanupOldCalls() {
         call.status = 'ended';
         call.endedAt = now;
         call.durationSeconds = 0;
+        changed = true;
       }
     }
+  }
+
+  if (changed) {
+    saveCallsToDisk();
   }
 }
 
 export async function GET(req: NextRequest) {
+  loadCallsFromDisk();
   cleanupOldCalls();
+
   const { searchParams } = new URL(req.url);
   const username = searchParams.get('username')?.toLowerCase().trim();
   const callId = searchParams.get('callId');
@@ -82,9 +131,24 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    loadCallsFromDisk();
     cleanupOldCalls();
     const body = await req.json();
-    const { action, callId, callerUsername, callerName, callerAvatar, receiverUsername, receiverName, receiverAvatar, isVideo, sdpOffer, sdpAnswer, candidate, sender } = body;
+    const {
+      action,
+      callId,
+      callerUsername,
+      callerName,
+      callerAvatar,
+      receiverUsername,
+      receiverName,
+      receiverAvatar,
+      isVideo,
+      sdpOffer,
+      sdpAnswer,
+      candidate,
+      sender,
+    } = body;
 
     if (action === 'initiate') {
       if (!callerUsername || !receiverUsername) {
@@ -108,6 +172,7 @@ export async function POST(req: NextRequest) {
       };
 
       activeCalls.set(id, newCall);
+      saveCallsToDisk();
       return NextResponse.json({ success: true, call: newCall });
     }
 
@@ -121,6 +186,7 @@ export async function POST(req: NextRequest) {
       if (sdpAnswer) {
         call.sdpAnswer = sdpAnswer;
       }
+      saveCallsToDisk();
       return NextResponse.json({ success: true, call });
     }
 
@@ -130,6 +196,7 @@ export async function POST(req: NextRequest) {
         call.status = 'rejected';
         call.endedAt = Date.now();
         call.durationSeconds = 0;
+        saveCallsToDisk();
       }
       return NextResponse.json({ success: true });
     }
@@ -144,6 +211,7 @@ export async function POST(req: NextRequest) {
         } else {
           call.durationSeconds = 0;
         }
+        saveCallsToDisk();
       }
       return NextResponse.json({ success: true, durationSeconds: call?.durationSeconds || 0 });
     }
@@ -158,9 +226,16 @@ export async function POST(req: NextRequest) {
       if (sdpAnswer) call.sdpAnswer = sdpAnswer;
       if (candidate && sender) {
         if (!call.iceCandidates) call.iceCandidates = [];
-        call.iceCandidates.push({ sender, candidate });
+        // Avoid duplicate candidate pushes
+        const exists = call.iceCandidates.some(
+          (c) => c.sender === sender && JSON.stringify(c.candidate) === JSON.stringify(candidate)
+        );
+        if (!exists) {
+          call.iceCandidates.push({ sender, candidate });
+        }
       }
 
+      saveCallsToDisk();
       return NextResponse.json({ success: true });
     }
 

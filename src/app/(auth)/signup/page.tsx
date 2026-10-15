@@ -128,11 +128,11 @@ export default function SignupPage() {
     localStorage.setItem('dpsbuzz_user', JSON.stringify(result.profile));
     document.cookie = `dpsbuzz_user=${encodeURIComponent(JSON.stringify(result.profile))}; path=/; max-age=31536000; SameSite=Lax`;
 
-    // Sync newly created student profile to server so Android App immediately sees it
+    // Sync newly created student profile to server so Android App immediately sees it and triggers new-user alert
     fetch('/api/auth/profile', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ profile: result.profile }),
+      body: JSON.stringify({ profile: result.profile, isNewSignup: true }),
     }).catch(() => {});
 
     setIsLoading(false);

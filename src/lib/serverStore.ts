@@ -1,7 +1,7 @@
 import { v2 as cloudinary } from 'cloudinary';
 import fs from 'fs';
 import path from 'path';
-import type { Post, Story, Profile, ChatNote, Notice } from './dataStore';
+import type { Post, Story, Profile, ChatNote, Notice, NotificationItem } from './dataStore';
 
 export interface ServerStoreData {
   posts: Post[];
@@ -13,6 +13,7 @@ export interface ServerStoreData {
   likes: Record<string, string[]>; // postId -> array of usernames who liked
   notices: Notice[];
   deletedPostIds?: string[]; // IDs of posts deleted permanently
+  notifications?: NotificationItem[];
   lastUpdated: number;
 }
 
@@ -60,6 +61,7 @@ function createInitialStore(): ServerStoreData {
     likes: {},
     notices: [],
     deletedPostIds: [],
+    notifications: [],
     lastUpdated: Date.now(),
   };
 }
@@ -98,6 +100,7 @@ function normalizeStore(parsed: any): ServerStoreData {
     likes: parsed.likes && typeof parsed.likes === 'object' ? parsed.likes : {},
     notices: Array.isArray(parsed.notices) ? parsed.notices : [],
     deletedPostIds: Array.isArray(parsed.deletedPostIds) ? parsed.deletedPostIds : [],
+    notifications: Array.isArray(parsed.notifications) ? parsed.notifications : [],
     lastUpdated: typeof parsed.lastUpdated === 'number' ? parsed.lastUpdated : Date.now(),
   };
 }
@@ -388,4 +391,46 @@ export async function deleteServerChatNote(username: string): Promise<ServerStor
   const clean = username.toLowerCase().trim();
   const filtered = current.chatNotes.filter((n) => n.username.toLowerCase() !== clean);
   return await saveServerStore({ chatNotes: filtered });
+}
+
+export async function recordServerNewUserAlert(profile: Profile): Promise<ServerStoreData> {
+  const current = await getServerStore({ forceRefresh: true });
+  const existing = current.notifications || [];
+  const clean = profile.username.toLowerCase().trim();
+
+  const adminAlert: NotificationItem = {
+    id: `notif-srv-admin-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+    userId: 'shashwath71845',
+    type: 'system',
+    title: '🎉 New Student Signed Up!',
+    body: `@${clean} (${profile.fullName}) from Class ${profile.class || ''}-${profile.section || ''} just joined DPS Buzz.`,
+    timeAgo: 'Just now',
+    isRead: false,
+    link: `/u/${clean}`,
+  };
+
+  const schoolAlert: NotificationItem = {
+    id: `notif-srv-school-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+    userId: 'admin',
+    type: 'system',
+    title: '🎉 New Student Signed Up!',
+    body: `@${clean} (${profile.fullName}) from Class ${profile.class || ''}-${profile.section || ''} just joined DPS Buzz.`,
+    timeAgo: 'Just now',
+    isRead: false,
+    link: `/u/${clean}`,
+  };
+
+  const welcomeAlert: NotificationItem = {
+    id: `notif-srv-welcome-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+    userId: clean,
+    type: 'system',
+    title: '🐝 Welcome to DPS Buzz!',
+    body: `Hi ${profile.fullName}, welcome to the DPS campus social network! Your profile is live.`,
+    timeAgo: 'Just now',
+    isRead: false,
+    link: '/home',
+  };
+
+  const merged = [adminAlert, schoolAlert, welcomeAlert, ...existing].slice(0, 100);
+  return await saveServerStore({ notifications: merged });
 }

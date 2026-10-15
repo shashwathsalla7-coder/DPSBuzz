@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerStore, upsertServerProfile } from '@/lib/serverStore';
+import { getServerStore, upsertServerProfile, recordServerNewUserAlert } from '@/lib/serverStore';
 
 export async function GET(req: NextRequest) {
   try {
@@ -25,13 +25,23 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { profile } = body;
+    const { profile, isNewSignup } = body;
     if (!profile || !profile.username) {
       return NextResponse.json({ success: false, error: 'Invalid profile object' }, { status: 400 });
     }
 
     await upsertServerProfile(profile);
-    return NextResponse.json({ success: true, profile });
+
+    // Trigger new user signup alert safely without blocking or failing profile upsert
+    if (isNewSignup) {
+      try {
+        await recordServerNewUserAlert(profile);
+      } catch (alertError) {
+        console.error('Non-blocking error triggering new user signup alert:', alertError);
+      }
+    }
+
+    return NextResponse.json({ success: true, profile, alertTriggered: Boolean(isNewSignup) });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }

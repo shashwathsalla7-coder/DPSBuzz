@@ -840,6 +840,23 @@ export const DataStore = {
         }
       }
 
+      // 8. Merge server notifications
+      if (Array.isArray(data.notifications) && data.notifications.length > 0) {
+        const localNotifs = getStorage<NotificationItem[]>(STORAGE_KEYS.NOTIFICATIONS, []);
+        const notifMap = new Map<string, NotificationItem>();
+        for (const n of localNotifs) {
+          if (n && n.id) notifMap.set(n.id, n);
+        }
+        for (const n of data.notifications) {
+          if (n && n.id && !notifMap.has(n.id)) {
+            notifMap.set(n.id, n);
+            changed = true;
+          }
+        }
+        const mergedNotifs = Array.from(notifMap.values());
+        setStorage(STORAGE_KEYS.NOTIFICATIONS, mergedNotifs);
+      }
+
       if (changed) {
         window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated'));
       }
@@ -2783,14 +2800,68 @@ export const DataStore = {
     const updatedProfiles = [...profiles, newProfile];
     setStorage(STORAGE_KEYS.PROFILES, updatedProfiles);
 
+    // New-User Alert & Notifications (Requirement: fires once per new signup, fails gracefully)
+    try {
+      const notifs = this.getNotifications();
+      const adminAlert: NotificationItem = {
+        id: `notif-signup-admin-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        userId: 'shashwath71845',
+        type: 'system',
+        title: '🎉 New Student Signed Up!',
+        body: `@${cleanUsername} (${params.fullName.trim()}) from Class ${className}-${section} just joined DPS Buzz.`,
+        timeAgo: 'Just now',
+        isRead: false,
+        link: `/u/${cleanUsername}`,
+      };
+      const schoolAlert: NotificationItem = {
+        id: `notif-signup-school-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        userId: 'admin',
+        type: 'system',
+        title: '🎉 New Student Signed Up!',
+        body: `@${cleanUsername} (${params.fullName.trim()}) from Class ${className}-${section} just joined DPS Buzz.`,
+        timeAgo: 'Just now',
+        isRead: false,
+        link: `/u/${cleanUsername}`,
+      };
+      const welcomeAlert: NotificationItem = {
+        id: `notif-welcome-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        userId: cleanUsername,
+        type: 'system',
+        title: '🐝 Welcome to DPS Buzz!',
+        body: `Hi ${params.fullName.trim()}, welcome to the DPS campus social network! Your profile is live.`,
+        timeAgo: 'Just now',
+        isRead: false,
+        link: '/home',
+      };
+      notifs.unshift(adminAlert, schoolAlert, welcomeAlert);
+      if (notifs.length > 100) notifs.length = 100;
+      setStorage(STORAGE_KEYS.NOTIFICATIONS, notifs);
+    } catch (notifErr) {
+      console.error('Non-blocking error generating in-app new-user notification:', notifErr);
+    }
+
     // Save as current user
     if (typeof window !== 'undefined') {
       localStorage.setItem('dpsbuzz_user', JSON.stringify(newProfile));
       document.cookie = `dpsbuzz_user=${encodeURIComponent(JSON.stringify(newProfile))}; path=/; max-age=31536000; SameSite=Lax`;
+
+      try {
+        window.dispatchEvent(
+          new CustomEvent('dpsbuzz:new_user_alert', {
+            detail: { profile: newProfile },
+          })
+        );
+        window.dispatchEvent(
+          new CustomEvent('dpsbuzz:content_updated', {
+            detail: { type: 'new_user_registered', profile: newProfile },
+          })
+        );
+      } catch {}
+
       fetch('/api/auth/profile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ profile: newProfile }),
+        body: JSON.stringify({ profile: newProfile, isNewSignup: true }),
       }).catch(() => {});
     }
 

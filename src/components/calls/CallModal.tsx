@@ -57,27 +57,40 @@ export function CallModal({
 }: CallModalProps) {
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
+  const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
   const [isPipSwapped, setIsPipSwapped] = useState(false);
 
-  const otherPersonName = isCaller ? (call.receiverName || call.receiverUsername) : (call.callerName || call.callerUsername);
+  const otherPersonName = isCaller
+    ? call.receiverName || call.receiverUsername
+    : call.callerName || call.callerUsername;
   const otherPersonUsername = isCaller ? call.receiverUsername : call.callerUsername;
   const otherPersonAvatar = isCaller ? call.receiverAvatar : call.callerAvatar;
   const colors = getAvatarColorPair(otherPersonUsername || otherPersonName);
   const initials = (otherPersonName || 'User').slice(0, 2).toUpperCase();
 
-  // Attach local media stream
+  // Attach remote audio stream to dedicated audio element (guarantees voice audio in both voice and video calls)
+  useEffect(() => {
+    if (remoteAudioRef.current && remoteStream) {
+      remoteAudioRef.current.srcObject = remoteStream;
+      remoteAudioRef.current.play().catch(() => {});
+    }
+  }, [remoteStream, isSpeakerMuted]);
+
+  // Attach local media stream to local video element
   useEffect(() => {
     if (localVideoRef.current && localStream) {
       localVideoRef.current.srcObject = localStream;
+      localVideoRef.current.play().catch(() => {});
     }
-  }, [localStream, isPipSwapped]);
+  }, [localStream]);
 
-  // Attach remote media stream
+  // Attach remote media stream to remote video element
   useEffect(() => {
     if (remoteVideoRef.current && remoteStream) {
       remoteVideoRef.current.srcObject = remoteStream;
+      remoteVideoRef.current.play().catch(() => {});
     }
-  }, [remoteStream, isPipSwapped]);
+  }, [remoteStream]);
 
   const hasRemoteVideo = Boolean(
     remoteStream &&
@@ -99,6 +112,15 @@ export function CallModal({
       aria-modal="true"
       aria-label={`${call.isVideo ? 'Video' : 'Voice'} call with ${otherPersonName}`}
     >
+      {/* Dedicated Hidden Audio Element to ensure incoming voice is ALWAYS heard on voice and video calls */}
+      <audio
+        ref={remoteAudioRef}
+        autoPlay
+        playsInline
+        muted={isSpeakerMuted}
+        className="hidden"
+      />
+
       {/* Top Header Bar */}
       <header className="relative z-20 flex items-center justify-between gap-3 pt-2">
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-xs font-medium">
@@ -129,21 +151,23 @@ export function CallModal({
       </header>
 
       {/* Main Call View Stage */}
-      <main className="relative z-10 flex-1 flex flex-col items-center justify-center my-auto min-h-[360px]">
+      <main className="relative z-10 flex-1 flex flex-col items-center justify-center my-auto min-h-[360px] w-full">
         {call.isVideo ? (
           // VIDEO CALL STAGE
           <div className="relative w-full max-w-2xl h-[58vh] sm:h-[64vh] rounded-3xl overflow-hidden bg-zinc-950 border border-white/10 shadow-2xl flex items-center justify-center">
-            {/* Primary Video Stream */}
-            {hasRemoteVideo ? (
-              <video
-                ref={isPipSwapped ? localVideoRef : remoteVideoRef}
-                autoPlay
-                playsInline
-                muted={isPipSwapped}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              // Remote video placeholder (when remote camera is off or initializing)
+            {/* Remote Video Element - ALWAYS rendered in DOM so srcObject is attached and never lost */}
+            <video
+              ref={isPipSwapped ? localVideoRef : remoteVideoRef}
+              autoPlay
+              playsInline
+              muted={isPipSwapped}
+              className={`w-full h-full object-cover transition-opacity duration-300 ${
+                hasRemoteVideo && (!isPipSwapped || !isCameraOff) ? 'opacity-100' : 'opacity-0 absolute pointer-events-none'
+              }`}
+            />
+
+            {/* Remote video placeholder when remote camera is off or initializing */}
+            {(!hasRemoteVideo || (isPipSwapped && isCameraOff)) && (
               <div className="flex flex-col items-center justify-center space-y-4">
                 <div
                   className="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-2 border-white/20 flex items-center justify-center text-3xl font-bold shadow-xl overflow-hidden"
@@ -160,7 +184,7 @@ export function CallModal({
                   )}
                 </div>
                 <div className="text-center">
-                  <h2 className="text-lg font-bold">{otherPersonName}</h2>
+                  <h2 className="text-lg font-bold">{isPipSwapped ? 'You' : otherPersonName}</h2>
                   <p className="text-xs text-neutral-400 font-medium">
                     {isConnected ? 'Camera is off' : 'Connecting video feed...'}
                   </p>
@@ -168,27 +192,32 @@ export function CallModal({
               </div>
             )}
 
-            {/* Floating Picture-in-Picture Local Preview Window */}
+            {/* Floating Picture-in-Picture Preview Window */}
             {localStream && (
               <div
                 onClick={() => setIsPipSwapped((prev) => !prev)}
                 className="absolute bottom-4 right-4 w-28 sm:w-36 aspect-[3/4] rounded-2xl overflow-hidden border-2 border-white/30 shadow-2xl cursor-pointer hover:scale-105 transition-transform bg-zinc-900 group"
                 title="Click to swap view"
               >
-                {!isCameraOff ? (
-                  <video
-                    ref={isPipSwapped ? remoteVideoRef : localVideoRef}
-                    autoPlay
-                    playsInline
-                    muted={!isPipSwapped}
-                    className="w-full h-full object-cover transform -scale-x-100"
-                  />
-                ) : (
+                <video
+                  ref={isPipSwapped ? remoteVideoRef : localVideoRef}
+                  autoPlay
+                  playsInline
+                  muted={!isPipSwapped}
+                  className={`w-full h-full object-cover transform -scale-x-100 ${
+                    (!isPipSwapped && !isCameraOff) || (isPipSwapped && hasRemoteVideo)
+                      ? 'block'
+                      : 'hidden'
+                  }`}
+                />
+
+                {((!isPipSwapped && isCameraOff) || (isPipSwapped && !hasRemoteVideo)) && (
                   <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-800 text-neutral-400 p-2 text-center">
                     <VideoOff size={18} />
                     <span className="text-[10px] mt-1 font-semibold">Camera off</span>
                   </div>
                 )}
+
                 <div className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded bg-black/60 text-[9px] font-bold text-white/90">
                   {isPipSwapped ? otherPersonName : 'You'}
                 </div>
@@ -251,7 +280,7 @@ export function CallModal({
             {isMuted ? <MicOff size={20} /> : <Mic size={20} />}
           </button>
 
-          {/* Toggle Camera Button (Available on all calls to upgrade/downgrade) */}
+          {/* Toggle Camera Button */}
           <button
             type="button"
             onClick={onToggleCamera}
@@ -294,7 +323,7 @@ export function CallModal({
             {isSpeakerMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
           </button>
 
-          {/* Hang Up Button (Prominent Red) */}
+          {/* Hang Up Button */}
           <button
             type="button"
             onClick={onEndCall}
@@ -313,4 +342,5 @@ export function CallModal({
     </div>
   );
 }
+
 export default CallModal;

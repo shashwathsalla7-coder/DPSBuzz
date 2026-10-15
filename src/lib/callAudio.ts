@@ -10,7 +10,11 @@ function getAudioContext(): AudioContext | null {
   if (typeof window === 'undefined') return null;
   const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
   if (!AudioCtx) return null;
-  return new AudioCtx();
+  const ctx = new AudioCtx();
+  if (ctx.state === 'suspended') {
+    ctx.resume().catch(() => {});
+  }
+  return ctx;
 }
 
 /**

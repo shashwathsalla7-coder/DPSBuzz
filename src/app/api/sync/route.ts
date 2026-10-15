@@ -14,6 +14,7 @@ export async function GET() {
       chatNotes: store.chatNotes,
       chatMessages: store.chatMessages,
       deletedPostIds: store.deletedPostIds || [],
+      notifications: store.notifications || [],
       lastUpdated: store.lastUpdated,
     });
   } catch (error: any) {

@@ -18,8 +18,51 @@ const ICE_SERVERS = {
   iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' },
   ],
 };
+
+// Synthetic audio track generator for hardware-less environments
+function createSyntheticAudioTrack(): MediaStreamTrack {
+  try {
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+    if (AudioCtx) {
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const dst = ctx.createMediaStreamDestination();
+      osc.connect(dst);
+      osc.start();
+      const track = dst.stream.getAudioTracks()[0];
+      if (track) return track;
+    }
+  } catch {}
+  return new MediaStream().getTracks()[0];
+}
+
+// Synthetic video track generator
+function createSyntheticVideoTrack(label: string): MediaStreamTrack {
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = 640;
+    canvas.height = 480;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(0, 0, 640, 480);
+      ctx.fillStyle = '#ec4899';
+      ctx.font = 'bold 28px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('🐝 DPS Buzz', 320, 220);
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '16px sans-serif';
+      ctx.fillText(label || 'Live Camera Feed', 320, 260);
+    }
+    const stream = (canvas as any).captureStream ? (canvas as any).captureStream(10) : new MediaStream();
+    const track = stream.getVideoTracks()[0];
+    if (track) return track;
+  } catch {}
+  return new MediaStream().getTracks()[0];
+}
 
 export function GlobalCallProvider() {
   const [activeCall, setActiveCall] = useState<CallSession | null>(null);
@@ -180,32 +223,54 @@ export function GlobalCallProvider() {
     setIncomingCall(null);
   }, [incomingCall, logCallToChat]);
 
-  // Initialize camera and microphone media
+  // Resilient media stream setup with hardware fallback
   const setupMediaStream = async (wantVideo: boolean) => {
-    try {
-      if (typeof navigator !== 'undefined' && navigator.mediaDevices?.getUserMedia) {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          audio: true,
-          video: wantVideo
-            ? {
-                facingMode,
-                width: { ideal: 1280 },
-                height: { ideal: 720 },
-              }
-            : false,
-        });
-        localStreamRef.current = stream;
-        setLocalStream(stream);
-        return stream;
+    let audioTrack: MediaStreamTrack | null = null;
+    let videoTrack: MediaStreamTrack | null = null;
+
+    if (typeof navigator !== 'undefined' && navigator.mediaDevices?.getUserMedia) {
+      if (wantVideo) {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            audio: true,
+            video: {
+              facingMode,
+              width: { ideal: 1280 },
+              height: { ideal: 720 },
+            },
+          });
+          audioTrack = stream.getAudioTracks()[0] || null;
+          videoTrack = stream.getVideoTracks()[0] || null;
+        } catch {
+          // If camera fails, retry audio-only first
+          try {
+            const audioOnly = await navigator.mediaDevices.getUserMedia({ audio: true });
+            audioTrack = audioOnly.getAudioTracks()[0] || null;
+          } catch {}
+        }
+      } else {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          audioTrack = stream.getAudioTracks()[0] || null;
+        } catch {}
       }
-    } catch (err) {
-      console.warn('Hardware media device access unavailable, providing synthetic fallback:', err);
     }
-    // Fallback silent/mock stream to allow test calls without crashing
-    const fallbackStream = new MediaStream();
-    localStreamRef.current = fallbackStream;
-    setLocalStream(fallbackStream);
-    return fallbackStream;
+
+    // Ensure valid tracks exist so WebRTC negotiation can always complete
+    if (!audioTrack) {
+      audioTrack = createSyntheticAudioTrack();
+    }
+    if (wantVideo && !videoTrack) {
+      videoTrack = createSyntheticVideoTrack('Camera Off');
+    }
+
+    const finalStream = new MediaStream();
+    if (audioTrack) finalStream.addTrack(audioTrack);
+    if (videoTrack) finalStream.addTrack(videoTrack);
+
+    localStreamRef.current = finalStream;
+    setLocalStream(finalStream);
+    return finalStream;
   };
 
   // Accept incoming call
@@ -227,11 +292,18 @@ export function GlobalCallProvider() {
       const pc = new RTCPeerConnection(ICE_SERVERS);
       peerConnRef.current = pc;
 
+      // Add local media tracks to peer connection
       stream.getTracks().forEach((track) => pc.addTrack(track, stream));
 
       pc.ontrack = (event) => {
         if (event.streams && event.streams[0]) {
           setRemoteStream(event.streams[0]);
+        } else if (event.track) {
+          setRemoteStream((prev) => {
+            const nextStream = prev ? new MediaStream(prev.getTracks()) : new MediaStream();
+            nextStream.addTrack(event.track);
+            return nextStream;
+          });
         }
       };
 
@@ -325,6 +397,12 @@ export function GlobalCallProvider() {
         pc.ontrack = (event) => {
           if (event.streams && event.streams[0]) {
             setRemoteStream(event.streams[0]);
+          } else if (event.track) {
+            setRemoteStream((prev) => {
+              const nextStream = prev ? new MediaStream(prev.getTracks()) : new MediaStream();
+              nextStream.addTrack(event.track);
+              return nextStream;
+            });
           }
         };
 
@@ -390,7 +468,7 @@ export function GlobalCallProvider() {
     return () => window.removeEventListener('dpsbuzz:start_call', handleStartCallEvent);
   }, [startCall]);
 
-  // Periodic polling for incoming calls or active call updates
+  // Periodic polling for incoming calls and WebRTC candidate/SDP synchronization
   useEffect(() => {
     const user = DataStore.getCurrentUser();
     const currentUsername = user?.username?.toLowerCase().trim();
@@ -408,7 +486,7 @@ export function GlobalCallProvider() {
 
         const serverCall: CallSession | null = data.activeCall;
 
-        // Case 1: An incoming call arrived for current user while idle
+        // Case 1: Incoming call arrived for current user while idle
         if (serverCall && serverCall.receiverUsername === currentUsername && serverCall.status === 'ringing') {
           if (!activeCall && (!incomingCall || incomingCall.callId !== serverCall.callId)) {
             setIncomingCall(serverCall);
@@ -422,9 +500,10 @@ export function GlobalCallProvider() {
           stopCallAudio();
         }
 
-        // Case 3: We are caller waiting for receiver to answer or reject
-        if (activeCall && isCaller && serverCall) {
-          if (activeCall.status === 'ringing' && serverCall.status === 'connected') {
+        // Case 3: Active call state synchronization (For both Caller and Receiver)
+        if (activeCall && serverCall) {
+          // If we are caller waiting for receiver to answer
+          if (isCaller && activeCall.status === 'ringing' && serverCall.status === 'connected') {
             stopCallAudio();
             playCallConnectedSound();
             setActiveCall(serverCall);
@@ -445,15 +524,18 @@ export function GlobalCallProvider() {
             handleEndCall();
           }
 
-          // Ingest any remote ICE candidates
+          // SYMMETRIC ICE INGESTION: Both Caller and Receiver ingest remote candidates
+          const myRole = isCaller ? 'caller' : 'receiver';
           if (serverCall.iceCandidates && peerConnRef.current && peerConnRef.current.remoteDescription) {
             for (const cand of serverCall.iceCandidates) {
               const key = JSON.stringify(cand);
-              if (cand.sender !== 'caller' && !processedCandidatesRef.current.has(key)) {
+              if (cand.sender !== myRole && !processedCandidatesRef.current.has(key)) {
                 processedCandidatesRef.current.add(key);
                 try {
                   await peerConnRef.current.addIceCandidate(new RTCIceCandidate(cand.candidate));
-                } catch {}
+                } catch (err) {
+                  console.warn('ICE candidate addition non-fatal error:', err);
+                }
               }
             }
           }
@@ -466,7 +548,8 @@ export function GlobalCallProvider() {
       } catch {}
     };
 
-    const interval = setInterval(pollCallStatus, 1800);
+    // 1-second polling interval for snappy real-time signaling
+    const interval = setInterval(pollCallStatus, 1000);
     return () => {
       isPolling = false;
       clearInterval(interval);
