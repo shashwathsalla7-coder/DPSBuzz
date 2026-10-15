@@ -33,6 +33,9 @@ class AudioManager {
     try {
       this.audio = new Audio();
       this.audio.preload = 'auto';
+      this.audio.crossOrigin = 'anonymous';
+      this.audio.volume = 1.0;
+      this.audio.muted = false;
 
       this.audio.addEventListener('ended', () => {
         this.stopProgress();
@@ -54,6 +57,31 @@ class AudioManager {
     } catch (err) {
       console.warn('Audio initialization exception:', err);
     }
+  }
+
+  public unlockAudio() {
+    if (typeof window === 'undefined') return;
+    this.initAudio();
+    if (!this.audio) return;
+    try {
+      this.audio.volume = 1.0;
+      this.audio.muted = false;
+      // Pre-warm audio element on direct user gesture so future play() calls don't get blocked
+      if (this.audio.paused && (!this.audio.src || this.audio.src.startsWith('data:'))) {
+        this.audio.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
+        this.audio.play().then(() => {
+          this.audio?.pause();
+        }).catch(() => {});
+      }
+    } catch {}
+  }
+
+  public setMuted(muted: boolean) {
+    if (!this.audio) return;
+    try {
+      this.audio.muted = muted;
+      this.audio.volume = muted ? 0 : 1.0;
+    } catch {}
   }
 
   private safeSetCurrentTime(time: number) {
@@ -168,6 +196,8 @@ class AudioManager {
     }
 
     this.safeSetCurrentTime(startAt);
+    this.audio.volume = 1.0;
+    this.audio.muted = false;
 
     const playPromise = this.audio.play();
     if (playPromise !== undefined) {
@@ -177,9 +207,26 @@ class AudioManager {
           this.notify(true, this.getProgress(), this.audio?.currentTime || startAt);
         })
         .catch((err) => {
-          // Benign warning: user gesture policy or rapid toggle
-          console.warn('Playback play() promise handled:', err.name);
+          console.warn('Playback play() promise handled (autoplay policy):', err.name);
           this.notify(false, 0, 0);
+
+          // Retry automatically on the very next user tap / click anywhere on screen
+          const resumeOnGesture = () => {
+            if (this.audio && this.currentTrack?.id === track.id) {
+              this.audio.volume = 1.0;
+              this.audio.muted = false;
+              this.audio.play().then(() => {
+                this.startProgress();
+                this.notify(true, this.getProgress(), this.audio?.currentTime || startAt);
+              }).catch(() => {});
+            }
+            window.removeEventListener('pointerdown', resumeOnGesture);
+            window.removeEventListener('touchstart', resumeOnGesture);
+            window.removeEventListener('click', resumeOnGesture);
+          };
+          window.addEventListener('pointerdown', resumeOnGesture, { once: true });
+          window.addEventListener('touchstart', resumeOnGesture, { once: true });
+          window.addEventListener('click', resumeOnGesture, { once: true });
         });
     }
   }

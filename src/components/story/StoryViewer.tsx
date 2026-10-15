@@ -242,6 +242,7 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
   const [progress, setProgress] = useState<number>(0);
   const [isPaused, setIsPaused] = useState<boolean>(false);
   const [isMuted, setIsMuted] = useState<boolean>(false);
+  const [audioIsPlaying, setAudioIsPlaying] = useState<boolean>(false);
   const [replyText, setReplyText] = useState('');
   const [toastMessage, setToastMessage] = useState<string>('');
   const [floatingEmoji, setFloatingEmoji] = useState<string | null>(null);
@@ -299,6 +300,14 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
     }
   }, [isOpen]);
 
+  // Listen to audio player state changes
+  useEffect(() => {
+    const unsub = globalAudio.subscribe((state) => {
+      setAudioIsPlaying(state.isPlaying);
+    });
+    return () => unsub();
+  }, []);
+
   // Ensure audio is stopped on unmount
   useEffect(() => {
     return () => {
@@ -319,6 +328,7 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
     }
 
     if (currentStory?.song && !isPaused && !isMuted && !showActivitySheet) {
+      globalAudio.setMuted(false);
       globalAudio.playTrack(currentStory.song);
     } else {
       globalAudio.pauseTrack();
@@ -705,7 +715,17 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
               {currentStory.song && (
                 <button
                   type="button"
-                  onClick={() => setIsMuted((m) => !m)}
+                  onClick={() => {
+                    globalAudio.unlockAudio();
+                    setIsMuted((m) => {
+                      const next = !m;
+                      globalAudio.setMuted(next);
+                      if (!next && currentStory.song) {
+                        globalAudio.playTrack(currentStory.song);
+                      }
+                      return next;
+                    });
+                  }}
                   className="w-10 h-10 min-w-[40px] min-h-[40px] rounded-full flex items-center justify-center text-white bg-black/60 hover:bg-black/80 border border-white/30 cursor-pointer transition-all active:scale-95 shadow-md"
                   aria-label={isMuted ? 'Unmute story music' : 'Mute story music'}
                 >
@@ -733,28 +753,45 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
 
           {/* Song Badge Pill if Story has Music Attached */}
           {currentStory.song && (
-            <div className="mt-2.5 flex items-center gap-2 px-3 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/20 text-white w-fit animate-fade-in shadow-md">
-              <div className="w-4 h-4 rounded-full overflow-hidden bg-pink-500/20 flex items-center justify-center shrink-0">
-                {currentStory.song.artworkUrl ? (
-                  <img src={currentStory.song.artworkUrl} alt={currentStory.song.title} className="w-full h-full object-cover" />
-                ) : (
-                  <Music size={10} className="text-pink-400" />
+            <div className="mt-2.5 flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/20 text-white w-fit animate-fade-in shadow-md">
+                <div className="w-4 h-4 rounded-full overflow-hidden bg-pink-500/20 flex items-center justify-center shrink-0">
+                  {currentStory.song.artworkUrl ? (
+                    <img src={currentStory.song.artworkUrl} alt={currentStory.song.title} className="w-full h-full object-cover" />
+                  ) : (
+                    <Music size={10} className="text-pink-400" />
+                  )}
+                </div>
+                <span className="text-[11px] font-bold truncate max-w-[160px]">{currentStory.song.title}</span>
+                <span className="text-[10px] text-white/70 truncate max-w-[100px]">• {currentStory.song.artist}</span>
+                {currentStory.song.startTime !== undefined && (
+                  <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-pink-500/30 text-pink-300 font-mono font-bold shrink-0">
+                    0:{Math.floor(currentStory.song.startTime).toString().padStart(2, '0')}
+                  </span>
+                )}
+                {/* Equalizer animation bars */}
+                {!isPaused && !isMuted && audioIsPlaying && (
+                  <div className="flex items-end gap-0.5 h-3 ml-0.5 shrink-0" aria-hidden="true">
+                    <span className="w-0.5 bg-pink-400 rounded-full animate-[pulse_0.6s_ease-in-out_infinite] h-3" />
+                    <span className="w-0.5 bg-pink-400 rounded-full animate-[pulse_0.8s_ease-in-out_infinite] h-2" />
+                    <span className="w-0.5 bg-pink-400 rounded-full animate-[pulse_0.5s_ease-in-out_infinite] h-2.5" />
+                  </div>
                 )}
               </div>
-              <span className="text-[11px] font-bold truncate max-w-[160px]">{currentStory.song.title}</span>
-              <span className="text-[10px] text-white/70 truncate max-w-[100px]">• {currentStory.song.artist}</span>
-              {currentStory.song.startTime !== undefined && (
-                <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-pink-500/30 text-pink-300 font-mono font-bold shrink-0">
-                  0:{Math.floor(currentStory.song.startTime).toString().padStart(2, '0')}
-                </span>
-              )}
-              {/* Equalizer animation bars */}
-              {!isPaused && !isMuted && (
-                <div className="flex items-end gap-0.5 h-3 ml-0.5 shrink-0" aria-hidden="true">
-                  <span className="w-0.5 bg-pink-400 rounded-full animate-[pulse_0.6s_ease-in-out_infinite] h-3" />
-                  <span className="w-0.5 bg-pink-400 rounded-full animate-[pulse_0.8s_ease-in-out_infinite] h-2" />
-                  <span className="w-0.5 bg-pink-400 rounded-full animate-[pulse_0.5s_ease-in-out_infinite] h-2.5" />
-                </div>
+
+              {/* Tap to Play Sound Banner if Browser Blocked Autoplay */}
+              {!isMuted && !audioIsPlaying && !isPaused && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    globalAudio.unlockAudio();
+                    globalAudio.playTrack(currentStory.song!);
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-pink-600/90 hover:bg-pink-500 text-white text-[11px] font-bold shadow-lg animate-pulse cursor-pointer border border-white/30 transition-all active:scale-95"
+                >
+                  <Volume2 size={13} />
+                  <span>Tap to play sound 🔊</span>
+                </button>
               )}
             </div>
           )}
