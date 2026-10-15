@@ -1202,6 +1202,79 @@ export const DataStore = {
               localStorage.setItem('dpsbuzz_user', JSON.stringify({ ...parsed, ...updates }));
             }
           }
+
+          // If avatar was updated, propagate to all posts, stories, chat notes, and conversations across the app
+          if (updates.avatar !== undefined) {
+            const newAvatar = updates.avatar;
+
+            // 1. Update user's posts
+            const posts = getStorage<Post[]>(STORAGE_KEYS.POSTS, []);
+            let postsChanged = false;
+            const updatedPosts = posts.map((p) => {
+              if ((p.username || '').toLowerCase().trim() === clean) {
+                postsChanged = true;
+                return { ...p, userAvatar: newAvatar || undefined };
+              }
+              return p;
+            });
+            if (postsChanged) {
+              setStorage(STORAGE_KEYS.POSTS, updatedPosts);
+            }
+
+            // 2. Update user's stories
+            const stories = getStorage<Story[]>(STORAGE_KEYS.STORIES, []);
+            let storiesChanged = false;
+            const updatedStories = stories.map((s) => {
+              if ((s.username || '').toLowerCase().trim() === clean) {
+                storiesChanged = true;
+                return { ...s, avatar: newAvatar };
+              }
+              return s;
+            });
+            if (storiesChanged) {
+              setStorage(STORAGE_KEYS.STORIES, updatedStories);
+            }
+
+            // 3. Update user's chat notes
+            const notes = getStorage<ChatNote[]>(STORAGE_KEYS.CHAT_NOTES, []);
+            let notesChanged = false;
+            const updatedNotes = notes.map((n) => {
+              if ((n.username || '').toLowerCase().trim() === clean) {
+                notesChanged = true;
+                return { ...n, avatar: newAvatar };
+              }
+              return n;
+            });
+            if (notesChanged) {
+              setStorage(STORAGE_KEYS.CHAT_NOTES, updatedNotes);
+            }
+
+            // 4. Update conversations in localStorage across all user conversation keys
+            for (let i = 0; i < localStorage.length; i++) {
+              const key = localStorage.key(i);
+              if (key && key.startsWith('dpsbuzz_chat_conversations_')) {
+                try {
+                  const val = localStorage.getItem(key);
+                  if (val) {
+                    const parsedConvs = JSON.parse(val);
+                    if (Array.isArray(parsedConvs)) {
+                      let convsChanged = false;
+                      const nextConvs = parsedConvs.map((c: any) => {
+                        if (c.username && c.username.toLowerCase().trim() === clean) {
+                          convsChanged = true;
+                          return { ...c, avatar: newAvatar };
+                        }
+                        return c;
+                      });
+                      if (convsChanged) {
+                        localStorage.setItem(key, JSON.stringify(nextConvs));
+                      }
+                    }
+                  }
+                } catch {}
+              }
+            }
+          }
         } catch {}
         window.dispatchEvent(
           new CustomEvent('dpsbuzz:content_updated', {
@@ -2055,9 +2128,16 @@ export const DataStore = {
   getChatNotes(): ChatNote[] {
     const stored = getStorage<ChatNote[]>(STORAGE_KEYS.CHAT_NOTES, []);
     const now = new Date().toISOString();
-    return stored.filter(
-      (n) => n && n.expiresAt > now && !DUMMY_TEST_USERNAMES.has(n.username.toLowerCase())
-    );
+    return stored
+      .filter((n) => n && n.expiresAt > now && !DUMMY_TEST_USERNAMES.has(n.username.toLowerCase()))
+      .map((n) => {
+        const liveProf = this.getProfileByUsername(n.username);
+        return {
+          ...n,
+          fullName: liveProf?.fullName || n.fullName,
+          avatar: liveProf?.avatar !== undefined && liveProf.avatar !== null ? liveProf.avatar : n.avatar,
+        };
+      });
   },
 
   saveChatNote(data: { text: string; song?: SongTrack; colorTheme?: string }, targetUsername?: string): ChatNote {

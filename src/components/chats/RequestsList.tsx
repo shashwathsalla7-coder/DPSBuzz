@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { getAvatarColorPair } from '@/config/tokens';
+import { DataStore } from '@/lib/dataStore';
 
 export interface MessageRequestItem {
   id: string;
@@ -106,6 +107,8 @@ export const RequestsList: React.FC<RequestsListProps> = ({
           </div>
         ) : (
           requests.map((req) => {
+            const liveProf = DataStore.getProfileByUsername(req.username);
+            const effectiveAvatar = liveProf?.avatar || req.avatarUrl || req.avatar || null;
             const colors = getAvatarColorPair(req.username);
             const initials = req.name
               .split(' ')
@@ -136,8 +139,8 @@ export const RequestsList: React.FC<RequestsListProps> = ({
                       borderColor: 'var(--line)',
                     }}
                   >
-                    {req.avatarUrl ? (
-                      <img src={req.avatarUrl} alt={req.name} className="w-full h-full object-cover" />
+                    {effectiveAvatar ? (
+                      <img src={effectiveAvatar} alt={req.name} className="w-full h-full object-cover" />
                     ) : (
                       initials
                     )}

@@ -53,6 +53,9 @@ export const ConversationRow: React.FC<ConversationRowProps> = ({
   const pressTimer = useRef<NodeJS.Timeout | null>(null);
 
   const isGroup = conversation.type === 'group';
+  const targetUsername = conversation.username || (!isGroup && conversation.id ? conversation.id.replace(/^conv-/, '') : '');
+  const liveProfile = targetUsername ? DataStore.getProfileByUsername(targetUsername) : null;
+  const effectiveAvatar = liveProfile?.avatar || conversation.avatar || null;
   const isUnread = Boolean(conversation.unreadCount && conversation.unreadCount > 0);
   const hasStory = Boolean(conversation.hasActiveStory);
   const isMuted = Boolean(conversation.isMuted);
@@ -179,9 +182,9 @@ export const ConversationRow: React.FC<ConversationRowProps> = ({
                 }}
               >
                 <div className="w-full h-full rounded-full border-2 border-[var(--surface)] overflow-hidden flex items-center justify-center">
-                  {conversation.avatar ? (
+                  {effectiveAvatar ? (
                     <img
-                      src={conversation.avatar}
+                      src={effectiveAvatar}
                       alt={conversation.name}
                       className="w-full h-full object-cover"
                     />
@@ -205,9 +208,9 @@ export const ConversationRow: React.FC<ConversationRowProps> = ({
                   color: isGroup ? 'var(--on-primary)' : pair.text,
                 }}
               >
-                {conversation.avatar ? (
+                {effectiveAvatar ? (
                   <img
-                    src={conversation.avatar}
+                    src={effectiveAvatar}
                     alt={conversation.name}
                     className="w-full h-full object-cover"
                   />

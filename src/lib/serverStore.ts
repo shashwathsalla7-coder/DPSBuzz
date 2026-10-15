@@ -324,7 +324,19 @@ export async function upsertServerProfile(profile: Profile): Promise<ServerStore
   const clean = profile.username.toLowerCase().trim();
   const filtered = current.profiles.filter((p) => p.username.toLowerCase().trim() !== clean);
   filtered.unshift(profile);
-  return await saveServerStore({ profiles: filtered });
+
+  // Propagate updated avatar to posts authored by this student
+  let updatedPosts = current.posts;
+  if (profile.avatar !== undefined) {
+    updatedPosts = current.posts.map((p) => {
+      if ((p.username || '').toLowerCase().trim() === clean) {
+        return { ...p, userAvatar: profile.avatar || null };
+      }
+      return p;
+    });
+  }
+
+  return await saveServerStore({ profiles: filtered, posts: updatedPosts });
 }
 
 export async function toggleServerLike(postId: string, username: string): Promise<{ isLiked: boolean; likesCount: number }> {

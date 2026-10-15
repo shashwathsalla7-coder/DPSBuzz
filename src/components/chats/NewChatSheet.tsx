@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { X, Search, Users } from 'lucide-react';
 import { getAvatarColorPair } from '@/config/tokens';
+import { DataStore } from '@/lib/dataStore';
 
 export interface StudentContact {
   id: string;
@@ -139,6 +140,8 @@ export const NewChatSheet: React.FC<NewChatSheetProps> = ({
                   .join('')
                   .toUpperCase();
 
+                const liveProf = DataStore.getProfileByUsername(student.username);
+                const effectiveAvatar = liveProf?.avatar || student.avatarUrl || null;
                 const isShash = student.username.toLowerCase() === 'shashwath71845';
                 return (
                   <button
@@ -159,7 +162,7 @@ export const NewChatSheet: React.FC<NewChatSheetProps> = ({
                             router.push(`/u/${student.username}`);
                           }}
                           title={`View ${student.name}'s profile`}
-                          className={`w-11 h-11 rounded-full flex items-center justify-center font-bold text-xs shrink-0 border cursor-pointer hover:opacity-80 transition-opacity ${
+                          className={`w-11 h-11 rounded-full flex items-center justify-center font-bold text-xs shrink-0 border cursor-pointer hover:opacity-80 transition-opacity overflow-hidden ${
                             isShash ? 'border-amber-400 text-black text-sm' : ''
                           }`}
                           style={{
@@ -168,7 +171,13 @@ export const NewChatSheet: React.FC<NewChatSheetProps> = ({
                             borderColor: isShash ? '#F2B705' : 'var(--line)',
                           }}
                         >
-                          {isShash ? '👑' : initials}
+                          {effectiveAvatar ? (
+                            <img src={effectiveAvatar} alt={student.name} className="w-full h-full object-cover" />
+                          ) : isShash ? (
+                            '👑'
+                          ) : (
+                            initials
+                          )}
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-1.5 truncate">
@@ -203,6 +212,8 @@ export const NewChatSheet: React.FC<NewChatSheetProps> = ({
                 Other students from DPS
               </div>
               {filteredOther.map((student) => {
+                const liveProf = DataStore.getProfileByUsername(student.username);
+                const effectiveAvatar = liveProf?.avatar || student.avatarUrl || null;
                 const colors = getAvatarColorPair(student.username);
                 const initials = student.name
                   .split(' ')
@@ -229,14 +240,18 @@ export const NewChatSheet: React.FC<NewChatSheetProps> = ({
                         router.push(`/u/${student.username}`);
                       }}
                       title={`View ${student.name}'s profile`}
-                      className="w-11 h-11 rounded-full flex items-center justify-center font-bold text-xs shrink-0 border cursor-pointer hover:opacity-80 transition-opacity"
+                      className="w-11 h-11 rounded-full flex items-center justify-center font-bold text-xs shrink-0 border cursor-pointer hover:opacity-80 transition-opacity overflow-hidden"
                       style={{
                         backgroundColor: colors.bg,
                         color: colors.text,
                         borderColor: 'var(--line)',
                       }}
                     >
-                      {initials}
+                      {effectiveAvatar ? (
+                        <img src={effectiveAvatar} alt={student.name} className="w-full h-full object-cover" />
+                      ) : (
+                        initials
+                      )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 truncate">

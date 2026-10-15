@@ -4,6 +4,7 @@ import React from 'react';
 import { Plus } from 'lucide-react';
 import { getAvatarColorPair } from '@/config/tokens';
 import { getNoteColorTheme } from '@/config/noteThemes';
+import { DataStore } from '@/lib/dataStore';
 
 export interface NoteItem {
   id: string;
@@ -100,16 +101,27 @@ export const NotesRow: React.FC<NotesRowProps> = ({
           })()}
 
           {/* 56px Avatar */}
-          <div
-            className="w-14 h-14 rounded-full flex items-center justify-center font-bold text-xs shrink-0 select-none border"
-            style={{
-              backgroundColor: 'var(--surface-sunken)',
-              borderColor: 'var(--line)',
-              color: 'var(--text-muted)',
-            }}
-          >
-            You
-          </div>
+          {(() => {
+            const currentUser = DataStore.getCurrentUser();
+            const liveProf = currentUser?.username ? DataStore.getProfileByUsername(currentUser.username) : null;
+            const effectiveAvatar = liveProf?.avatar || currentUser?.avatar || null;
+            return (
+              <div
+                className="w-14 h-14 rounded-full flex items-center justify-center font-bold text-xs shrink-0 select-none border overflow-hidden"
+                style={{
+                  backgroundColor: 'var(--surface-sunken)',
+                  borderColor: 'var(--line)',
+                  color: 'var(--text-muted)',
+                }}
+              >
+                {effectiveAvatar ? (
+                  <img src={effectiveAvatar} alt="You" className="w-full h-full object-cover" />
+                ) : (
+                  <span>You</span>
+                )}
+              </div>
+            );
+          })()}
 
           <span
             className="text-[12px] font-medium mt-1.5 w-18 truncate text-center"
@@ -131,6 +143,8 @@ export const NotesRow: React.FC<NotesRowProps> = ({
             .join('')
             .toUpperCase();
 
+          const liveProf = DataStore.getProfileByUsername(note.username);
+          const effectiveAvatar = liveProf?.avatar || note.avatarUrl || null;
           const hasUnseenStory = note.storyRingVariant === 'unseen' || (note.hasActiveStory && note.storyRingVariant !== 'seen');
           const hasSeenStory = note.storyRingVariant === 'seen';
 
@@ -175,13 +189,17 @@ export const NotesRow: React.FC<NotesRowProps> = ({
                 <div className="story-ring-unseen" style={{ width: '56px', height: '56px', padding: '2.5px' }}>
                   <div className="story-ring-inner" style={{ padding: '2px' }}>
                     <div
-                      className="w-[45px] h-[45px] rounded-full flex items-center justify-center font-bold text-xs shrink-0 select-none"
+                      className="w-[45px] h-[45px] rounded-full flex items-center justify-center font-bold text-xs shrink-0 select-none overflow-hidden"
                       style={{
                         backgroundColor: colors.bg,
                         color: colors.text,
                       }}
                     >
-                      {initials}
+                      {effectiveAvatar ? (
+                        <img src={effectiveAvatar} alt={note.name} className="w-full h-full object-cover" />
+                      ) : (
+                        initials
+                      )}
                     </div>
                   </div>
                 </div>
@@ -189,26 +207,34 @@ export const NotesRow: React.FC<NotesRowProps> = ({
                 <div className="story-ring-seen" style={{ width: '56px', height: '56px', padding: '2.5px' }}>
                   <div className="story-ring-inner" style={{ padding: '2px' }}>
                     <div
-                      className="w-[45px] h-[45px] rounded-full flex items-center justify-center font-bold text-xs shrink-0 select-none"
+                      className="w-[45px] h-[45px] rounded-full flex items-center justify-center font-bold text-xs shrink-0 select-none overflow-hidden"
                       style={{
                         backgroundColor: colors.bg,
                         color: colors.text,
                       }}
                     >
-                      {initials}
+                      {effectiveAvatar ? (
+                        <img src={effectiveAvatar} alt={note.name} className="w-full h-full object-cover" />
+                      ) : (
+                        initials
+                      )}
                     </div>
                   </div>
                 </div>
               ) : (
                 <div
-                  className="w-14 h-14 rounded-full flex items-center justify-center font-bold text-xs shrink-0 select-none border"
+                  className="w-14 h-14 rounded-full flex items-center justify-center font-bold text-xs shrink-0 select-none border overflow-hidden"
                   style={{
                     backgroundColor: colors.bg,
                     color: colors.text,
                     borderColor: 'var(--line)',
                   }}
                 >
-                  {initials}
+                  {effectiveAvatar ? (
+                    <img src={effectiveAvatar} alt={note.name} className="w-full h-full object-cover" />
+                  ) : (
+                    initials
+                  )}
                 </div>
               )}
 
