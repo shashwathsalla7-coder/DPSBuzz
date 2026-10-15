@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { ZEGO_CONFIG } from '@/config/zego';
+import { DataStore } from '@/lib/dataStore';
 import type { CallSession } from '@/app/api/calls/route';
 
 interface ZegoCallRoomProps {
@@ -13,7 +14,11 @@ interface ZegoCallRoomProps {
 export function ZegoCallRoom({ call, isCaller, onEndCall }: ZegoCallRoomProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const zpRef = useRef<any>(null);
+  const onEndCallRef = useRef(onEndCall);
+  onEndCallRef.current = onEndCall;
+
   const [isInitializing, setIsInitializing] = useState(true);
+  const [initError, setInitError] = useState<string | null>(null);
 
   const otherPersonName = isCaller
     ? call.receiverName || call.receiverUsername
@@ -28,26 +33,46 @@ export function ZegoCallRoom({ call, isCaller, onEndCall }: ZegoCallRoomProps) {
         const { ZegoUIKitPrebuilt } = await import('@zegocloud/zego-uikit-prebuilt');
         if (!isMounted || !containerRef.current) return;
 
-        // Create deterministic room ID for the 1-on-1 session
-        const rawRoomID =
-          call.callId ||
-          `dpsbuzz_${[call.callerUsername, call.receiverUsername].sort().join('_')}`;
-        const roomID = rawRoomID.replace(/[^a-zA-Z0-9_]/g, '_');
+        // Clean room ID: alphanumeric and underscores only
+        const cleanCallId = (call.callId || '').replace(/[^a-zA-Z0-9_]/g, '_');
+        const pairKey = [
+          (call.callerUsername || '').toLowerCase().trim().replace(/[^a-zA-Z0-9_]/g, '_'),
+          (call.receiverUsername || '').toLowerCase().trim().replace(/[^a-zA-Z0-9_]/g, '_'),
+        ]
+          .sort()
+          .join('_');
 
-        const currentUsername = (isCaller ? call.callerUsername : call.receiverUsername)
+        const roomID = cleanCallId.length > 5 ? `dps_${cleanCallId}` : `dps_${pairKey}`;
+
+        // Get currently logged-in user details
+        const currentUser = DataStore.getCurrentUser();
+        const localUsername = (
+          currentUser?.username || (isCaller ? call.callerUsername : call.receiverUsername)
+        )
           .toLowerCase()
           .trim();
-        const currentName = isCaller
-          ? call.callerName || call.callerUsername
-          : call.receiverName || call.receiverUsername;
+        const cleanUserID = localUsername.replace(/[^a-zA-Z0-9_]/g, '_').slice(0, 50) || `user_${Date.now()}`;
+        const displayName =
+          currentUser?.fullName ||
+          (isCaller
+            ? call.callerName || call.callerUsername
+            : call.receiverName || call.receiverUsername);
 
-        // Generate ZEGOCLOUD kit token
+        console.log('[ZEGOCLOUD] Initializing room:', {
+          appID: ZEGO_CONFIG.appID,
+          roomID,
+          cleanUserID,
+          displayName,
+          isVideo: call.isVideo,
+        });
+
+        // Generate ZEGOCLOUD kit token for test
         const kitToken = ZegoUIKitPrebuilt.generateKitTokenForTest(
           ZEGO_CONFIG.appID,
           ZEGO_CONFIG.serverSecret,
           roomID,
-          currentUsername,
-          currentName || currentUsername
+          cleanUserID,
+          displayName || cleanUserID
         );
 
         const zp = ZegoUIKitPrebuilt.create(kitToken);
@@ -57,14 +82,17 @@ export function ZegoCallRoom({ call, isCaller, onEndCall }: ZegoCallRoomProps) {
           container: containerRef.current,
           scenario: {
             mode: ZegoUIKitPrebuilt.OneONoneCall,
+            config: {
+              role: ZegoUIKitPrebuilt.Host,
+            },
           },
           showPreJoinView: false,
           turnOnMicrophoneWhenJoining: true,
           turnOnCameraWhenJoining: Boolean(call.isVideo),
-          showMyCameraToggleButton: Boolean(call.isVideo),
+          showMyCameraToggleButton: true,
           showMyMicrophoneToggleButton: true,
           showAudioVideoSettingsButton: true,
-          showScreenSharingButton: false,
+          showScreenSharingButton: Boolean(call.isVideo),
           showTextChat: false,
           showUserList: false,
           maxUsers: 2,
@@ -75,19 +103,22 @@ export function ZegoCallRoom({ call, isCaller, onEndCall }: ZegoCallRoomProps) {
           showLeavingView: false,
           showLeaveRoomConfirmDialog: false,
           onLeaveRoom: () => {
-            onEndCall();
+            console.log('[ZEGOCLOUD] Local user left room');
+            onEndCallRef.current();
           },
           onUserLeave: () => {
-            onEndCall();
+            console.log('[ZEGOCLOUD] Remote user left room');
+            onEndCallRef.current();
           },
         });
 
         if (isMounted) {
           setIsInitializing(false);
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error('[ZEGOCLOUD] Failed to initialize call room:', err);
         if (isMounted) {
+          setInitError(err?.message || 'Failed to initialize call room');
           setIsInitializing(false);
         }
       }
@@ -100,15 +131,17 @@ export function ZegoCallRoom({ call, isCaller, onEndCall }: ZegoCallRoomProps) {
       if (zpRef.current) {
         try {
           zpRef.current.destroy();
-        } catch {}
+        } catch (e) {
+          console.warn('[ZEGOCLOUD] Error destroying instance:', e);
+        }
         zpRef.current = null;
       }
     };
-  }, [call.callId, call.callerUsername, call.receiverUsername, call.isVideo, isCaller, onEndCall]);
+  }, [call.callId, call.isVideo, isCaller]);
 
   return (
     <div
-      className="fixed inset-0 z-[130] w-full h-full bg-[#0a0a0f] flex flex-col justify-center items-center overflow-hidden"
+      className="fixed inset-0 z-[130] w-screen h-screen bg-[#0a0a0f] flex flex-col justify-center items-center overflow-hidden"
       role="dialog"
       aria-modal="true"
       aria-label={`${call.isVideo ? 'Video' : 'Voice'} call with ${otherPersonName}`}
@@ -124,8 +157,28 @@ export function ZegoCallRoom({ call, isCaller, onEndCall }: ZegoCallRoomProps) {
           </div>
         </div>
       )}
+
+      {initError && (
+        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-[#0a0a0f] text-white p-6 text-center space-y-4">
+          <div className="w-16 h-16 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center text-2xl font-bold">
+            !
+          </div>
+          <div>
+            <h3 className="text-lg font-bold">Connection Failed</h3>
+            <p className="text-sm text-neutral-400 mt-1 max-w-sm">{initError}</p>
+          </div>
+          <button
+            onClick={() => onEndCallRef.current()}
+            className="px-6 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-semibold text-sm transition-colors cursor-pointer"
+          >
+            Close Call
+          </button>
+        </div>
+      )}
+
       <div
         ref={containerRef}
+        style={{ width: '100vw', height: '100vh', position: 'relative' }}
         className="w-full h-full z-0 [&_.zego-uikit-prebuilt]:!h-full [&_.zego-uikit-prebuilt]:!w-full"
       />
     </div>
