@@ -592,16 +592,13 @@ export default function GroupsPage() {
             </div>
 
             {/* ======================================================== */}
-            {/* REAL STUDENT GROUPS & CLUBS */}
+            {/* GROUPS LIST */}
             {/* ======================================================== */}
             <section className="space-y-3">
               <div className="flex items-center justify-between px-1">
                 <h2 className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
-                  Student Groups ({groups.length})
+                  Groups ({groups.length})
                 </h2>
-                <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
-                  Real student-created clubs & study squads
-                </span>
               </div>
 
               {groups.length === 0 ? (
@@ -616,10 +613,10 @@ export default function GroupsPage() {
                     👥
                   </div>
                   <h3 className="text-sm font-bold" style={{ color: 'var(--text)' }}>
-                    No Student Groups Created Yet
+                    No Groups Created Yet
                   </h3>
                   <p className="text-xs max-w-xs mx-auto" style={{ color: 'var(--text-muted)' }}>
-                    Be the first to start a study group, house squad, or project club with classmates you follow!
+                    Start a study squad, house group, or project club with classmates you follow!
                   </p>
                   <button
                     type="button"
@@ -672,9 +669,11 @@ export default function GroupsPage() {
                                   {group.category || 'Group'}
                                 </span>
                               </div>
-                              <p className="text-[11px] line-clamp-1 mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                                {group.description}
-                              </p>
+                              {group.description && !group.description.startsWith('Student study group created by') && (
+                                <p className="text-[11px] line-clamp-1 mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                                  {group.description}
+                                </p>
+                              )}
                               <p className="text-[10px] text-[var(--text-muted)] mt-0.5">
                                 {memberCount} member{memberCount === 1 ? '' : 's'}
                               </p>
@@ -698,26 +697,10 @@ export default function GroupsPage() {
                               <span>Member ✓</span>
                             </span>
                           ) : pendingInvite ? (
-                            <div className="flex items-center gap-1.5">
-                              <button
-                                type="button"
-                                onClick={() => handleAcceptInvite(pendingInvite)}
-                                className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white btn-press cursor-pointer flex items-center gap-1 shadow-xs"
-                                title="Yes, I want to join"
-                              >
-                                <Check size={13} />
-                                <span>Yes, I want to join</span>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleDeclineInvite(pendingInvite)}
-                                className="px-2.5 py-1 rounded-full text-xs font-semibold text-red-500 border border-red-500/30 hover:bg-red-500/10 btn-press cursor-pointer flex items-center gap-1"
-                                title="No, I don't want to join"
-                              >
-                                <X size={13} />
-                                <span>No, I don&apos;t want to join</span>
-                              </button>
-                            </div>
+                            <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-500/15 text-amber-600 border border-amber-500/30 flex items-center gap-1">
+                              <Clock size={13} />
+                              <span>Invited 📬</span>
+                            </span>
                           ) : hasRequested ? (
                             <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-500/15 text-amber-600 border border-amber-500/30 flex items-center gap-1">
                               <Clock size={13} />
