@@ -4774,6 +4774,26 @@ export const DataStore = {
     if (canonicalId !== conversationId) stored[conversationId] = nonVanish;
     setStorage(userMsgKey, stored);
 
+    // Update conversation last message preview if it contained a vanished message
+    try {
+      const convKey = `dpsbuzz_chat_conversations_${cur}_v3`;
+      const storedConvs = getStorage<any[]>(convKey, []);
+      if (Array.isArray(storedConvs)) {
+        const lastMsg = nonVanish[nonVanish.length - 1];
+        const updatedConvs = storedConvs.map((c) => {
+          if (c.id === canonicalId || c.id === conversationId || (c.username && canonicalId.includes(c.username.toLowerCase()))) {
+            return {
+              ...c,
+              lastMessage: lastMsg ? (lastMsg.text || 'Photo') : 'No messages yet',
+              timeAgo: lastMsg ? (lastMsg.time || 'Just now') : c.timeAgo,
+            };
+          }
+          return c;
+        });
+        setStorage(convKey, updatedConvs);
+      }
+    } catch {}
+
     // Instant 0ms broadcast across all tabs and components
     this.broadcastChatEvent({
       type: 'VANISH_PURGE',

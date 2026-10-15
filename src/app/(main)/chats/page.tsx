@@ -261,6 +261,11 @@ function ChatsContent() {
   });
   const [requestsState, setRequestsState] = useState<MessageRequestItem[]>(INITIAL_REQUESTS);
   const [isVanishMode, setIsVanishMode] = useState(false);
+  // Vanish Mode Pull-Up / Swipe-Up Gesture State (Instagram Style)
+  const [vanishPullDistance, setVanishPullDistance] = useState(0);
+  const [isVanishPulling, setIsVanishPulling] = useState(false);
+  const vanishTouchStartYRef = useRef<number | null>(null);
+  const vanishIsDraggingRef = useRef<boolean>(false);
   const [demoState, setDemoState] = useState<'normal' | 'loading' | 'empty' | 'error' | 'offline'>(
     stateParam === 'loading'
       ? 'loading'
@@ -1336,7 +1341,125 @@ function ChatsContent() {
     const nextVal = !isVanishMode;
     setIsVanishMode(nextVal);
     DataStore.setVanishMode(canonicalId, nextVal);
+
+    if (!nextVal) {
+      // Disappearance rule: when turning off vanish mode, purge vanish messages immediately!
+      DataStore.purgeVanishMessages(canonicalId, currentUsername);
+      setChatMessages((prev) => {
+        const existing = prev[canonicalId] || [];
+        const nonVanish = existing.filter((m) => !m.is_vanish_mode_message && !m.isVanishMode);
+        return {
+          ...prev,
+          [canonicalId]: nonVanish,
+          [activeConversation.id]: nonVanish,
+        };
+      });
+      setConversations((prev) =>
+        prev.map((c) => {
+          if (c.id === canonicalId || c.id === activeConversation.id) {
+            const existing = chatMessages[canonicalId] || [];
+            const nonVanish = existing.filter((m) => !m.is_vanish_mode_message && !m.isVanishMode);
+            const last = nonVanish[nonVanish.length - 1];
+            return {
+              ...c,
+              lastMessage: last ? (last.text || 'Photo') : 'No messages yet',
+            };
+          }
+          return c;
+        })
+      );
+    }
   };
+
+  // Vanish Mode Pull-Up Touch & Drag Handlers (Instagram Style)
+  const handleVanishTouchStart = (clientY: number) => {
+    if (!activeConversation || activeConversation.isGroup) return;
+    vanishTouchStartYRef.current = clientY;
+    vanishIsDraggingRef.current = true;
+    setIsVanishPulling(true);
+  };
+
+  const handleVanishTouchMove = (clientY: number) => {
+    if (!vanishIsDraggingRef.current || vanishTouchStartYRef.current === null) return;
+    const deltaY = vanishTouchStartYRef.current - clientY;
+    if (deltaY > 0) {
+      const clamped = Math.min(deltaY * 0.9, 90);
+      setVanishPullDistance(clamped);
+    } else {
+      setVanishPullDistance(0);
+    }
+  };
+
+  const handleVanishTouchEnd = () => {
+    if (!vanishIsDraggingRef.current) return;
+    vanishIsDraggingRef.current = false;
+    setIsVanishPulling(false);
+    vanishTouchStartYRef.current = null;
+
+    if (vanishPullDistance >= 45) {
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        try { navigator.vibrate(40); } catch {}
+      }
+      handleToggleVanishMode();
+    }
+    setVanishPullDistance(0);
+  };
+
+  // Messages container touch drag when scrolled to bottom
+  const handleMessagesTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    const el = messagesContainerRef.current;
+    if (!el || !activeConversation || activeConversation.isGroup) return;
+    const isAtBottom = el.scrollHeight - el.scrollTop - el.clientHeight <= 20;
+    if (isAtBottom) {
+      vanishTouchStartYRef.current = e.touches[0].clientY;
+      vanishIsDraggingRef.current = true;
+    }
+  };
+
+  const handleMessagesTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (!vanishIsDraggingRef.current || vanishTouchStartYRef.current === null) return;
+    const deltaY = vanishTouchStartYRef.current - e.touches[0].clientY;
+    if (deltaY > 5) {
+      setIsVanishPulling(true);
+      const clamped = Math.min(deltaY * 0.85, 90);
+      setVanishPullDistance(clamped);
+    }
+  };
+
+  // Global mousemove/mouseup listener for smooth drag on desktop
+  useEffect(() => {
+    if (!isVanishPulling) return;
+    const handleWindowMouseMove = (e: MouseEvent) => {
+      if (!vanishIsDraggingRef.current || vanishTouchStartYRef.current === null) return;
+      const deltaY = vanishTouchStartYRef.current - e.clientY;
+      if (deltaY > 0) {
+        setVanishPullDistance(Math.min(deltaY * 0.9, 90));
+      } else {
+        setVanishPullDistance(0);
+      }
+    };
+    const handleWindowMouseUp = () => {
+      handleVanishTouchEnd();
+    };
+    window.addEventListener('mousemove', handleWindowMouseMove);
+    window.addEventListener('mouseup', handleWindowMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleWindowMouseMove);
+      window.removeEventListener('mouseup', handleWindowMouseUp);
+    };
+  }, [isVanishPulling, vanishPullDistance]);
+
+  // Window beforeunload purge for vanish messages
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (activeConversation) {
+        const canonicalId = getCanonicalConvId(activeConversation);
+        DataStore.purgeVanishMessages(canonicalId, currentUsername);
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [activeConversation, currentUsername]);
 
   const handleCloseActiveChat = () => {
     if (activeConversation) {
@@ -2063,6 +2186,9 @@ function ChatsContent() {
         {/* Messages Stream with dynamic persistent background */}
         <div
           ref={messagesContainerRef}
+          onTouchStart={handleMessagesTouchStart}
+          onTouchMove={handleMessagesTouchMove}
+          onTouchEnd={handleVanishTouchEnd}
           className="flex-1 p-4 space-y-3 overflow-y-auto relative transition-all font-sf-display"
           style={
             isVanishMode
@@ -2089,6 +2215,20 @@ function ChatsContent() {
           {activeChatBg && activeChatBg.type === 'image' && (
             <div className="absolute inset-0 bg-black/35 pointer-events-none" />
           )}
+
+          {/* Vanish Mode Watermark (Instagram Authentic) */}
+          {isVanishMode && (
+            <div className="flex flex-col items-center justify-center text-center py-6 px-4 animate-fade-in select-none relative z-10">
+              <div className="w-14 h-14 rounded-full bg-purple-900/40 border border-purple-500/30 flex items-center justify-center mb-2 shadow-lg shadow-purple-950/50">
+                <Ghost size={28} className="text-purple-300 animate-pulse" />
+              </div>
+              <p className="text-sm font-bold text-purple-200">Vanish Mode</p>
+              <p className="text-xs text-purple-300/80 max-w-xs mt-0.5 leading-relaxed">
+                Seen messages disappear when you turn off vanish mode or close the chat.
+              </p>
+            </div>
+          )}
+
           {messages.length === 0 ? (
             <div className="text-center py-12 text-xs" style={{ color: 'var(--text-muted)' }}>
               No messages yet. Say hello to your classmate!
@@ -2154,8 +2294,12 @@ function ChatsContent() {
                     <div
                       className={`px-4 py-2.5 rounded-[22px] text-[15px] leading-[1.4] tracking-[-0.015em] font-semibold chat-bubble-text font-sf-display transition-all ${
                         isMe
-                          ? 'bg-[#007AFF] text-white rounded-br-[5px] shadow-xs'
-                          : 'bg-[#FFFFFF] text-slate-900 border border-black/10 dark:border-white/15 rounded-bl-[5px] shadow-xs'
+                          ? isVanishMode || msg.is_vanish_mode_message || msg.isVanishMode
+                            ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-br-[5px] shadow-xs ring-1 ring-purple-400/30'
+                            : 'bg-[#007AFF] text-white rounded-br-[5px] shadow-xs'
+                          : isVanishMode || msg.is_vanish_mode_message || msg.isVanishMode
+                            ? 'bg-purple-950/70 text-purple-100 border border-purple-500/30 rounded-bl-[5px] shadow-xs'
+                            : 'bg-[#FFFFFF] text-slate-900 border border-black/10 dark:border-white/15 rounded-bl-[5px] shadow-xs'
                       }`}
                       style={{
                         fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF UI Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif',
@@ -2319,6 +2463,115 @@ function ChatsContent() {
           </div>
         )}
 
+        {/* Instagram Authentic Vanish Mode Pull-Up / Swipe-Up Gesture Bar (The Space/Bar Directly Above Message Composer) */}
+        {!activeConversation.isGroup && (
+          <div
+            onMouseDown={(e) => {
+              if (e.button === 0) handleVanishTouchStart(e.clientY);
+            }}
+            onTouchStart={(e) => handleVanishTouchStart(e.touches[0].clientY)}
+            onTouchMove={(e) => handleVanishTouchMove(e.touches[0].clientY)}
+            onTouchEnd={handleVanishTouchEnd}
+            onClick={() => {
+              if (vanishPullDistance < 8) {
+                handleToggleVanishMode();
+              }
+            }}
+            className={`w-full flex flex-col items-center justify-center select-none cursor-pointer transition-all relative z-25 py-2 px-3 ${
+              isVanishMode
+                ? 'bg-[#180f24] border-t border-purple-500/20 text-purple-300 hover:text-purple-100'
+                : 'bg-[var(--surface)] border-t border-[var(--line)]/60 text-[var(--text-muted)] hover:text-[var(--text)]'
+            }`}
+            style={{
+              transform: isVanishPulling && vanishPullDistance > 0 ? `translateY(-${Math.min(vanishPullDistance * 0.4, 20)}px)` : 'none',
+              touchAction: 'none',
+            }}
+            title={isVanishMode ? 'Swipe up or click to turn off vanish mode' : 'Swipe up or click to turn on vanish mode'}
+          >
+            {/* Gesture Pull Indicator & Circle Gauge */}
+            <div className="flex items-center gap-2">
+              <div className="relative w-6 h-6 flex items-center justify-center shrink-0">
+                {/* Background track circle */}
+                <svg className="w-6 h-6 -rotate-90" viewBox="0 0 24 24">
+                  <circle
+                    cx="12"
+                    cy="12"
+                    r="9"
+                    className={isVanishMode ? 'stroke-purple-900/50' : 'stroke-zinc-300 dark:stroke-zinc-700'}
+                    strokeWidth="2.5"
+                    fill="none"
+                  />
+                  {/* Progress fill circle */}
+                  <circle
+                    cx="12"
+                    cy="12"
+                    r="9"
+                    className={
+                      isVanishMode
+                        ? 'stroke-purple-400'
+                        : vanishPullDistance >= 45
+                        ? 'stroke-purple-500'
+                        : 'stroke-zinc-500 dark:stroke-zinc-400'
+                    }
+                    strokeWidth="2.5"
+                    strokeDasharray={56.5}
+                    strokeDashoffset={
+                      isVanishPulling
+                        ? Math.max(0, 56.5 - (56.5 * Math.min(vanishPullDistance, 45)) / 45)
+                        : isVanishMode
+                        ? 0
+                        : 56.5
+                    }
+                    strokeLinecap="round"
+                    fill="none"
+                    style={{ transition: isVanishPulling ? 'none' : 'stroke-dashoffset 0.25s ease' }}
+                  />
+                </svg>
+                {/* Center Ghost Icon */}
+                <Ghost
+                  size={12}
+                  className={`absolute transition-transform ${
+                    isVanishMode
+                      ? 'text-purple-300 animate-pulse'
+                      : vanishPullDistance >= 45
+                      ? 'text-purple-500 scale-125'
+                      : 'text-[var(--text-muted)]'
+                  }`}
+                />
+              </div>
+
+              {/* Status / Instruction Text */}
+              <div className="flex items-center gap-1.5 text-[11.5px] font-medium tracking-tight">
+                {isVanishPulling && vanishPullDistance >= 45 ? (
+                  <span className="font-semibold text-purple-400 animate-pulse">
+                    Release to turn {isVanishMode ? 'off' : 'on'} vanish mode
+                  </span>
+                ) : isVanishPulling ? (
+                  <span>Swipe up to turn {isVanishMode ? 'off' : 'on'} vanish mode</span>
+                ) : isVanishMode ? (
+                  <span className="flex items-center gap-1">
+                    <span>Swipe up or tap to turn off vanish mode</span>
+                    <span className="text-[10px] opacity-75">• 👻 Active</span>
+                  </span>
+                ) : (
+                  <span>Swipe up or tap to turn on vanish mode 👻</span>
+                )}
+              </div>
+            </div>
+
+            {/* Subtle drag handle bar */}
+            <div
+              className={`w-10 h-1 rounded-full mt-1 transition-colors ${
+                isVanishMode
+                  ? 'bg-purple-500/40'
+                  : vanishPullDistance >= 45
+                  ? 'bg-purple-500'
+                  : 'bg-zinc-300 dark:bg-zinc-700'
+              }`}
+            />
+          </div>
+        )}
+
         {/* Stranger Sandbox Action Bar (Instagram Architecture Section 4) */}
         {!activeConversation.isGroup &&
         targetUser &&
@@ -2359,9 +2612,10 @@ function ChatsContent() {
           /* Input Bar */
           <form
             onSubmit={handleSendMessage}
-            className="p-3 border-t flex items-center gap-2 bg-[var(--surface)] relative z-20"
+            className={`p-3 border-t flex items-center gap-2 relative z-20 transition-colors ${
+              isVanishMode ? 'bg-[#100918] border-purple-500/30' : 'bg-[var(--surface)] border-[var(--line)]'
+            }`}
             style={{
-              borderColor: 'var(--line)',
               paddingBottom: 'max(14px, env(safe-area-inset-bottom, 14px))',
             }}
           >
@@ -2388,7 +2642,9 @@ function ChatsContent() {
                 chatMediaInputRef.current?.click();
               }}
               disabled={isMaintenanceActive}
-              className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-[var(--surface-sunken)] cursor-pointer text-[var(--text-muted)] hover:text-[#007AFF] transition-colors shrink-0 disabled:opacity-40"
+              className={`w-10 h-10 rounded-full flex items-center justify-center hover:bg-[var(--surface-sunken)] cursor-pointer transition-colors shrink-0 disabled:opacity-40 ${
+                isVanishMode ? 'text-purple-400 hover:text-purple-200' : 'text-[var(--text-muted)] hover:text-[#007AFF]'
+              }`}
               aria-label="Attach photo"
               title="Send photo"
             >
@@ -2400,7 +2656,9 @@ function ChatsContent() {
               type="button"
               onClick={() => setIsEmojiPickerOpen(true)}
               disabled={isMaintenanceActive}
-              className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-[var(--surface-sunken)] cursor-pointer text-[var(--text-muted)] hover:text-[#007AFF] transition-colors shrink-0 disabled:opacity-40"
+              className={`w-10 h-10 rounded-full flex items-center justify-center hover:bg-[var(--surface-sunken)] cursor-pointer transition-colors shrink-0 disabled:opacity-40 ${
+                isVanishMode ? 'text-purple-400 hover:text-purple-200' : 'text-[var(--text-muted)] hover:text-[#007AFF]'
+              }`}
               aria-label="Pick emoji"
               title="Emoji picker"
             >
@@ -2412,10 +2670,19 @@ function ChatsContent() {
               value={messageInput}
               disabled={isMaintenanceActive}
               onChange={(e) => setMessageInput(e.target.value)}
-              placeholder={isMaintenanceActive ? 'Chat is disabled during scheduled maintenance 🔒' : 'Message...'}
-              className="flex-1 h-11 px-4 rounded-full bg-[var(--surface-sunken)] text-[14.5px] outline-none border border-[var(--line)] focus:border-[#007AFF] focus:ring-1 focus:ring-[#007AFF] placeholder:text-[var(--text-muted)] disabled:opacity-50 transition-all font-semibold font-sf-display"
+              placeholder={
+                isMaintenanceActive
+                  ? 'Chat is disabled during scheduled maintenance 🔒'
+                  : isVanishMode
+                  ? 'Vanish mode message... 👻'
+                  : 'Message...'
+              }
+              className={`flex-1 h-11 px-4 rounded-full text-[14.5px] outline-none border focus:ring-1 disabled:opacity-50 transition-all font-semibold font-sf-display ${
+                isVanishMode
+                  ? 'bg-purple-950/40 text-purple-100 placeholder:text-purple-400/50 border-purple-500/40 focus:border-purple-400 focus:ring-purple-400'
+                  : 'bg-[var(--surface-sunken)] text-[var(--text)] border-[var(--line)] focus:border-[#007AFF] focus:ring-[#007AFF] placeholder:text-[var(--text-muted)]'
+              }`}
               style={{
-                color: 'var(--text)',
                 fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF UI Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif',
                 fontWeight: 600,
               }}
@@ -2425,7 +2692,11 @@ function ChatsContent() {
               <button
                 type="submit"
                 disabled={isMaintenanceActive}
-                className="w-11 h-11 rounded-full flex items-center justify-center cursor-pointer transition-transform active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shrink-0 bg-[#007AFF] text-white shadow-xs"
+                className={`w-11 h-11 rounded-full flex items-center justify-center cursor-pointer transition-transform active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shrink-0 text-white shadow-xs ${
+                  isVanishMode
+                    ? 'bg-gradient-to-r from-purple-600 to-indigo-600 shadow-purple-900/40'
+                    : 'bg-[#007AFF]'
+                }`}
                 aria-label="Send message"
               >
                 <Send size={18} />
