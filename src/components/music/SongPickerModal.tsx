@@ -17,6 +17,7 @@ import {
   Clock,
   Radio,
   Flame,
+  Upload,
 } from 'lucide-react';
 import { SongTrack } from '@/lib/dataStore';
 import { globalAudio, AudioPlayerState } from '@/lib/audioManager';
@@ -211,6 +212,44 @@ export const SongPickerModal: React.FC<SongPickerModalProps> = ({
 
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const seekDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const audioFileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleAudioFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('audio/') && !file.name.match(/\.(mp3|m4a|wav|aac|ogg)$/i)) {
+      alert('Please select a valid audio file (MP3, M4A, WAV).');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string;
+      if (!dataUrl) return;
+
+      const audio = new Audio();
+      audio.onloadedmetadata = () => {
+        const fullDuration = Math.round(audio.duration) || 180;
+        const songName = file.name.replace(/\.[^/.]+$/, '');
+        const customTrack: SongTrack = {
+          id: `custom-song-${Date.now()}`,
+          title: songName,
+          artist: 'My Audio Upload',
+          artworkUrl: '/icons/icon-192x192.png',
+          previewUrl: dataUrl,
+          durationSeconds: fullDuration,
+          startTime: 0,
+          clipDuration: 15,
+        };
+
+        setTracks((prev) => [customTrack, ...prev]);
+        handleOpenTrimmer(customTrack, 0);
+      };
+      audio.src = dataUrl;
+    };
+    reader.readAsDataURL(file);
+    if (audioFileInputRef.current) audioFileInputRef.current.value = '';
+  };
 
   // Helper to format any seconds into M:SS
   const formatSec = (sec: number) => {
@@ -351,7 +390,7 @@ export const SongPickerModal: React.FC<SongPickerModalProps> = ({
   // Open Trimmer for a track, defaulting to the Main Part (Chorus)
   const handleOpenTrimmer = (track: SongTrack, defaultStart?: number) => {
     setTrimmingTrack(track);
-    const chosenStart = defaultStart !== undefined ? defaultStart : 14;
+    const chosenStart = defaultStart !== undefined ? defaultStart : (track.startTime ?? 0);
     const dur = clipDurationMode === 'full' ? totalTrackSeconds : clipDurationMode === '30' ? 30 : 15;
     const maxStart = clipDurationMode === 'full' ? 0 : Math.max(0, totalTrackSeconds - dur);
     const safeStart = Math.min(chosenStart, maxStart);
@@ -835,31 +874,65 @@ export const SongPickerModal: React.FC<SongPickerModalProps> = ({
 
             {/* Search Bar & Filters Area */}
             <div className="p-3 border-b border-zinc-800/80 bg-zinc-900/40 space-y-2.5">
-              {/* Search Input */}
-              <div className="relative">
-                <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={handleSearchChange}
-                  placeholder="Search by artist (Anirudh, Sid Sriram, Arijit) or song title..."
-                  className="w-full bg-zinc-900 border border-zinc-800 rounded-xl pl-10 pr-9 py-2.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-pink-500 transition-colors"
-                  autoFocus
-                />
-                {searchQuery && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSearchQuery('');
-                      setActiveChip(PRESET_CATEGORIES[0].label);
-                      fetchSongs(PRESET_CATEGORIES[0].query);
-                    }}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white p-1 cursor-pointer"
-                    aria-label="Clear search query"
-                  >
-                    <X size={14} />
-                  </button>
-                )}
+              {/* Hidden file input for custom full audio upload */}
+              <input
+                type="file"
+                ref={audioFileInputRef}
+                accept="audio/*,.mp3,.m4a,.wav,.aac,.ogg"
+                onChange={handleAudioFileUpload}
+                className="hidden"
+              />
+
+              {/* Search Input + Upload Audio Action */}
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1">
+                  <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={handleSearchChange}
+                    placeholder="Search songs or artists..."
+                    className="w-full bg-zinc-900 border border-zinc-800 rounded-xl pl-10 pr-9 py-2.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-pink-500 transition-colors"
+                    autoFocus
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearchQuery('');
+                        setActiveChip(PRESET_CATEGORIES[0].label);
+                        fetchSongs(PRESET_CATEGORIES[0].query);
+                      }}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white p-1 cursor-pointer"
+                      aria-label="Clear search query"
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => audioFileInputRef.current?.click()}
+                  className="px-3 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-white text-xs font-semibold flex items-center gap-1.5 shrink-0 cursor-pointer transition-colors shadow-xs"
+                  title="Upload your own full length MP3/Audio file"
+                >
+                  <Upload size={14} className="text-pink-400" />
+                  <span className="hidden sm:inline">Upload Full MP3</span>
+                  <span className="sm:hidden">Upload</span>
+                </button>
+              </div>
+
+              {/* Free iTunes 30s Preview & User Choice Notice */}
+              <div className="px-3 py-1.5 rounded-xl bg-pink-500/10 border border-pink-500/20 text-[11px] text-pink-300 flex items-center justify-between gap-2">
+                <span>🎵 Select any song to choose your custom 15s or 30s clip</span>
+                <button
+                  type="button"
+                  onClick={() => audioFileInputRef.current?.click()}
+                  className="text-[10px] text-pink-400 hover:text-pink-200 underline font-semibold shrink-0 cursor-pointer"
+                >
+                  Upload Full Song →
+                </button>
               </div>
 
               {/* Dedicated "Select by Artist" Horizontal Carousel */}
@@ -992,28 +1065,35 @@ export const SongPickerModal: React.FC<SongPickerModalProps> = ({
                         </div>
                       </div>
 
-                      {/* Right: Dedicated Main Part / Choose Part Action Buttons */}
+                      {/* Right: User-Controlled 15s / 30s Selection Buttons */}
                       <div className="flex items-center gap-1.5 shrink-0">
-                        {/* Option 1: One-tap Select Main Part (Chorus) */}
+                        {/* Option 1: One-tap Select Full 30s Preview */}
                         <button
                           type="button"
-                          onClick={() => handleSelectMainPartDirect(track)}
-                          className="px-2.5 py-1.5 rounded-xl gradient-bg text-white text-xs font-bold transition-all active:scale-95 flex items-center gap-1 cursor-pointer shadow-sm hover:opacity-90"
-                          title="Attach main chorus part instantly"
+                          onClick={() => {
+                            globalAudio.stop();
+                            onSelectSong({
+                              ...track,
+                              startTime: 0,
+                              clipDuration: 30,
+                            });
+                            onClose();
+                          }}
+                          className="px-2.5 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 hover:text-white border border-zinc-700 text-xs font-semibold transition-all active:scale-95 flex items-center gap-1 cursor-pointer"
+                          title="Use full 30 seconds"
                         >
-                          <Flame size={12} className="fill-white" />
-                          <span>Main Part</span>
+                          <span>Use 30s</span>
                         </button>
 
-                        {/* Option 2: Choose / Trim Part anywhere in song */}
+                        {/* Option 2: Choose / Trim (15s or 30s) */}
                         <button
                           type="button"
-                          onClick={() => handleOpenTrimmer(track, 14)}
-                          className="px-2.5 py-1.5 rounded-xl bg-zinc-850 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-700 text-xs font-semibold transition-all active:scale-95 flex items-center gap-1 cursor-pointer"
-                          title="Pick custom start point in the whole song"
+                          onClick={() => handleOpenTrimmer(track, 0)}
+                          className="px-2.5 py-1.5 rounded-xl gradient-bg text-white text-xs font-bold transition-all active:scale-95 flex items-center gap-1 cursor-pointer shadow-sm hover:opacity-90"
+                          title="Pick custom 15s or 30s moment"
                         >
                           <Scissors size={12} />
-                          <span>Choose</span>
+                          <span>Choose / Trim</span>
                         </button>
                       </div>
                     </div>
