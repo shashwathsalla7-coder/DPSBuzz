@@ -1887,6 +1887,11 @@ function ChatsContent() {
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
+                    const now = Date.now();
+                    if ((window as any).__dpsbuzz_last_call_click && now - (window as any).__dpsbuzz_last_call_click < 2500) {
+                      return;
+                    }
+                    (window as any).__dpsbuzz_last_call_click = now;
                     window.dispatchEvent(
                       new CustomEvent('dpsbuzz:start_call', {
                         detail: {
@@ -1910,6 +1915,11 @@ function ChatsContent() {
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
+                    const now = Date.now();
+                    if ((window as any).__dpsbuzz_last_call_click && now - (window as any).__dpsbuzz_last_call_click < 2500) {
+                      return;
+                    }
+                    (window as any).__dpsbuzz_last_call_click = now;
                     window.dispatchEvent(
                       new CustomEvent('dpsbuzz:start_call', {
                         detail: {

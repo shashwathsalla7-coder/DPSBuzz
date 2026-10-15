@@ -1197,6 +1197,11 @@ export default function ProfileClient({ username }: { username: string }) {
                     showToast('You cannot call your own account 🙅');
                     return;
                   }
+                  const now = Date.now();
+                  if ((window as any).__dpsbuzz_last_call_click && now - (window as any).__dpsbuzz_last_call_click < 2500) {
+                    return;
+                  }
+                  (window as any).__dpsbuzz_last_call_click = now;
                   showToast(`Calling @${profile.username}...`);
                   window.dispatchEvent(
                     new CustomEvent('dpsbuzz:start_call', {
@@ -1231,6 +1236,11 @@ export default function ProfileClient({ username }: { username: string }) {
                     showToast('You cannot call your own account 🙅');
                     return;
                   }
+                  const now = Date.now();
+                  if ((window as any).__dpsbuzz_last_call_click && now - (window as any).__dpsbuzz_last_call_click < 2500) {
+                    return;
+                  }
+                  (window as any).__dpsbuzz_last_call_click = now;
                   showToast(`Video calling @${profile.username}...`);
                   window.dispatchEvent(
                     new CustomEvent('dpsbuzz:start_call', {

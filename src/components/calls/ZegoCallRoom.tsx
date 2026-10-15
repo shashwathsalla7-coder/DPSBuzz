@@ -78,10 +78,11 @@ export function ZegoCallRoom({ call, isCaller, onEndCall }: ZegoCallRoomProps) {
         const zp = ZegoUIKitPrebuilt.create(kitToken);
         zpRef.current = zp;
 
+        // Uses the exact ZEGOCLOUD scenario mode provided in official dashboard config
         zp.joinRoom({
           container: containerRef.current,
           scenario: {
-            mode: ZegoUIKitPrebuilt.OneONoneCall,
+            mode: ZegoUIKitPrebuilt.GroupCall,
             config: {
               role: ZegoUIKitPrebuilt.Host,
             },
@@ -92,10 +93,10 @@ export function ZegoCallRoom({ call, isCaller, onEndCall }: ZegoCallRoomProps) {
           showMyCameraToggleButton: true,
           showMyMicrophoneToggleButton: true,
           showAudioVideoSettingsButton: true,
-          showScreenSharingButton: Boolean(call.isVideo),
+          showScreenSharingButton: false,
           showTextChat: false,
           showUserList: false,
-          maxUsers: 2,
+          maxUsers: 10,
           layout: 'Auto',
           showLayoutButton: false,
           showNonVideoUser: true,
@@ -152,7 +153,7 @@ export function ZegoCallRoom({ call, isCaller, onEndCall }: ZegoCallRoomProps) {
           <div className="text-center space-y-1">
             <h3 className="text-base font-bold text-white">Connecting Call...</h3>
             <p className="text-xs text-neutral-400 font-medium">
-              Establishing HD RTC connection with @{isCaller ? call.receiverUsername : call.callerUsername}
+              Connecting Ultra-HD call with @{isCaller ? call.receiverUsername : call.callerUsername}
             </p>
           </div>
         </div>

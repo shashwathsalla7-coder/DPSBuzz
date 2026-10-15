@@ -62,6 +62,21 @@ export function GlobalCallProvider() {
   const answeringCallIdRef = useRef<string | null>(null);
   const consecutiveMissedPollsRef = useRef(0);
   const notifiedIncomingCallIdsRef = useRef<Set<string>>(new Set());
+  const activeCallRef = useRef<CallSession | null>(null);
+  activeCallRef.current = activeCall;
+
+  // Atomic lock preventing duplicate calls
+  const isInitiatingCallRef = useRef(false);
+
+  // Preload ZEGOCLOUD bundle in idle time to eliminate 4-second freeze on call start
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const timer = setTimeout(() => {
+        import('@zegocloud/zego-uikit-prebuilt').catch(() => {});
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, []);
 
   // Log call record into chat history
   const logCallToChat = useCallback(
@@ -142,7 +157,7 @@ export function GlobalCallProvider() {
     playCallEndedSound();
     dismissCallNotifications();
 
-    const currentCall = activeCall;
+    const currentCall = activeCallRef.current;
     const dur = durationSeconds;
 
     if (currentCall) {
@@ -169,7 +184,8 @@ export function GlobalCallProvider() {
     cleanUpCallResources();
     setActiveCall(null);
     setDurationSeconds(0);
-  }, [activeCall, isCaller, durationSeconds, logCallToChat, cleanUpCallResources]);
+    isInitiatingCallRef.current = false;
+  }, [isCaller, durationSeconds, logCallToChat, cleanUpCallResources]);
 
   // Decline incoming call
   const handleRejectIncomingCall = useCallback(async () => {
@@ -282,7 +298,7 @@ export function GlobalCallProvider() {
     }
   }, [incomingCall, handleEndCall, cleanUpCallResources]);
 
-  // Initiate outgoing call
+  // Initiate outgoing call with strict single-call debounce lock
   const startCall = useCallback(
     async (params: {
       receiverUsername: string;
@@ -290,9 +306,17 @@ export function GlobalCallProvider() {
       receiverAvatar?: string | null;
       isVideo: boolean;
     }) => {
+      // 1. Check atomic lock and existing active call
+      if (isInitiatingCallRef.current || activeCallRef.current) {
+        console.warn('[Calls] A call is already initiating or active. Dropping duplicate call request.');
+        return;
+      }
+      isInitiatingCallRef.current = true;
+
       const user = DataStore.getCurrentUser();
       if (!user || !user.username || user.username === 'guest') {
         alert('Please log in to make calls.');
+        isInitiatingCallRef.current = false;
         return;
       }
 
@@ -300,6 +324,7 @@ export function GlobalCallProvider() {
       const receiverUsername = params.receiverUsername.toLowerCase().trim();
       if (callerUsername === receiverUsername) {
         alert('You cannot call your own account.');
+        isInitiatingCallRef.current = false;
         return;
       }
 
@@ -373,6 +398,10 @@ export function GlobalCallProvider() {
             })
           );
         }
+      } finally {
+        setTimeout(() => {
+          isInitiatingCallRef.current = false;
+        }, 1500);
       }
     },
     [cleanUpCallResources]
@@ -400,7 +429,8 @@ export function GlobalCallProvider() {
     const pollCallStatus = async () => {
       try {
         if (!isPolling) return;
-        const specificCallId = activeCall?.callId || incomingCall?.callId;
+        const currentActive = activeCallRef.current;
+        const specificCallId = currentActive?.callId || incomingCall?.callId;
         const callParam = specificCallId ? `&callId=${encodeURIComponent(specificCallId)}` : '';
         const res = await fetch(`/api/calls?username=${encodeURIComponent(currentUsername)}${callParam}&t=${Date.now()}`);
         if (!res.ok) return;
@@ -411,7 +441,7 @@ export function GlobalCallProvider() {
 
         // Case 1: Incoming call arrived for current user while idle
         if (serverCall && serverCall.receiverUsername === currentUsername && serverCall.status === 'ringing') {
-          if (!activeCall && !answeringCallIdRef.current && (!incomingCall || incomingCall.callId !== serverCall.callId)) {
+          if (!currentActive && !answeringCallIdRef.current && (!incomingCall || incomingCall.callId !== serverCall.callId)) {
             setIncomingCall(serverCall);
             playIncomingRingtone();
             if (!notifiedIncomingCallIdsRef.current.has(serverCall.callId)) {
@@ -438,14 +468,14 @@ export function GlobalCallProvider() {
         }
 
         // Case 3: Active call state synchronization (For both Caller and Receiver)
-        if (activeCall) {
-          if (serverCall && serverCall.callId === activeCall.callId) {
+        if (currentActive) {
+          if (serverCall && serverCall.callId === currentActive.callId) {
             consecutiveMissedPollsRef.current = 0;
 
             // If we are caller and receiver has answered
             const hasAnswered = isCaller && serverCall.status === 'connected';
             if (hasAnswered) {
-              if (activeCall.status === 'ringing') {
+              if (currentActive.status === 'ringing') {
                 console.log('[ZEGOCLOUD] Receiver answered! Transitioning caller to connected...');
                 stopCallAudio();
                 playCallConnectedSound();
@@ -467,7 +497,7 @@ export function GlobalCallProvider() {
               cleanUpCallResources();
               setActiveCall(null);
               setDurationSeconds(0);
-              alert(`${activeCall.receiverName || 'Student'} declined the call.`);
+              alert(`${currentActive.receiverName || 'Student'} declined the call.`);
               return;
             } else if (serverCall.status === 'ended') {
               console.log('[Calls] Remote peer ended call on server. Terminating locally.');
@@ -477,19 +507,19 @@ export function GlobalCallProvider() {
               setActiveCall(null);
               setDurationSeconds(0);
               return;
-            } else if (isCaller && activeCall.status === 'ringing') {
+            } else if (isCaller && currentActive.status === 'ringing') {
               // Ringing timeout guard while still ringing on server
-              const callAge = Date.now() - (activeCall.createdAt || Date.now());
-              if (callAge > 45000) {
+              const callAge = Date.now() - (currentActive.createdAt || Date.now());
+              if (callAge > 40000) {
                 stopCallAudio();
-                alert(`No answer from @${activeCall.receiverUsername}. They are currently unavailable.`);
+                alert(`No answer from @${currentActive.receiverUsername}. They are currently unavailable.`);
                 handleEndCall();
                 return;
               }
             }
           } else {
             // serverCall is absent or mismatched
-            if (activeCall.status === 'connected') {
+            if (currentActive.status === 'connected') {
               consecutiveMissedPollsRef.current += 1;
               if (consecutiveMissedPollsRef.current >= 8) {
                 console.log('[Calls] Active call ended or missing from server. Terminating locally.');
@@ -500,12 +530,12 @@ export function GlobalCallProvider() {
                 setDurationSeconds(0);
                 return;
               }
-            } else if (isCaller && activeCall.status === 'ringing') {
-              // Ringing timeout guard: after 45 seconds of no answer, end call with unavailable message
-              const callAge = Date.now() - (activeCall.createdAt || Date.now());
-              if (callAge > 45000) {
+            } else if (isCaller && currentActive.status === 'ringing') {
+              // Ringing timeout guard: after 40 seconds of no answer, end call with unavailable message
+              const callAge = Date.now() - (currentActive.createdAt || Date.now());
+              if (callAge > 40000) {
                 stopCallAudio();
-                alert(`No answer from @${activeCall.receiverUsername}. They are currently unavailable.`);
+                alert(`No answer from @${currentActive.receiverUsername}. They are currently unavailable.`);
                 handleEndCall();
                 return;
               }
@@ -525,7 +555,7 @@ export function GlobalCallProvider() {
       if (msg.type === 'CALL_INITIATED' && msg.call) {
         const serverCall: CallSession = msg.call;
         if (serverCall.receiverUsername === currentUsername && serverCall.status === 'ringing') {
-          if (!activeCall && !answeringCallIdRef.current && (!incomingCall || incomingCall.callId !== serverCall.callId)) {
+          if (!activeCallRef.current && !answeringCallIdRef.current && (!incomingCall || incomingCall.callId !== serverCall.callId)) {
             setIncomingCall(serverCall);
             playIncomingRingtone();
             if (!notifiedIncomingCallIdsRef.current.has(serverCall.callId)) {
@@ -544,7 +574,8 @@ export function GlobalCallProvider() {
 
       if (msg.type === 'CALL_ANSWERED' && msg.call) {
         const serverCall: CallSession = msg.call;
-        if (isCaller && activeCall && activeCall.callId === serverCall.callId) {
+        const currentActive = activeCallRef.current;
+        if (isCaller && currentActive && currentActive.callId === serverCall.callId) {
           stopCallAudio();
           playCallConnectedSound();
           cleanUpCallResources();
@@ -562,7 +593,8 @@ export function GlobalCallProvider() {
       }
 
       if (msg.type === 'CALL_ENDED' || msg.type === 'CALL_REJECTED') {
-        if (activeCall?.callId === msg.callId || incomingCall?.callId === msg.callId) {
+        const currentActive = activeCallRef.current;
+        if (currentActive?.callId === msg.callId || incomingCall?.callId === msg.callId) {
           stopCallAudio();
           playCallEndedSound();
           cleanUpCallResources();
@@ -599,7 +631,7 @@ export function GlobalCallProvider() {
       window.removeEventListener('dpsbuzz:call_event_sync', handleLocalSync);
       if (bc) bc.close();
     };
-  }, [activeCall, incomingCall, isCaller, handleEndCall, cleanUpCallResources]);
+  }, [incomingCall, isCaller, handleEndCall, cleanUpCallResources]);
 
   return (
     <>

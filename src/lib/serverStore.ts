@@ -760,67 +760,21 @@ async function fetchCloudCalls(): Promise<Record<string, CallSession> | null> {
   return null;
 }
 
-let cloudCallsUploadPromise: Promise<void> | null = null;
-let pendingCloudCallsUpload: Record<string, CallSession> | null = null;
-
-async function syncCloudCalls(calls: Record<string, CallSession>): Promise<void> {
-  writeLocalCalls(calls);
-  pendingCloudCallsUpload = calls;
-  if (cloudCallsUploadPromise) return;
-
-  cloudCallsUploadPromise = (async () => {
-    try {
-      while (pendingCloudCallsUpload) {
-        const toUpload = pendingCloudCallsUpload;
-        pendingCloudCallsUpload = null;
-        await uploadCloudCalls(toUpload);
-      }
-    } finally {
-      cloudCallsUploadPromise = null;
-    }
-  })();
-}
-
-async function uploadCloudCalls(calls: Record<string, CallSession>): Promise<void> {
-  try {
-    writeLocalCalls(calls);
-    const jsonStr = JSON.stringify(calls);
-    const base64Data = 'data:application/json;base64,' + Buffer.from(jsonStr).toString('base64');
-    await cloudinary.uploader.upload(base64Data, {
-      resource_type: 'raw',
-      public_id: CLOUD_CALLS_PUBLIC_ID,
-      overwrite: true,
-      invalidate: true,
-    });
-  } catch (e) {
-    console.error('Error uploading calls to Cloudinary:', e);
-  }
-}
-
 export async function getServerActiveCalls(force = false): Promise<Record<string, CallSession>> {
-  const now = Date.now();
-  if (!force && Object.keys(callsCache).length > 0 && now - lastCallsFetchTime < CALLS_CACHE_TTL_MS) {
-    return callsCache;
-  }
-
-  const cloud = await fetchCloudCalls();
-  if (cloud) {
-    callsCache = cloud;
-    lastCallsFetchTime = now;
-    return callsCache;
-  }
-
+  const local = readLocalCalls() || {};
+  callsCache = { ...local, ...callsCache };
   return callsCache;
 }
 
 export async function getServerCall(callId: string): Promise<CallSession | null> {
-  const calls = await getServerActiveCalls(true);
-  return calls[callId] || callsCache[callId] || (readLocalCalls() || {})[callId] || null;
+  const local = readLocalCalls() || {};
+  return callsCache[callId] || local[callId] || null;
 }
 
 export async function findUserActiveCall(username: string): Promise<CallSession | null> {
   const clean = username.toLowerCase().trim();
-  const calls = await getServerActiveCalls(true);
+  const local = readLocalCalls() || {};
+  const calls = { ...local, ...callsCache };
   const now = Date.now();
   for (const call of Object.values(calls)) {
     if (
@@ -829,7 +783,7 @@ export async function findUserActiveCall(username: string): Promise<CallSession 
       call.status !== 'ended' &&
       call.status !== 'rejected'
     ) {
-      if (call.status === 'ringing' && now - (call.createdAt || now) > 45000) {
+      if (call.status === 'ringing' && now - (call.createdAt || now) > 40000) {
         continue;
       }
       if (call.status === 'connected' && now - (call.connectedAt || call.createdAt || now) > 30 * 60 * 1000) {
@@ -842,12 +796,8 @@ export async function findUserActiveCall(username: string): Promise<CallSession 
 }
 
 export async function saveServerCall(call: CallSession): Promise<CallSession> {
-  const current = await getServerActiveCalls(true);
-  const updated = { ...current, [call.callId]: call };
-  callsCache = updated;
-  lastCallsFetchTime = Date.now();
-
-  await syncCloudCalls(updated);
+  callsCache[call.callId] = call;
+  writeLocalCalls(callsCache);
   return call;
 }
 
@@ -855,16 +805,14 @@ export async function updateServerCall(
   callId: string,
   updates: Partial<CallSession>
 ): Promise<CallSession | null> {
-  const current = await getServerActiveCalls(true);
-  const existing = current[callId] || callsCache[callId] || (readLocalCalls() || {})[callId];
+  const local = readLocalCalls() || {};
+  const existing = callsCache[callId] || local[callId];
 
   const callerUsername = updates.callerUsername || existing?.callerUsername || '';
   const receiverUsername = updates.receiverUsername || existing?.receiverUsername || '';
 
-  // Guard: NEVER create or save a session with blank usernames
-  if (!callerUsername && !receiverUsername) {
-    console.warn('[serverStore] updateServerCall skipped: missing usernames for callId', callId);
-    return existing || null;
+  if (!callerUsername && !receiverUsername && !existing) {
+    return null;
   }
 
   const baseCall: CallSession = existing || {
@@ -880,25 +828,6 @@ export async function updateServerCall(
     createdAt: updates.createdAt || Date.now(),
   };
 
-  // Merge iceCandidates if present without duplicates
-  let mergedCandidates = baseCall.iceCandidates ? [...baseCall.iceCandidates] : [];
-  if (updates.iceCandidates) {
-    const candMap = new Map<string, any>();
-    mergedCandidates.forEach((c) => {
-      if (c && c.candidate) {
-        const key = `${c.sender || ''}_${typeof c.candidate === 'string' ? c.candidate : JSON.stringify(c.candidate)}`;
-        candMap.set(key, c);
-      }
-    });
-    updates.iceCandidates.forEach((c) => {
-      if (c && c.candidate) {
-        const key = `${c.sender || ''}_${typeof c.candidate === 'string' ? c.candidate : JSON.stringify(c.candidate)}`;
-        candMap.set(key, c);
-      }
-    });
-    mergedCandidates = Array.from(candMap.values());
-  }
-
   const updatedCall: CallSession = {
     ...baseCall,
     ...updates,
@@ -906,23 +835,27 @@ export async function updateServerCall(
     receiverUsername: receiverUsername || baseCall.receiverUsername,
     callerName: updates.callerName || baseCall.callerName,
     receiverName: updates.receiverName || baseCall.receiverName,
-    ...(mergedCandidates.length > 0 ? { iceCandidates: mergedCandidates } : {}),
   };
-  const updatedMap = { ...current, [callId]: updatedCall };
-  callsCache = updatedMap;
-  lastCallsFetchTime = Date.now();
 
-  await syncCloudCalls(updatedMap);
+  if (updatedCall.status === 'ended' || updatedCall.status === 'rejected') {
+    delete callsCache[callId];
+    delete local[callId];
+    writeLocalCalls(local);
+  } else {
+    callsCache[callId] = updatedCall;
+    local[callId] = updatedCall;
+    writeLocalCalls(local);
+  }
+
   return updatedCall;
 }
 
 export async function deleteServerCall(callId: string): Promise<void> {
-  const current = await getServerActiveCalls(true);
-  if (current[callId]) {
-    delete current[callId];
-    callsCache = current;
-    lastCallsFetchTime = Date.now();
-    await syncCloudCalls(current);
+  delete callsCache[callId];
+  const local = readLocalCalls() || {};
+  if (local[callId]) {
+    delete local[callId];
+    writeLocalCalls(local);
   }
 }
 
