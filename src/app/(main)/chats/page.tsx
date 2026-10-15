@@ -100,6 +100,33 @@ function ChatsContent() {
     return conv.id;
   };
 
+  const getListForConv = (
+    msgState: Record<string, ChatMessage[]>,
+    canonicalId: string,
+    rawId?: string
+  ): ChatMessage[] => {
+    const cList = msgState[canonicalId];
+    const rList = rawId ? msgState[rawId] : undefined;
+    const hasC = Array.isArray(cList) && cList.length > 0;
+    const hasR = Array.isArray(rList) && rList.length > 0;
+
+    if (hasC && hasR) {
+      const map = new Map<string, ChatMessage>();
+      for (const m of cList!) map.set(m.id, m);
+      for (const m of rList!) {
+        if (!map.has(m.id)) {
+          map.set(m.id, m);
+        } else {
+          map.set(m.id, { ...map.get(m.id)!, ...m });
+        }
+      }
+      return Array.from(map.values());
+    }
+    if (hasC) return cList!;
+    if (hasR) return rList!;
+    return (cList || rList || []) as ChatMessage[];
+  };
+
   const refreshLiveStudents = () => {
     try {
       const all = DataStore.getProfiles();
@@ -155,6 +182,7 @@ function ChatsContent() {
               const parsed = JSON.parse(savedMsgs);
               const cleanMap: Record<string, ChatMessage[]> = {};
               for (const [k, v] of Object.entries(parsed)) {
+                if (!Array.isArray(v)) continue;
                 if (k.startsWith('conv-group-')) {
                   cleanMap[k] = v as ChatMessage[];
                 } else if (k.includes('__')) {
@@ -162,9 +190,28 @@ function ChatsContent() {
                   if (parts.includes(currentUsername)) {
                     cleanMap[k] = v as ChatMessage[];
                   }
+                } else if (k.startsWith('conv-')) {
+                  const otherUser = k.replace(/^conv-/, '').toLowerCase().trim();
+                  if (otherUser && otherUser !== currentUsername) {
+                    const cKey = [currentUsername, otherUser].sort().join('__');
+                    cleanMap[cKey] = v as ChatMessage[];
+                    cleanMap[k] = v as ChatMessage[];
+                  }
                 }
               }
-              setChatMessages(cleanMap);
+              setChatMessages((prev) => {
+                // Non-destructive merge with in-memory state
+                const next = { ...prev };
+                for (const [k, v] of Object.entries(cleanMap)) {
+                  const existing = next[k] || [];
+                  const msgMap = new Map(existing.map((m) => [m.id, m]));
+                  for (const m of v) {
+                    msgMap.set(m.id, { ...(msgMap.get(m.id) || {}), ...m });
+                  }
+                  next[k] = Array.from(msgMap.values());
+                }
+                return next;
+              });
             }
 
             const userConvKey = `dpsbuzz_chat_conversations_${currentUsername}_v3`;
@@ -405,7 +452,7 @@ function ChatsContent() {
     }
   }, [activeConversation, currentUsername]);
 
-  // Live accelerated polling (400ms) when a conversation is actively open
+  // Live accelerated polling (1.5s) when a conversation is actively open
   useEffect(() => {
     if (!activeConversation) return;
     const rawId = activeConversation.id;
@@ -424,7 +471,7 @@ function ChatsContent() {
         if (data.success && Array.isArray(data.messages) && data.messages.length > 0) {
           let hasUnreadFromOther = false;
           setChatMessages((prev) => {
-            const currentList = prev[rawId] || prev[canonicalId] || [];
+            const currentList = getListForConv(prev, canonicalId, rawId);
             let changed = false;
             const msgMap = new Map(currentList.map((m) => [m.id, m]));
             for (const rawMsg of data.messages) {
@@ -449,11 +496,17 @@ function ChatsContent() {
             }
             if (changed) {
               const merged = Array.from(msgMap.values());
-              return {
+              const nextMap = {
                 ...prev,
                 [rawId]: merged,
                 [canonicalId]: merged,
               };
+              try {
+                if (currentUsername) {
+                  localStorage.setItem(`dpsbuzz_chat_messages_${currentUsername}_v3`, JSON.stringify(nextMap));
+                }
+              } catch {}
+              return nextMap;
             }
             return prev;
           });
@@ -466,7 +519,7 @@ function ChatsContent() {
     };
 
     pollMessages();
-    const interval = setInterval(pollMessages, 400);
+    const interval = setInterval(pollMessages, 1500);
     return () => clearInterval(interval);
   }, [activeConversation, currentUsername]);
 
@@ -484,6 +537,12 @@ function ChatsContent() {
 
       if (!isGroup && !isDirectWithMe) return;
 
+      const isActiveThisConv =
+        Boolean(activeConversation) &&
+        (activeConversation!.id === conversationId ||
+          getCanonicalConvId(activeConversation!) === conversationId);
+      const matchingRawId = isActiveThisConv ? activeConversation?.id : undefined;
+
       if (type === 'MESSAGE_SENT' && message) {
         const incomingSender = (message.senderUsername || senderUsername || '').toLowerCase().trim();
         const isMe = incomingSender === currentUsername;
@@ -493,8 +552,7 @@ function ChatsContent() {
         };
 
         setChatMessages((prev) => {
-          const rawId = activeConversation?.id;
-          const currentList = prev[conversationId] || (rawId ? prev[rawId] : []) || [];
+          const currentList = getListForConv(prev, conversationId, matchingRawId);
           if (currentList.some((m) => m.id === formattedMsg.id)) {
             return prev;
           }
@@ -502,7 +560,7 @@ function ChatsContent() {
           const nextMap = {
             ...prev,
             [conversationId]: updated,
-            ...(rawId ? { [rawId]: updated } : {}),
+            ...(matchingRawId ? { [matchingRawId]: updated } : {}),
           };
           try {
             if (currentUsername) {
@@ -589,24 +647,22 @@ function ChatsContent() {
         });
       } else if (type === 'MESSAGE_UNSENT' && msgId) {
         setChatMessages((prev) => {
-          const rawId = activeConversation?.id;
-          const currentList = prev[conversationId] || (rawId ? prev[rawId] : []) || [];
+          const currentList = getListForConv(prev, conversationId, matchingRawId);
           const filtered = currentList.filter((m) => m.id !== msgId);
           return {
             ...prev,
             [conversationId]: filtered,
-            ...(rawId ? { [rawId]: filtered } : {}),
+            ...(matchingRawId ? { [matchingRawId]: filtered } : {}),
           };
         });
       } else if (type === 'MESSAGE_REACTION' && msgId) {
         setChatMessages((prev) => {
-          const rawId = activeConversation?.id;
-          const currentList = prev[conversationId] || (rawId ? prev[rawId] : []) || [];
+          const currentList = getListForConv(prev, conversationId, matchingRawId);
           const updated = currentList.map((m) => (m.id === msgId ? { ...m, reaction } : m));
           return {
             ...prev,
             [conversationId]: updated,
-            ...(rawId ? { [rawId]: updated } : {}),
+            ...(matchingRawId ? { [matchingRawId]: updated } : {}),
           };
         });
       } else if (type === 'VANISH_TOGGLE') {
@@ -615,20 +671,18 @@ function ChatsContent() {
         }
       } else if (type === 'VANISH_PURGE') {
         setChatMessages((prev) => {
-          const rawId = activeConversation?.id;
-          const currentList = prev[conversationId] || (rawId ? prev[rawId] : []) || [];
+          const currentList = getListForConv(prev, conversationId, matchingRawId);
           const nonVanish = currentList.filter((m) => !m.is_vanish_mode_message && !m.isVanishMode);
           return {
             ...prev,
             [conversationId]: nonVanish,
-            ...(rawId ? { [rawId]: nonVanish } : {}),
+            ...(matchingRawId ? { [matchingRawId]: nonVanish } : {}),
           };
         });
       } else if (type === 'MESSAGES_READ') {
         const reader = (eventData.senderUsername || '').toLowerCase().trim();
         setChatMessages((prev) => {
-          const rawId = activeConversation?.id;
-          const currentList = prev[conversationId] || (rawId ? prev[rawId] : []) || [];
+          const currentList = getListForConv(prev, conversationId, matchingRawId);
           let updatedAny = false;
           const marked = currentList.map((m) => {
             const sender = (m.senderUsername || '').toLowerCase().trim();
@@ -642,7 +696,7 @@ function ChatsContent() {
           return {
             ...prev,
             [conversationId]: marked,
-            ...(rawId ? { [rawId]: marked } : {}),
+            ...(matchingRawId ? { [matchingRawId]: marked } : {}),
           };
         });
       }
@@ -829,11 +883,34 @@ function ChatsContent() {
                   if (!isGroup && !isDirectWithMe) continue;
 
                   if (Array.isArray(list)) {
-                    const current = merged[key] || [];
-                    const existingIds = new Set(current.map((m: any) => m.id));
-                    const newOnes = (list as any[]).filter((m) => !existingIds.has(m.id));
-                    if (newOnes.length > 0) {
-                      merged[key] = [...current, ...newOnes];
+                    let otherUser = '';
+                    if (key.includes('__')) {
+                      const parts = key.split('__').map((p) => p.trim().toLowerCase());
+                      otherUser = parts.find((p) => p !== currentUsername) || '';
+                    }
+                    const rawKey = otherUser ? `conv-${otherUser}` : undefined;
+                    const current = getListForConv(merged, key, rawKey);
+                    const msgMap = new Map<string, ChatMessage>(current.map((m: any) => [m.id, m]));
+                    let listChanged = false;
+                    for (const sMsg of list as any[]) {
+                      const local = msgMap.get(sMsg.id);
+                      if (!local) {
+                        msgMap.set(sMsg.id, sMsg);
+                        listChanged = true;
+                      } else if (
+                        Boolean(local.is_read) !== Boolean(sMsg.is_read) ||
+                        Boolean(local.isSeen) !== Boolean(sMsg.isSeen) ||
+                        Boolean(local.isDelivered) !== Boolean(sMsg.isDelivered) ||
+                        local.reaction !== sMsg.reaction
+                      ) {
+                        msgMap.set(sMsg.id, { ...local, ...sMsg });
+                        listChanged = true;
+                      }
+                    }
+                    if (listChanged) {
+                      const updatedList = Array.from(msgMap.values());
+                      merged[key] = updatedList;
+                      if (rawKey) merged[rawKey] = updatedList;
                       hasNew = true;
                     }
                   }
@@ -872,7 +949,7 @@ function ChatsContent() {
     };
 
     fetchLatestSync();
-    const interval = setInterval(fetchLatestSync, 1000);
+    const interval = setInterval(fetchLatestSync, 2500);
     return () => clearInterval(interval);
   }, [currentUsername]);
 
@@ -1150,7 +1227,7 @@ function ChatsContent() {
       };
 
       setChatMessages((prev) => {
-        const currentList = prev[rawId] || prev[canonicalId] || [];
+        const currentList = getListForConv(prev, canonicalId, rawId);
         const updated = [...currentList, newMsg];
         const nextMap = {
           ...prev,
@@ -1289,7 +1366,7 @@ function ChatsContent() {
     const canonicalId = getCanonicalConvId(activeConversation);
 
     setChatMessages((prev) => {
-      const existing = prev[canonicalId] || prev[rawId] || [];
+      const existing = getListForConv(prev, canonicalId, rawId);
       const filtered = existing.filter((m) => m.id !== msgId);
       return {
         ...prev,
@@ -1367,7 +1444,7 @@ function ChatsContent() {
     };
 
     setChatMessages((prev) => {
-      const currentList = prev[rawId] || prev[canonicalId] || [];
+      const currentList = getListForConv(prev, canonicalId, rawId);
       const updated = [...currentList, newMsg];
       const nextMap = {
         ...prev,
@@ -1412,7 +1489,7 @@ function ChatsContent() {
       .then((res) => {
         if (res.ok) {
           setChatMessages((prev) => {
-            const currentList = prev[rawId] || prev[canonicalId] || [];
+            const currentList = getListForConv(prev, canonicalId, rawId);
             const updated = currentList.map((m) =>
               m.id === newMsg.id ? { ...m, isDelivered: true } : m
             );
@@ -1437,7 +1514,7 @@ function ChatsContent() {
     let updatedTargetMsg: ChatMessage | null = null;
 
     setChatMessages((prev) => {
-      const currentList = prev[rawId] || prev[canonicalId] || [];
+      const currentList = getListForConv(prev, canonicalId, rawId);
       const updated = currentList.map((m) => {
         if (m.id === msgId) {
           const nextEmoji = m.reaction === emoji ? undefined : emoji;
@@ -1522,7 +1599,7 @@ function ChatsContent() {
     };
 
     setChatMessages((prev) => {
-      const currentList = prev[rawId] || prev[canonicalId] || [];
+      const currentList = getListForConv(prev, canonicalId, rawId);
       const updated = [...currentList, newMsg];
       const nextMap = {
         ...prev,
@@ -1569,7 +1646,7 @@ function ChatsContent() {
       .then((res) => {
         if (res.ok) {
           setChatMessages((prev) => {
-            const currentList = prev[rawId] || prev[canonicalId] || [];
+            const currentList = getListForConv(prev, canonicalId, rawId);
             const updated = currentList.map((m) =>
               m.id === newMsg.id ? { ...m, isDelivered: true } : m
             );
@@ -1628,7 +1705,7 @@ function ChatsContent() {
       };
 
       setChatMessages((prev) => {
-        const existing = prev[canonicalId] || prev[rawId] || [];
+        const existing = getListForConv(prev, canonicalId, rawId);
         const next = [...existing, newMsg];
         const nextMap = {
           ...prev,
@@ -1665,7 +1742,7 @@ function ChatsContent() {
         .then((res) => {
           if (res.ok) {
             setChatMessages((prev) => {
-              const currentList = prev[rawId] || prev[canonicalId] || [];
+              const currentList = getListForConv(prev, canonicalId, rawId);
               const updated = currentList.map((m) =>
                 m.id === newMsg.id ? { ...m, isDelivered: true } : m
               );
@@ -1699,7 +1776,7 @@ function ChatsContent() {
       }
     }
 
-    const messages = chatMessages[canonicalId] || (isGroup ? chatMessages[activeConversation.id] : []) || [];
+    const messages = getListForConv(chatMessages, canonicalId, activeConversation.id);
     const colors = getAvatarColorPair(activeConversation.username || activeConversation.name);
     const initials = activeConversation.name.slice(0, 2).toUpperCase();
 
@@ -1714,7 +1791,7 @@ function ChatsContent() {
     const isSelfChat = targetUser === currentUsername;
 
     return (
-      <div className="fixed inset-0 z-50 md:static md:z-auto md:min-h-[85vh] flex flex-col select-none bg-[var(--surface)] text-[var(--text)]">
+      <div className="fixed inset-0 z-50 md:static md:z-auto md:min-h-[85vh] flex flex-col select-none bg-[var(--surface)] text-[var(--text)] font-sf-display font-semibold">
         {/* Chat Header (56px) */}
         <header
           className="h-14 px-3 flex items-center justify-between border-b shrink-0 sticky top-0 z-30"
@@ -2329,7 +2406,7 @@ function ChatsContent() {
   // MAIN CHATS INBOX VIEW
   return (
     <div
-      className="min-h-dvh flex flex-col select-none"
+      className="min-h-dvh flex flex-col select-none font-sf-display font-semibold"
       style={{
         backgroundColor: 'var(--bg)',
         color: 'var(--text)',

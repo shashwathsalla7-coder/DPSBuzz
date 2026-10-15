@@ -222,6 +222,11 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
           hasUnseen: uStories.some((s) => !s.isSeen),
         });
       });
+      groups.sort((a, b) => {
+        const latestA = Math.max(...a.stories.map((s) => new Date(s.createdAt).getTime() || 0));
+        const latestB = Math.max(...b.stories.map((s) => new Date(s.createdAt).getTime() || 0));
+        return latestB - latestA;
+      });
       return groups;
     }
     return [];

@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerStore, saveServerStore } from '@/lib/serverStore';
 
+const NO_CACHE_HEADERS = {
+  'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+  'Pragma': 'no-cache',
+  'Expires': '0',
+};
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
@@ -38,12 +44,12 @@ export async function GET(req: NextRequest) {
       notifications: store.notifications || [],
       notices: store.notices || [],
       lastUpdated: store.lastUpdated,
-    });
+    }, { headers: NO_CACHE_HEADERS });
   } catch (error: any) {
     console.error('Error in GET /api/sync:', error);
     return NextResponse.json(
       { success: false, error: error.message || 'Sync failed' },
-      { status: 500 }
+      { status: 500, headers: NO_CACHE_HEADERS }
     );
   }
 }
@@ -144,12 +150,12 @@ export async function POST(req: NextRequest) {
       notices: updated.notices,
       deletedUsernames: updated.deletedUsernames || [],
       lastUpdated: updated.lastUpdated,
-    });
+    }, { headers: NO_CACHE_HEADERS });
   } catch (error: any) {
     console.error('Error in POST /api/sync:', error);
     return NextResponse.json(
       { success: false, error: error.message || 'Sync update failed' },
-      { status: 500 }
+      { status: 500, headers: NO_CACHE_HEADERS }
     );
   }
 }

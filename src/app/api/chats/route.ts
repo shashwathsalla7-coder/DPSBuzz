@@ -8,6 +8,12 @@ import {
   markServerChatMessagesRead,
 } from '@/lib/serverStore';
 
+const NO_CACHE_HEADERS = {
+  'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+  'Pragma': 'no-cache',
+  'Expires': '0',
+};
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
@@ -19,7 +25,7 @@ export async function GET(req: NextRequest) {
       if (!username) {
         return NextResponse.json(
           { success: false, error: 'Unauthorized: Username is required to access private chat' },
-          { status: 401 }
+          { status: 401, headers: NO_CACHE_HEADERS }
         );
       }
 
@@ -29,25 +35,25 @@ export async function GET(req: NextRequest) {
         if (!participants.includes(username)) {
           return NextResponse.json(
             { success: false, error: 'Unauthorized: You are not a participant in this conversation' },
-            { status: 403 }
+            { status: 403, headers: NO_CACHE_HEADERS }
           );
         }
         canonicalKey = participants.sort().join('__');
       } else if (conversationId.startsWith('conv-') && !conversationId.startsWith('conv-group-')) {
         const other = conversationId.replace(/^conv-/, '').toLowerCase().trim();
         if (!other || other === username) {
-          return NextResponse.json({ success: true, messages: [] });
+          return NextResponse.json({ success: true, messages: [] }, { headers: NO_CACHE_HEADERS });
         }
         canonicalKey = [username, other].sort().join('__');
       }
 
       const messages = await getServerChatMessages(canonicalKey);
-      return NextResponse.json({ success: true, messages });
+      return NextResponse.json({ success: true, messages }, { headers: NO_CACHE_HEADERS });
     }
 
     // If no conversationId is passed, only return conversations where the user is a participant
     if (!username) {
-      return NextResponse.json({ success: true, chatMessages: {} });
+      return NextResponse.json({ success: true, chatMessages: {} }, { headers: NO_CACHE_HEADERS });
     }
 
     const store = await getServerStore();
@@ -63,9 +69,9 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    return NextResponse.json({ success: true, chatMessages: userMessages });
+    return NextResponse.json({ success: true, chatMessages: userMessages }, { headers: NO_CACHE_HEADERS });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: error.message }, { status: 500, headers: NO_CACHE_HEADERS });
   }
 }
 
@@ -75,17 +81,17 @@ export async function POST(req: NextRequest) {
     const { conversationId, message, senderUsername, action, messageId } = body;
 
     if (!conversationId) {
-      return NextResponse.json({ success: false, error: 'conversationId is required' }, { status: 400 });
+      return NextResponse.json({ success: false, error: 'conversationId is required' }, { status: 400, headers: NO_CACHE_HEADERS });
     }
 
     if (action === 'unsend' && messageId) {
       await unsendServerChatMessage(conversationId, messageId);
-      return NextResponse.json({ success: true, action: 'unsend', messageId });
+      return NextResponse.json({ success: true, action: 'unsend', messageId }, { headers: NO_CACHE_HEADERS });
     }
 
     if (action === 'purge_vanish') {
       await purgeVanishServerChatMessages(conversationId);
-      return NextResponse.json({ success: true, action: 'purge_vanish' });
+      return NextResponse.json({ success: true, action: 'purge_vanish' }, { headers: NO_CACHE_HEADERS });
     }
 
     if (action === 'mark_read') {
@@ -93,11 +99,11 @@ export async function POST(req: NextRequest) {
       if (reader) {
         await markServerChatMessagesRead(conversationId, reader);
       }
-      return NextResponse.json({ success: true, action: 'mark_read' });
+      return NextResponse.json({ success: true, action: 'mark_read' }, { headers: NO_CACHE_HEADERS });
     }
 
-    if (!message || !message.text) {
-      return NextResponse.json({ success: false, error: 'Invalid message payload' }, { status: 400 });
+    if (!message || (!message.text && !message.sharedPost && !message.mediaUrl && !message.audioUrl && !message.image && !message.id)) {
+      return NextResponse.json({ success: false, error: 'Invalid message payload' }, { status: 400, headers: NO_CACHE_HEADERS });
     }
 
     // Verify sender belongs to this conversation
@@ -106,14 +112,14 @@ export async function POST(req: NextRequest) {
       if (!sender) {
         return NextResponse.json(
           { success: false, error: 'Unauthorized: Sender username is required for private direct messages' },
-          { status: 401 }
+          { status: 401, headers: NO_CACHE_HEADERS }
         );
       }
       const participants = conversationId.split('__').map((p: string) => p.trim().toLowerCase());
       if (!participants.includes(sender)) {
         return NextResponse.json(
           { success: false, error: 'Unauthorized: Sender is not a participant in this conversation' },
-          { status: 403 }
+          { status: 403, headers: NO_CACHE_HEADERS }
         );
       }
     }
@@ -123,8 +129,8 @@ export async function POST(req: NextRequest) {
       success: true,
       message,
       totalMessages: (updated.chatMessages[conversationId] || []).length,
-    });
+    }, { headers: NO_CACHE_HEADERS });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: error.message }, { status: 500, headers: NO_CACHE_HEADERS });
   }
 }

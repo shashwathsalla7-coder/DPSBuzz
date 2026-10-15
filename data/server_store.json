@@ -34,6 +34,25 @@
   ],
   "stories": [
     {
+      "userId": "admin-shashwath-id",
+      "username": "shashwath71845",
+      "fullName": "Shashwath Salla",
+      "avatar": null,
+      "text": "ADD YOUR PROFILE SONG",
+      "background": "linear-gradient(135deg, #FF5A1F 0%, #E0207F 100%)",
+      "textColor": "#FFFFFF",
+      "id": "story-1792079094594-cfrj",
+      "createdAt": "2026-10-15T15:44:54.594Z",
+      "expiresAt": "2026-10-16T15:44:54.594Z",
+      "hasStory": true,
+      "isSeen": true,
+      "isNew": false,
+      "viewers": [
+        "shashwath71845"
+      ],
+      "viewsCount": 1
+    },
+    {
       "userId": "student-1792074799861",
       "username": "mokshith7b",
       "fullName": "Neelam mokshith ram",
@@ -65,6 +84,33 @@
     }
   ],
   "profiles": [
+    {
+      "id": "admin-shashwath-id",
+      "username": "shashwath71845",
+      "fullName": "Shashwath Salla",
+      "role": "admin",
+      "isVerified": true,
+      "isApproved": true,
+      "avatar": null,
+      "bio": "",
+      "class": "8",
+      "section": "G",
+      "followerCount": 0,
+      "followingCount": 3,
+      "postCount": 1,
+      "spiritPoints": 0,
+      "createdAt": "2026-10-01T00:00:00.000Z",
+      "song": {
+        "id": "1831237608",
+        "title": "Arz Kiya Hai  Coke Studio Bharat",
+        "artist": "Anuv Jain",
+        "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/02/e7/77/02e77709-a5f6-5470-9e5b-70a0d6ff45ed/25UM1IM13936.rgb.jpg/200x200bb.jpg",
+        "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/e7/37/24/e73724af-35c2-505c-5caa-9bb1b3b7c37c/mzaf_15804261838668939498.plus.aac.p.m4a",
+        "durationSeconds": 295,
+        "startTime": 0,
+        "clipDuration": 15
+      }
+    },
     {
       "id": "student-1792074799861",
       "username": "mokshith7b",
@@ -199,23 +245,6 @@
       "spiritPoints": 50,
       "referralCount": 0,
       "createdAt": "2026-10-15T09:46:39.710Z"
-    },
-    {
-      "id": "admin-shashwath-id",
-      "username": "shashwath71845",
-      "fullName": "Shashwath Salla",
-      "role": "admin",
-      "isVerified": true,
-      "isApproved": true,
-      "avatar": null,
-      "bio": "",
-      "class": "8",
-      "section": "G",
-      "followerCount": 0,
-      "followingCount": 1,
-      "postCount": 1,
-      "spiritPoints": 0,
-      "createdAt": "2026-10-01T00:00:00.000Z"
     }
   ],
   "chatNotes": [
@@ -779,9 +808,10 @@
         "senderUsername": "shashwath71845",
         "time": "8:47 PM",
         "isDelivered": false,
-        "is_read": false,
-        "isSeen": false,
-        "conversationId": "rohan728__shashwath71845"
+        "is_read": true,
+        "isSeen": true,
+        "conversationId": "rohan728__shashwath71845",
+        "readAt": 1792078044671
       },
       {
         "id": "msg-1792077485630-nrub",
@@ -789,7 +819,10 @@
         "sender": "me",
         "senderUsername": "shashwath71845",
         "time": "8:48 PM",
-        "conversationId": "rohan728__shashwath71845"
+        "conversationId": "rohan728__shashwath71845",
+        "is_read": true,
+        "isSeen": true,
+        "readAt": 1792078044671
       }
     ],
     "ashwith__shashwath71845": [
@@ -1498,7 +1531,10 @@
         "senderUsername": "shashwath71845",
         "time": "8:45 PM",
         "isCallLog": true,
-        "conversationId": "mokshith7b__shashwath71845"
+        "conversationId": "mokshith7b__shashwath71845",
+        "is_read": true,
+        "isSeen": true,
+        "readAt": 1792078524071
       },
       {
         "id": "call-log-1792077331815-i93g",
@@ -1507,7 +1543,10 @@
         "senderUsername": "shashwath71845",
         "time": "8:45 PM",
         "isCallLog": true,
-        "conversationId": "mokshith7b__shashwath71845"
+        "conversationId": "mokshith7b__shashwath71845",
+        "is_read": true,
+        "isSeen": true,
+        "readAt": 1792078524071
       },
       {
         "id": "call-log-1792077345735-wk18",
@@ -1516,7 +1555,10 @@
         "senderUsername": "shashwath71845",
         "time": "8:45 PM",
         "isCallLog": true,
-        "conversationId": "mokshith7b__shashwath71845"
+        "conversationId": "mokshith7b__shashwath71845",
+        "is_read": true,
+        "isSeen": true,
+        "readAt": 1792078524071
       },
       {
         "id": "msg-1792077547784-elde",
@@ -1525,9 +1567,10 @@
         "senderUsername": "shashwath71845",
         "time": "8:49 PM",
         "isDelivered": false,
-        "is_read": false,
-        "isSeen": false,
-        "conversationId": "mokshith7b__shashwath71845"
+        "is_read": true,
+        "isSeen": true,
+        "conversationId": "mokshith7b__shashwath71845",
+        "readAt": 1792078524071
       },
       {
         "id": "call-log-1792077724088-d70p",
@@ -1536,7 +1579,10 @@
         "senderUsername": "shashwath71845",
         "time": "8:52 PM",
         "isCallLog": true,
-        "conversationId": "mokshith7b__shashwath71845"
+        "conversationId": "mokshith7b__shashwath71845",
+        "is_read": true,
+        "isSeen": true,
+        "readAt": 1792078524071
       },
       {
         "id": "call-log-1792077743277-vokg",
@@ -1545,6 +1591,172 @@
         "senderUsername": "shashwath71845",
         "time": "8:52 PM",
         "isCallLog": true,
+        "conversationId": "mokshith7b__shashwath71845",
+        "is_read": true,
+        "isSeen": true,
+        "readAt": 1792078524071
+      },
+      {
+        "id": "call-log-1792078053513-yg12",
+        "text": "📞 Missed voice call",
+        "sender": "me",
+        "senderUsername": "shashwath71845",
+        "time": "8:57 PM",
+        "isCallLog": true,
+        "conversationId": "mokshith7b__shashwath71845",
+        "is_read": true,
+        "isSeen": true,
+        "readAt": 1792078524071
+      },
+      {
+        "id": "call-log-1792078540949-kig7",
+        "text": "📞 Missed voice call",
+        "sender": "me",
+        "senderUsername": "mokshith7b",
+        "time": "9:05 PM",
+        "isCallLog": true,
+        "conversationId": "mokshith7b__shashwath71845",
+        "is_read": true,
+        "isSeen": true,
+        "readAt": 1792078545353
+      },
+      {
+        "id": "call-log-1792078542030-ahkv",
+        "text": "📞 Missed voice call",
+        "sender": "me",
+        "senderUsername": "shashwath71845",
+        "time": "9:05 PM",
+        "isCallLog": true,
+        "conversationId": "mokshith7b__shashwath71845",
+        "is_read": true,
+        "isSeen": true,
+        "readAt": 1792078546023
+      },
+      {
+        "id": "call-log-1792078564532-am8b",
+        "text": "📞 Missed voice call",
+        "sender": "me",
+        "senderUsername": "shashwath71845",
+        "time": "9:06 PM",
+        "isCallLog": true,
+        "conversationId": "mokshith7b__shashwath71845",
+        "is_read": true,
+        "isSeen": true,
+        "readAt": 1792078578256
+      },
+      {
+        "id": "call-log-1792078612102-exc9",
+        "text": "📞 Missed voice call",
+        "sender": "me",
+        "senderUsername": "shashwath71845",
+        "time": "9:06 PM",
+        "isCallLog": true,
+        "conversationId": "mokshith7b__shashwath71845",
+        "is_read": true,
+        "isSeen": true,
+        "readAt": 1792078618147
+      },
+      {
+        "id": "call-log-1792078621359-435o",
+        "text": "📞 Voice call · 47s",
+        "sender": "me",
+        "senderUsername": "mokshith7b",
+        "time": "9:07 PM",
+        "isCallLog": true,
+        "conversationId": "mokshith7b__shashwath71845",
+        "is_read": true,
+        "isSeen": true,
+        "readAt": 1792078630592
+      },
+      {
+        "id": "call-log-1792078689021-wji1",
+        "text": "📞 Voice call · 23s",
+        "sender": "me",
+        "senderUsername": "shashwath71845",
+        "time": "9:08 PM",
+        "isCallLog": true,
+        "conversationId": "mokshith7b__shashwath71845",
+        "is_read": true,
+        "isSeen": true,
+        "readAt": 1792078718145
+      },
+      {
+        "id": "msg-1792078780635-zd2x",
+        "text": "ravatledu",
+        "sender": "me",
+        "senderUsername": "shashwath71845",
+        "time": "9:09 PM",
+        "isDelivered": false,
+        "is_read": true,
+        "isSeen": true,
+        "conversationId": "mokshith7b__shashwath71845",
+        "readAt": 1792078793856
+      },
+      {
+        "id": "call-log-1792078805813-58bs",
+        "text": "📞 Missed voice call",
+        "sender": "me",
+        "senderUsername": "mokshith7b",
+        "time": "9:10 PM",
+        "isCallLog": true,
+        "conversationId": "mokshith7b__shashwath71845",
+        "is_read": true,
+        "isSeen": true,
+        "readAt": 1792078880384
+      },
+      {
+        "id": "msg-1792078826284-bhn5",
+        "text": "Nee voice vachindhi",
+        "sender": "me",
+        "senderUsername": "mokshith7b",
+        "time": "9:10 PM",
+        "isDelivered": false,
+        "is_read": true,
+        "isSeen": true,
+        "conversationId": "mokshith7b__shashwath71845",
+        "readAt": 1792078880384
+      },
+      {
+        "id": "msg-1792078849160-it16",
+        "text": "Starting lo eppudu ravatledhu",
+        "sender": "me",
+        "senderUsername": "mokshith7b",
+        "time": "9:10 PM",
+        "isDelivered": false,
+        "is_read": true,
+        "isSeen": true,
+        "conversationId": "mokshith7b__shashwath71845",
+        "readAt": 1792078880384
+      },
+      {
+        "id": "call-log-1792078920096-loew",
+        "text": "📞 Missed voice call",
+        "sender": "me",
+        "senderUsername": "shashwath71845",
+        "time": "9:12 PM",
+        "isCallLog": true,
+        "conversationId": "mokshith7b__shashwath71845"
+      },
+      {
+        "id": "msg-1792078969536-tnzg",
+        "text": "sare le ra fix chesta  story aithe pettu insta la referral code  vallu emessage chesinapuddu pettu",
+        "sender": "me",
+        "senderUsername": "shashwath71845",
+        "time": "9:12 PM",
+        "isDelivered": false,
+        "is_read": false,
+        "isSeen": false,
+        "conversationId": "mokshith7b__shashwath71845"
+      },
+      {
+        "id": "msg-1792078979376-j4t5",
+        "text": "leaderboard lo untavu",
+        "sender": "me",
+        "senderUsername": "shashwath71845",
+        "time": "9:12 PM",
+        "isDelivered": false,
+        "is_read": false,
+        "isSeen": false,
         "conversationId": "mokshith7b__shashwath71845"
       }
     ],
@@ -1712,5 +1924,5 @@
     }
   ],
   "activeCalls": {},
-  "lastUpdated": 1792077769270
+  "lastUpdated": 1792079133786
 }

@@ -1885,12 +1885,34 @@ export const DataStore = {
       map.get(u)!.push(story);
     }
 
-    const cleanMe = (currentUsername || '').toLowerCase();
+    const cleanMe = (currentUsername || '').toLowerCase().trim();
     let myGroup: UserStoryGroup | null = null;
     const peerGroups: UserStoryGroup[] = [];
     const now = Date.now();
 
+    // Map profile directory for active avatars, full names, and privacy flags
+    const profiles = this.getProfiles();
+    const profileMap = new Map<string, Profile>();
+    for (const p of profiles) {
+      if (p && p.username) {
+        profileMap.set(p.username.toLowerCase().trim(), p);
+      }
+    }
+
+    // Set of usernames cleanMe follows
+    const followingSet = new Set<string>();
+    if (cleanMe) {
+      try {
+        const followingProfiles = this.getFollowing(cleanMe);
+        for (const f of followingProfiles) {
+          if (f && f.username) followingSet.add(f.username.toLowerCase().trim());
+        }
+      } catch {}
+    }
+
     map.forEach((userStories, username) => {
+      const cleanUser = username.toLowerCase().trim();
+
       // Filter out any expired stories (> 24 hours old)
       const activeStories = userStories.filter((s) => {
         if (!s) return false;
@@ -1901,17 +1923,28 @@ export const DataStore = {
 
       if (activeStories.length === 0) return;
 
-      // Sort stories for this user chronologically (oldest first)
+      const isOwn = cleanUser === cleanMe;
+      const userProfile = profileMap.get(cleanUser);
+      const isPrivate = Boolean(userProfile?.isPrivate);
+      const isFollowing = followingSet.has(cleanUser);
+
+      // PUBLIC vs PRIVATE RULE:
+      // If a person is NOT followed, but their account is public, their story MUST show.
+      // If an account is private, only show if followed by viewer (or own account).
+      if (!isOwn && isPrivate && !isFollowing) {
+        return; // Skip private account not followed by viewer
+      }
+
+      // Sort stories for this user chronologically (oldest first for forward playback)
       activeStories.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 
       const first = activeStories[0];
       const hasUnseen = activeStories.some((s) => !s.isSeen);
-      const isOwn = username.toLowerCase() === cleanMe;
 
       const group: UserStoryGroup = {
         username,
-        fullName: first.fullName || username,
-        avatar: first.avatar,
+        fullName: userProfile?.fullName || first.fullName || username,
+        avatar: userProfile?.avatar || first.avatar || null,
         stories: activeStories,
         hasUnseen,
         isOwn,
@@ -1922,6 +1955,14 @@ export const DataStore = {
       } else {
         peerGroups.push(group);
       }
+    });
+
+    // 2. STORY ORDERING: "make sure that latest one be first"
+    // Sort peer groups by the timestamp of their most recently posted story (latest first)
+    peerGroups.sort((a, b) => {
+      const latestA = Math.max(...a.stories.map((s) => new Date(s.createdAt).getTime() || 0));
+      const latestB = Math.max(...b.stories.map((s) => new Date(s.createdAt).getTime() || 0));
+      return latestB - latestA; // Most recent story author comes first!
     });
 
     const allGroups = myGroup ? [myGroup, ...peerGroups] : peerGroups;
