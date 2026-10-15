@@ -67,6 +67,11 @@ interface ChatMessage {
   isSeen?: boolean;
   readAt?: number;
   isDelivered?: boolean;
+  createdAt?: string;
+  isSending?: boolean;
+  image?: string;
+  mediaUrl?: string;
+  audioUrl?: string;
 }
 
 const INITIAL_CONVERSATIONS: ConversationItem[] = [];
@@ -468,13 +473,33 @@ function ChatsContent() {
           return;
         }
         const data = await res.json();
-        if (data.success && Array.isArray(data.messages) && data.messages.length > 0) {
+        if (data.unsentMessageIds && Array.isArray(data.unsentMessageIds)) {
+          for (const unsentId of data.unsentMessageIds) {
+            DataStore.addUnsentMessageId(unsentId);
+          }
+        }
+        const tombstonedIds = DataStore.getUnsentMessageIds();
+
+        if (data.success && Array.isArray(data.messages)) {
           let hasUnreadFromOther = false;
           setChatMessages((prev) => {
             const currentList = getListForConv(prev, canonicalId, rawId);
-            let changed = false;
-            const msgMap = new Map(currentList.map((m) => [m.id, m]));
-            for (const rawMsg of data.messages) {
+            const serverMsgs = data.messages.filter((m: any) => m && m.id && !tombstonedIds.has(m.id));
+            const serverMsgIds = new Set(serverMsgs.map((m: any) => m.id));
+            const now = Date.now();
+
+            // Keep in-flight local messages that were sent in the last 6 seconds and not yet confirmed on server
+            const preservedLocal = currentList.filter((m) => {
+              if (tombstonedIds.has(m.id)) return false;
+              if (serverMsgIds.has(m.id)) return false; // Handled by serverMsgs loop
+              const isRecentSending = m.senderUsername === currentUsername && (m.isSending || (m.createdAt && now - new Date(m.createdAt).getTime() < 6000));
+              return isRecentSending;
+            });
+
+            const msgMap = new Map(preservedLocal.map((m) => [m.id, m]));
+            let changed = preservedLocal.length !== currentList.length;
+
+            for (const rawMsg of serverMsgs) {
               const sMsg = { ...rawMsg, isDelivered: true };
               const sender = (sMsg.senderUsername || '').toLowerCase().trim();
               if (sender && sender !== currentUsername && !sMsg.is_read && !sMsg.isSeen && !sMsg.readAt) {
@@ -873,6 +898,13 @@ function ChatsContent() {
           const data = await res.json();
           if (data.success) {
             // 1. Merge incoming chat messages strictly for this user
+            if (data.unsentMessageIds && Array.isArray(data.unsentMessageIds)) {
+              for (const unsentId of data.unsentMessageIds) {
+                DataStore.addUnsentMessageId(unsentId);
+              }
+            }
+            const syncTombstoned = DataStore.getUnsentMessageIds();
+
             if (data.chatMessages && typeof data.chatMessages === 'object') {
               setChatMessages((prev) => {
                 const merged = { ...prev };
@@ -890,9 +922,20 @@ function ChatsContent() {
                     }
                     const rawKey = otherUser ? `conv-${otherUser}` : undefined;
                     const current = getListForConv(merged, key, rawKey);
-                    const msgMap = new Map<string, ChatMessage>(current.map((m: any) => [m.id, m]));
-                    let listChanged = false;
-                    for (const sMsg of list as any[]) {
+                    const serverCleanList = (list as any[]).filter((m) => m && m.id && !syncTombstoned.has(m.id));
+                    const serverIds = new Set(serverCleanList.map((m) => m.id));
+                    const now = Date.now();
+
+                    const preserved = current.filter((m) => {
+                      if (syncTombstoned.has(m.id)) return false;
+                      if (serverIds.has(m.id)) return false;
+                      return m.senderUsername === currentUsername && (m.isSending || (m.createdAt && now - new Date(m.createdAt).getTime() < 6000));
+                    });
+
+                    const msgMap = new Map<string, ChatMessage>(preserved.map((m: any) => [m.id, m]));
+                    let listChanged = preserved.length !== current.length;
+
+                    for (const sMsg of serverCleanList) {
                       const local = msgMap.get(sMsg.id);
                       if (!local) {
                         msgMap.set(sMsg.id, sMsg);
@@ -1374,15 +1417,38 @@ function ChatsContent() {
     const rawId = activeConversation.id;
     const canonicalId = getCanonicalConvId(activeConversation);
 
+    DataStore.addUnsentMessageId(msgId);
+
     setChatMessages((prev) => {
       const existing = getListForConv(prev, canonicalId, rawId);
       const filtered = existing.filter((m) => m.id !== msgId);
-      return {
+      const nextMap = {
         ...prev,
         [rawId]: filtered,
         [canonicalId]: filtered,
       };
+      try {
+        if (currentUsername) {
+          localStorage.setItem(`dpsbuzz_chat_messages_${currentUsername}_v3`, JSON.stringify(nextMap));
+        }
+      } catch {}
+      return nextMap;
     });
+
+    setConversations((prev) =>
+      prev.map((c) => {
+        if (c.id === canonicalId || c.id === rawId || c.id === `conv-${canonicalId}`) {
+          const currentMsgs = getListForConv(chatMessages, canonicalId, rawId).filter((m) => m.id !== msgId);
+          const last = currentMsgs[currentMsgs.length - 1];
+          return {
+            ...c,
+            lastMessage: last ? (last.text || (last.image ? '📷 Photo' : 'Message')) : '',
+            timeAgo: last ? (last.time || 'now') : c.timeAgo,
+          };
+        }
+        return c;
+      })
+    );
 
     DataStore.unsendMessage(canonicalId, msgId, currentUsername);
     setActiveReactionMsgId(null);

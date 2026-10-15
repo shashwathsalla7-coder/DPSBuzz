@@ -14,6 +14,7 @@ export interface ServerStoreData {
   notices: Notice[];
   deletedPostIds?: string[]; // IDs of posts deleted permanently
   deletedUsernames?: string[]; // Usernames deleted permanently - NEVER re-add to profiles/posts/leaderboard
+  unsentMessageIds?: string[]; // IDs of permanently unsent chat messages across all devices
   notifications?: NotificationItem[];
   activeCalls?: Record<string, CallSession>;
   follows?: Array<{ follower: string; following: string }>;
@@ -66,6 +67,7 @@ function createInitialStore(): ServerStoreData {
     notices: [],
     deletedPostIds: [],
     deletedUsernames: [],
+    unsentMessageIds: [],
     notifications: [],
     activeCalls: {},
     follows: [],
@@ -125,6 +127,7 @@ function normalizeStore(parsed: any): ServerStoreData {
     notices: Array.isArray(parsed.notices) ? parsed.notices : [],
     deletedPostIds: Array.isArray(parsed.deletedPostIds) ? parsed.deletedPostIds : [],
     deletedUsernames: Array.isArray(parsed.deletedUsernames) ? parsed.deletedUsernames : [],
+    unsentMessageIds: Array.isArray(parsed.unsentMessageIds) ? parsed.unsentMessageIds : [],
     notifications: Array.isArray(parsed.notifications) ? parsed.notifications : [],
     activeCalls: (() => {
       const calls: Record<string, CallSession> = {};
@@ -386,6 +389,11 @@ export async function addServerChatMessage(
     targetKey = parts.sort().join('__');
   }
 
+  // Guard: if message was already unsent permanently, refuse to resurrect it
+  if (current.unsentMessageIds && current.unsentMessageIds.includes(message.id)) {
+    return current;
+  }
+
   const existing = current.chatMessages[targetKey] || current.chatMessages[conversationId] || [];
   const filtered = existing.filter((m) => m.id !== message.id);
   filtered.push({ ...message, conversationId: targetKey });
@@ -406,21 +414,23 @@ export async function addServerChatMessage(
 
 export async function getServerChatMessages(conversationId: string): Promise<any[]> {
   const current = await getServerStore();
+  const unsentSet = new Set(current.unsentMessageIds || []);
+  let msgs: any[] = [];
   if (conversationId.includes('__')) {
     const parts = conversationId.split('__').map((p) => p.trim().toLowerCase());
     const canonicalKey = parts.sort().join('__');
     if (current.chatMessages[canonicalKey]) {
-      return current.chatMessages[canonicalKey];
+      msgs = current.chatMessages[canonicalKey];
+    } else {
+      const reversedKey = [parts[1], parts[0]].join('__');
+      if (current.chatMessages[reversedKey]) {
+        msgs = current.chatMessages[reversedKey];
+      }
     }
-    const reversedKey = [parts[1], parts[0]].join('__');
-    if (current.chatMessages[reversedKey]) {
-      return current.chatMessages[reversedKey];
-    }
+  } else if (current.chatMessages[conversationId]) {
+    msgs = current.chatMessages[conversationId];
   }
-  if (current.chatMessages[conversationId]) {
-    return current.chatMessages[conversationId];
-  }
-  return [];
+  return msgs.filter((m) => m && m.id && !unsentSet.has(m.id));
 }
 
 export async function unsendServerChatMessage(
@@ -445,8 +455,13 @@ export async function unsendServerChatMessage(
     delete updatedChatMessages[conversationId];
   }
 
+  const unsentSet = new Set(current.unsentMessageIds || []);
+  unsentSet.add(messageId);
+  const updatedUnsentIds = Array.from(unsentSet).slice(-2000);
+
   return await saveServerStore({
     chatMessages: updatedChatMessages,
+    unsentMessageIds: updatedUnsentIds,
   });
 }
 

@@ -328,6 +328,11 @@ export default function ProfileClient({ username }: { username: string }) {
   });
   const [newHighlightName, setNewHighlightName] = useState('');
   const [newHighlightEmoji, setNewHighlightEmoji] = useState('⭐');
+  const [newHighlightText, setNewHighlightText] = useState('');
+  const [newHighlightImage, setNewHighlightImage] = useState<string | null>(null);
+  const [newHighlightBg, setNewHighlightBg] = useState('linear-gradient(135deg, #833AB4, #FD1D1D, #FCAF45)');
+  const [activeHighlight, setActiveHighlight] = useState<ProfileHighlight | null>(null);
+  const highlightFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (typeof window !== 'undefined' && profile?.username) {
@@ -609,23 +614,50 @@ export default function ProfileClient({ username }: { username: string }) {
     showToast('Note deleted 🗑️');
   };
 
+  const handleHighlightImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 8 * 1024 * 1024) {
+      showToast('Photo must be under 8MB');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const dataUrl = ev.target?.result as string;
+      if (dataUrl) {
+        setNewHighlightImage(dataUrl);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleAddHighlight = (e: React.FormEvent) => {
     e.preventDefault();
     if (!isOwnProfile) {
       showToast('You can only create highlights on your own profile ⭐');
       return;
     }
-    if (!newHighlightName.trim()) return;
+    if (!newHighlightName.trim()) {
+      showToast('Please enter a highlight title');
+      return;
+    }
     try {
       const created = DataStore.addHighlight(profile.username, {
         label: newHighlightName.trim(),
         emoji: newHighlightEmoji,
+        coverImage: newHighlightImage || null,
+        text: newHighlightText.trim() || undefined,
+        background: newHighlightBg,
       });
       setHighlights((prev) => [...prev, created]);
       setNewHighlightName('');
+      setNewHighlightText('');
+      setNewHighlightImage(null);
+      setNewHighlightEmoji('⭐');
+      setNewHighlightBg('linear-gradient(135deg, #833AB4, #FD1D1D, #FCAF45)');
       setShowNewHighlightModal(false);
       setPostsVersion((v) => v + 1);
-      showToast('Highlight added to profile! ⭐');
+      showToast('Highlight added to profile! ✨');
     } catch (err: any) {
       showToast(err?.message || 'Could not add highlight');
     }
@@ -639,6 +671,9 @@ export default function ProfileClient({ username }: { username: string }) {
     const wasDeleted = DataStore.deleteHighlight(profile.username, highlightId);
     if (wasDeleted) {
       setHighlights((prev) => prev.filter((h) => h.id !== highlightId));
+      if (activeHighlight?.id === highlightId) {
+        setActiveHighlight(null);
+      }
       setPostsVersion((v) => v + 1);
       showToast('Highlight deleted');
     }
@@ -1392,19 +1427,23 @@ export default function ProfileClient({ username }: { username: string }) {
             {highlights.map((h) => (
               <div
                 key={h.id}
-                onClick={() => showToast(`Opening "${h.label}" highlight stories`)}
+                onClick={() => setActiveHighlight(h)}
                 className="flex flex-col items-center gap-1 shrink-0 cursor-pointer group relative"
               >
                 <div
-                  className="w-14 h-14 rounded-full border flex items-center justify-center text-xl transition-transform group-hover:scale-105"
+                  className="w-14 h-14 rounded-full border p-0.5 flex items-center justify-center transition-transform group-hover:scale-105 overflow-hidden shadow-xs"
                   style={{
-                    borderColor: 'var(--line)',
+                    borderColor: 'var(--line-strong)',
                     backgroundColor: 'var(--surface-sunken)',
                   }}
                 >
-                  {h.emoji}
+                  {h.coverImage ? (
+                    <img src={h.coverImage} alt={h.label} className="w-full h-full object-cover rounded-full" />
+                  ) : (
+                    <span className="text-xl">{h.emoji || '⭐'}</span>
+                  )}
                 </div>
-                <span className="text-[11px] font-medium truncate max-w-[60px]" style={{ color: 'var(--text)' }}>
+                <span className="text-[11px] font-medium truncate max-w-[64px] text-center" style={{ color: 'var(--text)' }}>
                   {h.label}
                 </span>
                 {isOwnProfile && (
@@ -2647,46 +2686,156 @@ export default function ProfileClient({ username }: { username: string }) {
         </div>
       )}
 
-      {/* ─── 4. New Highlight Modal ───────────────────────────────────────── */}
+      {/* ─── 4. Rectangular Highlight Editor Modal (Story-like Card Canvas) ──────── */}
       {showNewHighlightModal && isOwnProfile && (
         <div
-          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in"
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-fade-in"
           onClick={() => setShowNewHighlightModal(false)}
         >
           <div
-            className="w-full max-w-[380px] border rounded-full overflow-hidden"
+            className="w-full max-w-[440px] max-h-[92vh] flex flex-col border rounded-3xl overflow-hidden shadow-2xl animate-scale-in"
             style={{
               backgroundColor: 'var(--surface)',
               borderColor: 'var(--line)',
             }}
             onClick={(e) => e.stopPropagation()}
           >
+            {/* Modal Header */}
             <div
-              className="flex items-center justify-between px-4 py-3 border-b"
+              className="flex items-center justify-between px-5 py-3.5 border-b shrink-0"
               style={{ borderColor: 'var(--line)' }}
             >
-              <span className="text-sm font-bold">New Story Highlight</span>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-bold">New Profile Highlight</span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ backgroundColor: 'var(--primary-tint)', color: 'var(--primary)' }}>
+                  Story Card
+                </span>
+              </div>
               <button
+                type="button"
                 onClick={() => setShowNewHighlightModal(false)}
-                className="p-1 cursor-pointer"
+                className="p-1.5 rounded-full hover:bg-black/10 dark:hover:bg-white/10 cursor-pointer transition-colors"
                 style={{ color: 'var(--text-muted)' }}
+                aria-label="Close highlight editor"
               >
                 <X size={18} />
               </button>
             </div>
 
-            <form onSubmit={handleAddHighlight} className="p-4 space-y-3">
+            {/* Scrollable Form Body */}
+            <form onSubmit={handleAddHighlight} className="p-4 sm:p-5 overflow-y-auto space-y-4">
+              {/* 1. RECTANGULAR CARD EDITOR PREVIEW (Story Canvas) */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-[11px] font-bold tracking-wider uppercase" style={{ color: 'var(--text-muted)' }}>
+                    HIGHLIGHT PREVIEW (RECTANGLE)
+                  </label>
+                  <span className="text-[10px] text-zinc-400 font-medium">Stories Style</span>
+                </div>
+
+                <div
+                  className="relative w-full aspect-[4/5] max-h-[260px] sm:max-h-[290px] rounded-2xl overflow-hidden border shadow-lg flex flex-col justify-between p-4 transition-all select-none"
+                  style={{
+                    background: newHighlightBg,
+                    borderColor: 'var(--line)',
+                  }}
+                >
+                  {/* Uploaded Background Photo (Full Bleed Image) */}
+                  {newHighlightImage && (
+                    <img
+                      src={newHighlightImage}
+                      alt="Highlight Preview"
+                      className="absolute inset-0 w-full h-full object-cover"
+                    />
+                  )}
+
+                  {/* Legibility Gradient Overlay when Image or Text is present */}
+                  {newHighlightImage && (
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/40 pointer-events-none" />
+                  )}
+
+                  {/* Card Header Tag */}
+                  <div className="relative z-10 flex items-center justify-between">
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/20 text-white shadow-sm">
+                      <span className="text-sm">{newHighlightEmoji}</span>
+                      <span className="text-[11px] font-bold max-w-[140px] truncate">
+                        {newHighlightName.trim() || 'Highlight Title'}
+                      </span>
+                    </div>
+
+                    {newHighlightImage && (
+                      <button
+                        type="button"
+                        onClick={() => setNewHighlightImage(null)}
+                        className="px-2 py-1 rounded-full bg-red-600/80 hover:bg-red-600 text-white text-[10px] font-bold shadow-sm transition-colors cursor-pointer"
+                        title="Remove photo"
+                      >
+                        ✕ Remove Photo
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Card Content (Typed Text or Placeholder) */}
+                  <div className="relative z-10 my-auto px-2 text-center">
+                    {newHighlightText.trim() ? (
+                      <div className="inline-block p-3 rounded-xl bg-black/45 backdrop-blur-sm border border-white/15 text-white shadow-md max-w-full">
+                        <p className="text-sm sm:text-base font-bold leading-snug drop-shadow-md whitespace-pre-wrap break-words">
+                          {newHighlightText}
+                        </p>
+                      </div>
+                    ) : !newHighlightImage ? (
+                      <div className="flex flex-col items-center gap-1.5 text-white/70 py-4">
+                        <Camera size={26} className="opacity-80" />
+                        <span className="text-xs font-semibold">Upload a photo or type text below</span>
+                        <span className="text-[10px] text-white/50">Custom story-style card</span>
+                      </div>
+                    ) : null}
+                  </div>
+
+                  {/* Card Footer Info */}
+                  <div className="relative z-10 flex items-center justify-between text-white/60 text-[10px] font-medium">
+                    <span>@{profile.username}</span>
+                    <span>Profile Highlight</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 2. Photo Upload Option */}
+              <div>
+                <input
+                  ref={highlightFileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleHighlightImageUpload}
+                />
+                <button
+                  type="button"
+                  onClick={() => highlightFileInputRef.current?.click()}
+                  className="w-full py-2.5 px-4 rounded-xl border flex items-center justify-center gap-2 text-xs font-bold transition-all hover:opacity-90 cursor-pointer shadow-xs"
+                  style={{
+                    backgroundColor: 'var(--surface-sunken)',
+                    borderColor: 'var(--line)',
+                    color: 'var(--text)',
+                  }}
+                >
+                  <Camera size={16} className="text-pink-500" />
+                  <span>{newHighlightImage ? 'Change Highlight Photo 📷' : 'Upload Cover Photo (Camera / Gallery) 📸'}</span>
+                </button>
+              </div>
+
+              {/* 3. Highlight Title Input */}
               <div>
                 <label className="text-[11px] font-bold block mb-1" style={{ color: 'var(--text-muted)' }}>
-                  HIGHLIGHT TITLE
+                  HIGHLIGHT TITLE *
                 </label>
                 <input
                   type="text"
                   value={newHighlightName}
                   onChange={(e) => setNewHighlightName(e.target.value)}
-                  placeholder="e.g. Science Fair, Sports Day"
-                  maxLength={15}
-                  className="w-full text-xs px-3 py-2 border rounded-full focus:outline-none"
+                  placeholder="e.g. Science Fair, Sports Day, Class Trip"
+                  maxLength={24}
+                  className="w-full text-xs px-3.5 py-2.5 border rounded-xl focus:outline-none transition-colors"
                   style={{
                     backgroundColor: 'var(--surface-sunken)',
                     borderColor: 'var(--line)',
@@ -2696,18 +2845,73 @@ export default function ProfileClient({ username }: { username: string }) {
                 />
               </div>
 
+              {/* 4. Type & Post Highlight Text Area */}
               <div>
                 <label className="text-[11px] font-bold block mb-1" style={{ color: 'var(--text-muted)' }}>
-                  PICK COVER EMOJI
+                  TYPE HIGHLIGHT STORY / NOTE (OPTIONAL)
                 </label>
-                <div className="flex gap-2">
-                  {['⭐', '🏆', '🎨', '🚀', '🎸', '⚽'].map((em) => (
+                <textarea
+                  value={newHighlightText}
+                  onChange={(e) => setNewHighlightText(e.target.value)}
+                  placeholder="Type memories, thoughts, or story caption for this highlight..."
+                  rows={2}
+                  maxLength={280}
+                  className="w-full text-xs px-3.5 py-2.5 border rounded-xl focus:outline-none resize-none transition-colors"
+                  style={{
+                    backgroundColor: 'var(--surface-sunken)',
+                    borderColor: 'var(--line)',
+                    color: 'var(--text)',
+                  }}
+                />
+                <div className="flex justify-between text-[10px] mt-0.5 text-zinc-400">
+                  <span>Displays on the highlight story card</span>
+                  <span>{newHighlightText.length}/280</span>
+                </div>
+              </div>
+
+              {/* 5. Card Background Presets */}
+              <div>
+                <label className="text-[11px] font-bold block mb-1.5" style={{ color: 'var(--text-muted)' }}>
+                  BACKGROUND STYLE
+                </label>
+                <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+                  {[
+                    { label: 'Instagram Sunset', bg: 'linear-gradient(135deg, #833AB4, #FD1D1D, #FCAF45)' },
+                    { label: 'Midnight Indigo', bg: 'linear-gradient(135deg, #0F172A, #1E1B4B, #312E81)' },
+                    { label: 'Emerald Forest', bg: 'linear-gradient(135deg, #064E3B, #047857, #10B981)' },
+                    { label: 'DPS Amber Gold', bg: 'linear-gradient(135deg, #78350F, #D97706, #F59E0B)' },
+                    { label: 'Deep Crimson', bg: 'linear-gradient(135deg, #881337, #BE123C, #F43F5E)' },
+                    { label: 'Pitch Black', bg: '#121212' },
+                  ].map((preset, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setNewHighlightBg(preset.bg)}
+                      className={`w-8 h-8 rounded-full shrink-0 border-2 transition-transform cursor-pointer ${
+                        newHighlightBg === preset.bg ? 'scale-110 border-white shadow-md' : 'border-transparent opacity-80 hover:opacity-100'
+                      }`}
+                      style={{ background: preset.bg }}
+                      title={preset.label}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* 6. Cover Emoji Selector */}
+              <div>
+                <label className="text-[11px] font-bold block mb-1.5" style={{ color: 'var(--text-muted)' }}>
+                  COVER ICON / EMOJI
+                </label>
+                <div className="flex gap-2 overflow-x-auto no-scrollbar py-1">
+                  {['⭐', '🏆', '🎨', '🚀', '🎸', '⚽', '📸', '🎓', '✨', '🐝', '❤️', '🔥'].map((em) => (
                     <button
                       key={em}
                       type="button"
                       onClick={() => setNewHighlightEmoji(em)}
-                      className={`w-9 h-9 border text-base flex items-center justify-center cursor-pointer rounded-full ${
-                        newHighlightEmoji === em ? 'border-2 border-[var(--primary)] bg-[var(--primary-tint)]' : 'border-[var(--line)]'
+                      className={`w-9 h-9 border text-base flex items-center justify-center shrink-0 cursor-pointer rounded-xl transition-all ${
+                        newHighlightEmoji === em
+                          ? 'border-2 border-[var(--primary)] bg-[var(--primary-tint)] scale-105'
+                          : 'border-[var(--line)] hover:bg-black/5 dark:hover:bg-white/5'
                       }`}
                     >
                       {em}
@@ -2716,11 +2920,12 @@ export default function ProfileClient({ username }: { username: string }) {
                 </div>
               </div>
 
-              <div className="pt-2 flex gap-2">
+              {/* Action Buttons */}
+              <div className="pt-2 flex gap-3">
                 <button
                   type="button"
                   onClick={() => setShowNewHighlightModal(false)}
-                  className="flex-1 py-2 text-xs font-semibold border rounded-full cursor-pointer"
+                  className="flex-1 py-2.5 text-xs font-semibold border rounded-xl cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
                   style={{
                     backgroundColor: 'var(--surface)',
                     borderColor: 'var(--line)',
@@ -2732,16 +2937,114 @@ export default function ProfileClient({ username }: { username: string }) {
                 <button
                   type="submit"
                   disabled={!newHighlightName.trim()}
-                  className="flex-1 py-2 text-xs font-bold rounded-full btn-press cursor-pointer disabled:opacity-40"
-                  style={{
-                    backgroundColor: 'var(--primary)',
-                    color: 'var(--on-primary)',
-                  }}
+                  className="flex-1 py-2.5 text-xs font-bold rounded-xl gradient-bg text-white shadow-md btn-press cursor-pointer disabled:opacity-40 transition-all"
                 >
-                  Add Highlight
+                  Post Highlight ✨
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ─── 4B. Interactive Highlight Story Viewer Modal ──────────────────── */}
+      {activeHighlight && (
+        <div
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-fade-in select-none"
+          onClick={() => setActiveHighlight(null)}
+        >
+          <div
+            className="relative w-full max-w-[400px] aspect-[9/16] sm:aspect-[4/5] min-h-[460px] sm:min-h-[520px] rounded-3xl overflow-hidden shadow-2xl flex flex-col justify-between p-5 border border-white/20 animate-scale-in"
+            style={{
+              background: activeHighlight.background || 'linear-gradient(135deg, #833AB4, #FD1D1D, #FCAF45)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Full-bleed Highlight Photo */}
+            {activeHighlight.coverImage && (
+              <img
+                src={activeHighlight.coverImage}
+                alt={activeHighlight.label}
+                className="absolute inset-0 w-full h-full object-cover"
+              />
+            )}
+
+            {/* Gradient Overlay for Legibility */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-black/60 pointer-events-none" />
+
+            {/* Top Bar: Author, Title & Actions */}
+            <div className="relative z-10 flex items-center justify-between text-white">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-full border-2 border-white/40 overflow-hidden bg-black/40 flex items-center justify-center shrink-0">
+                  {profile.avatar ? (
+                    <img src={profile.avatar} alt={profile.fullName} className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-sm font-bold">{profile.fullName[0]?.toUpperCase() || 'U'}</span>
+                  )}
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold leading-none">@{profile.username}</span>
+                    <span className="text-xs">{activeHighlight.emoji}</span>
+                  </div>
+                  <p className="text-[11px] text-white/80 font-semibold mt-0.5">{activeHighlight.label}</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                {isOwnProfile && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (confirm(`Delete highlight "${activeHighlight.label}"?`)) {
+                        handleDeleteHighlight(activeHighlight.id);
+                      }
+                    }}
+                    className="w-8 h-8 rounded-full bg-black/50 hover:bg-red-600/80 text-white flex items-center justify-center transition-colors cursor-pointer"
+                    title="Delete highlight"
+                    aria-label="Delete highlight"
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setActiveHighlight(null)}
+                  className="w-8 h-8 rounded-full bg-black/50 hover:bg-black/75 text-white flex items-center justify-center transition-colors cursor-pointer"
+                  aria-label="Close highlight"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+
+            {/* Middle: Typed Highlight Story Text */}
+            <div className="relative z-10 my-auto px-4 text-center">
+              {activeHighlight.text ? (
+                <div className="inline-block p-4 sm:p-5 rounded-2xl bg-black/60 backdrop-blur-md border border-white/20 text-white shadow-2xl max-w-full">
+                  <p className="text-base sm:text-xl font-bold leading-relaxed whitespace-pre-wrap drop-shadow-md">
+                    {activeHighlight.text}
+                  </p>
+                </div>
+              ) : !activeHighlight.coverImage ? (
+                <div className="text-center text-white">
+                  <span className="text-6xl drop-shadow-lg block mb-2">{activeHighlight.emoji || '⭐'}</span>
+                  <h3 className="text-2xl font-black drop-shadow-md">{activeHighlight.label}</h3>
+                </div>
+              ) : null}
+            </div>
+
+            {/* Bottom Bar: Highlight Info & Date */}
+            <div className="relative z-10 flex items-center justify-between text-white/70 text-xs font-medium pt-2 border-t border-white/10">
+              <span className="flex items-center gap-1">
+                <span>🌟 Profile Highlight</span>
+              </span>
+              <span>
+                {activeHighlight.createdAt
+                  ? new Date(activeHighlight.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+                  : 'Saved'}
+              </span>
+            </div>
           </div>
         </div>
       )}

@@ -48,12 +48,13 @@ export async function GET(req: NextRequest) {
       }
 
       const messages = await getServerChatMessages(canonicalKey);
-      return NextResponse.json({ success: true, messages }, { headers: NO_CACHE_HEADERS });
+      const store = await getServerStore();
+      return NextResponse.json({ success: true, messages, unsentMessageIds: store.unsentMessageIds || [] }, { headers: NO_CACHE_HEADERS });
     }
 
     // If no conversationId is passed, only return conversations where the user is a participant
     if (!username) {
-      return NextResponse.json({ success: true, chatMessages: {} }, { headers: NO_CACHE_HEADERS });
+      return NextResponse.json({ success: true, chatMessages: {}, unsentMessageIds: [] }, { headers: NO_CACHE_HEADERS });
     }
 
     const store = await getServerStore();
@@ -69,7 +70,7 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    return NextResponse.json({ success: true, chatMessages: userMessages }, { headers: NO_CACHE_HEADERS });
+    return NextResponse.json({ success: true, chatMessages: userMessages, unsentMessageIds: store.unsentMessageIds || [] }, { headers: NO_CACHE_HEADERS });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500, headers: NO_CACHE_HEADERS });
   }

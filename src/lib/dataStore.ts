@@ -160,6 +160,9 @@ export interface ProfileHighlight {
   label: string;
   emoji: string;
   coverImage?: string | null;
+  text?: string;
+  background?: string;
+  fontStyle?: string;
   createdAt: string;
 }
 
@@ -474,6 +477,7 @@ const STORAGE_KEYS = {
   BLOCKS: 'dpsbuzz_blocked_users_v1',
   ACCEPTED_MESSAGE_REQUESTS: 'dpsbuzz_accepted_message_requests_v1',
   VANISH_CHATS: 'dpsbuzz_vanish_mode_chats_v1',
+  UNSENT_MESSAGES: 'dpsbuzz_unsent_messages_v1',
   COMMENTS: 'dpsbuzz_comments_v1',
 };
 
@@ -624,6 +628,33 @@ if (typeof window !== 'undefined') {
         );
         localStorage.setItem(STORAGE_KEYS.PROFILES, JSON.stringify(cleaned));
       }
+    }
+
+    // 7. Purge premade and mock highlights across all accounts
+    const storedHighlights = localStorage.getItem(STORAGE_KEYS.HIGHLIGHTS);
+    if (storedHighlights) {
+      try {
+        const parsed = JSON.parse(storedHighlights);
+        if (Array.isArray(parsed)) {
+          const cleaned = parsed.filter(
+            (h: any) =>
+              h &&
+              h.username &&
+              !DUMMY_TEST_USERNAMES.has(h.username.toLowerCase()) &&
+              h.id !== 'hl-mock-1' &&
+              h.id !== 'hl-mock-2' &&
+              h.id !== 'hl-mock-3' &&
+              !h.id?.startsWith('hl-seed') &&
+              !h.id?.startsWith('mock-')
+          );
+          localStorage.setItem(STORAGE_KEYS.HIGHLIGHTS, JSON.stringify(cleaned));
+        }
+      } catch {}
+    }
+
+    if (!localStorage.getItem('dpsbuzz_premade_highlights_purged_v2')) {
+      localStorage.setItem(STORAGE_KEYS.HIGHLIGHTS, JSON.stringify([]));
+      localStorage.setItem('dpsbuzz_premade_highlights_purged_v2', 'true');
     }
   } catch {}
 }
@@ -2093,7 +2124,17 @@ export const DataStore = {
     return stored.filter((h) => h && h.username && h.username.toLowerCase().trim() === clean);
   },
 
-  addHighlight(targetUsername: string, data: { label: string; emoji: string; coverImage?: string | null }): ProfileHighlight {
+  addHighlight(
+    targetUsername: string,
+    data: {
+      label: string;
+      emoji?: string;
+      coverImage?: string | null;
+      text?: string;
+      background?: string;
+      fontStyle?: string;
+    }
+  ): ProfileHighlight {
     if (!targetUsername) throw new Error('Target username is required');
     const clean = targetUsername.toLowerCase().trim();
     const user = this.getCurrentUser();
@@ -2106,8 +2147,11 @@ export const DataStore = {
       id: 'hl-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
       username: clean,
       label: data.label.trim(),
-      emoji: data.emoji.trim() || '⭐',
+      emoji: (data.emoji || '⭐').trim() || '⭐',
       coverImage: data.coverImage || null,
+      text: data.text?.trim() || undefined,
+      background: data.background || undefined,
+      fontStyle: data.fontStyle || undefined,
       createdAt: new Date().toISOString(),
     };
     all.push(newHighlight);
@@ -4196,6 +4240,19 @@ export const DataStore = {
     } catch {}
   },
 
+  getUnsentMessageIds(): Set<string> {
+    const list = getStorage<string[]>(STORAGE_KEYS.UNSENT_MESSAGES, []);
+    return new Set(Array.isArray(list) ? list : []);
+  },
+
+  addUnsentMessageId(messageId: string): void {
+    if (!messageId) return;
+    const current = getStorage<string[]>(STORAGE_KEYS.UNSENT_MESSAGES, []);
+    const set = new Set(Array.isArray(current) ? current : []);
+    set.add(messageId);
+    setStorage(STORAGE_KEYS.UNSENT_MESSAGES, Array.from(set).slice(-2000));
+  },
+
   // Unsend Protocol (Section 5)
   unsendMessage(conversationId: string, messageId: string, username: string): boolean {
     const cur = username.toLowerCase().trim();
@@ -4204,7 +4261,10 @@ export const DataStore = {
       canonicalId = conversationId.split('__').map((p) => p.trim().toLowerCase()).sort().join('__');
     }
 
-    // Server hard-delete
+    // 1. Tombstone permanently on client
+    this.addUnsentMessageId(messageId);
+
+    // 2. Server hard-delete & tombstone
     if (typeof window !== 'undefined') {
       fetch('/api/chats', {
         method: 'POST',
@@ -4218,7 +4278,7 @@ export const DataStore = {
       }).catch(() => {});
     }
 
-    // Update local storage for current user
+    // 3. Update local storage for current user
     const userMsgKey = `dpsbuzz_chat_messages_${cur}_v3`;
     const stored = getStorage<Record<string, any[]>>(userMsgKey, {});
     const list = stored[canonicalId] || stored[conversationId] || [];
@@ -4229,7 +4289,48 @@ export const DataStore = {
     }
     setStorage(userMsgKey, stored);
 
-    // Instant 0ms broadcast across all tabs and components
+    // 4. Update conversation list preview if latest message was unsent
+    try {
+      const conv1Key = 'dpsbuzz_conversations_v1';
+      const convs1 = getStorage<any[]>(conv1Key, []);
+      if (Array.isArray(convs1)) {
+        let changed = false;
+        const updated = convs1.map((c) => {
+          if (c && (c.id === canonicalId || c.id === conversationId || c.id === `conv-${canonicalId}`)) {
+            const lastRemaining = filtered[filtered.length - 1];
+            changed = true;
+            return {
+              ...c,
+              lastMessage: lastRemaining ? (lastRemaining.text || (lastRemaining.image ? '📷 Photo' : 'Message')) : '',
+              timeAgo: lastRemaining ? (lastRemaining.time || 'now') : c.timeAgo,
+            };
+          }
+          return c;
+        });
+        if (changed) setStorage(conv1Key, updated);
+      }
+
+      const conv2Key = 'dpsbuzz_chat_conversations_v2';
+      const convs2 = getStorage<any[]>(conv2Key, []);
+      if (Array.isArray(convs2)) {
+        let changed = false;
+        const updated = convs2.map((c) => {
+          if (c && (c.id === canonicalId || c.id === conversationId || c.id === `conv-${canonicalId}`)) {
+            const lastRemaining = filtered[filtered.length - 1];
+            changed = true;
+            return {
+              ...c,
+              lastMessage: lastRemaining ? (lastRemaining.text || (lastRemaining.image ? '📷 Photo' : 'Message')) : '',
+              timeAgo: lastRemaining ? (lastRemaining.time || 'now') : c.timeAgo,
+            };
+          }
+          return c;
+        });
+        if (changed) setStorage(conv2Key, updated);
+      }
+    } catch {}
+
+    // 5. Instant 0ms broadcast across all tabs and components
     this.broadcastChatEvent({
       type: 'MESSAGE_UNSENT',
       conversationId: canonicalId,

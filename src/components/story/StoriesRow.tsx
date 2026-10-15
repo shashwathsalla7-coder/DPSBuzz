@@ -5,6 +5,7 @@ import { DataStore, Story, Profile, UserStoryGroup } from '@/lib/dataStore';
 import { StoryRing } from './StoryRing';
 import { StoryViewer } from './StoryViewer';
 import { StoryCreatorModal } from './StoryCreatorModal';
+import { globalAudio } from '@/lib/audioManager';
 
 export interface StoriesRowProps {
   currentUser?: Profile;
@@ -133,6 +134,7 @@ export const StoriesRow: React.FC<StoriesRowProps> = ({ currentUser }) => {
             hasStory={hasMyStory}
             isActive={true}
             onClick={() => {
+              globalAudio.unlockAudio();
               if (hasMyStory) {
                 const myIdx = userGroups.allGroups.findIndex(
                   (g) => g.username.toLowerCase() === effectiveUser?.username.toLowerCase()
@@ -173,6 +175,7 @@ export const StoriesRow: React.FC<StoriesRowProps> = ({ currentUser }) => {
                 isNew={group.hasUnseen}
                 isActive={DataStore.isUserActive(group.username)}
                 onClick={() => {
+                  globalAudio.unlockAudio();
                   const uIdx = userGroups.allGroups.findIndex(
                     (g) => g.username.toLowerCase() === group.username.toLowerCase()
                   );
