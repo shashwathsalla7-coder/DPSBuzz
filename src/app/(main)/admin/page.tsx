@@ -46,6 +46,7 @@ import {
   type CalendarEvent,
   type Post,
   type Story,
+  type BanAppeal,
 } from '@/lib/dataStore';
 import { schoolConfig } from '@/config/school';
 
@@ -155,6 +156,7 @@ export default function AdminPage() {
   const [warnReason, setWarnReason] = useState('Violating school chat and community guidelines.');
   const [banModalStudent, setBanModalStudent] = useState<Profile | null>(null);
   const [banReasonText, setBanReasonText] = useState('Severe community guideline violations or repeated misconduct.');
+  const [banAppeals, setBanAppeals] = useState<BanAppeal[]>([]);
 
   // Tab 4: Calendar & Events Scheduler
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
@@ -194,6 +196,7 @@ export default function AdminPage() {
     setActiveBroadcast(DataStore.getBroadcastAlert());
     setStorageAnalytics(DataStore.getStorageAnalytics());
     setStorageSettings(DataStore.getStorageSettings());
+    setBanAppeals(DataStore.getBanAppeals());
 
     // Load active session user
     const cur = DataStore.getCurrentUser();
@@ -405,6 +408,25 @@ export default function AdminPage() {
         text: `Account @${username} and all their posts/stories have been completely deleted.`,
       });
     }
+  };
+
+  const handleApproveAppeal = (appealId: string, username: string) => {
+    DataStore.updateBanAppealStatus(appealId, 'approved', 'Reinstated by school administration.');
+    setBannedUserList(DataStore.getBannedUsers());
+    setBanAppeals(DataStore.getBanAppeals());
+    setStatusMessage({
+      type: 'success',
+      text: `Appeal approved! Student @${username} has been UNBANNED and restored.`,
+    });
+  };
+
+  const handleDismissAppeal = (appealId: string, username: string) => {
+    DataStore.updateBanAppealStatus(appealId, 'rejected', 'Appeal dismissed after administrative review.');
+    setBanAppeals(DataStore.getBanAppeals());
+    setStatusMessage({
+      type: 'success',
+      text: `Appeal from @${username} was dismissed.`,
+    });
   };
 
   // --- Handlers: Notices & Live Home Broadcast ---
@@ -743,6 +765,86 @@ export default function AdminPage() {
                   />
                 </div>
               </div>
+
+              {/* Official Student Ban & Warning Appeals */}
+              {banAppeals.length > 0 && (
+                <div className="p-4 bg-[var(--surface-sunken)] border-2 border-pink-500/50 rounded-none space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-pink-500 animate-pulse" />
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text)]">
+                        Student Appeals for Reconsideration ({banAppeals.filter((a) => a.status === 'pending').length} Pending)
+                      </h3>
+                    </div>
+                    <span className="text-[10px] text-[var(--text-muted)] font-mono">
+                      Total Appeals: {banAppeals.length}
+                    </span>
+                  </div>
+
+                  <div className="divide-y divide-[var(--line)] border border-[var(--line)] bg-[var(--surface)]">
+                    {banAppeals.map((appeal) => {
+                      const isPending = appeal.status === 'pending';
+                      return (
+                        <div key={appeal.id} className="p-3 space-y-2">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs">
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-[var(--text)]">{appeal.fullName}</span>
+                              <span className="font-mono text-pink-400">@{appeal.username}</span>
+                              <span className="text-[10px] uppercase font-bold px-1.5 py-0.2 bg-neutral-800 text-neutral-300">
+                                {appeal.appealType}
+                              </span>
+                            </div>
+                            <span className="text-[10px] text-[var(--text-muted)]">
+                              Submitted {new Date(appeal.submittedAt).toLocaleString()}
+                            </span>
+                          </div>
+
+                          <p className="text-xs text-[var(--text)] bg-[var(--surface-sunken)] p-2.5 border border-[var(--line)] italic">
+                            &ldquo;{appeal.reason}&rdquo;
+                          </p>
+
+                          {appeal.contactEmailOrPhone && (
+                            <p className="text-[10px] text-[var(--text-muted)]">
+                              Contact: <span className="font-mono text-[var(--text)]">{appeal.contactEmailOrPhone}</span>
+                            </p>
+                          )}
+
+                          <div className="flex items-center justify-between pt-1">
+                            <span className={`text-[10px] font-bold uppercase px-2 py-0.5 border ${
+                              appeal.status === 'approved'
+                                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                                : appeal.status === 'rejected'
+                                ? 'bg-red-500/10 text-red-400 border-red-500/30'
+                                : 'bg-amber-500/10 text-amber-400 border-amber-500/30'
+                            }`}>
+                              Status: {appeal.status}
+                            </span>
+
+                            {isPending && (
+                              <div className="flex gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => handleApproveAppeal(appeal.id, appeal.username)}
+                                  className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase cursor-pointer transition"
+                                >
+                                  Approve & Lift Ban ✅
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDismissAppeal(appeal.id, appeal.username)}
+                                  className="px-3 py-1 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 font-bold text-xs uppercase cursor-pointer transition"
+                                >
+                                  Dismiss ❌
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* Student Accounts Table */}
               <div className="border border-[var(--line)] rounded-none overflow-x-auto divide-y divide-[var(--line)]">

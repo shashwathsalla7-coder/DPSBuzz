@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
-import { ShieldAlert, AlertTriangle, Shield, LogOut, Check } from 'lucide-react';
+import { ShieldAlert, AlertTriangle, Shield, LogOut, Check, Send, X, CheckCircle2 } from 'lucide-react';
 import { DataStore, type Profile, type UserWarning } from '@/lib/dataStore';
 
 export function GlobalModerationGuard() {
@@ -13,6 +13,9 @@ export function GlobalModerationGuard() {
   const [isBanned, setIsBanned] = useState(false);
   const [banReason, setBanReason] = useState('');
   const [activeWarning, setActiveWarning] = useState<UserWarning | null>(null);
+  const [showAppealModal, setShowAppealModal] = useState(false);
+  const [appealReasonText, setAppealReasonText] = useState('');
+  const [appealSubmitted, setAppealSubmitted] = useState(false);
 
   const checkStatus = () => {
     const user = DataStore.getCurrentUser();
@@ -89,13 +92,98 @@ export function GlobalModerationGuard() {
             If you believe this is an error, please consult the school disciplinary head.
           </p>
 
-          <button
-            onClick={handleLogout}
-            className="px-6 py-2.5 bg-neutral-800 hover:bg-neutral-700 text-white font-bold text-xs border border-neutral-700 flex items-center gap-2 cursor-pointer rounded-none transition-colors"
-          >
-            <LogOut size={14} />
-            <span>Sign Out</span>
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => {
+                setShowAppealModal(true);
+                setAppealSubmitted(false);
+              }}
+              className="px-5 py-2.5 bg-pink-600 hover:bg-pink-500 text-white font-bold text-xs flex items-center gap-2 cursor-pointer rounded-none transition-colors"
+            >
+              <Send size={14} />
+              <span>Submit Ban Appeal 📝</span>
+            </button>
+
+            <button
+              onClick={handleLogout}
+              className="px-5 py-2.5 bg-neutral-800 hover:bg-neutral-700 text-white font-bold text-xs border border-neutral-700 flex items-center gap-2 cursor-pointer rounded-none transition-colors"
+            >
+              <LogOut size={14} />
+              <span>Sign Out</span>
+            </button>
+          </div>
+
+          {/* BAN APPEAL MODAL */}
+          {showAppealModal && (
+            <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4">
+              <div className="w-full max-w-md bg-[var(--surface)] border-2 border-pink-500 p-5 rounded-none text-left space-y-4">
+                <div className="flex items-center justify-between border-b border-[var(--line)] pb-2.5">
+                  <h3 className="text-sm font-bold text-[var(--text)]">
+                    Official Reinstatement Appeal 📨
+                  </h3>
+                  <button
+                    onClick={() => setShowAppealModal(false)}
+                    className="p-1 text-[var(--text-muted)] hover:text-[var(--text)]"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                {appealSubmitted ? (
+                  <div className="py-6 text-center space-y-2">
+                    <CheckCircle2 size={32} className="text-emerald-400 mx-auto" />
+                    <p className="text-sm font-bold text-[var(--text)]">Appeal Submitted Successfully</p>
+                    <p className="text-xs text-[var(--text-muted)]">
+                      Your statement was delivered to the School Disciplinary Board for review.
+                    </p>
+                    <button
+                      onClick={() => setShowAppealModal(false)}
+                      className="mt-3 px-4 py-2 bg-neutral-800 text-white text-xs font-bold rounded-none"
+                    >
+                      Close
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <p className="text-xs text-[var(--text-muted)]">
+                      Provide context and explain why your suspension should be lifted:
+                    </p>
+                    <textarea
+                      value={appealReasonText}
+                      onChange={(e) => setAppealReasonText(e.target.value)}
+                      rows={4}
+                      placeholder="Write your explanation here..."
+                      className="w-full p-3 bg-[var(--surface-sunken)] border border-[var(--line)] text-xs text-[var(--text)] rounded-none focus:outline-none focus:border-pink-500"
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setShowAppealModal(false)}
+                        className="flex-1 py-2 bg-neutral-800 text-white text-xs font-bold rounded-none"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (!currentUser?.username || !appealReasonText.trim()) return;
+                          DataStore.submitBanAppeal({
+                            username: currentUser.username,
+                            fullName: currentUser.fullName,
+                            appealType: 'suspension',
+                            reason: appealReasonText.trim(),
+                          });
+                          setAppealSubmitted(true);
+                        }}
+                        disabled={!appealReasonText.trim()}
+                        className="flex-1 py-2 bg-pink-600 hover:bg-pink-500 disabled:opacity-50 text-white text-xs font-bold rounded-none"
+                      >
+                        Submit Appeal
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
 

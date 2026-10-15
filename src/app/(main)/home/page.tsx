@@ -145,6 +145,14 @@ function HomeContent() {
         savedMap[id] = true;
       });
       setSavedPosts(savedMap);
+
+      // Load persistent liked posts
+      const likedIds = DataStore.getUserLikedPostIds(cur.username);
+      const likedMap: Record<string, boolean> = {};
+      likedIds.forEach((id) => {
+        likedMap[id] = true;
+      });
+      setLikedPosts(likedMap);
     };
 
     loadData();
@@ -171,20 +179,13 @@ function HomeContent() {
   };
 
   const handleLikeToggle = (postId: string) => {
-    const isCurrentlyLiked = !!likedPosts[postId];
-    setLikedPosts((prev) => ({ ...prev, [postId]: !isCurrentlyLiked }));
+    const res = DataStore.toggleLikePost(postId, currentUser.username);
+    setLikedPosts((prev) => ({ ...prev, [postId]: res.liked }));
     setPosts((prev) =>
       prev.map((p) =>
-        p.id === postId ? { ...p, likes: p.likes + (isCurrentlyLiked ? -1 : 1) } : p
+        p.id === postId ? { ...p, likes: res.likesCount } : p
       )
     );
-
-    // Sync like to server
-    fetch(`/api/posts/${postId}/like`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: currentUser.username }),
-    }).catch(() => {});
   };
 
   const handleSaveToggle = (postId: string) => {
@@ -202,6 +203,7 @@ function HomeContent() {
       text: trimmed,
       image: commentImage || undefined,
       timeAgo: 'Just now',
+      createdAt: new Date().toISOString(),
     };
     setCommentsMap((prev) => {
       const updated = {

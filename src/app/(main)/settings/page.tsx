@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
+  ArrowLeftRight,
   ChevronRight,
   Shield,
   LifeBuoy,
@@ -271,6 +272,39 @@ export default function SettingsPage() {
               </button>
             </div>
           </div>
+        </section>
+
+        {/* Your Activity - Instagram Web Feature */}
+        <section className="space-y-2">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider flex items-center gap-1.5">
+              <ArrowLeftRight size={13} className="text-pink-500" />
+              <span>Your Activity</span>
+            </h2>
+            <span className="text-[10px] text-pink-500 font-bold px-2 py-0.5 rounded-full bg-pink-500/10 border border-pink-500/20">
+              Interactions & History
+            </span>
+          </div>
+          <Link
+            href="/settings/activity"
+            className="p-4 bg-[var(--surface)] border border-[var(--line)] rounded-none flex items-center justify-between hover:bg-[var(--surface-sunken)] transition-colors group cursor-pointer"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-purple-500/20 via-pink-500/20 to-orange-500/20 border border-pink-500/30 flex items-center justify-center text-pink-400 group-hover:scale-105 transition-transform shrink-0">
+                <ArrowLeftRight size={20} />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-[var(--text)] flex items-center gap-1.5">
+                  <span>Your activity</span>
+                  <span className="text-[11px] text-pink-400">⚡</span>
+                </p>
+                <p className="text-xs text-[var(--text-muted)] leading-tight mt-0.5">
+                  Review and delete likes, comments, story replies, photos, and check ban/warning appeals
+                </p>
+              </div>
+            </div>
+            <ChevronRight size={18} className="text-[var(--text-muted)] group-hover:text-[var(--text)] transition-colors shrink-0 ml-2" />
+          </Link>
         </section>
 
         {/* Profile Anthem / Favorite Song */}

@@ -96,6 +96,48 @@ export interface Post {
   isTaggedOnGrid?: boolean;
 }
 
+export interface UserActivityComment {
+  postId: string;
+  post: Post | null;
+  commentId: string;
+  commentText: string;
+  timeAgo: string;
+  createdAt: string;
+  image?: string;
+}
+
+export interface StoryReply {
+  id: string;
+  storyId?: string;
+  senderUsername: string;
+  targetUsername: string;
+  replyText: string;
+  createdAt: string;
+  timeAgo: string;
+}
+
+export interface AccountHistoryEvent {
+  id: string;
+  eventType: 'created' | 'username_change' | 'bio_update' | 'avatar_update' | 'password_update' | 'class_assigned';
+  title: string;
+  description: string;
+  date: string;
+}
+
+export interface BanAppeal {
+  id: string;
+  username: string;
+  fullName: string;
+  appealType: 'suspension' | 'warning' | 'restriction' | 'other';
+  reason: string;
+  admissionNumber?: string;
+  contactEmailOrPhone?: string;
+  status: 'pending' | 'under_review' | 'approved' | 'rejected';
+  submittedAt: string;
+  reviewedAt?: string;
+  adminNotes?: string;
+}
+
 export interface HabitStreak {
   id: string;
   username: string;
@@ -393,6 +435,10 @@ const STORAGE_KEYS = {
   PINNED_POSTS: 'dpsbuzz_pinned_posts_v1',
   GRID_ORDER: 'dpsbuzz_grid_order_v1',
   TAGGED_GRID_POSTS: 'dpsbuzz_tagged_grid_posts_v1',
+  POST_LIKES: 'dpsbuzz_post_likes_v1',
+  STORY_REPLIES: 'dpsbuzz_story_replies_v1',
+  BAN_APPEALS: 'dpsbuzz_ban_appeals_v1',
+  ACCOUNT_AUDIT_LOG: 'dpsbuzz_account_audit_log_v1',
 };
 
 function getStorage<T>(key: string, defaultValue: T): T {
@@ -4097,11 +4143,371 @@ export const DataStore = {
         link: `/chats?user=${cur}`,
       });
 
+      // Also record in story replies store for Your Activity
+      try {
+        this.addStoryReply(story.id, replyText, authorUsername, cur);
+      } catch {}
+
       window.dispatchEvent(
         new CustomEvent('dpsbuzz:content_updated', { detail: { type: 'story_reply_sent' } })
       );
     } catch (e) {
       console.error('Error sending story reply to chat:', e);
+    }
+  },
+
+  // =====================================================
+  // YOUR ACTIVITY: Post Likes & Bulk Unliking
+  // =====================================================
+  getPostLikesMap(): Record<string, string[]> {
+    return getStorage<Record<string, string[]>>(STORAGE_KEYS.POST_LIKES, {});
+  },
+
+  isPostLiked(postId: string, username?: string): boolean {
+    const cur = (username || this.getCurrentUser()?.username || '').toLowerCase().trim();
+    if (!cur) return false;
+    const map = this.getPostLikesMap();
+    return (map[postId] || []).map((u) => u.toLowerCase()).includes(cur);
+  },
+
+  getUserLikedPostIds(username?: string): string[] {
+    const cur = (username || this.getCurrentUser()?.username || '').toLowerCase().trim();
+    if (!cur) return [];
+    const map = this.getPostLikesMap();
+    const result: string[] = [];
+    for (const [postId, likers] of Object.entries(map)) {
+      if (Array.isArray(likers) && likers.some((u) => u.toLowerCase() === cur)) {
+        result.push(postId);
+      }
+    }
+    return result;
+  },
+
+  getUserLikedPosts(username?: string): Post[] {
+    const likedIds = new Set(this.getUserLikedPostIds(username));
+    const allPosts = this.getPosts(true);
+    return allPosts.filter((p) => likedIds.has(p.id));
+  },
+
+  toggleLikePost(postId: string, username?: string): { liked: boolean; likesCount: number } {
+    const cur = (username || this.getCurrentUser()?.username || '').toLowerCase().trim();
+    const map = this.getPostLikesMap();
+    const likers = Array.isArray(map[postId]) ? [...map[postId]] : [];
+    const idx = likers.findIndex((u) => u.toLowerCase() === cur);
+    let liked = false;
+    if (idx >= 0) {
+      likers.splice(idx, 1);
+      liked = false;
+    } else {
+      if (cur) likers.push(cur);
+      liked = true;
+    }
+    map[postId] = likers;
+    setStorage(STORAGE_KEYS.POST_LIKES, map);
+
+    // Update post likes count in stored posts
+    const posts = this.getPosts(true);
+    let newCount = likers.length;
+    const updatedPosts = posts.map((p) => {
+      if (p.id === postId) {
+        const baseLikes = Math.max(0, p.likes || 0);
+        const count = Math.max(likers.length, liked ? baseLikes + 1 : Math.max(0, baseLikes - 1));
+        newCount = count;
+        return { ...p, likes: count };
+      }
+      return p;
+    });
+    setStorage(STORAGE_KEYS.POSTS, updatedPosts);
+
+    if (typeof window !== 'undefined') {
+      fetch(`/api/posts/${postId}/like`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: cur, liked }),
+      }).catch(() => {});
+
+      window.dispatchEvent(
+        new CustomEvent('dpsbuzz:content_updated', {
+          detail: { type: 'like_post', postId, username: cur, liked, count: newCount },
+        })
+      );
+    }
+    return { liked, likesCount: newCount };
+  },
+
+  bulkUnlikePosts(postIds: string[], username?: string): void {
+    postIds.forEach((id) => {
+      if (this.isPostLiked(id, username)) {
+        this.toggleLikePost(id, username);
+      }
+    });
+  },
+
+  // =====================================================
+  // YOUR ACTIVITY: User Comments & Bulk Deletion
+  // =====================================================
+  getAllCommentsMap(): Record<string, any[]> {
+    return getStorage<Record<string, any[]>>('dpsbuzz_comments_v1', {});
+  },
+
+  getUserComments(username?: string): UserActivityComment[] {
+    const cur = (username || this.getCurrentUser()?.username || '').toLowerCase().trim();
+    if (!cur) return [];
+    const commentsMap = this.getAllCommentsMap();
+    const allPosts = this.getPosts(true);
+    const postMap = new Map<string, Post>(allPosts.map((p) => [p.id, p]));
+    const results: UserActivityComment[] = [];
+
+    for (const [postId, commentList] of Object.entries(commentsMap)) {
+      if (!Array.isArray(commentList)) continue;
+      for (const c of commentList) {
+        if (!c || !c.username) continue;
+        if (c.username.toLowerCase().trim() === cur) {
+          results.push({
+            postId,
+            post: postMap.get(postId) || null,
+            commentId: c.id || `c-${Math.random()}`,
+            commentText: c.text || '',
+            timeAgo: c.timeAgo || 'Recently',
+            createdAt: c.createdAt || new Date().toISOString(),
+            image: c.image,
+          });
+        }
+      }
+    }
+
+    return results.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  },
+
+  deleteUserComment(postId: string, commentId: string): boolean {
+    const commentsMap = this.getAllCommentsMap();
+    const list = commentsMap[postId];
+    if (!Array.isArray(list)) return false;
+    const filtered = list.filter((c) => c.id !== commentId);
+    commentsMap[postId] = filtered;
+    setStorage('dpsbuzz_comments_v1', commentsMap);
+
+    const posts = this.getPosts(true);
+    const updated = posts.map((p) => {
+      if (p.id === postId) {
+        return { ...p, comments: Math.max(0, (p.comments || 1) - 1) };
+      }
+      return p;
+    });
+    setStorage(STORAGE_KEYS.POSTS, updated);
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('dpsbuzz:content_updated', {
+          detail: { type: 'comment_deleted', postId, commentId },
+        })
+      );
+    }
+    return true;
+  },
+
+  bulkDeleteUserComments(items: Array<{ postId: string; commentId: string }>): boolean {
+    items.forEach(({ postId, commentId }) => {
+      this.deleteUserComment(postId, commentId);
+    });
+    return true;
+  },
+
+  // =====================================================
+  // YOUR ACTIVITY: Liked Stories & Story Replies
+  // =====================================================
+  getUserLikedStories(username?: string): Story[] {
+    const cur = (username || this.getCurrentUser()?.username || '').toLowerCase().trim();
+    if (!cur) return [];
+    const stories = this.getStories();
+    return stories.filter((s) => Array.isArray(s.likers) && s.likers.some((u) => u.toLowerCase() === cur));
+  },
+
+  getStoryReplies(): StoryReply[] {
+    return getStorage<StoryReply[]>(STORAGE_KEYS.STORY_REPLIES, []);
+  },
+
+  getUserStoryReplies(username?: string): StoryReply[] {
+    const cur = (username || this.getCurrentUser()?.username || '').toLowerCase().trim();
+    if (!cur) return [];
+    return this.getStoryReplies().filter((r) => r.senderUsername.toLowerCase() === cur);
+  },
+
+  addStoryReply(storyId: string, replyText: string, targetUsername: string, senderUsername?: string): StoryReply {
+    const sender = (senderUsername || this.getCurrentUser()?.username || '').toLowerCase().trim();
+    const replies = this.getStoryReplies();
+    const newReply: StoryReply = {
+      id: `reply-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      storyId,
+      senderUsername: sender,
+      targetUsername: targetUsername.toLowerCase().trim(),
+      replyText: replyText.trim(),
+      createdAt: new Date().toISOString(),
+      timeAgo: 'Just now',
+    };
+    replies.unshift(newReply);
+    setStorage(STORAGE_KEYS.STORY_REPLIES, replies);
+    return newReply;
+  },
+
+  deleteStoryReply(replyId: string): boolean {
+    let replies = this.getStoryReplies();
+    replies = replies.filter((r) => r.id !== replyId);
+    setStorage(STORAGE_KEYS.STORY_REPLIES, replies);
+    return true;
+  },
+
+  bulkDeleteStoryReplies(replyIds: string[]): boolean {
+    const set = new Set(replyIds);
+    let replies = this.getStoryReplies();
+    replies = replies.filter((r) => !set.has(r.id));
+    setStorage(STORAGE_KEYS.STORY_REPLIES, replies);
+    return true;
+  },
+
+  // =====================================================
+  // YOUR ACTIVITY: Account History (Audit Log)
+  // =====================================================
+  getAccountHistory(username?: string): AccountHistoryEvent[] {
+    const cur = (username || this.getCurrentUser()?.username || '').toLowerCase().trim();
+    const stored = getStorage<Record<string, AccountHistoryEvent[]>>(STORAGE_KEYS.ACCOUNT_AUDIT_LOG, {});
+    const userEvents = stored[cur] || [];
+
+    if (userEvents.length === 0) {
+      const user = this.getProfileByUsername(cur) || this.getCurrentUser();
+      const defaultEvents: AccountHistoryEvent[] = [
+        {
+          id: `hist-1-${cur}`,
+          eventType: 'created',
+          title: 'Account Created',
+          description: `You officially registered on DPS Buzz as @${user?.username || cur}`,
+          date: user?.createdAt ? new Date(user.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'October 2026',
+        },
+        {
+          id: `hist-2-${cur}`,
+          eventType: 'class_assigned',
+          title: 'Class Verified',
+          description: `Roster verified for Class ${user?.class || '8'}-${user?.section || 'A'}`,
+          date: 'October 2026',
+        },
+      ];
+      if (user?.bio) {
+        defaultEvents.unshift({
+          id: `hist-3-${cur}`,
+          eventType: 'bio_update',
+          title: 'Bio Updated',
+          description: `"${user.bio}"`,
+          date: 'Recently',
+        });
+      }
+      if (user?.avatar) {
+        defaultEvents.unshift({
+          id: `hist-4-${cur}`,
+          eventType: 'avatar_update',
+          title: 'Profile Photo Changed',
+          description: 'Uploaded a custom photo from gallery to profile',
+          date: 'Recently',
+        });
+      }
+      return defaultEvents;
+    }
+    return userEvents;
+  },
+
+  logAccountEvent(username: string, eventType: AccountHistoryEvent['eventType'], title: string, description: string): void {
+    const clean = username.toLowerCase().trim();
+    const stored = getStorage<Record<string, AccountHistoryEvent[]>>(STORAGE_KEYS.ACCOUNT_AUDIT_LOG, {});
+    const events = stored[clean] || [];
+    events.unshift({
+      id: `evt-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      eventType,
+      title,
+      description,
+      date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+    });
+    stored[clean] = events;
+    setStorage(STORAGE_KEYS.ACCOUNT_AUDIT_LOG, stored);
+  },
+
+  // =====================================================
+  // YOUR ACTIVITY: Account Status & Ban / Warning Appeals
+  // =====================================================
+  getBanAppeals(): BanAppeal[] {
+    return getStorage<BanAppeal[]>(STORAGE_KEYS.BAN_APPEALS, []);
+  },
+
+  getUserBanAppeals(username: string): BanAppeal[] {
+    const clean = username.toLowerCase().trim();
+    return this.getBanAppeals().filter((a) => a.username.toLowerCase() === clean);
+  },
+
+  submitBanAppeal(appeal: {
+    username: string;
+    fullName?: string;
+    appealType?: BanAppeal['appealType'];
+    reason: string;
+    admissionNumber?: string;
+    contactEmailOrPhone?: string;
+  }): BanAppeal {
+    const list = this.getBanAppeals();
+    const clean = appeal.username.toLowerCase().trim();
+    const user = this.getProfileByUsername(clean) || this.getCurrentUser();
+    const newAppeal: BanAppeal = {
+      id: `appeal-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      username: clean,
+      fullName: appeal.fullName || user?.fullName || clean,
+      appealType: appeal.appealType || 'suspension',
+      reason: appeal.reason.trim(),
+      admissionNumber: appeal.admissionNumber || user?.admissionNumber,
+      contactEmailOrPhone: appeal.contactEmailOrPhone,
+      status: 'pending',
+      submittedAt: new Date().toISOString(),
+    };
+    list.unshift(newAppeal);
+    setStorage(STORAGE_KEYS.BAN_APPEALS, list);
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('dpsbuzz:content_updated', {
+          detail: { type: 'ban_appeal_submitted', appeal: newAppeal },
+        })
+      );
+    }
+    return newAppeal;
+  },
+
+  updateBanAppealStatus(
+    appealId: string,
+    status: BanAppeal['status'],
+    adminNotes?: string
+  ): void {
+    const list = this.getBanAppeals();
+    let targetUsername = '';
+    const updated = list.map((a) => {
+      if (a.id === appealId) {
+        targetUsername = a.username;
+        return {
+          ...a,
+          status,
+          adminNotes: adminNotes !== undefined ? adminNotes : a.adminNotes,
+          reviewedAt: new Date().toISOString(),
+        };
+      }
+      return a;
+    });
+    setStorage(STORAGE_KEYS.BAN_APPEALS, updated);
+
+    // If appeal approved, unban user automatically!
+    if (status === 'approved' && targetUsername) {
+      this.unbanUser(targetUsername);
+    }
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('dpsbuzz:content_updated', {
+          detail: { type: 'ban_appeal_updated', appealId, status, adminNotes },
+        })
+      );
     }
   },
 };
