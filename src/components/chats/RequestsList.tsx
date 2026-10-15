@@ -147,8 +147,8 @@ export const RequestsList: React.FC<RequestsListProps> = ({
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1.5 truncate">
-                        <span className="text-base font-semibold truncate" style={{ color: 'var(--text)' }}>
-                          {req.name}
+                        <span className="text-base font-bold truncate" style={{ color: 'var(--text)' }}>
+                          @{req.username}
                         </span>
                         <span className="text-xs font-normal shrink-0" style={{ color: 'var(--text-muted)' }}>
                           · Class {req.studentClass}
@@ -197,9 +197,9 @@ export const RequestsList: React.FC<RequestsListProps> = ({
                       backgroundColor: 'var(--primary)',
                       color: 'var(--on-primary)',
                     }}
-                    aria-label={`Accept message from ${req.name}`}
+                    aria-label={`Accept message from ${req.username}`}
                   >
-                    Accept
+                    Accept & Follow
                   </button>
                 </div>
               </div>

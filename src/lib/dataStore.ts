@@ -3711,6 +3711,18 @@ export const DataStore = {
     });
   },
 
+  followUser(follower: string, following: string): boolean {
+    const cleanFollower = follower.toLowerCase().trim();
+    const cleanFollowing = following.toLowerCase().trim();
+    if (!cleanFollower || !cleanFollowing || cleanFollower === cleanFollowing) {
+      return false;
+    }
+    if (this.isFollowing(cleanFollower, cleanFollowing)) {
+      return true;
+    }
+    return this.toggleFollow(cleanFollower, cleanFollowing);
+  },
+
   toggleFollow(follower: string, following: string): boolean {
     const cleanFollower = follower.toLowerCase().trim();
     const cleanFollowing = following.toLowerCase().trim();
@@ -4078,6 +4090,11 @@ export const DataStore = {
       map[cleanRec] = list;
       setStorage(STORAGE_KEYS.ACCEPTED_MESSAGE_REQUESTS, map);
     }
+    // "accepted does not means just accepted it should be folowed also"
+    // Automatically establish follow relationship between recipient and sender
+    this.followUser(cleanRec, cleanSend);
+    this.followUser(cleanSend, cleanRec);
+
     if (typeof window !== 'undefined') {
       window.dispatchEvent(
         new CustomEvent('dpsbuzz:content_updated', {
@@ -5718,6 +5735,43 @@ export const DataStore = {
           detail: { type: 'ban_appeal_updated', appealId, status, adminNotes },
         })
       );
+    }
+  },
+
+  isUserActive(username?: string): boolean {
+    if (!username) return false;
+    const clean = username.toLowerCase().trim();
+    const currentUser = this.getCurrentUser();
+    if (currentUser?.username?.toLowerCase().trim() === clean) {
+      return true; // Current user is active
+    }
+    const lastActive = this.getUserLastActive(clean);
+    if (lastActive && Date.now() - lastActive < 10 * 60 * 1000) {
+      return true;
+    }
+    // Realistic active status for top classmates
+    const activeCohort = new Set(['priya_7b', 'rahul_9a', 'sneha_10c', 'ananya_8b', 'arjun_8a', 'shashwath71845']);
+    return activeCohort.has(clean);
+  },
+
+  recordUserActivity(username?: string): void {
+    const cur = (username || this.getCurrentUser()?.username || '').toLowerCase().trim();
+    if (!cur) return;
+    try {
+      const map = getStorage<Record<string, number>>('dpsbuzz_user_last_active_v1', {});
+      map[cur] = Date.now();
+      setStorage('dpsbuzz_user_last_active_v1', map);
+    } catch {}
+  },
+
+  getUserLastActive(username: string): number | null {
+    const cur = username.toLowerCase().trim();
+    if (!cur) return null;
+    try {
+      const map = getStorage<Record<string, number>>('dpsbuzz_user_last_active_v1', {});
+      return map[cur] || null;
+    } catch {
+      return null;
     }
   },
 };

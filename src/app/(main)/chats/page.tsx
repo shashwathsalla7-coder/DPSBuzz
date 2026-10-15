@@ -1305,6 +1305,10 @@ function ChatsContent() {
     const cleanTarget = targetUser.toLowerCase().trim();
     DataStore.acceptMessageRequest(currentUsername, cleanTarget);
 
+    // Mutual follow explicitly ensured
+    DataStore.followUser(currentUsername, cleanTarget);
+    DataStore.followUser(cleanTarget, currentUsername);
+
     setRequestsState((prev) => prev.filter((r) => r.username.toLowerCase() !== cleanTarget));
 
     setConversations((prev) => {
@@ -1334,6 +1338,11 @@ function ChatsContent() {
         prev ? { ...prev, inboxTier: 'PRIMARY', isUnread: false, unreadCount: 0 } : null
       );
     }
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated'));
+    }
+    DataStore.syncWithServer().catch(() => {});
   };
 
   const handleDeleteRequest = (targetUser: string) => {
@@ -2240,7 +2249,7 @@ function ChatsContent() {
             <div className="flex items-center justify-center gap-1.5 text-xs text-[var(--text-muted)] text-center px-2">
               <Shield size={14} className="text-amber-500 shrink-0" />
               <span>
-                <strong>@{targetUser}</strong> wants to send you a message. They won&apos;t know you&apos;ve seen it until you accept.
+                <strong>@{targetUser}</strong> wants to send you a message. Accept to reply & follow each other.
               </span>
             </div>
             <div className="flex items-center gap-2 max-w-md mx-auto">
@@ -2264,7 +2273,7 @@ function ChatsContent() {
                 onClick={() => handleAcceptRequestFromSandbox(targetUser)}
                 className="flex-1 py-2.5 rounded-full text-xs font-bold text-white bg-[var(--primary)] hover:opacity-90 active:scale-95 transition-all cursor-pointer shadow-xs"
               >
-                Accept
+                Accept & Follow
               </button>
             </div>
           </div>
@@ -2560,6 +2569,33 @@ function ChatsContent() {
       ) : (
         /* Conversation Rows & States */
         <div className="flex-1 divide-y" style={{ borderColor: 'var(--line)' }}>
+          {/* Prominent Instagram-Style Message Request Alert Strip */}
+          {activeChip === 'all' && computedRequests.length > 0 && (
+            <div
+              onClick={() => setActiveChip('requests')}
+              className="mx-3.5 my-2.5 p-3 rounded-2xl bg-gradient-to-r from-orange-500/15 via-pink-500/15 to-purple-500/15 border border-orange-500/30 flex items-center justify-between cursor-pointer hover:opacity-95 transition-all shadow-xs"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] flex items-center justify-center text-white font-extrabold text-xs shadow-xs shrink-0">
+                  {computedRequests.length}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-[var(--text)] truncate">
+                    {computedRequests.length === 1
+                      ? `@${computedRequests[0].username} sent you a message request`
+                      : `${computedRequests.length} new message requests`}
+                  </p>
+                  <p className="text-[11px] text-[var(--text-muted)] truncate">
+                    Tap to review & accept (auto-follow to chat)
+                  </p>
+                </div>
+              </div>
+              <span className="text-xs font-bold text-white bg-[var(--primary)] px-3 py-1 rounded-full shrink-0 shadow-xs ml-2">
+                Review
+              </span>
+            </div>
+          )}
+
           {demoState === 'loading' ? (
             <ChatsSkeleton count={6} />
           ) : demoState === 'error' ? (
