@@ -18,6 +18,9 @@ import {
   X,
   Phone,
   Video,
+  Palette,
+  Smile,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { ChatsHeader } from '@/components/chats/ChatsHeader';
 import { ChatSearch } from '@/components/chats/ChatSearch';
@@ -28,6 +31,13 @@ import { ChatsSkeleton } from '@/components/chats/ChatsSkeleton';
 import { EmptyChats } from '@/components/chats/EmptyChats';
 import { ChatActionsSheet } from '@/components/chats/ChatActionsSheet';
 import { ChatNotesTray } from '@/components/chats/ChatNotesTray';
+import { EmojiPickerDrawer } from '@/components/chats/EmojiPickerDrawer';
+import {
+  ChatBackgroundSelector,
+  type ChatBackgroundOption,
+  GRADIENT_BACKGROUNDS,
+  GALLERY_BACKGROUNDS,
+} from '@/components/chats/ChatBackgroundSelector';
 import { getAvatarColorPair } from '@/config/tokens';
 import { DataStore, DUMMY_TEST_USERNAMES, ChatNote } from '@/lib/dataStore';
 
@@ -184,6 +194,40 @@ function ChatsContent() {
   const [messageInput, setMessageInput] = useState('');
   const [activeReactionMsgId, setActiveReactionMsgId] = useState<string | null>(null);
   const lastTapTimeRef = useRef<{ id: string; time: number }>({ id: '', time: 0 });
+
+  // Chat Wallpaper / Background & Emoji Drawer State
+  const [isBgSelectorOpen, setIsBgSelectorOpen] = useState(false);
+  const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
+  const [chatBackgrounds, setChatBackgrounds] = useState<Record<string, ChatBackgroundOption>>({});
+  const chatMediaInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Load persisted chat backgrounds from localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('dpsbuzz_chat_backgrounds_v1');
+      if (saved) {
+        setChatBackgrounds(JSON.parse(saved));
+      }
+    } catch {}
+  }, []);
+
+  const handleSelectChatBg = (bg: ChatBackgroundOption, applyToAll = false) => {
+    if (!activeConversation) return;
+    const canonicalId = getCanonicalConvId(activeConversation);
+    const rawId = activeConversation.id;
+
+    setChatBackgrounds((prev) => {
+      const next = { ...prev, [canonicalId]: bg, [rawId]: bg };
+      if (applyToAll) {
+        next['global_default'] = bg;
+      }
+      try {
+        localStorage.setItem('dpsbuzz_chat_backgrounds_v1', JSON.stringify(next));
+        window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated'));
+      } catch {}
+      return next;
+    });
+  };
 
   const showGroupToast = (msg: string) => {
     setGroupToast(msg);
@@ -843,6 +887,65 @@ function ChatsContent() {
     }).catch((err) => console.warn('Failed to sync chat message:', err));
   };
 
+  const handleImageAttachment = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !activeConversation) return;
+    if (!file.type.startsWith('image/')) {
+      alert('Please select a valid photo to send.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string;
+      if (!dataUrl) return;
+
+      const rawId = activeConversation.id;
+      const canonicalId = getCanonicalConvId(activeConversation);
+      const newMsg: ChatMessage = {
+        id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        text: '📸 Photo',
+        sender: 'me',
+        senderUsername: currentUsername,
+        time: 'Just now',
+        sharedPost: {
+          id: `img-${Date.now()}`,
+          username: currentUsername,
+          imageUrl: dataUrl,
+          caption: 'Shared a photo',
+        },
+      };
+
+      setChatMessages((prev) => {
+        const existing = prev[canonicalId] || prev[rawId] || [];
+        const next = [...existing, newMsg];
+        const nextMap = {
+          ...prev,
+          [rawId]: next,
+          [canonicalId]: next,
+        };
+        try {
+          localStorage.setItem('dpsbuzz_chat_messages_v1', JSON.stringify(nextMap));
+          window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated'));
+        } catch {}
+        return nextMap;
+      });
+
+      fetch('/api/chats', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          conversationId: canonicalId,
+          message: newMsg,
+        }),
+      }).catch((err) => console.warn('Failed to sync chat message:', err));
+
+      setTimeout(() => scrollToBottom(true), 80);
+    };
+    reader.readAsDataURL(file);
+    if (chatMediaInputRef.current) chatMediaInputRef.current.value = '';
+  };
+
   // ACTIVE CONVERSATION VIEW (Full screen on mobile, NO active now or last seen status)
   if (activeConversation) {
     const canonicalId = getCanonicalConvId(activeConversation);
@@ -850,9 +953,19 @@ function ChatsContent() {
     const colors = getAvatarColorPair(activeConversation.username || activeConversation.name);
     const initials = activeConversation.name.slice(0, 2).toUpperCase();
 
+    // Active Chat Wallpaper (Persistent across sessions & per-conversation)
+    const activeChatBg: ChatBackgroundOption =
+      chatBackgrounds[canonicalId] ||
+      chatBackgrounds[activeConversation.id] ||
+      chatBackgrounds['global_default'] ||
+      GRADIENT_BACKGROUNDS[0];
+
+    const targetUser = (activeConversation.username || activeConversation.id.replace(/^conv-/, '')).toLowerCase().trim();
+    const isSelfChat = targetUser === currentUsername;
+
     return (
       <div className="fixed inset-0 z-50 md:static md:z-auto md:min-h-[85vh] flex flex-col select-none bg-[var(--surface)] text-[var(--text)]">
-        {/* Chat Header (56px) - NO active now / last seen anywhere */}
+        {/* Chat Header (56px) */}
         <header
           className="h-14 px-3 flex items-center justify-between border-b shrink-0 sticky top-0 z-30"
           style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--line)' }}
@@ -899,43 +1012,59 @@ function ChatsContent() {
           </div>
 
           <div className="flex items-center gap-1">
-            {!activeConversation.isGroup && activeConversation.username && (
+            {/* Quick 1-tap Wallpaper / Theme selector button */}
+            <button
+              type="button"
+              onClick={() => setIsBgSelectorOpen(true)}
+              className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-[var(--surface-sunken)] cursor-pointer text-[var(--text-muted)] hover:text-pink-500 transition-colors"
+              aria-label="Change Chat Background"
+              title="Change Chat Background"
+            >
+              <Palette size={18} />
+            </button>
+
+            {!activeConversation.isGroup && targetUser && !isSelfChat && (
               <>
+                {/* Button 1: Voice Call */}
                 <button
                   type="button"
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation();
                     window.dispatchEvent(
                       new CustomEvent('dpsbuzz:start_call', {
                         detail: {
-                          receiverUsername: activeConversation.username,
-                          receiverName: activeConversation.name,
-                          receiverAvatar: activeConversation.avatar,
+                          receiverUsername: targetUser,
+                          receiverName: activeConversation.name || targetUser,
+                          receiverAvatar: activeConversation.avatar || activeConversation.avatarUrl || null,
                           isVideo: false,
                         },
                       })
                     );
                   }}
-                  className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-[var(--surface-sunken)] cursor-pointer text-[var(--text-muted)] hover:text-[#007AFF] transition-colors"
+                  className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-[var(--surface-sunken)] cursor-pointer text-[var(--text-muted)] hover:text-[#007AFF] transition-colors relative z-10"
                   aria-label="Voice Call"
                   title="Voice Call"
                 >
                   <Phone size={18} />
                 </button>
+
+                {/* Button 2: Video Call */}
                 <button
                   type="button"
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation();
                     window.dispatchEvent(
                       new CustomEvent('dpsbuzz:start_call', {
                         detail: {
-                          receiverUsername: activeConversation.username,
-                          receiverName: activeConversation.name,
-                          receiverAvatar: activeConversation.avatar,
+                          receiverUsername: targetUser,
+                          receiverName: activeConversation.name || targetUser,
+                          receiverAvatar: activeConversation.avatar || activeConversation.avatarUrl || null,
                           isVideo: true,
                         },
                       })
                     );
                   }}
-                  className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-[var(--surface-sunken)] cursor-pointer text-[var(--text-muted)] hover:text-[#007AFF] transition-colors"
+                  className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-[var(--surface-sunken)] cursor-pointer text-[var(--text-muted)] hover:text-[#007AFF] transition-colors relative z-10"
                   aria-label="Video Call"
                   title="Video Call"
                 >
@@ -944,19 +1073,46 @@ function ChatsContent() {
               </>
             )}
 
+            {/* Button 3: More Options / Chat Settings (Fix: Opens ChatActionsSheet directly in active chat view) */}
             <button
               type="button"
-              onClick={() => setLongPressConv(activeConversation)}
-              className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-[var(--surface-sunken)] cursor-pointer text-[var(--text-muted)] hover:text-[var(--text)] transition-colors"
+              onClick={(e) => {
+                e.stopPropagation();
+                setLongPressConv(activeConversation);
+              }}
+              className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-[var(--surface-sunken)] cursor-pointer text-[var(--text-muted)] hover:text-[var(--text)] transition-colors relative z-10"
               aria-label="Chat options"
+              title="Chat options & wallpaper"
             >
               <MoreHorizontal size={18} />
             </button>
           </div>
         </header>
 
-        {/* Messages Stream */}
-        <div className="flex-1 p-4 space-y-3 overflow-y-auto">
+        {/* Messages Stream with dynamic persistent background */}
+        <div
+          className="flex-1 p-4 space-y-3 overflow-y-auto relative transition-all"
+          style={
+            activeChatBg && activeChatBg.type === 'image'
+              ? {
+                  backgroundImage: `url(${activeChatBg.value})`,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                  backgroundRepeat: 'no-repeat',
+                }
+              : activeChatBg && activeChatBg.type === 'gradient'
+              ? {
+                  background: activeChatBg.value,
+                }
+              : {
+                  backgroundColor: 'var(--surface)',
+                }
+          }
+        >
+          {/* Subtle dark backdrop overlay on photo wallpapers for optimal text readability */}
+          {activeChatBg && activeChatBg.type === 'image' && (
+            <div className="absolute inset-0 bg-black/35 pointer-events-none" />
+          )}
           {messages.length === 0 ? (
             <div className="text-center py-12 text-xs" style={{ color: 'var(--text-muted)' }}>
               No messages yet. Say hello to your classmate!
@@ -1127,12 +1283,45 @@ function ChatsContent() {
         {/* Input Bar */}
         <form
           onSubmit={handleSendMessage}
-          className="p-3 border-t flex items-center gap-2 bg-[var(--surface)]"
+          className="p-3 border-t flex items-center gap-2 bg-[var(--surface)] relative z-20"
           style={{
             borderColor: 'var(--line)',
             paddingBottom: 'max(14px, env(safe-area-inset-bottom, 14px))',
           }}
         >
+          {/* Hidden file input for photo sharing */}
+          <input
+            type="file"
+            ref={chatMediaInputRef}
+            accept="image/*"
+            onChange={handleImageAttachment}
+            className="hidden"
+          />
+
+          {/* Photo attachment button */}
+          <button
+            type="button"
+            onClick={() => chatMediaInputRef.current?.click()}
+            disabled={isMaintenanceActive}
+            className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-[var(--surface-sunken)] cursor-pointer text-[var(--text-muted)] hover:text-[#007AFF] transition-colors shrink-0 disabled:opacity-40"
+            aria-label="Attach photo"
+            title="Send photo"
+          >
+            <ImageIcon size={20} />
+          </button>
+
+          {/* Emoji drawer button */}
+          <button
+            type="button"
+            onClick={() => setIsEmojiPickerOpen(true)}
+            disabled={isMaintenanceActive}
+            className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-[var(--surface-sunken)] cursor-pointer text-[var(--text-muted)] hover:text-[#007AFF] transition-colors shrink-0 disabled:opacity-40"
+            aria-label="Pick emoji"
+            title="Emoji picker"
+          >
+            <Smile size={20} />
+          </button>
+
           <input
             type="text"
             value={messageInput}
@@ -1142,6 +1331,7 @@ function ChatsContent() {
             className="flex-1 h-11 px-4 rounded-full bg-[var(--surface-sunken)] text-[14px] outline-none border border-[var(--line)] focus:border-[#007AFF] focus:ring-1 focus:ring-[#007AFF] placeholder:text-[var(--text-muted)] disabled:opacity-50 transition-all font-normal"
             style={{ color: 'var(--text)' }}
           />
+
           {messageInput.trim() ? (
             <button
               type="submit"
@@ -1163,6 +1353,59 @@ function ChatsContent() {
             </button>
           )}
         </form>
+
+        {/* Chat Actions Sheet inside active chat view */}
+        <ChatActionsSheet
+          conversation={longPressConv}
+          isOpen={longPressConv !== null}
+          onClose={() => setLongPressConv(null)}
+          onMuteToggle={handleMuteToggle}
+          onPinToggle={handlePinToggle}
+          onChangeBackground={() => {
+            setLongPressConv(null);
+            setIsBgSelectorOpen(true);
+          }}
+          onDeleteRequest={(c) => {
+            setLongPressConv(null);
+            setDeleteConfirmConv(c);
+          }}
+          onReport={(c) => {
+            if (c.username?.toLowerCase() === currentUsername) {
+              alert('You cannot report yourself.');
+              setLongPressConv(null);
+              return;
+            }
+            alert(`Report submitted for @${c.username}. School moderation will review.`);
+            setLongPressConv(null);
+          }}
+          onBlock={(c) => {
+            if (c.username?.toLowerCase() === currentUsername) {
+              alert('You cannot block yourself.');
+              setLongPressConv(null);
+              return;
+            }
+            alert(`Blocked @${c.username}. They cannot message you.`);
+            setLongPressConv(null);
+          }}
+        />
+
+        {/* Chat Background Selector Modal */}
+        <ChatBackgroundSelector
+          isOpen={isBgSelectorOpen}
+          onClose={() => setIsBgSelectorOpen(false)}
+          currentBackground={activeChatBg}
+          onSelectBackground={handleSelectChatBg}
+          conversationName={activeConversation.name}
+        />
+
+        {/* Emoji Picker Drawer */}
+        <EmojiPickerDrawer
+          isOpen={isEmojiPickerOpen}
+          onClose={() => setIsEmojiPickerOpen(false)}
+          onSelectEmoji={(emoji) => {
+            setMessageInput((prev) => prev + emoji);
+          }}
+        />
       </div>
     );
   }
@@ -1417,13 +1660,20 @@ function ChatsContent() {
         onSelectStudent={handleStartNewChat}
       />
 
-      {/* Long Press Sheet (Mute, Pin, Report, Block) */}
+      {/* Long Press Sheet (Mute, Pin, Report, Block, Wallpaper) */}
       <ChatActionsSheet
         conversation={longPressConv}
         isOpen={longPressConv !== null}
         onClose={() => setLongPressConv(null)}
         onMuteToggle={handleMuteToggle}
         onPinToggle={handlePinToggle}
+        onChangeBackground={() => {
+          if (longPressConv) {
+            setActiveConversation(longPressConv);
+            setIsBgSelectorOpen(true);
+            setLongPressConv(null);
+          }
+        }}
         onDeleteRequest={(c) => {
           setLongPressConv(null);
           setDeleteConfirmConv(c);

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Bell, BellOff, Pin, Flag, ShieldAlert, Trash2, X } from 'lucide-react';
+import { Bell, BellOff, Pin, Flag, ShieldAlert, Trash2, X, Palette } from 'lucide-react';
 import { ConversationItem } from './ConversationRow';
 import { DataStore } from '@/lib/dataStore';
 
@@ -14,6 +14,7 @@ export interface ChatActionsSheetProps {
   onDeleteRequest: (conv: ConversationItem) => void;
   onReport: (conv: ConversationItem) => void;
   onBlock: (conv: ConversationItem) => void;
+  onChangeBackground?: () => void;
 }
 
 export const ChatActionsSheet: React.FC<ChatActionsSheetProps> = ({
@@ -25,6 +26,7 @@ export const ChatActionsSheet: React.FC<ChatActionsSheetProps> = ({
   onDeleteRequest,
   onReport,
   onBlock,
+  onChangeBackground,
 }) => {
   if (!isOpen || !conversation) return null;
 
@@ -33,7 +35,7 @@ export const ChatActionsSheet: React.FC<ChatActionsSheetProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/60 flex items-end justify-center select-none"
+      className="fixed inset-0 z-[65] bg-black/60 backdrop-blur-xs flex items-end justify-center select-none"
       role="dialog"
       aria-modal="true"
       aria-label="Chat options"
@@ -96,6 +98,22 @@ export const ChatActionsSheet: React.FC<ChatActionsSheetProps> = ({
             <Pin size={18} className="transform rotate-45" />
             <span>{conversation.isPinned ? 'Unpin from top' : 'Pin to top'}</span>
           </button>
+
+          {/* Change Chat Wallpaper */}
+          {onChangeBackground && (
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                onChangeBackground();
+              }}
+              className="w-full px-3 py-2.5 rounded-[10px] flex items-center gap-3 text-left hover:bg-[var(--surface-sunken)] transition-colors cursor-pointer"
+              style={{ color: 'var(--text)' }}
+            >
+              <Palette size={18} className="text-pink-500" />
+              <span>Change chat wallpaper & background</span>
+            </button>
+          )}
 
           {/* Delete */}
           <button
