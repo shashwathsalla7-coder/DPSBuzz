@@ -666,7 +666,10 @@
         "sender": "me",
         "senderUsername": "rohan728",
         "time": "6:35 PM",
-        "conversationId": "rohan728__shashwath71845"
+        "conversationId": "rohan728__shashwath71845",
+        "is_read": true,
+        "isSeen": true,
+        "readAt": 1792070385155
       },
       {
         "id": "msg-1792069628846-gq6a",
@@ -674,7 +677,10 @@
         "sender": "me",
         "senderUsername": "rohan728",
         "time": "6:37 PM",
-        "conversationId": "rohan728__shashwath71845"
+        "conversationId": "rohan728__shashwath71845",
+        "is_read": true,
+        "isSeen": true,
+        "readAt": 1792070385155
       },
       {
         "id": "msg-1792069635553-i86y",
@@ -682,7 +688,10 @@
         "sender": "me",
         "senderUsername": "rohan728",
         "time": "6:37 PM",
-        "conversationId": "rohan728__shashwath71845"
+        "conversationId": "rohan728__shashwath71845",
+        "is_read": true,
+        "isSeen": true,
+        "readAt": 1792070385155
       },
       {
         "id": "msg-1792069896590-q03u",
@@ -690,7 +699,25 @@
         "sender": "me",
         "senderUsername": "rohan728",
         "time": "6:41 PM",
-        "conversationId": "rohan728__shashwath71845"
+        "conversationId": "rohan728__shashwath71845",
+        "is_read": true,
+        "isSeen": true,
+        "readAt": 1792070379028,
+        "isDelivered": true,
+        "reaction": "❤️"
+      }
+    ],
+    "ashwith__shashwath71845": [
+      {
+        "id": "msg-1792070459838-ptip",
+        "text": "hi bro how is the app",
+        "sender": "me",
+        "senderUsername": "shashwath71845",
+        "time": "6:50 PM",
+        "isDelivered": false,
+        "is_read": false,
+        "isSeen": false,
+        "conversationId": "ashwith__shashwath71845"
       }
     ]
   },
@@ -770,5 +797,5 @@
       "link": "/home"
     }
   ],
-  "lastUpdated": 1792069897148
+  "lastUpdated": 1792070460082
 }

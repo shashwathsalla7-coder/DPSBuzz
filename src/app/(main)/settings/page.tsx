@@ -31,6 +31,11 @@ import { getAvatarColorPair } from '@/config/tokens';
 import { DataStore, type SongTrack } from '@/lib/dataStore';
 import { SongPickerModal } from '@/components/music/SongPickerModal';
 import { MusicTrackPill } from '@/components/music/MusicTrackPill';
+import {
+  requestNotificationPermission,
+  getNotificationPermission,
+  showBackgroundNotification,
+} from '@/lib/pushNotifications';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -56,6 +61,35 @@ export default function SettingsPage() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [showSongPicker, setShowSongPicker] = useState(false);
   const [copiedRefLink, setCopiedRefLink] = useState(false);
+  const [notifPermission, setNotifPermission] = useState<string>('default');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setNotifPermission(getNotificationPermission());
+    }
+  }, []);
+
+  const handleEnablePush = async () => {
+    const perm = await requestNotificationPermission();
+    setNotifPermission(perm);
+    if (perm === 'granted') {
+      showToast('Background notifications active! 🔔');
+    } else {
+      showToast('Notification permission denied by browser.');
+    }
+  };
+
+  const handleTestNotification = async () => {
+    const sent = await showBackgroundNotification('DPS Buzz 🐝', {
+      body: 'Test notification! Background alerts are working even when DPS Buzz is in background or closed.',
+      url: '/notifications',
+    });
+    if (sent) {
+      showToast('Test alert sent to your device! 🔔');
+    } else {
+      showToast('Please enable notifications first.');
+    }
+  };
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -605,6 +639,45 @@ export default function SettingsPage() {
             Notifications
           </h2>
           <div className="bg-[var(--surface)] border border-[var(--line)] rounded-[16px] divide-y divide-[var(--line)] overflow-hidden">
+            <div className="p-3.5 flex items-center justify-between gap-3">
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-semibold text-[var(--text)]">Background Push Notifications</p>
+                  <span
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      notifPermission === 'granted'
+                        ? 'bg-emerald-500/15 text-emerald-500 border border-emerald-500/30'
+                        : 'bg-amber-500/15 text-amber-500 border border-amber-500/30'
+                    }`}
+                  >
+                    {notifPermission === 'granted' ? 'Active' : 'Disabled'}
+                  </span>
+                </div>
+                <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                  Receive alerts for incoming chats & calls even when the app is in background or closed
+                </p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                {notifPermission === 'granted' ? (
+                  <button
+                    type="button"
+                    onClick={handleTestNotification}
+                    className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-[var(--surface-sunken)] border border-[var(--line)] text-[var(--text)] hover:bg-[var(--line)] transition-colors cursor-pointer"
+                  >
+                    Test 🔔
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleEnablePush}
+                    className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-[#007AFF] text-white hover:opacity-90 transition-opacity cursor-pointer shadow-xs"
+                  >
+                    Enable
+                  </button>
+                )}
+              </div>
+            </div>
+
             <div className="p-3.5 flex items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-semibold text-[var(--text)]">School Notices</p>

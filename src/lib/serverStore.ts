@@ -585,6 +585,13 @@ export async function deleteServerAccount(username: string): Promise<ServerStore
     }
   }
 
+  // Recalculate likes and comments on remaining posts
+  const updatedPosts = posts.map((post) => {
+    const postLikes = Array.isArray(updatedLikes[post.id]) ? updatedLikes[post.id].length : post.likes || 0;
+    const postComments = Array.isArray(updatedComments[post.id]) ? updatedComments[post.id].length : post.comments || 0;
+    return { ...post, likes: postLikes, comments: postComments };
+  });
+
   // 6. Remove chats & direct messages involving user
   const updatedChatMessages: Record<string, any[]> = {};
   for (const [convId, msgs] of Object.entries(current.chatMessages || {})) {
@@ -593,6 +600,8 @@ export async function deleteServerAccount(username: string): Promise<ServerStore
       if (parts.includes(clean)) {
         continue; // drop entire private DM with deleted user
       }
+    } else if (convId === `conv-${clean}` || convId === clean) {
+      continue;
     }
     if (Array.isArray(msgs)) {
       // For any remaining group conversations, filter out messages sent by this user
@@ -607,14 +616,19 @@ export async function deleteServerAccount(username: string): Promise<ServerStore
     (n) => n && n.username && n.username.toLowerCase().trim() !== clean
   );
 
-  // 8. Remove notifications
+  // 8. Remove notifications sent to or related to user
   const notifications = (current.notifications || []).filter(
-    (n) => n && n.userId && n.userId.toLowerCase().trim() !== clean
+    (n) =>
+      n &&
+      n.userId &&
+      n.userId.toLowerCase().trim() !== clean &&
+      !(n.link && n.link.toLowerCase().includes(`/u/${clean}`)) &&
+      !(n.body && n.body.toLowerCase().includes(`@${clean}`))
   );
 
   return await saveServerStore({
     profiles,
-    posts,
+    posts: updatedPosts,
     stories,
     comments: updatedComments,
     likes: updatedLikes,

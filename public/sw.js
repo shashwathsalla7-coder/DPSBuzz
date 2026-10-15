@@ -73,3 +73,18 @@ self.addEventListener('notificationclick', (event) => {
     })
   );
 });
+
+// Handle SHOW_NOTIFICATION message from active or background clients
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SHOW_NOTIFICATION') {
+    const { title, options } = event.data;
+    event.waitUntil(
+      self.registration.showNotification(title || 'DPS Buzz 🐝', {
+        icon: '/icons/icon-192.png',
+        badge: '/icons/icon-192.png',
+        vibrate: [100, 50, 100],
+        ...options,
+      })
+    );
+  }
+});

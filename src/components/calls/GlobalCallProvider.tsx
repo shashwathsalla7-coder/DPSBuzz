@@ -13,6 +13,7 @@ import {
   playCallEndedSound,
   stopCallAudio,
 } from '@/lib/callAudio';
+import { showBackgroundNotification } from '@/lib/pushNotifications';
 
 const ICE_SERVERS: RTCConfiguration = {
   iceServers: [
@@ -555,6 +556,12 @@ export function GlobalCallProvider() {
           if (!activeCall && (!incomingCall || incomingCall.callId !== serverCall.callId)) {
             setIncomingCall(serverCall);
             playIncomingRingtone();
+            showBackgroundNotification(`📞 Incoming ${serverCall.isVideo ? 'Video' : 'Voice'} Call`, {
+              body: `${serverCall.callerName || serverCall.callerUsername} is calling you on DPS Buzz`,
+              icon: serverCall.callerAvatar || '/icons/icon-192.png',
+              tag: `call-${serverCall.callId}`,
+              url: '/chats',
+            });
           }
         }
 

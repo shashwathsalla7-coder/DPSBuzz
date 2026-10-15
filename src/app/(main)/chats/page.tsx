@@ -44,6 +44,7 @@ import {
 } from '@/components/chats/ChatBackgroundSelector';
 import { getAvatarColorPair } from '@/config/tokens';
 import { DataStore, DUMMY_TEST_USERNAMES, ChatNote } from '@/lib/dataStore';
+import { showBackgroundNotification } from '@/lib/pushNotifications';
 
 interface ChatMessage {
   id: string;
@@ -523,6 +524,16 @@ function ChatsContent() {
 
         if (isCurrentlyViewingThis && !isMe && currentUsername) {
           DataStore.markChatRead(conversationId, currentUsername);
+        } else if (!isMe) {
+          // Trigger system notification if user is in background or viewing a different conversation
+          const isDocHidden = typeof document !== 'undefined' && document.hidden;
+          if (!isCurrentlyViewingThis || isDocHidden) {
+            showBackgroundNotification(`💬 @${message.senderUsername || otherUser}`, {
+              body: message.text || (message.sharedPost ? 'Sent a photo' : 'New message on DPS Buzz'),
+              tag: `chat-${conversationId}`,
+              url: `/chats?conv=${encodeURIComponent(conversationId)}`,
+            });
+          }
         }
 
         setConversations((prev) => {
@@ -1292,6 +1303,14 @@ function ChatsContent() {
   };
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const prevMsgCountRef = useRef<number>(0);
+
+  const isNearBottom = () => {
+    const el = messagesContainerRef.current;
+    if (!el) return true;
+    return el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+  };
 
   const scrollToBottom = (smooth = true) => {
     if (messagesEndRef.current) {
@@ -1301,16 +1320,29 @@ function ChatsContent() {
 
   useEffect(() => {
     if (activeConversation) {
-      const timer = setTimeout(() => scrollToBottom(false), 60);
+      const timer = setTimeout(() => scrollToBottom(false), 50);
       return () => clearTimeout(timer);
     }
   }, [activeConversation?.id]);
 
   useEffect(() => {
-    if (activeConversation) {
-      scrollToBottom(true);
+    if (!activeConversation) return;
+    const rawId = activeConversation.id;
+    const canonicalId = getCanonicalConvId(activeConversation);
+    const msgs = chatMessages[rawId] || chatMessages[canonicalId] || [];
+    const count = msgs.length;
+
+    if (count > prevMsgCountRef.current) {
+      const lastMsg = msgs[msgs.length - 1];
+      const isSentByMe =
+        lastMsg?.sender === 'me' ||
+        (lastMsg?.senderUsername && lastMsg.senderUsername.toLowerCase() === currentUsername);
+      if (isSentByMe || isNearBottom()) {
+        scrollToBottom(true);
+      }
     }
-  }, [chatMessages]);
+    prevMsgCountRef.current = count;
+  }, [chatMessages, activeConversation, currentUsername]);
 
   const handleSendHeart = () => {
     if (isMaintenanceActive) {
@@ -1856,7 +1888,8 @@ function ChatsContent() {
 
         {/* Messages Stream with dynamic persistent background */}
         <div
-          className="flex-1 p-4 space-y-3 overflow-y-auto relative transition-all"
+          ref={messagesContainerRef}
+          className="flex-1 p-4 space-y-3 overflow-y-auto relative transition-all font-sf-display"
           style={
             isVanishMode
               ? {
@@ -1945,11 +1978,15 @@ function ChatsContent() {
                     className="relative cursor-pointer select-none max-w-[78%]"
                   >
                     <div
-                      className={`px-4 py-2.5 rounded-[22px] text-[14.5px] leading-[1.42] tracking-[-0.012em] font-[450] transition-all ${
+                      className={`px-4 py-2.5 rounded-[22px] text-[15px] leading-[1.4] tracking-[-0.015em] font-semibold chat-bubble-text font-sf-display transition-all ${
                         isMe
                           ? 'bg-[#007AFF] text-white rounded-br-[5px] shadow-xs'
                           : 'bg-[#FFFFFF] text-slate-900 border border-black/10 dark:border-white/15 rounded-bl-[5px] shadow-xs'
                       }`}
+                      style={{
+                        fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF UI Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif',
+                        fontWeight: 600,
+                      }}
                     >
                       {msg.sharedPost && (
                         <div
@@ -2202,8 +2239,12 @@ function ChatsContent() {
               disabled={isMaintenanceActive}
               onChange={(e) => setMessageInput(e.target.value)}
               placeholder={isMaintenanceActive ? 'Chat is disabled during scheduled maintenance 🔒' : 'Message...'}
-              className="flex-1 h-11 px-4 rounded-full bg-[var(--surface-sunken)] text-[14px] outline-none border border-[var(--line)] focus:border-[#007AFF] focus:ring-1 focus:ring-[#007AFF] placeholder:text-[var(--text-muted)] disabled:opacity-50 transition-all font-normal"
-              style={{ color: 'var(--text)' }}
+              className="flex-1 h-11 px-4 rounded-full bg-[var(--surface-sunken)] text-[14.5px] outline-none border border-[var(--line)] focus:border-[#007AFF] focus:ring-1 focus:ring-[#007AFF] placeholder:text-[var(--text-muted)] disabled:opacity-50 transition-all font-semibold font-sf-display"
+              style={{
+                color: 'var(--text)',
+                fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF UI Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif',
+                fontWeight: 600,
+              }}
             />
 
             {messageInput.trim() ? (

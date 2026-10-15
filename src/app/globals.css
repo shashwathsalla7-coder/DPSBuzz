@@ -34,6 +34,7 @@
   --font-hand: var(--font-kalam), 'Kalam', cursive;
   --font-mono: var(--font-ibm-mono), 'IBM Plex Mono', monospace;
   --font-gambetta: var(--font-gambetta), 'Gambetta', serif;
+  --font-chat: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF UI Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
 
   --radius-xs: 0px;
   --radius-sm: 0px;
@@ -231,6 +232,22 @@ h1, h2, h3, h4, .font-display {
   font-family: var(--font-gambetta), 'Gambetta', serif;
   letter-spacing: -0.02em;
   line-height: 1.15;
+}
+
+/* SF UI Display / SF Pro Display font for Chats (Semibold) */
+.font-sf-display, [data-sf-font] {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF UI Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif !important;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  letter-spacing: -0.015em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.chat-bubble-text {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF UI Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.015em;
+  -webkit-font-smoothing: antialiased;
 }
 
 /* Chips: strictly 6px radius, not pills */

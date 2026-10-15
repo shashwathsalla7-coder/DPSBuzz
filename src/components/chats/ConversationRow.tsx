@@ -217,19 +217,22 @@ export const ConversationRow: React.FC<ConversationRowProps> = ({
 
           {/* Name & Preview line */}
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 font-sf-display">
               {isPinned && (
                 <Pin size={12} className="text-[var(--primary)] shrink-0 fill-current" />
               )}
               <h3
-                className={`text-base leading-tight truncate ${
+                className={`text-base leading-tight truncate font-sf-display ${
                   isUnread ? 'font-bold text-[var(--text)]' : 'font-semibold text-[var(--text)]'
                 }`}
+                style={{
+                  fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF UI Display", "SF Pro Text", "Helvetica Neue", sans-serif',
+                }}
               >
                 {conversation.name}
               </h3>
               {conversation.class && (
-                <span className="text-xs text-[var(--text-muted)] shrink-0 font-normal">
+                <span className="text-xs text-[var(--text-muted)] shrink-0 font-medium font-sf-display">
                   Class {conversation.class}
                 </span>
               )}
@@ -240,9 +243,12 @@ export const ConversationRow: React.FC<ConversationRowProps> = ({
 
             {/* Preview line: 14px muted with ' · 4h' */}
             <p
-              className={`text-sm truncate mt-0.5 leading-tight ${
-                isUnread ? 'font-semibold text-[var(--text)]' : 'text-[var(--text-muted)]'
+              className={`text-sm truncate mt-0.5 leading-tight font-sf-display ${
+                isUnread ? 'font-semibold text-[var(--text)]' : 'font-medium text-[var(--text-muted)]'
               }`}
+              style={{
+                fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF UI Display", "SF Pro Text", "Helvetica Neue", sans-serif',
+              }}
             >
               <span>{conversation.lastMessage || 'Say hi to your classmate'}</span>
               <span className="text-xs text-[var(--text-muted)] ml-1.5">

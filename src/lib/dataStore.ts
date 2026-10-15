@@ -2382,11 +2382,18 @@ export const DataStore = {
 
     // 9. Clean Notifications
     const notifs = this.getNotifications().filter(
-      (n) => (n.userId || '').toLowerCase().trim() !== clean
+      (n) =>
+        (n.userId || '').toLowerCase().trim() !== clean &&
+        !(n.link && n.link.toLowerCase().includes(`/u/${clean}`)) &&
+        !(n.body && n.body.toLowerCase().includes(`@${clean}`))
     );
     setStorage(STORAGE_KEYS.NOTIFICATIONS, notifs);
 
-    // 10. Unclaim student roster record if present
+    // 10. Clean Chat Notes
+    const notes = this.getChatNotes().filter((n) => (n.username || '').toLowerCase().trim() !== clean);
+    setStorage(STORAGE_KEYS.CHAT_NOTES, notes);
+
+    // 11. Unclaim student roster record if present
     const roster = this.getRoster();
     let rosterChanged = false;
     for (const r of roster) {
@@ -2402,13 +2409,16 @@ export const DataStore = {
       setStorage(STORAGE_KEYS.ROSTER, roster);
     }
 
-    // 11. Purge Chat Stores & Conversations
+    // 12. Purge Chat Stores & Conversations across all user stores
     if (typeof window !== 'undefined') {
       try {
         localStorage.removeItem(`dpsbuzz_chat_messages_${clean}_v3`);
         localStorage.removeItem(`dpsbuzz_chat_conversations_${clean}_v3`);
+        localStorage.removeItem(`dpsbuzz_saved_posts_${clean}_v1`);
+        localStorage.removeItem(`dpsbuzz_pinned_posts_${clean}_v1`);
+        localStorage.removeItem(`dpsbuzz_recent_searches_${clean}_v1`);
 
-        // Clean user from all cached conversation keys in localStorage
+        // Clean user from all cached conversation & message stores in localStorage
         for (let i = 0; i < localStorage.length; i++) {
           const key = localStorage.key(i);
           if (key && key.startsWith('dpsbuzz_chat_conversations_')) {
@@ -2419,6 +2429,28 @@ export const DataStore = {
                   (c: any) => (c.username || '').toLowerCase().trim() !== clean
                 );
                 localStorage.setItem(key, JSON.stringify(filtered));
+              }
+            } catch {}
+          } else if (key && key.startsWith('dpsbuzz_chat_messages_')) {
+            try {
+              const msgMap = JSON.parse(localStorage.getItem(key) || '{}');
+              if (typeof msgMap === 'object' && msgMap !== null) {
+                let changed = false;
+                for (const convId of Object.keys(msgMap)) {
+                  if (convId.includes('__')) {
+                    const parts = convId.split('__').map((p) => p.trim().toLowerCase());
+                    if (parts.includes(clean)) {
+                      delete msgMap[convId];
+                      changed = true;
+                    }
+                  } else if (convId === `conv-${clean}` || convId === clean) {
+                    delete msgMap[convId];
+                    changed = true;
+                  }
+                }
+                if (changed) {
+                  localStorage.setItem(key, JSON.stringify(msgMap));
+                }
               }
             } catch {}
           }
