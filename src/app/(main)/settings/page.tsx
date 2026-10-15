@@ -18,6 +18,7 @@ import {
   AlertTriangle,
   Camera,
   Smartphone,
+  Laptop,
   Download,
   CheckCircle2,
   Image as ImageIcon,
@@ -511,29 +512,54 @@ export default function SettingsPage() {
           </div>
         </section>
 
-        {/* Mobile App & Direct Downloads */}
+        {/* Install & Download App - Supports Laptop, Desktop, Android & iPhone */}
         <section className="space-y-2">
-          <h2 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">
-            Mobile App & Downloads
-          </h2>
-          <div className="bg-[var(--surface)] border border-[var(--line)] rounded-[16px] p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider flex items-center gap-1.5">
+              <Download size={13} className="text-pink-500" />
+              <span>Install & Download App</span>
+            </h2>
+            <span className="text-[10px] text-pink-500 font-bold px-2 py-0.5 rounded-full bg-pink-500/10 border border-pink-500/20">
+              v1.4 Available
+            </span>
+          </div>
+          <div className="bg-[var(--surface)] border border-[var(--line)] rounded-[16px] p-4 space-y-3.5">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl gradient-bg flex items-center justify-center text-white flex-shrink-0 shadow-md">
-                <Smartphone size={20} />
+                <Laptop size={20} className="hidden sm:block" />
+                <Smartphone size={20} className="sm:hidden" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-[var(--text)]">DPS Buzz Mobile</p>
+                <p className="text-sm font-bold text-[var(--text)]">DPS Buzz on Laptop & Phone</p>
                 <p className="text-xs text-[var(--text-muted)]">
-                  1-Tap Home Screen App (PWA) or Standalone APK
+                  Standalone Desktop App (Laptop/PC), Android APK, or iPhone Safari
                 </p>
               </div>
             </div>
+
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <Link
+                href="/download?platform=desktop"
+                className="p-2.5 rounded-xl bg-[var(--surface-sunken)] border border-[var(--line)] hover:border-pink-500/40 text-[var(--text)] font-semibold flex items-center justify-center gap-2 transition"
+              >
+                <Laptop size={14} className="text-blue-400 shrink-0" />
+                <span className="truncate">Laptop / PC</span>
+              </Link>
+              <Link
+                href="/download?platform=android"
+                className="p-2.5 rounded-xl bg-[var(--surface-sunken)] border border-[var(--line)] hover:border-pink-500/40 text-[var(--text)] font-semibold flex items-center justify-center gap-2 transition"
+              >
+                <Smartphone size={14} className="text-emerald-400 shrink-0" />
+                <span className="truncate">Android APK v1.4</span>
+              </Link>
+            </div>
+
             <Link
               href="/download"
-              className="flex items-center justify-center gap-2 w-full h-10 rounded-[10px] gradient-bg text-white text-xs font-bold shadow-md hover:opacity-95 transition-all"
+              className="flex items-center justify-center gap-2 w-full h-10 rounded-[10px] gradient-bg text-white text-xs font-bold shadow-md hover:opacity-95 transition-all cursor-pointer"
             >
               <Download size={14} />
-              <span>Open Download Center</span>
+              <span>Open Install & Download Center 📥</span>
             </Link>
           </div>
         </section>
@@ -731,31 +757,6 @@ export default function SettingsPage() {
               </div>
               <ChevronRight size={18} className="text-[var(--primary)]" />
             </button>
-          </div>
-        </section>
-
-        {/* Mobile App Download Card */}
-        <section className="space-y-2">
-          <h2 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">
-            Mobile App
-          </h2>
-          <div className="bg-[var(--surface)] border border-[var(--line)] rounded-[16px] overflow-hidden">
-            <Link
-              href="/download"
-              className="w-full p-3.5 flex items-center justify-between text-left hover:bg-[var(--surface-sunken)] transition-colors"
-            >
-              <div className="flex items-center gap-2.5">
-                <Smartphone size={18} className="text-[var(--primary)]" />
-                <div>
-                  <span className="text-sm font-semibold text-[var(--text)] flex items-center gap-1.5">
-                    Download Android App (APK)
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400">v1.3</span>
-                  </span>
-                  <p className="text-[11px] text-[var(--text-muted)]">Run DPS Buzz 24/7 on your phone with zero computer</p>
-                </div>
-              </div>
-              <ChevronRight size={18} className="text-[var(--text-muted)] shrink-0" />
-            </Link>
           </div>
         </section>
 

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   Home, Search, PlusSquare, MessageCircle, Users,
-  Megaphone, Trophy, User, Settings, Bell, Shield, Smartphone
+  Megaphone, Trophy, User, Settings, Bell, Shield, Smartphone, Download
 } from 'lucide-react';
 import { schoolConfig } from '@/config/school';
 import { DataStore } from '@/lib/dataStore';
@@ -56,7 +56,7 @@ export const DesktopSidebar: FC = () => {
 
   const bottomItems = [
     ...(isAdmin ? [{ href: '/admin', icon: Shield, label: 'Admin ID' }] : []),
-    { href: '/download', icon: Smartphone, label: 'Get App' },
+    { href: '/download', icon: Download, label: 'Install App' },
     { href: '/profile', icon: User, label: 'Profile' },
     { href: '/settings', icon: Settings, label: 'Settings' },
   ];

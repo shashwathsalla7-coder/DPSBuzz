@@ -1,16 +1,16 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Download DPS Buzz APK (v1.4) | Official Android App',
+  title: 'Install DPS Buzz | Laptop, Android APK (v1.4) & iPhone App',
   description:
-    'Download the official DPS Buzz Android APK v1.4. Connect with Dilsukhnagar Public School classmates, share photos, stories, and view school notices.',
+    'Install or download the official DPS Buzz app for Laptop/PC (Windows, Mac), Android (APK v1.4 & PWA), and iPhone.',
   alternates: {
     canonical: 'https://dps-buzz.vercel.app/download',
   },
   openGraph: {
-    title: 'Download DPS Buzz APK (v1.4) — Official Android App',
+    title: 'Install DPS Buzz — Laptop, Android APK (v1.4) & iPhone App',
     description:
-      'Official Android package (APK) for Dilsukhnagar Public School. Instant 1-tap download, 24/7 cloud server connected.',
+      'Official school social app for Dilsukhnagar Public School. Standalone desktop app, Android APK v1.4, and iOS Safari app.',
     url: 'https://dps-buzz.vercel.app/download',
     images: [
       {
@@ -23,8 +23,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Download DPS Buzz APK (v1.4)',
-    description: 'Download the official Android APK for Dilsukhnagar Public School.',
+    title: 'Install DPS Buzz (v1.4)',
+    description: 'Install DPS Buzz on Laptop, Android, and iPhone.',
     images: ['/icons/icon-512.png'],
   },
 };

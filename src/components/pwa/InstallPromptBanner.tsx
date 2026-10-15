@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Download, Smartphone, X, Check, Share2, Sparkles } from 'lucide-react';
+import { Download, Laptop, Smartphone, X, Check, Share2, Sparkles } from 'lucide-react';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -14,6 +14,7 @@ export default function InstallPromptBanner() {
   const [isStandalone, setIsStandalone] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
   const [showIOSTip, setShowIOSTip] = useState(false);
   const [installedSuccess, setInstalledSuccess] = useState(false);
 
@@ -42,9 +43,11 @@ export default function InstallPromptBanner() {
       return;
     }
 
-    // Check iOS
+    // Detect device type
     const isAppleDevice = /iphone|ipad|ipod/.test(userAgent);
+    const isMobileDevice = /android|iphone|ipad|ipod|mobile/i.test(userAgent);
     setIsIOS(isAppleDevice);
+    setIsDesktop(!isMobileDevice);
 
     const handleBeforeInstall = (e: Event) => {
       e.preventDefault();
@@ -75,8 +78,8 @@ export default function InstallPromptBanner() {
     }
 
     if (!deferredPrompt) {
-      // Fallback: direct to /download page
-      window.location.href = '/download';
+      // Fallback: direct to /download page with proper platform query
+      window.location.href = isDesktop ? '/download?platform=desktop' : '/download?platform=android';
       return;
     }
 
@@ -89,7 +92,7 @@ export default function InstallPromptBanner() {
         localStorage.setItem('dpsbuzz_install_dismissed', 'true');
       }
     } catch {
-      window.location.href = '/download';
+      window.location.href = isDesktop ? '/download?platform=desktop' : '/download?platform=android';
     }
   };
 
@@ -105,7 +108,7 @@ export default function InstallPromptBanner() {
 
   return (
     <aside
-      aria-label="Install DPS Buzz Mobile App"
+      aria-label="Install DPS Buzz App"
       className="fixed bottom-20 md:bottom-6 left-4 right-4 md:left-auto md:right-6 md:w-[380px] z-50 animate-fade-in"
     >
       <div className="relative bg-zinc-950/95 border border-zinc-800 backdrop-blur-2xl p-4 rounded-2xl shadow-2xl shadow-black/80">
@@ -114,7 +117,7 @@ export default function InstallPromptBanner() {
 
         <div className="flex items-start gap-3">
           {/* App icon preview */}
-          <div className="w-11 h-11 rounded-xl bg-zinc-900 border border-zinc-700/60 p-1 flex items-center justify-center flex-shrink-0 shadow-md">
+          <div className="w-11 h-11 rounded-xl bg-zinc-900 border border-zinc-700/60 p-1 flex items-center justify-center shrink-0 shadow-md">
             <img
               src="/icons/icon-192.png"
               alt="DPS Buzz App"
@@ -124,13 +127,17 @@ export default function InstallPromptBanner() {
 
           <div className="flex-1 min-w-0 pr-6">
             <div className="flex items-center gap-1.5">
-              <h2 className="text-xs font-bold text-white tracking-wide">Install DPS Buzz</h2>
+              <h2 className="text-xs font-bold text-white tracking-wide">
+                {isDesktop ? 'Install on Laptop / PC' : 'Install DPS Buzz App'}
+              </h2>
               <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-pink-500/15 text-pink-400">
                 <Sparkles size={9} /> FREE
               </span>
             </div>
             <p className="text-[11px] text-zinc-400 mt-0.5 leading-snug">
-              Instant 1-tap app for your phone. Full-screen, faster, zero Play Store hassle.
+              {isDesktop
+                ? 'Run DPS Buzz in a standalone desktop window. Pin to your Windows Taskbar.'
+                : 'Instant 1-tap app for your phone. Full-screen, faster, zero Play Store hassle.'}
             </p>
           </div>
 
@@ -162,15 +169,21 @@ export default function InstallPromptBanner() {
             onClick={handleInstallClick}
             className="flex-1 min-h-[38px] rounded-xl gradient-bg text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-md shadow-pink-500/20 active:scale-95 transition-all hover:opacity-95 cursor-pointer"
           >
-            <Download size={14} />
-            <span>{isIOS ? 'How to Install on iPhone' : 'Install to Home Screen'}</span>
+            {isDesktop ? <Laptop size={14} /> : <Download size={14} />}
+            <span>
+              {isDesktop
+                ? 'Install on PC'
+                : isIOS
+                ? 'How to Install on iPhone'
+                : 'Install to Home Screen'}
+            </span>
           </button>
 
           <Link
-            href="/download"
+            href={isDesktop ? '/download?platform=desktop' : '/download?platform=android'}
             className="px-3 min-h-[38px] rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-300 text-xs font-semibold flex items-center justify-center gap-1 transition-colors"
           >
-            APK Options
+            {isDesktop ? 'Guide' : 'APK Options'}
           </Link>
         </div>
       </div>

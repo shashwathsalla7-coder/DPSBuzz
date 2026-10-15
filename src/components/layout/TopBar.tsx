@@ -3,7 +3,7 @@
 import { useState, useEffect, type FC } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Bell, Menu, X, Megaphone, Users, Trophy, Settings, Shield, Smartphone } from 'lucide-react';
+import { Bell, Menu, X, Megaphone, Users, Trophy, Settings, Shield, Download } from 'lucide-react';
 import { school } from '@/config/school';
 import { DataStore, type Notice } from '@/lib/dataStore';
 import { colors } from '@/config/tokens';
@@ -53,7 +53,7 @@ export const TopBar: FC<TopBarProps> = ({ notificationCount = 0 }) => {
     { title: 'Notices', href: '/notices', icon: Megaphone, desc: 'School schedule & dispatches' },
     { title: 'Groups', href: '/groups', icon: Users, desc: 'Class sections & clubs' },
     { title: 'Star Board', href: '/leaderboard', icon: Trophy, desc: 'Class & student honours' },
-    { title: 'Get Android App', href: '/download', icon: Smartphone, desc: 'Download official Android APK v1.4' },
+    { title: 'Install & Download App', href: '/download', icon: Download, desc: 'Laptop, Android APK v1.4 & iPhone' },
     { title: 'Settings', href: '/settings', icon: Settings, desc: 'Theme, privacy & safety' },
   ];
 
