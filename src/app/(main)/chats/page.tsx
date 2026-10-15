@@ -2054,6 +2054,8 @@ function ChatsContent() {
 
     const targetUser = (activeConversation.username || activeConversation.id.replace(/^conv-/, '')).toLowerCase().trim();
     const isSelfChat = targetUser === currentUsername;
+    const activeUserProf = !activeConversation.isGroup && targetUser ? DataStore.getProfileByUsername(targetUser) : null;
+    const effectiveActiveAvatar = activeUserProf?.avatar || activeConversation.avatar || null;
 
     return (
       <div className="fixed inset-0 z-50 md:static md:z-auto md:min-h-[85vh] flex flex-col select-none bg-[var(--surface)] text-[var(--text)] font-sf-display font-semibold">
@@ -2092,8 +2094,8 @@ function ChatsContent() {
             >
               {activeConversation.isGroup ? (
                 activeConversation.groupInitials || '8A'
-              ) : activeConversation.avatar ? (
-                <img src={activeConversation.avatar} alt={activeConversation.name} className="w-full h-full object-cover" />
+              ) : effectiveActiveAvatar ? (
+                <img src={effectiveActiveAvatar} alt={activeConversation.name} className="w-full h-full object-cover" />
               ) : (
                 initials
               )}
@@ -2162,7 +2164,7 @@ function ChatsContent() {
                         detail: {
                           receiverUsername: targetUser,
                           receiverName: activeConversation.name || targetUser,
-                          receiverAvatar: activeConversation.avatar || activeConversation.avatarUrl || null,
+                          receiverAvatar: effectiveActiveAvatar || activeConversation.avatar || activeConversation.avatarUrl || null,
                           isVideo: false,
                         },
                       })
@@ -2190,7 +2192,7 @@ function ChatsContent() {
                         detail: {
                           receiverUsername: targetUser,
                           receiverName: activeConversation.name || targetUser,
-                          receiverAvatar: activeConversation.avatar || activeConversation.avatarUrl || null,
+                          receiverAvatar: effectiveActiveAvatar || activeConversation.avatar || activeConversation.avatarUrl || null,
                           isVideo: true,
                         },
                       })
@@ -2474,7 +2476,7 @@ function ChatsContent() {
                                     detail: {
                                       receiverUsername: activeConversation.username,
                                       receiverName: activeConversation.name,
-                                      receiverAvatar: activeConversation.avatar,
+                                      receiverAvatar: effectiveActiveAvatar || activeConversation.avatar,
                                       isVideo: msg.text.includes('Video'),
                                     },
                                   })
@@ -3332,6 +3334,8 @@ function ChatsContent() {
                 {liveStudents.map((st) => {
                   const isSelected = selectedGroupMembers.includes(st.username);
                   const pair = getAvatarColorPair(st.username);
+                  const liveProf = DataStore.getProfileByUsername(st.username);
+                  const effectiveAvatar = liveProf?.avatar || st.avatarUrl || null;
                   return (
                     <div
                       key={st.username}
@@ -3348,10 +3352,14 @@ function ChatsContent() {
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
                         <div
-                          className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0"
+                          className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 overflow-hidden"
                           style={{ backgroundColor: pair.bg, color: pair.text }}
                         >
-                          {st.name.slice(0, 2).toUpperCase()}
+                          {effectiveAvatar ? (
+                            <img src={effectiveAvatar} alt={st.name} className="w-full h-full object-cover" />
+                          ) : (
+                            st.name.slice(0, 2).toUpperCase()
+                          )}
                         </div>
                         <div className="min-w-0">
                           <p className="text-xs font-bold text-[var(--text)] truncate">{st.name}</p>

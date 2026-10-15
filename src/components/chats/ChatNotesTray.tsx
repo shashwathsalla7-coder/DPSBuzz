@@ -193,6 +193,9 @@ export const ChatNotesTray: React.FC<ChatNotesTrayProps> = ({ onReplyToNote }) =
       <div className="flex items-start gap-4 overflow-x-auto no-scrollbar px-4 pt-9 pb-2">
         {/* Current User Note / Add Note */}
         {(() => {
+          const effectiveMyProf = currentUser?.username ? DataStore.getProfileByUsername(currentUser.username) : null;
+          const effectiveMyAvatar = effectiveMyProf?.avatar || currentUser?.avatar || null;
+          const effectiveMyFullName = effectiveMyProf?.fullName || currentUser?.fullName || 'You';
           const myTheme = getNoteColorTheme(myNote?.colorTheme, currentUser?.username);
           return (
             <div className="flex flex-col items-center flex-shrink-0 group">
@@ -234,7 +237,7 @@ export const ChatNotesTray: React.FC<ChatNotesTrayProps> = ({ onReplyToNote }) =
                   className={`w-16 h-16 rounded-full overflow-hidden flex items-center justify-center cursor-pointer shadow-md mt-3 relative transition-transform group-hover:scale-102 p-0.5 ${
                     myNote
                       ? 'ring-2'
-                      : 'border-2 border-zinc-700 hover:border-zinc-500 bg-zinc-800'
+                      : 'border-2 border-pink-500/40 hover:border-pink-500 bg-black/40'
                   }`}
                   style={
                     myNote
@@ -246,15 +249,15 @@ export const ChatNotesTray: React.FC<ChatNotesTrayProps> = ({ onReplyToNote }) =
                   }
                 >
                   <div className="w-full h-full rounded-full overflow-hidden bg-zinc-900 flex items-center justify-center">
-                    {currentUser?.avatar ? (
+                    {effectiveMyAvatar ? (
                       <img
-                        src={currentUser.avatar}
-                        alt={currentUser.fullName}
+                        src={effectiveMyAvatar}
+                        alt={effectiveMyFullName}
                         className="w-full h-full object-cover"
                       />
                     ) : (
                       <span className="text-lg font-black text-white">
-                        {currentUser?.fullName?.[0]?.toUpperCase() || 'U'}
+                        {effectiveMyFullName?.[0]?.toUpperCase() || 'U'}
                       </span>
                     )}
                   </div>
@@ -309,127 +312,153 @@ export const ChatNotesTray: React.FC<ChatNotesTrayProps> = ({ onReplyToNote }) =
         })()}
 
         {/* Peer Classmates Notes (Real Students Only) */}
-        {peerNotes.map((note) => {
-          const colors = getAvatarColorPair(note.username);
-          const peerTheme = getNoteColorTheme(note.colorTheme, note.username);
-          const isSongAttached = !!note.song;
-          const isThisSongPlaying =
-            isSongAttached &&
-            playerState.currentTrack?.id === note.song?.id &&
-            playerState.isPlaying;
+        {(() => {
+          const storyGroups = DataStore.getUserStoryGroups(currentUser?.username);
+          return peerNotes.map((note) => {
+            const liveProf = DataStore.getProfileByUsername(note.username);
+            const peerAvatar = liveProf?.avatar || note.avatar || null;
+            const peerFullName = liveProf?.fullName || note.fullName;
+            const colors = getAvatarColorPair(note.username);
+            const peerTheme = getNoteColorTheme(note.colorTheme, note.username);
+            const isSongAttached = !!note.song;
+            const isThisSongPlaying =
+              isSongAttached &&
+              playerState.currentTrack?.id === note.song?.id &&
+              playerState.isPlaying;
 
-          return (
-            <div key={note.id} className="flex flex-col items-center flex-shrink-0 group">
-              <div className="relative mb-1">
-                {/* Thought Bubble with Modern Crisp Typography & Authentic Double Thought Dots */}
-                <button
-                  type="button"
-                  onClick={() => handleTapPeerNote(note)}
-                  className="btn-apple absolute -top-8 left-1/2 -translate-x-1/2 z-10 max-w-[125px] px-3 py-1.5 rounded-[18px] border text-[11px] sm:text-[12px] font-sans font-bold tracking-tight shadow-xl flex items-center gap-1.5 truncate transition-all cursor-pointer hover:scale-105 active:scale-95"
-                  style={{
-                    background: peerTheme.gradient,
-                    border: `1px solid ${peerTheme.border}`,
-                    boxShadow: isThisSongPlaying ? `0 0 16px ${peerTheme.glow}` : peerTheme.bubbleShadow,
-                    color: '#FFFFFF',
-                  }}
-                  title={note.song ? `Playing: ${note.song.title} by ${note.song.artist}` : note.text}
-                >
-                  {isSongAttached && (
-                    <span className="text-white drop-shadow-xs shrink-0">
-                      🎵
-                    </span>
-                  )}
-                  <span className="truncate drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)] uppercase">{note.text}</span>
-                  {/* Authentic Instagram Double Thought Dots Tail */}
-                  <span
-                    className="absolute -bottom-1.5 left-4 w-2 h-2 rounded-full border border-white/20 pointer-events-none"
-                    style={{ background: peerTheme.accent }}
-                  />
-                  <span
-                    className="absolute -bottom-3 left-2.5 w-1.5 h-1.5 rounded-full border border-white/20 pointer-events-none"
-                    style={{ background: peerTheme.accent }}
-                  />
-                </button>
+            const classmateStory = storyGroups.peerGroups.find(
+              (g) => g.username.toLowerCase() === note.username.toLowerCase()
+            );
+            const hasStory = Boolean(classmateStory && classmateStory.stories.length > 0);
+            const hasUnseenStory = Boolean(classmateStory?.hasUnseen);
+            const hasSeenStory = hasStory && !hasUnseenStory;
 
-                {/* Neatly Proportioned 64px Avatar (Fits Cleanly on Laptop) */}
-                <div
-                  onClick={() => handleTapPeerNote(note)}
-                  className="w-16 h-16 rounded-full overflow-hidden flex items-center justify-center cursor-pointer shadow-md mt-3 p-0.5 transition-transform group-hover:scale-102 relative ring-2"
-                  style={{
-                    background: peerTheme.gradient,
-                    boxShadow: isThisSongPlaying ? `0 0 16px ${peerTheme.glow}` : `0 0 8px ${peerTheme.glow}`,
-                  }}
-                >
-                  <div
-                    className="w-full h-full rounded-full overflow-hidden flex items-center justify-center"
-                    style={{ backgroundColor: colors.bg, color: colors.text }}
+            return (
+              <div key={note.id} className="flex flex-col items-center flex-shrink-0 group">
+                <div className="relative mb-1">
+                  {/* Thought Bubble with Modern Crisp Typography & Authentic Double Thought Dots */}
+                  <button
+                    type="button"
+                    onClick={() => handleTapPeerNote(note)}
+                    className="btn-apple absolute -top-8 left-1/2 -translate-x-1/2 z-10 max-w-[125px] px-3 py-1.5 rounded-[18px] border text-[11px] sm:text-[12px] font-sans font-bold tracking-tight shadow-xl flex items-center gap-1.5 truncate transition-all cursor-pointer hover:scale-105 active:scale-95"
+                    style={{
+                      background: peerTheme.gradient,
+                      border: `1px solid ${peerTheme.border}`,
+                      boxShadow: isThisSongPlaying ? `0 0 16px ${peerTheme.glow}` : peerTheme.bubbleShadow,
+                      color: '#FFFFFF',
+                    }}
+                    title={note.song ? `Playing: ${note.song.title} by ${note.song.artist}` : note.text}
                   >
-                    {note.avatar ? (
-                      <img
-                        src={note.avatar}
-                        alt={note.fullName}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <span className="text-lg font-black">
-                        {note.fullName?.[0]?.toUpperCase() || note.username?.[0]?.toUpperCase()}
+                    {isSongAttached && (
+                      <span className="text-white drop-shadow-xs shrink-0">
+                        🎵
                       </span>
                     )}
-                  </div>
+                    <span className="truncate drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)] uppercase">{note.text}</span>
+                    {/* Authentic Instagram Double Thought Dots Tail */}
+                    <span
+                      className="absolute -bottom-1.5 left-4 w-2 h-2 rounded-full border border-white/20 pointer-events-none"
+                      style={{ background: peerTheme.accent }}
+                    />
+                    <span
+                      className="absolute -bottom-3 left-2.5 w-1.5 h-1.5 rounded-full border border-white/20 pointer-events-none"
+                      style={{ background: peerTheme.accent }}
+                    />
+                  </button>
 
-                  {/* Mini floating play indicator on avatar */}
-                  {isSongAttached && (
-                    <button
-                      type="button"
-                      onClick={(e) => handleToggleSong(e, note.song!)}
-                      className={`btn-apple absolute bottom-0.5 right-0.5 w-5 h-5 rounded-full flex items-center justify-center text-white shadow-md border border-white/40 ${
-                        isThisSongPlaying ? 'bg-pink-500 animate-pulse' : 'bg-black/80 hover:bg-pink-600'
-                      }`}
-                      aria-label="Toggle song preview"
+                  {/* Neatly Proportioned 64px Avatar (Fits Cleanly on Laptop) */}
+                  <div
+                    onClick={() => handleTapPeerNote(note)}
+                    className={`w-16 h-16 rounded-full overflow-hidden flex items-center justify-center cursor-pointer shadow-md mt-3 p-0.5 transition-transform group-hover:scale-102 relative ${
+                      hasUnseenStory
+                        ? 'story-ring-unseen p-[2.5px]'
+                        : hasSeenStory
+                        ? 'story-ring-seen p-[2.5px]'
+                        : 'ring-2'
+                    }`}
+                    style={
+                      hasUnseenStory || hasSeenStory
+                        ? undefined
+                        : {
+                            background: peerTheme.gradient,
+                            boxShadow: isThisSongPlaying ? `0 0 16px ${peerTheme.glow}` : `0 0 8px ${peerTheme.glow}`,
+                          }
+                    }
+                  >
+                    <div
+                      className="w-full h-full rounded-full overflow-hidden flex items-center justify-center"
+                      style={{ backgroundColor: colors.bg, color: colors.text }}
                     >
-                      {isThisSongPlaying ? (
-                        <Pause size={8} strokeWidth={3} />
+                      {peerAvatar ? (
+                        <img
+                          src={peerAvatar}
+                          alt={peerFullName}
+                          className="w-full h-full object-cover"
+                        />
                       ) : (
-                        <Play size={8} strokeWidth={3} className="ml-0.5" />
+                        <span className="text-lg font-black">
+                          {peerFullName?.[0]?.toUpperCase() || note.username?.[0]?.toUpperCase()}
+                        </span>
                       )}
-                    </button>
-                  )}
-                </div>
-              </div>
+                    </div>
 
-              {/* Scrolling Song Marquee */}
-              {isSongAttached && (
-                <div
-                  onClick={() => handleTapPeerNote(note)}
-                  className="w-[90px] h-[22px] overflow-hidden rounded-full px-1.5 flex items-center gap-1 mt-1 shadow-xs cursor-pointer border"
-                  style={{
-                    background: 'rgba(24, 24, 27, 0.95)',
-                    borderColor: peerTheme.border,
-                    boxShadow: `0 0 8px ${peerTheme.glow}`,
-                  }}
-                  title={`Song: ${note.song!.title} by ${note.song!.artist}`}
-                >
-                  <div className="overflow-hidden flex-1 relative h-full flex items-center">
-                    <div className="animate-notes-marquee text-[9.5px] font-bold text-white">
-                      <span>{note.song!.title} • {note.song!.artist} &nbsp;&nbsp;&nbsp;&nbsp; 🎵 &nbsp;</span>
-                      <span>{note.song!.title} • {note.song!.artist} &nbsp;&nbsp;&nbsp;&nbsp; 🎵 &nbsp;</span>
+                    {/* Mini floating play indicator on avatar */}
+                    {isSongAttached && (
+                      <button
+                        type="button"
+                        onClick={(e) => handleToggleSong(e, note.song!)}
+                        className={`btn-apple absolute bottom-0.5 right-0.5 w-5 h-5 rounded-full flex items-center justify-center text-white shadow-md border border-white/40 ${
+                          isThisSongPlaying ? 'bg-pink-500 animate-pulse' : 'bg-black/80 hover:bg-pink-600'
+                        }`}
+                        aria-label="Toggle song preview"
+                      >
+                        {isThisSongPlaying ? (
+                          <Pause size={8} strokeWidth={3} />
+                        ) : (
+                          <Play size={8} strokeWidth={3} className="ml-0.5" />
+                        )}
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Scrolling Song Marquee */}
+                {isSongAttached && (
+                  <div
+                    onClick={() => handleTapPeerNote(note)}
+                    className="w-[90px] h-[22px] overflow-hidden rounded-full px-1.5 flex items-center gap-1 mt-1 shadow-xs cursor-pointer border"
+                    style={{
+                      background: 'rgba(24, 24, 27, 0.95)',
+                      borderColor: peerTheme.border,
+                      boxShadow: `0 0 8px ${peerTheme.glow}`,
+                    }}
+                    title={`Song: ${note.song!.title} by ${note.song!.artist}`}
+                  >
+                    <div className="overflow-hidden flex-1 relative h-full flex items-center">
+                      <div className="animate-notes-marquee text-[9.5px] font-bold text-white">
+                        <span>{note.song!.title} • {note.song!.artist} &nbsp;&nbsp;&nbsp;&nbsp; 🎵 &nbsp;</span>
+                        <span>{note.song!.title} • {note.song!.artist} &nbsp;&nbsp;&nbsp;&nbsp; 🎵 &nbsp;</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              <span className="text-[10.5px] text-[var(--text)] font-semibold truncate max-w-[76px] text-center mt-1">
-                {note.fullName?.split(' ')[0] || note.username}
-              </span>
-            </div>
-          );
-        })}
+                <span className="text-[10.5px] text-[var(--text)] font-semibold truncate max-w-[76px] text-center mt-1">
+                  {peerFullName?.split(' ')[0] || note.username}
+                </span>
+              </div>
+            );
+          });
+        })()}
       </div>
 
       {/* ==================================================================== */}
       {/* NOTE INTERACTION & REPLY SHEET WITH PLAYING SONG + EMOJIS + TEXT     */}
       {/* ==================================================================== */}
       {activeNoteAction && (() => {
+        const liveActiveNoteProf = DataStore.getProfileByUsername(activeNoteAction.username);
+        const activeNoteAvatar = liveActiveNoteProf?.avatar || activeNoteAction.avatar || null;
+        const activeNoteFullName = liveActiveNoteProf?.fullName || activeNoteAction.fullName || activeNoteAction.username;
         const activeTheme = getNoteColorTheme(activeNoteAction.colorTheme, activeNoteAction.username);
         return (
           <div
@@ -448,20 +477,20 @@ export const ChatNotesTray: React.FC<ChatNotesTrayProps> = ({ onReplyToNote }) =
                     style={{ background: activeTheme.gradient }}
                   >
                     <div className="w-full h-full rounded-full overflow-hidden bg-zinc-900 flex items-center justify-center">
-                      {activeNoteAction.avatar ? (
+                      {activeNoteAvatar ? (
                         <img
-                          src={activeNoteAction.avatar}
-                          alt={activeNoteAction.fullName}
+                          src={activeNoteAvatar}
+                          alt={activeNoteFullName}
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        activeNoteAction.fullName?.[0]?.toUpperCase() || activeNoteAction.username[0].toUpperCase()
+                        activeNoteFullName?.[0]?.toUpperCase() || activeNoteAction.username[0].toUpperCase()
                       )}
                     </div>
                   </div>
                   <div className="text-left">
                     <h4 className="text-xs font-bold text-white">
-                      {activeNoteAction.fullName}
+                      {activeNoteFullName}
                     </h4>
                     <p className="text-[10px] text-zinc-400">@{activeNoteAction.username}</p>
                   </div>
@@ -506,15 +535,15 @@ export const ChatNotesTray: React.FC<ChatNotesTrayProps> = ({ onReplyToNote }) =
 
                 {/* Classmate Avatar */}
                 <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-white/20 shadow-xl bg-zinc-900 flex items-center justify-center mt-2">
-                  {activeNoteAction.avatar ? (
+                  {activeNoteAvatar ? (
                     <img
-                      src={activeNoteAction.avatar}
-                      alt={activeNoteAction.fullName}
+                      src={activeNoteAvatar}
+                      alt={activeNoteFullName}
                       className="w-full h-full object-cover"
                     />
                   ) : (
                     <span className="text-xl font-black text-white">
-                      {activeNoteAction.fullName?.[0]?.toUpperCase() || activeNoteAction.username[0].toUpperCase()}
+                      {activeNoteFullName?.[0]?.toUpperCase() || activeNoteAction.username[0].toUpperCase()}
                     </span>
                   )}
                 </div>

@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { ArrowLeft, ShieldAlert } from 'lucide-react';
 import { getAvatarColorPair } from '@/config/tokens';
+import { DataStore } from '@/lib/dataStore';
 
 export interface RequestItem {
   id: string;
@@ -108,6 +109,8 @@ export const RequestsScreen: React.FC<RequestsScreenProps> = ({
           </div>
         ) : (
           requests.map((req) => {
+            const liveProf = DataStore.getProfileByUsername(req.username);
+            const effectiveAvatar = liveProf?.avatar || req.avatarUrl || null;
             const colors = getAvatarColorPair(req.username);
             const initials = req.name
               .split(' ')
@@ -128,14 +131,18 @@ export const RequestsScreen: React.FC<RequestsScreenProps> = ({
                 <div className="flex items-start gap-3.5">
                   {/* Avatar 56px */}
                   <div
-                    className="w-14 h-14 rounded-full flex items-center justify-center font-bold text-sm shrink-0 border"
+                    className="w-14 h-14 rounded-full flex items-center justify-center font-bold text-sm shrink-0 border overflow-hidden"
                     style={{
                       backgroundColor: colors.bg,
                       color: colors.text,
                       borderColor: 'var(--line)',
                     }}
                   >
-                    {initials}
+                    {effectiveAvatar ? (
+                      <img src={effectiveAvatar} alt={req.name} className="w-full h-full object-cover" />
+                    ) : (
+                      initials
+                    )}
                   </div>
 
                   {/* Name, Class & Message Preview */}
