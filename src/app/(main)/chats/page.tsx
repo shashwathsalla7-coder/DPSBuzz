@@ -72,6 +72,53 @@ interface ChatMessage {
   image?: string;
   mediaUrl?: string;
   audioUrl?: string;
+  timestamp?: number;
+  isChatPhoto?: boolean;
+  photoExpiresAt?: number;
+  isPhotoExpired?: boolean;
+}
+
+/**
+ * Compresses an image client-side to max dimensions and 75% JPEG quality.
+ * Shrinks photos from 5MB+ down to ~40-60KB without visible quality loss.
+ */
+function compressImageForChat(file: File, maxDim = 1000, quality = 0.75): Promise<string> {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onerror = () => resolve('');
+    reader.onload = (e) => {
+      const result = e.target?.result as string;
+      if (!result) return resolve('');
+      const img = new Image();
+      img.onerror = () => resolve(result);
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return resolve(result);
+        ctx.drawImage(img, 0, 0, width, height);
+        try {
+          const compressed = canvas.toDataURL('image/jpeg', quality);
+          resolve(compressed);
+        } catch {
+          resolve(result);
+        }
+      };
+      img.src = result;
+    };
+    reader.readAsDataURL(file);
+  });
 }
 
 const INITIAL_CONVERSATIONS: ConversationItem[] = [];
@@ -288,6 +335,7 @@ function ChatsContent() {
   const [deleteConfirmConv, setDeleteConfirmConv] = useState<ConversationItem | null>(null);
   const [messageInput, setMessageInput] = useState('');
   const [activeReactionMsgId, setActiveReactionMsgId] = useState<string | null>(null);
+  const [selectedFullPhoto, setSelectedFullPhoto] = useState<string | null>(null);
   const lastTapTimeRef = useRef<{ id: string; time: number }>({ id: '', time: 0 });
 
   // Chat Wallpaper / Background & Emoji Drawer State
@@ -309,10 +357,11 @@ function ChatsContent() {
   });
   const chatMediaInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Load persisted chat backgrounds from localStorage
+  // Load persisted chat backgrounds from localStorage & Prune 10-day expired chat photos
   useEffect(() => {
     try {
       if (currentUsername && currentUsername !== 'guest') {
+        DataStore.pruneExpiredChatPhotos(currentUsername, 10);
         const bgKey = `dpsbuzz_chat_backgrounds_${currentUsername}_v2`;
         const saved = localStorage.getItem(bgKey);
         if (saved) {
@@ -1871,7 +1920,7 @@ function ChatsContent() {
       .catch((err) => console.warn('Failed to sync chat message:', err));
   };
 
-  const handleImageAttachment = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageAttachment = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !activeConversation) return;
     if (!file.type.startsWith('image/')) {
@@ -1889,30 +1938,38 @@ function ChatsContent() {
       }
     }
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const dataUrl = event.target?.result as string;
-      if (!dataUrl) return;
+    // High performance client compression: resizes large photos to max 1000px, JPEG 75% (~40-60KB)
+    const compressedDataUrl = await compressImageForChat(file, 1000, 0.75);
+    if (!compressedDataUrl) {
+      alert('Could not process photo. Please try a different image.');
+      if (chatMediaInputRef.current) chatMediaInputRef.current.value = '';
+      return;
+    }
 
-      const rawId = activeConversation.id;
-      const canonicalId = getCanonicalConvId(activeConversation);
-      const newMsg: ChatMessage = {
-        id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-        text: '📸 Photo',
-        sender: 'me',
-        senderUsername: currentUsername,
-        time: 'Just now',
-        isDelivered: false,
-        is_read: false,
-        isSeen: false,
-        ...(isVanishMode ? { is_vanish_mode_message: true, isVanishMode: true } : {}),
-        sharedPost: {
-          id: `img-${Date.now()}`,
-          username: currentUsername,
-          imageUrl: dataUrl,
-          caption: 'Shared a photo',
-        },
-      };
+    const now = Date.now();
+    const rawId = activeConversation.id;
+    const canonicalId = getCanonicalConvId(activeConversation);
+    const newMsg: ChatMessage = {
+      id: `msg-${now}-${Math.random().toString(36).substring(2, 6)}`,
+      text: '📸 Photo',
+      sender: 'me',
+      senderUsername: currentUsername,
+      time: 'Just now',
+      createdAt: new Date(now).toISOString(),
+      timestamp: now,
+      isDelivered: false,
+      is_read: false,
+      isSeen: false,
+      isChatPhoto: true,
+      photoExpiresAt: now + 10 * 24 * 60 * 60 * 1000,
+      ...(isVanishMode ? { is_vanish_mode_message: true, isVanishMode: true } : {}),
+      sharedPost: {
+        id: `chat-photo-${now}`,
+        username: currentUsername,
+        imageUrl: compressedDataUrl,
+        caption: 'Chat photo',
+      },
+    };
 
       setChatMessages((prev) => {
         const existing = getListForConv(prev, canonicalId, rawId);
@@ -1967,9 +2024,7 @@ function ChatsContent() {
         .catch((err) => console.warn('Failed to sync chat message:', err));
 
       setTimeout(() => scrollToBottom(true), 80);
-    };
-    reader.readAsDataURL(file);
-    if (chatMediaInputRef.current) chatMediaInputRef.current.value = '';
+      if (chatMediaInputRef.current) chatMediaInputRef.current.value = '';
   };
 
   // ACTIVE CONVERSATION VIEW (Full screen on mobile, NO active now or last seen status)
@@ -2306,41 +2361,105 @@ function ChatsContent() {
                         fontWeight: 600,
                       }}
                     >
-                      {msg.sharedPost && (
-                        <div
-                          className={`mb-2 p-2.5 rounded-2xl border overflow-hidden flex flex-col gap-2 max-w-xs text-left ${
-                            isMe
-                              ? 'bg-black/20 border-white/20 text-white'
-                              : 'bg-slate-100 border-slate-200 text-slate-900'
-                          }`}
-                        >
-                          <div className="flex items-center gap-1.5 text-xs font-bold">
-                            <span>📸</span>
-                            <span>@{msg.sharedPost.username}&apos;s Post</span>
-                          </div>
-                          {msg.sharedPost.imageUrl && (
-                            <img
-                              src={msg.sharedPost.imageUrl}
-                              alt="Shared post"
-                              className="w-full max-h-48 object-cover rounded-xl border border-black/5"
-                            />
-                          )}
-                          {msg.sharedPost.caption && (
-                            <p className="text-xs line-clamp-2 italic leading-relaxed opacity-90">
-                              &ldquo;{msg.sharedPost.caption}&rdquo;
-                            </p>
-                          )}
-                          <Link
-                            href={`/home#post-${msg.sharedPost.id}`}
-                            className={`inline-flex items-center gap-1 text-[11px] font-bold underline ${
-                              isMe ? 'text-blue-200 hover:text-white' : 'text-blue-600 hover:text-blue-700'
+                      {msg.sharedPost && (() => {
+                        const isChatPhoto =
+                          msg.isChatPhoto ||
+                          msg.sharedPost.id.startsWith('chat-photo-') ||
+                          msg.sharedPost.id.startsWith('img-') ||
+                          msg.sharedPost.caption === 'Chat photo' ||
+                          msg.sharedPost.caption === 'Shared a photo';
+
+                        const TEN_DAYS_MS = 10 * 24 * 60 * 60 * 1000;
+                        const msgTime =
+                          msg.timestamp ||
+                          (msg.createdAt ? new Date(msg.createdAt).getTime() : null) ||
+                          (msg.id && msg.id.startsWith('msg-') ? parseInt(msg.id.split('-')[1]) : null);
+                        const isExpired =
+                          isChatPhoto &&
+                          (msg.isPhotoExpired || !msg.sharedPost.imageUrl || (msgTime && Date.now() - msgTime > TEN_DAYS_MS));
+
+                        if (isChatPhoto) {
+                          if (isExpired) {
+                            return (
+                              <div
+                                className={`mb-2 p-3 rounded-2xl border flex items-center gap-2.5 max-w-xs text-left ${
+                                  isMe
+                                    ? 'bg-black/30 border-white/15 text-white/80'
+                                    : 'bg-zinc-100 dark:bg-zinc-800/60 border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300'
+                                }`}
+                              >
+                                <span className="text-base select-none">⌛</span>
+                                <div className="flex flex-col text-xs leading-tight">
+                                  <span className="font-semibold">Photo expired</span>
+                                  <span className="text-[10px] opacity-75">Chat photos are removed after 10 days</span>
+                                </div>
+                              </div>
+                            );
+                          }
+
+                          // Active chat photo
+                          const daysLeft = msgTime
+                            ? Math.max(1, Math.ceil((msgTime + TEN_DAYS_MS - Date.now()) / (24 * 60 * 60 * 1000)))
+                            : 10;
+
+                          return (
+                            <div className="mb-2 relative group overflow-hidden rounded-2xl max-w-xs">
+                              {msg.sharedPost.imageUrl && (
+                                <img
+                                  src={msg.sharedPost.imageUrl}
+                                  alt="Chat photo"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedFullPhoto(msg.sharedPost?.imageUrl || null);
+                                  }}
+                                  className="w-full max-h-64 object-cover rounded-2xl border border-black/10 dark:border-white/10 cursor-pointer hover:opacity-95 transition-opacity"
+                                />
+                              )}
+                              <div className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-xs text-[10px] font-medium text-white flex items-center gap-1 select-none pointer-events-none">
+                                <span>⌛</span>
+                                <span>{daysLeft}d left</span>
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        // Regular shared feed post (permanent, never expires!)
+                        return (
+                          <div
+                            className={`mb-2 p-2.5 rounded-2xl border overflow-hidden flex flex-col gap-2 max-w-xs text-left ${
+                              isMe
+                                ? 'bg-black/20 border-white/20 text-white'
+                                : 'bg-slate-100 border-slate-200 text-slate-900'
                             }`}
                           >
-                            <span>View Post in Feed</span>
-                            <span>→</span>
-                          </Link>
-                        </div>
-                      )}
+                            <div className="flex items-center gap-1.5 text-xs font-bold">
+                              <span>📸</span>
+                              <span>@{msg.sharedPost.username}&apos;s Post</span>
+                            </div>
+                            {msg.sharedPost.imageUrl && (
+                              <img
+                                src={msg.sharedPost.imageUrl}
+                                alt="Shared post"
+                                className="w-full max-h-48 object-cover rounded-xl border border-black/5"
+                              />
+                            )}
+                            {msg.sharedPost.caption && (
+                              <p className="text-xs line-clamp-2 italic leading-relaxed opacity-90">
+                                &ldquo;{msg.sharedPost.caption}&rdquo;
+                              </p>
+                            )}
+                            <Link
+                              href={`/home#post-${msg.sharedPost.id}`}
+                              className={`inline-flex items-center gap-1 text-[11px] font-bold underline ${
+                                isMe ? 'text-blue-200 hover:text-white' : 'text-blue-600 hover:text-blue-700'
+                              }`}
+                            >
+                              <span>View Post in Feed</span>
+                              <span>→</span>
+                            </Link>
+                          </div>
+                        );
+                      })()}
 
                       {msg.isCallLog || msg.text.startsWith('📞') || msg.text.startsWith('📹') ? (
                         <div className="flex items-center gap-2">
@@ -3266,6 +3385,29 @@ function ChatsContent() {
               </button>
             </form>
           </div>
+        </div>
+      )}
+
+      {/* Full Screen Photo Viewer Modal */}
+      {selectedFullPhoto && (
+        <div
+          onClick={() => setSelectedFullPhoto(null)}
+          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in cursor-pointer select-none"
+        >
+          <button
+            type="button"
+            onClick={() => setSelectedFullPhoto(null)}
+            className="absolute top-5 right-5 w-10 h-10 rounded-full bg-white/20 text-white flex items-center justify-center hover:bg-white/30 transition-colors cursor-pointer"
+            aria-label="Close photo"
+          >
+            <X size={20} />
+          </button>
+          <img
+            src={selectedFullPhoto}
+            alt="Full size chat photo"
+            onClick={(e) => e.stopPropagation()}
+            className="max-w-full max-h-[88vh] object-contain rounded-2xl shadow-2xl cursor-default"
+          />
         </div>
       )}
 

@@ -4820,6 +4820,63 @@ export const DataStore = {
     }
   },
 
+  /**
+   * 10-Day Retention Policy: Prunes chat photos older than retention days (default 10 days).
+   * Strips large base64 image data to free up local storage, while keeping the message placeholder.
+   * Regular feed posts are NOT affected.
+   */
+  pruneExpiredChatPhotos(username?: string, retentionDays = 10): void {
+    if (typeof window === 'undefined') return;
+    const cur = (username || this.getCurrentUser()?.username || '').toLowerCase().trim();
+    if (!cur) return;
+    const userMsgKey = `dpsbuzz_chat_messages_${cur}_v3`;
+    const stored = getStorage<Record<string, any[]>>(userMsgKey, {});
+    const maxAgeMs = retentionDays * 24 * 60 * 60 * 1000;
+    const now = Date.now();
+    let changed = false;
+
+    for (const [key, list] of Object.entries(stored)) {
+      if (!Array.isArray(list)) continue;
+      const updatedList = list.map((m: any) => {
+        const isChatPhoto =
+          m.isChatPhoto ||
+          m.sharedPost?.id?.startsWith('chat-photo-') ||
+          m.sharedPost?.id?.startsWith('img-') ||
+          m.sharedPost?.caption === 'Chat photo' ||
+          m.sharedPost?.caption === 'Shared a photo';
+
+        if (!isChatPhoto || !m.sharedPost?.imageUrl) return m;
+
+        const msgTime =
+          m.timestamp ||
+          (m.createdAt ? new Date(m.createdAt).getTime() : null) ||
+          (m.id && m.id.startsWith('msg-') ? parseInt(m.id.split('-')[1]) : null);
+
+        if (msgTime && now - msgTime > maxAgeMs) {
+          changed = true;
+          return {
+            ...m,
+            text: '📸 Photo expired (10 days limit)',
+            isPhotoExpired: true,
+            sharedPost: {
+              ...m.sharedPost,
+              imageUrl: null,
+            },
+          };
+        }
+        return m;
+      });
+
+      if (changed) {
+        stored[key] = updatedList;
+      }
+    }
+
+    if (changed) {
+      setStorage(userMsgKey, stored);
+    }
+  },
+
   markMessagesAsRead(conversationId: string, readerUsername: string): void {
     const cur = readerUsername.toLowerCase().trim();
     let canonicalId = conversationId;

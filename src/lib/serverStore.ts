@@ -535,6 +535,60 @@ export async function markServerChatMessagesRead(
   });
 }
 
+/**
+ * 10-Day Retention Policy: Prunes chat photos older than retention days (default 10 days).
+ * Completely purges heavy image data while preserving text logs.
+ * Post photos in feed remain permanent and are NOT affected.
+ */
+export async function pruneExpiredServerChatPhotos(
+  retentionDays = 10
+): Promise<{ prunedCount: number; updated: ServerStoreData }> {
+  const current = await getServerStore({ forceRefresh: true });
+  const maxAgeMs = retentionDays * 24 * 60 * 60 * 1000;
+  const now = Date.now();
+  let prunedCount = 0;
+
+  const nextChatMessages: Record<string, any[]> = {};
+
+  for (const [convId, msgs] of Object.entries(current.chatMessages || {})) {
+    if (!Array.isArray(msgs)) continue;
+    nextChatMessages[convId] = msgs.map((m: any) => {
+      const isChatPhoto =
+        m.isChatPhoto ||
+        m.sharedPost?.id?.startsWith('chat-photo-') ||
+        m.sharedPost?.id?.startsWith('img-') ||
+        m.sharedPost?.caption === 'Chat photo' ||
+        m.sharedPost?.caption === 'Shared a photo';
+
+      if (!isChatPhoto) return m;
+
+      const msgTime =
+        m.timestamp ||
+        (m.createdAt ? new Date(m.createdAt).getTime() : null) ||
+        (m.id && m.id.startsWith('msg-') ? parseInt(m.id.split('-')[1]) : null);
+
+      if (msgTime && now - msgTime > maxAgeMs) {
+        if (m.sharedPost?.imageUrl) {
+          prunedCount++;
+          return {
+            ...m,
+            text: '📸 Photo expired (10 days limit)',
+            isPhotoExpired: true,
+            sharedPost: {
+              ...m.sharedPost,
+              imageUrl: null,
+            },
+          };
+        }
+      }
+      return m;
+    });
+  }
+
+  const updated = await saveServerStore({ chatMessages: nextChatMessages });
+  return { prunedCount, updated };
+}
+
 export async function addServerChatNote(note: ChatNote): Promise<ServerStoreData> {
   const current = await getServerStore({ forceRefresh: true });
   const filtered = current.chatNotes.filter(
