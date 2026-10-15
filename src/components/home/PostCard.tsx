@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   Repeat2,
   Music,
+  Tag,
 } from 'lucide-react';
 import { type Post, DataStore } from '@/lib/dataStore';
 import { PostImage } from './PostImage';
@@ -316,6 +317,41 @@ export const PostCard: React.FC<PostCardProps> = ({
                 </button>
               )}
             </div>
+          </div>
+        )}
+
+        {/* Tagged Classmates with Avatars */}
+        {post.taggedUsers && post.taggedUsers.length > 0 && (
+          <div className="flex items-center gap-1.5 flex-wrap pt-1 select-none">
+            <span className="text-[11px] text-[var(--text-muted)] flex items-center gap-1 font-medium">
+              <Tag size={12} className="text-pink-500" />
+              <span>With</span>
+            </span>
+            {post.taggedUsers.map((u) => {
+              const prof = DataStore.getProfileByUsername(u);
+              const pair = getAvatarColorPair(u);
+              const initials = (prof?.fullName || u).slice(0, 2).toUpperCase();
+
+              return (
+                <Link
+                  key={u}
+                  href={`/u/${u}`}
+                  className="inline-flex items-center gap-1.5 pl-1 pr-2 py-0.5 rounded-full bg-[var(--surface-sunken)] hover:bg-[var(--line)] border border-[var(--line)] text-[11px] font-bold text-[var(--text)] transition-colors"
+                >
+                  <div
+                    className="w-4 h-4 rounded-full overflow-hidden shrink-0 flex items-center justify-center text-[8px] font-bold text-white shadow-2xs"
+                    style={{ backgroundColor: pair.bg, color: pair.text }}
+                  >
+                    {prof?.avatar ? (
+                      <img src={prof.avatar} alt={u} className="w-full h-full object-cover" />
+                    ) : (
+                      initials
+                    )}
+                  </div>
+                  <span>@{u}</span>
+                </Link>
+              );
+            })}
           </div>
         )}
 
