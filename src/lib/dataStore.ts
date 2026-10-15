@@ -2880,10 +2880,31 @@ export const DataStore = {
 
   // Follows and Mutuals
   getFollows(): Array<{ follower: string; following: string }> {
-    const saved = getStorage<Array<{ follower: string; following: string }>>(
+    let saved = getStorage<Array<{ follower: string; following: string }>>(
       STORAGE_KEYS.FOLLOWS,
       []
     );
+    if (!saved || saved.length === 0) {
+      saved = [
+        { follower: 'priya_7b', following: 'rahul_9a' },
+        { follower: 'priya_7b', following: 'sneha_10c' },
+        { follower: 'priya_7b', following: 'ananya_8b' },
+        { follower: 'rahul_9a', following: 'priya_7b' },
+        { follower: 'rahul_9a', following: 'sneha_10c' },
+        { follower: 'rahul_9a', following: 'varun_7a' },
+        { follower: 'sneha_10c', following: 'priya_7b' },
+        { follower: 'sneha_10c', following: 'rahul_9a' },
+        { follower: 'ananya_8b', following: 'priya_7b' },
+        { follower: 'ananya_8b', following: 'aditya_8a' },
+        { follower: 'aditya_8a', following: 'meera_8a' },
+        { follower: 'aditya_8a', following: 'priya_7b' },
+        { follower: 'meera_8a', following: 'aditya_8a' },
+        { follower: 'meera_8a', following: 'ananya_8b' },
+        { follower: 'karthik_6a', following: 'varun_7a' },
+        { follower: 'varun_7a', following: 'karthik_6a' },
+      ];
+      setStorage(STORAGE_KEYS.FOLLOWS, saved);
+    }
     return saved.filter((f) => {
       if (!f || !f.follower || !f.following) return false;
       const fol = f.follower.toLowerCase().trim();
@@ -2911,6 +2932,82 @@ export const DataStore = {
   areMutuals(userA: string, userB: string): boolean {
     if (!userA || !userB || userA.toLowerCase().trim() === userB.toLowerCase().trim()) return false;
     return this.isFollowing(userA, userB) && this.isFollowing(userB, userA);
+  },
+
+  getFollowers(targetUsername: string): Profile[] {
+    const cleanTarget = targetUsername.toLowerCase().trim();
+    const follows = this.getFollows();
+    const followerUsernames = Array.from(
+      new Set(
+        follows
+          .filter((f) => f.following.toLowerCase().trim() === cleanTarget)
+          .map((f) => f.follower.toLowerCase().trim())
+      )
+    );
+    const allProfiles = this.getProfiles();
+    return followerUsernames.map((u) => {
+      const existing = allProfiles.find((p) => p.username.toLowerCase().trim() === u);
+      if (existing) return existing;
+      return {
+        id: 'user-' + u,
+        username: u,
+        fullName: u.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+        avatar: null,
+        bio: 'DPS Dilsukhnagar Student 🐝',
+        class: '8',
+        section: 'A',
+        role: 'student' as const,
+        isVerified: true,
+        isApproved: true,
+        followerCount: 0,
+        followingCount: 0,
+        postCount: 0,
+        spiritPoints: 0,
+        profileFrame: 'default',
+        storyRingStyle: 'default',
+        darkMode: true,
+        notificationsEnabled: true,
+        createdAt: new Date().toISOString(),
+      };
+    });
+  },
+
+  getFollowing(targetUsername: string): Profile[] {
+    const cleanTarget = targetUsername.toLowerCase().trim();
+    const follows = this.getFollows();
+    const followingUsernames = Array.from(
+      new Set(
+        follows
+          .filter((f) => f.follower.toLowerCase().trim() === cleanTarget)
+          .map((f) => f.following.toLowerCase().trim())
+      )
+    );
+    const allProfiles = this.getProfiles();
+    return followingUsernames.map((u) => {
+      const existing = allProfiles.find((p) => p.username.toLowerCase().trim() === u);
+      if (existing) return existing;
+      return {
+        id: 'user-' + u,
+        username: u,
+        fullName: u.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+        avatar: null,
+        bio: 'DPS Dilsukhnagar Student 🐝',
+        class: '8',
+        section: 'A',
+        role: 'student' as const,
+        isVerified: true,
+        isApproved: true,
+        followerCount: 0,
+        followingCount: 0,
+        postCount: 0,
+        spiritPoints: 0,
+        profileFrame: 'default',
+        storyRingStyle: 'default',
+        darkMode: true,
+        notificationsEnabled: true,
+        createdAt: new Date().toISOString(),
+      };
+    });
   },
 
   toggleFollow(follower: string, following: string): boolean {

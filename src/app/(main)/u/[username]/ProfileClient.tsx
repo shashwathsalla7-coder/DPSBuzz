@@ -83,6 +83,11 @@ export default function ProfileClient({ username }: { username: string }) {
   const [detailSlideIndex, setDetailSlideIndex] = useState(0);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  // Followers & Following interactive modal state
+  const [showFollowListModal, setShowFollowListModal] = useState(false);
+  const [followListModalTab, setFollowListModalTab] = useState<'followers' | 'following'>('followers');
+  const [followListSearchQuery, setFollowListSearchQuery] = useState('');
+
   // Post Detail & Repost Modals
   const [selectedPostDetail, setSelectedPostDetail] = useState<Post | null>(null);
   const [showDetailRepostSheet, setShowDetailRepostSheet] = useState(false);
@@ -515,6 +520,56 @@ export default function ProfileClient({ username }: { username: string }) {
     }
   };
 
+  // Followers & Following lists for interactive modal
+  const followersList = useMemo(() => {
+    return DataStore.getFollowers(profile.username);
+  }, [profile.username, postsVersion]);
+
+  const followingList = useMemo(() => {
+    return DataStore.getFollowing(profile.username);
+  }, [profile.username, postsVersion]);
+
+  const mutualFollowers = useMemo(() => {
+    const cur = DataStore.getCurrentUser();
+    if (!cur || isOwnProfile) return [];
+    return DataStore.getMutualFollows(cur.username, profile.username);
+  }, [profile.username, isOwnProfile, postsVersion]);
+
+  const displayedFollowList = useMemo(() => {
+    const baseList = followListModalTab === 'followers' ? followersList : followingList;
+    if (!followListSearchQuery.trim()) return baseList;
+    const q = followListSearchQuery.toLowerCase().trim();
+    return baseList.filter(
+      (u) =>
+        u.username.toLowerCase().includes(q) ||
+        u.fullName.toLowerCase().includes(q) ||
+        (u.bio && u.bio.toLowerCase().includes(q))
+    );
+  }, [followListModalTab, followersList, followingList, followListSearchQuery]);
+
+  const handleOpenFollowModal = (tab: 'followers' | 'following') => {
+    const isPrivate = Boolean(profile.isPrivate);
+    if (!isOwnProfile && isPrivate && !isFollowing) {
+      showToast(`🔒 This account is private. Follow @${profile.username} to see their followers and following.`);
+      return;
+    }
+    setFollowListModalTab(tab);
+    setFollowListSearchQuery('');
+    setShowFollowListModal(true);
+  };
+
+  const handleToggleFollowInModal = (targetUsername: string) => {
+    const cur = DataStore.getCurrentUser();
+    if (!cur) return;
+    if (cur.username.toLowerCase() === targetUsername.toLowerCase()) {
+      showToast('You cannot follow yourself! 🙅');
+      return;
+    }
+    const isNow = DataStore.toggleFollow(cur.username, targetUsername);
+    setPostsVersion((v) => v + 1);
+    showToast(isNow ? `Following @${targetUsername}! 🤝` : `Unfollowed @${targetUsername}`);
+  };
+
   return (
     <div className="min-h-dvh pb-20 select-none bg-[var(--surface)] text-[var(--text)]">
       {/* Top Mobile Bar with safe area breathing room */}
@@ -633,17 +688,25 @@ export default function ProfileClient({ username }: { username: string }) {
                 posts
               </div>
             </div>
-            <div className="cursor-pointer" onClick={() => showToast(`${profile.followerCount || 0} students follow @${profile.username}`)}>
+            <div
+              className="cursor-pointer hover:opacity-80 transition-opacity"
+              onClick={() => handleOpenFollowModal('followers')}
+              title={`View ${profile.username}'s followers`}
+            >
               <div className="text-base font-bold leading-tight" style={{ color: 'var(--text)' }}>
-                {profile.followerCount || 0}
+                {followersList.length || profile.followerCount || 0}
               </div>
               <div className="text-[12px] lowercase font-normal" style={{ color: 'var(--text-muted)' }}>
                 followers
               </div>
             </div>
-            <div className="cursor-pointer" onClick={() => showToast(`@${profile.username} follows ${profile.followingCount || 0} classmates`)}>
+            <div
+              className="cursor-pointer hover:opacity-80 transition-opacity"
+              onClick={() => handleOpenFollowModal('following')}
+              title={`View who ${profile.username} follows`}
+            >
               <div className="text-base font-bold leading-tight" style={{ color: 'var(--text)' }}>
-                {profile.followingCount || 0}
+                {followingList.length || profile.followingCount || 0}
               </div>
               <div className="text-[12px] lowercase font-normal" style={{ color: 'var(--text-muted)' }}>
                 following
@@ -664,6 +727,40 @@ export default function ProfileClient({ username }: { username: string }) {
             <p className="text-xs leading-relaxed whitespace-pre-line pt-0.5" style={{ color: 'var(--text)' }}>
               {profile.bio}
             </p>
+          )}
+
+          {/* Social proof / Mutual follows: Followed by [avatar] @username matching screenshot */}
+          {!isOwnProfile && mutualFollowers.length > 0 && (
+            <div
+              onClick={() => handleOpenFollowModal('followers')}
+              className="flex items-center gap-2 pt-1 cursor-pointer group"
+            >
+              <div className="flex -space-x-1.5 overflow-hidden">
+                {mutualFollowers.slice(0, 3).map((mfUser) => {
+                  const mfProf = DataStore.getProfileByUsername(mfUser);
+                  return (
+                    <div
+                      key={mfUser}
+                      className="inline-block w-4 h-4 rounded-full ring-2 ring-[var(--surface)] bg-[var(--surface-sunken)] overflow-hidden shrink-0"
+                    >
+                      {mfProf?.avatar ? (
+                        <img src={mfProf.avatar} alt={mfUser} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-[7px] font-bold text-white bg-blue-500">
+                          {mfUser.slice(0, 1).toUpperCase()}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="text-[11px] leading-tight text-[var(--text-muted)] group-hover:underline">
+                Followed by <span className="font-semibold text-[var(--text)]">@{mutualFollowers[0]}</span>
+                {mutualFollowers.length > 1 && (
+                  <span> and {mutualFollowers.length - 1} other{mutualFollowers.length > 2 ? 's' : ''} you follow</span>
+                )}
+              </p>
+            </div>
           )}
 
           {/* Star Board Top Rank pill */}
@@ -1017,23 +1114,25 @@ export default function ProfileClient({ username }: { username: string }) {
               </span>
             )}
           </button>
-          <button
-            onClick={() => setActiveTab('saved')}
-            className="flex-1 py-3 flex items-center justify-center btn-press border-b-2 cursor-pointer gap-1.5"
-            style={{
-              borderColor: activeTab === 'saved' ? 'var(--text)' : 'transparent',
-              color: activeTab === 'saved' ? 'var(--text)' : 'var(--text-muted)',
-            }}
-            aria-label="Saved tab"
-          >
-            <Bookmark size={19} />
-            <span className="text-[11px] font-semibold">Saved</span>
-            {savedPosts.length > 0 && (
-              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-500 font-bold tabular-nums">
-                {savedPosts.length}
-              </span>
-            )}
-          </button>
+          {isOwnProfile && (
+            <button
+              onClick={() => setActiveTab('saved')}
+              className="flex-1 py-3 flex items-center justify-center btn-press border-b-2 cursor-pointer gap-1.5"
+              style={{
+                borderColor: activeTab === 'saved' ? 'var(--text)' : 'transparent',
+                color: activeTab === 'saved' ? 'var(--text)' : 'var(--text-muted)',
+              }}
+              aria-label="Saved tab"
+            >
+              <Bookmark size={19} />
+              <span className="text-[11px] font-semibold">Saved</span>
+              {savedPosts.length > 0 && (
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-500 font-bold tabular-nums">
+                  {savedPosts.length}
+                </span>
+              )}
+            </button>
+          )}
         </div>
 
         {/* Edit Grid / Rearrange Toggle Button */}
@@ -1207,13 +1306,30 @@ export default function ProfileClient({ username }: { username: string }) {
               })}
             </div>
           ) : (
-            <div className="py-16 text-center space-y-2">
-              <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
+            <div className="py-16 text-center space-y-2 animate-fade-in">
+              <div className="w-16 h-16 rounded-full border-2 border-[var(--line)] flex items-center justify-center mx-auto mb-3 text-[var(--text)] bg-[var(--surface-sunken)] shadow-xs">
+                <Camera size={30} strokeWidth={1.5} />
+              </div>
+              <h3 className="text-xl font-extrabold tracking-tight" style={{ color: 'var(--text)' }}>
                 No posts yet
+              </h3>
+              <p className="text-xs max-w-xs mx-auto" style={{ color: 'var(--text-muted)' }}>
+                {isOwnProfile
+                  ? 'When you share photos or school projects, they will appear on your profile grid.'
+                  : `When @${profile.username} shares photos or school projects, they will appear here.`}
               </p>
-              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                When {profile.username} shares photos or projects, they will appear here.
-              </p>
+              {isOwnProfile && (
+                <div className="pt-2">
+                  <Link
+                    href="/post/new"
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold text-white shadow-xs hover:opacity-90 transition-opacity"
+                    style={{ backgroundColor: 'var(--primary)' }}
+                  >
+                    <Plus size={14} />
+                    <span>Share first post</span>
+                  </Link>
+                </div>
+              )}
             </div>
           )
         ) : activeTab === 'reposts' ? (
@@ -2868,6 +2984,183 @@ export default function ProfileClient({ username }: { username: string }) {
                     <p className="text-[10px] font-normal text-red-400/80">Permanently remove this photo</p>
                   </div>
                 </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Followers / Following Interactive Modal ──────────────────────── */}
+      {showFollowListModal && (
+        <div
+          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in select-none"
+          onClick={() => setShowFollowListModal(false)}
+        >
+          <div
+            className="w-full sm:max-w-md max-h-[85vh] rounded-t-3xl sm:rounded-2xl border flex flex-col overflow-hidden shadow-2xl animate-slide-up"
+            style={{
+              backgroundColor: 'var(--surface)',
+              borderColor: 'var(--line)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="px-4 py-3 flex items-center justify-between border-b" style={{ borderColor: 'var(--line)' }}>
+              <div className="w-6" />
+              <h3 className="text-sm font-bold text-center truncate" style={{ color: 'var(--text)' }}>
+                @{profile.username}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowFollowListModal(false)}
+                className="p-1 rounded-full text-[var(--text-muted)] hover:text-[var(--text)] transition-colors cursor-pointer"
+                aria-label="Close"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* 2 Tabs: Followers vs Following */}
+            <div className="flex border-b text-xs font-bold" style={{ borderColor: 'var(--line)' }}>
+              <button
+                type="button"
+                onClick={() => setFollowListModalTab('followers')}
+                className={`flex-1 py-3 text-center border-b-2 transition-colors cursor-pointer flex items-center justify-center gap-1.5 ${
+                  followListModalTab === 'followers'
+                    ? 'border-blue-500 text-blue-500 font-bold'
+                    : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text)]'
+                }`}
+              >
+                <span>Followers</span>
+                <span className="px-1.5 py-0.2 rounded-full bg-[var(--surface-sunken)] text-[10px] tabular-nums">
+                  {followersList.length}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setFollowListModalTab('following')}
+                className={`flex-1 py-3 text-center border-b-2 transition-colors cursor-pointer flex items-center justify-center gap-1.5 ${
+                  followListModalTab === 'following'
+                    ? 'border-blue-500 text-blue-500 font-bold'
+                    : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text)]'
+                }`}
+              >
+                <span>Following</span>
+                <span className="px-1.5 py-0.2 rounded-full bg-[var(--surface-sunken)] text-[10px] tabular-nums">
+                  {followingList.length}
+                </span>
+              </button>
+            </div>
+
+            {/* Search Filter Box */}
+            <div className="p-3 border-b" style={{ borderColor: 'var(--line)' }}>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={followListSearchQuery}
+                  onChange={(e) => setFollowListSearchQuery(e.target.value)}
+                  placeholder={`Search ${followListModalTab}...`}
+                  className="w-full text-xs rounded-xl px-3 py-2 pl-8 border bg-[var(--surface-sunken)] text-[var(--text)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-blue-500"
+                  style={{ borderColor: 'var(--line)' }}
+                />
+                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)] text-xs">
+                  🔍
+                </span>
+                {followListSearchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setFollowListSearchQuery('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text)] text-xs font-bold"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Scrollable List of Students */}
+            <div className="flex-1 overflow-y-auto divide-y divide-[var(--line)] max-h-[50vh] p-1">
+              {displayedFollowList.length > 0 ? (
+                displayedFollowList.map((student) => {
+                  const cur = DataStore.getCurrentUser();
+                  const isSelf = cur && cur.username.toLowerCase() === student.username.toLowerCase();
+                  const isFollowingStudent = cur ? DataStore.isFollowing(cur.username, student.username) : false;
+
+                  return (
+                    <div
+                      key={student.id || student.username}
+                      className="p-2.5 flex items-center justify-between gap-3 hover:bg-[var(--surface-sunken)] rounded-xl transition-colors"
+                    >
+                      <Link
+                        href={`/u/${student.username}`}
+                        onClick={() => setShowFollowListModal(false)}
+                        className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer group"
+                      >
+                        <div className="w-10 h-10 rounded-full overflow-hidden bg-[var(--surface-sunken)] border border-[var(--line)] flex items-center justify-center shrink-0">
+                          {student.avatar ? (
+                            <img src={student.avatar} alt={student.username} className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-xs font-bold text-blue-500">
+                              {student.username.slice(0, 2).toUpperCase()}
+                            </span>
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-bold truncate text-[var(--text)] group-hover:underline">
+                              @{student.username}
+                            </span>
+                            {student.isVerified && (
+                              <span className="text-[10px] text-blue-500 font-bold" title="Verified DPS Student">
+                                ✓
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] truncate text-[var(--text-muted)]">
+                            {student.fullName}
+                          </p>
+                          <p className="text-[10px] text-[var(--text-muted)]">
+                            Class {student.class}-{student.section || 'A'}
+                          </p>
+                        </div>
+                      </Link>
+
+                      {/* Follow / Following Action Button */}
+                      <div>
+                        {isSelf ? (
+                          <span className="text-[11px] font-semibold px-3 py-1 rounded-full bg-[var(--surface-sunken)] text-[var(--text-muted)] border border-[var(--line)]">
+                            You
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleToggleFollowInModal(student.username)}
+                            className={`px-3 py-1 rounded-full text-xs font-semibold cursor-pointer transition-colors shadow-2xs ${
+                              isFollowingStudent
+                                ? 'bg-[var(--surface-sunken)] text-[var(--text)] border border-[var(--line)] hover:bg-red-500/10 hover:text-red-500'
+                                : 'bg-blue-600 hover:bg-blue-500 text-white'
+                            }`}
+                          >
+                            {isFollowingStudent ? 'Following' : 'Follow'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="py-12 text-center space-y-1 text-xs text-[var(--text-muted)]">
+                  <p className="font-semibold text-sm" style={{ color: 'var(--text)' }}>
+                    {followListSearchQuery ? 'No classmates found' : `No ${followListModalTab} yet`}
+                  </p>
+                  <p className="text-[11px]">
+                    {followListSearchQuery
+                      ? `No one matching "${followListSearchQuery}"`
+                      : followListModalTab === 'followers'
+                      ? `@${profile.username} doesn't have any followers yet.`
+                      : `@${profile.username} isn't following anyone yet.`}
+                  </p>
+                </div>
               )}
             </div>
           </div>
