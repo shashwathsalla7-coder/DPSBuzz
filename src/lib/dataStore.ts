@@ -310,6 +310,8 @@ export interface GroupJoinRequest {
   requestedAt: string;
   status: 'pending' | 'accepted' | 'declined';
   acceptedBy?: string;
+  type?: 'join_request' | 'invite';
+  invitedBy?: string;
 }
 
 export interface RosterEntry {
@@ -3060,6 +3062,7 @@ export const DataStore = {
   }): Group {
     const list = this.getGroups();
     const currentUser = this.getCurrentUser();
+    const cleanCreator = currentUser.username.toLowerCase().trim();
     const newGroup: Group = {
       id: `group-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       name: data.name.trim(),
@@ -3067,17 +3070,77 @@ export const DataStore = {
       category: data.category || 'club',
       class: data.class,
       section: data.section,
-      memberCount: (data.members?.length || 0) + 1,
-      members: data.members || [],
+      memberCount: 1, // Only creator is member initially; invited classmates must accept!
+      members: [currentUser.username],
       isOfficial: false,
     };
     list.unshift(newGroup);
     setStorage(STORAGE_KEYS.GROUPS, list);
 
-    // Also register group members
+    // Register creator as initial member
     const membersMap = getStorage<Record<string, string[]>>(STORAGE_KEYS.GROUP_MEMBERS, {});
-    membersMap[newGroup.id] = [currentUser.username, ...(data.members || [])];
+    membersMap[newGroup.id] = [cleanCreator];
     setStorage(STORAGE_KEYS.GROUP_MEMBERS, membersMap);
+
+    // Register group conversation for creator immediately
+    if (typeof window !== 'undefined') {
+      try {
+        const convId = `conv-${newGroup.id}`;
+        const initials = newGroup.name.slice(0, 2).toUpperCase() || 'GP';
+        const groupConv = {
+          id: convId,
+          name: newGroup.name,
+          username: newGroup.name.toLowerCase().replace(/\s+/g, '_'),
+          isGroup: true,
+          groupInitials: initials,
+          lastMessage: data.members && data.members.length > 0
+            ? `Group created · ${data.members.length} invitation${data.members.length > 1 ? 's' : ''} sent`
+            : 'Group created',
+          timeAgo: 'Just now',
+          isUnread: false,
+        };
+
+        const convKey = `dpsbuzz_chat_conversations_${cleanCreator}_v3`;
+        const stored = localStorage.getItem(convKey);
+        const existing = stored ? JSON.parse(stored) : [];
+        localStorage.setItem(convKey, JSON.stringify([groupConv, ...existing.filter((c: any) => c.id !== convId)]));
+
+        const msgKey = `dpsbuzz_chat_messages_${cleanCreator}_v3`;
+        const storedMsgs = localStorage.getItem(msgKey);
+        const existingMsgs = storedMsgs ? JSON.parse(storedMsgs) : {};
+        const welcomeMsg = {
+          id: `msg-group-${Date.now()}`,
+          text: `🎉 You created "${newGroup.name}"! Group invitations were sent to: ${(data.members || []).map((u) => `@${u}`).join(', ')}.`,
+          sender: 'them',
+          senderUsername: 'system',
+          time: 'Just now',
+          status: 'seen',
+        };
+        existingMsgs[convId] = [welcomeMsg];
+        localStorage.setItem(msgKey, JSON.stringify(existingMsgs));
+
+        fetch('/api/chats', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            conversationId: convId,
+            senderUsername: cleanCreator,
+            message: welcomeMsg,
+          }),
+        }).catch(() => {});
+      } catch (err) {
+        console.error('Error creating group chat for creator:', err);
+      }
+    }
+
+    // Dispatch invitations to all selected classmates (they must click "Yes, I want to join")
+    if (data.members && data.members.length > 0) {
+      for (const m of data.members) {
+        if (m && m.toLowerCase().trim() !== cleanCreator) {
+          this.sendGroupInvite(newGroup.id, m, currentUser.username);
+        }
+      }
+    }
 
     if (typeof window !== 'undefined') {
       window.dispatchEvent(
@@ -3101,12 +3164,242 @@ export const DataStore = {
     return members.some((m) => m.toLowerCase() === username.toLowerCase().trim());
   },
 
+  // Send an invite from creator to student (Group Creation Invitations)
+  sendGroupInvite(groupId: string, targetUsername: string, invitedByUsername: string): GroupJoinRequest {
+    const cleanUser = targetUsername.toLowerCase().trim();
+    const cleanInviter = invitedByUsername.toLowerCase().trim();
+    const profile = this.getProfileByUsername(cleanUser) || {
+      id: cleanUser,
+      username: cleanUser,
+      fullName: cleanUser,
+      avatar: null,
+      class: '',
+      section: '',
+    };
+    const group = this.getGroups().find((g) => g.id === groupId);
+    const groupName = group ? group.name : 'Group';
+
+    const list = getStorage<GroupJoinRequest[]>(STORAGE_KEYS.GROUP_JOIN_REQUESTS, []);
+    const existing = list.find(
+      (r) =>
+        r.groupId === groupId &&
+        r.username.toLowerCase() === cleanUser &&
+        r.status === 'pending'
+    );
+    if (existing) return existing;
+
+    const newReq: GroupJoinRequest = {
+      id: `ginv-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      groupId,
+      groupName,
+      username: cleanUser,
+      fullName: profile.fullName || cleanUser,
+      studentClass: profile.class ? `Class ${profile.class}-${profile.section || ''}` : 'Student',
+      avatar: profile.avatar || null,
+      requestedAt: 'Just now',
+      status: 'pending',
+      type: 'invite',
+      invitedBy: cleanInviter,
+    };
+    list.unshift(newReq);
+    setStorage(STORAGE_KEYS.GROUP_JOIN_REQUESTS, list);
+
+    // Send notification to the invited user
+    const notifs = this.getNotifications();
+    notifs.unshift({
+      id: `notif-ginv-${Date.now()}-${Math.random().toString(36).substring(2, 5)}`,
+      userId: cleanUser,
+      type: 'system',
+      title: `Group Invite from @${cleanInviter} 📬`,
+      body: `@${cleanInviter} invited you to join "${groupName}".`,
+      timeAgo: 'Just now',
+      isRead: false,
+      link: '/groups',
+    });
+    setStorage(STORAGE_KEYS.NOTIFICATIONS, notifs);
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('dpsbuzz:content_updated', {
+          detail: { type: 'group_invite_sent', request: newReq },
+        })
+      );
+    }
+    return newReq;
+  },
+
+  // Get pending invitations sent to a specific user
+  getGroupInvitesForUser(username: string): GroupJoinRequest[] {
+    const list = getStorage<GroupJoinRequest[]>(STORAGE_KEYS.GROUP_JOIN_REQUESTS, []);
+    const clean = username.toLowerCase().trim();
+    return list.filter(
+      (r) =>
+        r &&
+        r.type === 'invite' &&
+        r.username.toLowerCase() === clean &&
+        r.status === 'pending' &&
+        !FAKE_GROUP_IDS.has(r.groupId)
+    );
+  },
+
+  // Check if user has a pending invitation for a specific group
+  hasPendingGroupInvite(groupId: string, username: string): GroupJoinRequest | undefined {
+    const clean = username.toLowerCase().trim();
+    const list = getStorage<GroupJoinRequest[]>(STORAGE_KEYS.GROUP_JOIN_REQUESTS, []);
+    return list.find(
+      (r) =>
+        r &&
+        r.groupId === groupId &&
+        r.username.toLowerCase() === clean &&
+        r.status === 'pending' &&
+        r.type === 'invite'
+    );
+  },
+
+  // Accept a group invitation ("Yes, I want to join")
+  acceptGroupInvite(requestId: string, username: string): { success: boolean; request?: GroupJoinRequest } {
+    const list = getStorage<GroupJoinRequest[]>(STORAGE_KEYS.GROUP_JOIN_REQUESTS, []);
+    const req = list.find((r) => r.id === requestId);
+    if (!req) return { success: false };
+
+    req.status = 'accepted';
+    req.acceptedBy = username;
+    setStorage(STORAGE_KEYS.GROUP_JOIN_REQUESTS, list);
+
+    const cleanUser = username.toLowerCase().trim();
+
+    // Add to members map
+    const defaultMembersMap: Record<string, string[]> = {};
+    const storedMembers = getStorage<Record<string, string[]>>(STORAGE_KEYS.GROUP_MEMBERS, defaultMembersMap);
+    const currentMembers = storedMembers[req.groupId] || [];
+    if (!currentMembers.map((m) => m.toLowerCase()).includes(cleanUser)) {
+      currentMembers.push(cleanUser);
+      storedMembers[req.groupId] = currentMembers;
+      setStorage(STORAGE_KEYS.GROUP_MEMBERS, storedMembers);
+    }
+
+    // Increment memberCount on group
+    const groups = this.getGroups().map((g) =>
+      g.id === req.groupId ? { ...g, memberCount: (g.memberCount || 1) + 1 } : g
+    );
+    setStorage(STORAGE_KEYS.GROUPS, groups);
+
+    // Register group conversation for accepted member
+    if (typeof window !== 'undefined') {
+      try {
+        const convId = `conv-${req.groupId}`;
+        const initials = req.groupName.slice(0, 2).toUpperCase() || 'GP';
+        const groupConv = {
+          id: convId,
+          name: req.groupName,
+          username: req.groupName.toLowerCase().replace(/\s+/g, '_'),
+          isGroup: true,
+          groupInitials: initials,
+          lastMessage: `@${cleanUser} joined the group! 🎉`,
+          timeAgo: 'Just now',
+          isUnread: false,
+        };
+
+        const convKey = `dpsbuzz_chat_conversations_${cleanUser}_v3`;
+        const stored = localStorage.getItem(convKey);
+        const existing = stored ? JSON.parse(stored) : [];
+        localStorage.setItem(convKey, JSON.stringify([groupConv, ...existing.filter((c: any) => c.id !== convId)]));
+
+        const msgKey = `dpsbuzz_chat_messages_${cleanUser}_v3`;
+        const storedMsgs = localStorage.getItem(msgKey);
+        const existingMsgs = storedMsgs ? JSON.parse(storedMsgs) : {};
+        const msgsForGroup = existingMsgs[convId] || [];
+        const joinMsg = {
+          id: `msg-group-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+          text: `🎉 You accepted the invitation and joined "${req.groupName}"!`,
+          sender: 'them',
+          senderUsername: 'system',
+          time: 'Just now',
+          status: 'seen',
+        };
+        existingMsgs[convId] = [...msgsForGroup, joinMsg];
+        localStorage.setItem(msgKey, JSON.stringify(existingMsgs));
+
+        fetch('/api/chats', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            conversationId: convId,
+            senderUsername: cleanUser,
+            message: joinMsg,
+          }),
+        }).catch(() => {});
+      } catch (err) {
+        console.error('Error adding group conversation for accepted user:', err);
+      }
+    }
+
+    // Send notification to inviter
+    if (req.invitedBy) {
+      const notifications = this.getNotifications();
+      notifications.unshift({
+        id: `notif-ginv-accepted-${Date.now()}`,
+        userId: req.invitedBy,
+        type: 'system',
+        title: '🎉 Group Invite Accepted!',
+        body: `@${cleanUser} accepted your invite and joined "${req.groupName}"!`,
+        timeAgo: 'Just now',
+        isRead: false,
+      });
+      setStorage(STORAGE_KEYS.NOTIFICATIONS, notifications);
+    }
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('dpsbuzz:content_updated', {
+          detail: { type: 'group_invite_accepted', request: req },
+        })
+      );
+    }
+    return { success: true, request: req };
+  },
+
+  // Decline a group invitation ("No, I don't want to join")
+  declineGroupInvite(requestId: string): { success: boolean } {
+    const list = getStorage<GroupJoinRequest[]>(STORAGE_KEYS.GROUP_JOIN_REQUESTS, []);
+    const req = list.find((r) => r.id === requestId);
+    if (!req) return { success: false };
+
+    req.status = 'declined';
+    setStorage(STORAGE_KEYS.GROUP_JOIN_REQUESTS, list);
+
+    if (req.invitedBy) {
+      const notifications = this.getNotifications();
+      notifications.unshift({
+        id: `notif-ginv-declined-${Date.now()}`,
+        userId: req.invitedBy,
+        type: 'system',
+        title: 'Group Invite Declined',
+        body: `@${req.username} declined the invite to join "${req.groupName}".`,
+        timeAgo: 'Just now',
+        isRead: false,
+      });
+      setStorage(STORAGE_KEYS.NOTIFICATIONS, notifications);
+    }
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('dpsbuzz:content_updated', {
+          detail: { type: 'group_invite_declined', requestId },
+        })
+      );
+    }
+    return { success: true };
+  },
+
+  // Student Join Requests (students asking to join groups)
   getGroupJoinRequests(groupId?: string): GroupJoinRequest[] {
     const list = getStorage<GroupJoinRequest[]>(STORAGE_KEYS.GROUP_JOIN_REQUESTS, []);
     const valid = list.filter(
       (r) =>
         r &&
         r.status === 'pending' &&
+        r.type !== 'invite' &&
         !FAKE_GROUP_IDS.has(r.groupId) &&
         !DUMMY_TEST_USERNAMES.has(r.username.toLowerCase())
     );
@@ -3116,11 +3409,14 @@ export const DataStore = {
 
   hasRequestedToJoinGroup(groupId: string, username: string): boolean {
     const list = getStorage<GroupJoinRequest[]>(STORAGE_KEYS.GROUP_JOIN_REQUESTS, []);
+    const clean = username.toLowerCase().trim();
     return list.some(
       (r) =>
+        r &&
         r.groupId === groupId &&
-        r.username.toLowerCase() === username.toLowerCase().trim() &&
-        r.status === 'pending'
+        r.username.toLowerCase() === clean &&
+        r.status === 'pending' &&
+        r.type !== 'invite'
     );
   },
 
@@ -3131,7 +3427,13 @@ export const DataStore = {
     const groupName = group ? group.name : 'Team';
 
     const list = getStorage<GroupJoinRequest[]>(STORAGE_KEYS.GROUP_JOIN_REQUESTS, []);
-    const existing = list.find((r) => r.groupId === groupId && r.username.toLowerCase() === cleanUser && r.status === 'pending');
+    const existing = list.find(
+      (r) =>
+        r.groupId === groupId &&
+        r.username.toLowerCase() === cleanUser &&
+        r.status === 'pending' &&
+        r.type !== 'invite'
+    );
     if (existing) return existing;
 
     const newReq: GroupJoinRequest = {
@@ -3144,20 +3446,40 @@ export const DataStore = {
       avatar: profile.avatar,
       requestedAt: 'Just now',
       status: 'pending',
+      type: 'join_request',
     };
     list.unshift(newReq);
     setStorage(STORAGE_KEYS.GROUP_JOIN_REQUESTS, list);
 
+    // Notify all group members and admin
+    const members = this.getGroupMembers(groupId);
     const notifs = this.getNotifications();
-    notifs.unshift({
-      id: `notif-greq-${Date.now()}`,
-      userId: cleanUser,
-      type: 'system',
-      title: `${profile.fullName} requested to join ${groupName}`,
-      body: `Pending approval for team ${groupName}`,
-      timeAgo: 'Just now',
-      isRead: false,
-    });
+    for (const m of members) {
+      if (m.toLowerCase() !== cleanUser) {
+        notifs.unshift({
+          id: `notif-greq-${Date.now()}-${Math.random().toString(36).substring(2, 5)}`,
+          userId: m,
+          type: 'system',
+          title: `New Join Request for ${groupName} 👥`,
+          body: `@${cleanUser} (${profile.fullName}) requested to join ${groupName}.`,
+          timeAgo: 'Just now',
+          isRead: false,
+          link: '/groups',
+        });
+      }
+    }
+    if (!members.includes('shashwath71845') && cleanUser !== 'shashwath71845') {
+      notifs.unshift({
+        id: `notif-greq-admin-${Date.now()}`,
+        userId: 'shashwath71845',
+        type: 'system',
+        title: `Join Request: ${groupName} 👥`,
+        body: `@${cleanUser} requested to join ${groupName}.`,
+        timeAgo: 'Just now',
+        isRead: false,
+        link: '/groups',
+      });
+    }
     setStorage(STORAGE_KEYS.NOTIFICATIONS, notifs);
 
     if (typeof window !== 'undefined') {
@@ -3179,21 +3501,73 @@ export const DataStore = {
     req.acceptedBy = acceptedByUsername;
     setStorage(STORAGE_KEYS.GROUP_JOIN_REQUESTS, list);
 
+    const cleanUser = req.username.toLowerCase().trim();
+
     // Add to members map
     const defaultMembersMap: Record<string, string[]> = {};
     const storedMembers = getStorage<Record<string, string[]>>(STORAGE_KEYS.GROUP_MEMBERS, defaultMembersMap);
     const currentMembers = storedMembers[req.groupId] || [];
-    if (!currentMembers.includes(req.username.toLowerCase())) {
-      currentMembers.push(req.username.toLowerCase());
+    if (!currentMembers.map((m) => m.toLowerCase()).includes(cleanUser)) {
+      currentMembers.push(cleanUser);
       storedMembers[req.groupId] = currentMembers;
       setStorage(STORAGE_KEYS.GROUP_MEMBERS, storedMembers);
     }
 
     // Increment memberCount on group
     const groups = this.getGroups().map((g) =>
-      g.id === req.groupId ? { ...g, memberCount: g.memberCount + 1 } : g
+      g.id === req.groupId ? { ...g, memberCount: (g.memberCount || 1) + 1 } : g
     );
     setStorage(STORAGE_KEYS.GROUPS, groups);
+
+    // Register group conversation for accepted member
+    if (typeof window !== 'undefined') {
+      try {
+        const convId = `conv-${req.groupId}`;
+        const initials = req.groupName.slice(0, 2).toUpperCase() || 'GP';
+        const groupConv = {
+          id: convId,
+          name: req.groupName,
+          username: req.groupName.toLowerCase().replace(/\s+/g, '_'),
+          isGroup: true,
+          groupInitials: initials,
+          lastMessage: `🎉 @${cleanUser} joined the team!`,
+          timeAgo: 'Just now',
+          isUnread: false,
+        };
+
+        const convKey = `dpsbuzz_chat_conversations_${cleanUser}_v3`;
+        const stored = localStorage.getItem(convKey);
+        const existing = stored ? JSON.parse(stored) : [];
+        localStorage.setItem(convKey, JSON.stringify([groupConv, ...existing.filter((c: any) => c.id !== convId)]));
+
+        const msgKey = `dpsbuzz_chat_messages_${cleanUser}_v3`;
+        const storedMsgs = localStorage.getItem(msgKey);
+        const existingMsgs = storedMsgs ? JSON.parse(storedMsgs) : {};
+        const msgsForGroup = existingMsgs[convId] || [];
+        const joinMsg = {
+          id: `msg-group-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+          text: `🎉 Your join request was accepted by @${acceptedByUsername}! Welcome to "${req.groupName}"!`,
+          sender: 'them',
+          senderUsername: 'system',
+          time: 'Just now',
+          status: 'seen',
+        };
+        existingMsgs[convId] = [...msgsForGroup, joinMsg];
+        localStorage.setItem(msgKey, JSON.stringify(existingMsgs));
+
+        fetch('/api/chats', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            conversationId: convId,
+            senderUsername: cleanUser,
+            message: joinMsg,
+          }),
+        }).catch(() => {});
+      } catch (err) {
+        console.error('Error adding group conversation for accepted join request:', err);
+      }
+    }
 
     // Send notification to accepted user
     const notifications = this.getNotifications();
@@ -3202,9 +3576,10 @@ export const DataStore = {
       userId: req.username,
       type: 'system',
       title: '🎉 Joined Team Successfully!',
-      body: `Your request to join ${req.groupName} was accepted by team member @${acceptedByUsername}!`,
+      body: `Your request to join ${req.groupName} was accepted by @${acceptedByUsername}!`,
       timeAgo: 'Just now',
       isRead: false,
+      link: '/groups',
     });
     setStorage(STORAGE_KEYS.NOTIFICATIONS, notifications);
 

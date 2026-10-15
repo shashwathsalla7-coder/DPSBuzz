@@ -43,17 +43,27 @@ export default function GroupsPage() {
   const [newGroupName, setNewGroupName] = useState('');
   const [selectedGroupMembers, setSelectedGroupMembers] = useState<string[]>([]);
 
-  // Join Requests and Groups State
+  // Join Requests, Invites, and Groups State
   const [joinRequests, setJoinRequests] = useState<GroupJoinRequest[]>([]);
+  const [myInvites, setMyInvites] = useState<GroupJoinRequest[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
 
   const currentUser = useMemo(() => DataStore.getCurrentUser(), []);
 
-  // Reload team join requests and groups
+  // Reload team join requests, group invites, and groups
   const reloadData = () => {
-    setJoinRequests(DataStore.getGroupJoinRequests());
+    const user = DataStore.getCurrentUser();
+    const cleanUser = (user?.username || '').toLowerCase().trim();
+    const isAdmin = user.role === 'admin' || cleanUser === 'shashwath71845';
+    const allReqs = DataStore.getGroupJoinRequests();
+    // Only show join requests for groups where the current user is an enrolled member OR admin
+    const relevantReqs = allReqs.filter(
+      (r) => isAdmin || DataStore.isGroupMember(r.groupId, user.username)
+    );
+    setJoinRequests(relevantReqs);
+    setMyInvites(DataStore.getGroupInvitesForUser(user.username));
     setGroups(DataStore.getGroups());
     setTick((prev) => prev + 1);
   };
@@ -105,100 +115,44 @@ export default function GroupsPage() {
   const handleCreateGroupSubmit = () => {
     const name = newGroupName.trim() || 'New Study Group';
     if (selectedGroupMembers.length === 0) {
-      showToast('Please select at least one student to add to the group.');
+      showToast('Please select at least one student to invite to the group.');
       return;
     }
 
-    // 1. Create real Group in DataStore
-    const createdGroup = DataStore.createGroup({
+    // Create group in DataStore (registers only creator as enrolled member, sends invitations to classmates)
+    DataStore.createGroup({
       name,
       description: `Student study group created by @${currentUser.username}`,
       category: 'Study Group',
       members: selectedGroupMembers,
     });
 
-    const groupId = `conv-${createdGroup.id}`;
-    const initials =
-      name
-        .split(' ')
-        .map((w) => w[0])
-        .filter(Boolean)
-        .slice(0, 2)
-        .join('')
-        .toUpperCase() || 'GP';
-
-    const newGroupConv = {
-      id: groupId,
-      name,
-      username: name.toLowerCase().replace(/\s+/g, '_'),
-      isGroup: true,
-      groupInitials: initials,
-      lastMessage: `Group created with ${selectedGroupMembers.length} classmate${
-        selectedGroupMembers.length > 1 ? 's' : ''
-      }`,
-      timeAgo: 'Just now',
-      isUnread: false,
-    };
-
-    const welcomeMsg = {
-      id: `msg-group-welcome-${Date.now()}`,
-      text: `🎉 Welcome to "${name}"! Members: You and ${selectedGroupMembers
-        .map((u) => `@${u}`)
-        .join(', ')}`,
-      sender: 'them',
-      senderUsername: 'system',
-      time: 'Just now',
-      status: 'seen',
-    };
-
-    if (typeof window !== 'undefined') {
-      try {
-        const myUser = currentUser?.username?.toLowerCase().trim();
-        const allParticipants = [myUser, ...selectedGroupMembers.map((m) => m.toLowerCase().trim())].filter(Boolean);
-
-        for (const u of allParticipants) {
-          const convKey = `dpsbuzz_chat_conversations_${u}_v3`;
-          const stored = localStorage.getItem(convKey);
-          const existing = stored ? JSON.parse(stored) : [];
-          const updated = [newGroupConv, ...existing.filter((c: any) => c.id !== groupId)];
-          localStorage.setItem(convKey, JSON.stringify(updated));
-
-          const msgKey = `dpsbuzz_chat_messages_${u}_v3`;
-          const storedMsgs = localStorage.getItem(msgKey);
-          const existingMsgs = storedMsgs ? JSON.parse(storedMsgs) : {};
-          existingMsgs[groupId] = [welcomeMsg];
-          localStorage.setItem(msgKey, JSON.stringify(existingMsgs));
-        }
-
-        // Keep legacy v1 key populated as backward-compatibility fallback
-        const storedV1 = localStorage.getItem('dpsbuzz_conversations_v1');
-        const existingV1 = storedV1 ? JSON.parse(storedV1) : [];
-        localStorage.setItem('dpsbuzz_conversations_v1', JSON.stringify([newGroupConv, ...existingV1.filter((c: any) => c.id !== groupId)]));
-
-        // Sync with server API
-        fetch('/api/chats', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            conversationId: groupId,
-            senderUsername: myUser || 'student',
-            message: welcomeMsg,
-          }),
-        }).catch(() => {});
-
-        window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated'));
-      } catch {}
-    }
-
     setIsCreateGroupOpen(false);
     setNewGroupName('');
     setSelectedGroupMembers([]);
     reloadData();
-    showToast(`Created group "${name}" successfully! 🎉`);
+    showToast(`Created group "${name}"! Invitations sent to ${selectedGroupMembers.length} classmate${selectedGroupMembers.length > 1 ? 's' : ''}. 📬`);
     router.push('/chats');
   };
 
-  // Team Join Approval Handlers
+  // Group Invitation Handlers ("Yes, I want to join" / "No, I don't want to join")
+  const handleAcceptInvite = (invite: GroupJoinRequest) => {
+    const res = DataStore.acceptGroupInvite(invite.id, currentUser.username);
+    if (res.success) {
+      showToast(`Joined "${invite.groupName}"! 🎉 Group chat added to your Chats.`);
+      reloadData();
+    }
+  };
+
+  const handleDeclineInvite = (invite: GroupJoinRequest) => {
+    const res = DataStore.declineGroupInvite(invite.id);
+    if (res.success) {
+      showToast(`Declined invitation to join "${invite.groupName}".`);
+      reloadData();
+    }
+  };
+
+  // Team Join Approval Handlers (Members & Admins accepting students who requested to join)
   const handleAcceptRequest = (request: GroupJoinRequest) => {
     const res = DataStore.acceptGroupJoinRequest(request.id, currentUser.username);
     if (res.success) {
@@ -217,7 +171,7 @@ export default function GroupsPage() {
 
   const handleRequestToJoinTeam = (groupId: string, groupName: string) => {
     DataStore.requestToJoinGroup(groupId, currentUser.username);
-    showToast(`Join request submitted to ${groupName}! Team members must accept. ⏳`);
+    showToast(`Join request submitted to ${groupName}! Group members must accept. ⏳`);
     reloadData();
   };
 
@@ -400,8 +354,95 @@ export default function GroupsPage() {
 
           <div className="p-4 max-w-[480px] mx-auto space-y-4">
             {/* ======================================================== */}
-            {/* REQUIREMENT #1: TEAM JOIN REQUESTS (WAITING FOR APPROVAL) */}
-            {/* "if anyone want to join it should accepted by the members of the team" */}
+            {/* REQUIREMENT: GROUP INVITATIONS FOR CURRENT USER */}
+            {/* "add when groups are created add a request from the account group was made ansdd a option yes i wnat to join thenn they must be joined no i diont wnat to jin then no join in the group" */}
+            {/* ======================================================== */}
+            {myInvites.length > 0 && (
+              <section
+                className="p-4 rounded-[22px] border space-y-3 shadow-md ring-2 ring-emerald-500/30"
+                style={{
+                  backgroundColor: 'var(--surface)',
+                  borderColor: 'var(--line)',
+                }}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-emerald-500/15 text-emerald-500 flex items-center justify-center shrink-0">
+                      <Sparkles size={16} />
+                    </div>
+                    <div>
+                      <h2 className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                        Group Invitations for You 📬
+                      </h2>
+                      <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
+                        You were invited to join these groups. Accept or decline below.
+                      </p>
+                    </div>
+                  </div>
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-600 border border-emerald-500/30">
+                    {myInvites.length} pending
+                  </span>
+                </div>
+
+                <div className="space-y-2.5">
+                  {myInvites.map((inv) => (
+                    <div
+                      key={inv.id}
+                      className="p-3.5 rounded-[18px] border flex flex-col gap-3 transition-all"
+                      style={{
+                        backgroundColor: 'var(--surface-sunken)',
+                        borderColor: 'var(--line)',
+                      }}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div
+                          className="w-10 h-10 rounded-[14px] flex items-center justify-center font-bold text-sm text-white shrink-0 shadow-xs"
+                          style={{ backgroundColor: 'var(--primary)' }}
+                        >
+                          {inv.groupName.slice(0, 2).toUpperCase()}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <h3 className="text-xs font-bold truncate" style={{ color: 'var(--text)' }}>
+                            {inv.groupName}
+                          </h3>
+                          <p className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>
+                            Invited by <span className="font-bold text-[var(--primary)]">@{inv.invitedBy || 'Creator'}</span>
+                          </p>
+                          <span className="text-[10px] text-[var(--text-muted)] flex items-center gap-1 mt-0.5">
+                            <Clock size={11} /> {inv.requestedAt}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Explicit Consent Buttons: "Yes, I want to join" and "No, I don't want to join" */}
+                      <div className="flex items-center gap-2 pt-2 border-t" style={{ borderColor: 'var(--line)' }}>
+                        <button
+                          type="button"
+                          onClick={() => handleAcceptInvite(inv)}
+                          className="flex-1 py-2 px-3 rounded-full text-xs font-bold transition-all btn-press cursor-pointer flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
+                        >
+                          <Check size={14} />
+                          <span>Yes, I want to join</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeclineInvite(inv)}
+                          className="py-2 px-3 rounded-full text-xs font-semibold transition-all btn-press cursor-pointer flex items-center justify-center gap-1.5 border border-red-500/30 hover:bg-red-500/10 text-red-500"
+                          style={{ backgroundColor: 'var(--surface)' }}
+                        >
+                          <X size={14} />
+                          <span>No, I don&apos;t want to join</span>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* ======================================================== */}
+            {/* REQUIREMENT: MEMBER JOIN REQUESTS (WAITING FOR APPROVAL) */}
+            {/* "if the other person wanted to join a group but request was not sent can give a request to all members or admin if they accept they can get init" */}
             {/* ======================================================== */}
             <section
               className="p-4 rounded-[22px] border space-y-3 shadow-sm"
@@ -417,10 +458,10 @@ export default function GroupsPage() {
                   </div>
                   <div>
                     <h2 className="text-xs font-bold" style={{ color: 'var(--text)' }}>
-                      Pending Team Join Requests 👥
+                      Pending Member Join Requests 👥
                     </h2>
                     <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
-                      Students requesting to join teams • Must be accepted by team members
+                      Students requesting to join • Can be accepted by any member or admin
                     </p>
                   </div>
                 </div>
@@ -438,7 +479,7 @@ export default function GroupsPage() {
                     color: 'var(--text-muted)',
                   }}
                 >
-                  No pending team join requests at the moment. When classmates request to join a team, their request appears here for members to approve.
+                  No pending member join requests at the moment. When classmates request to join a group you are in, their request appears here to approve.
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -494,7 +535,7 @@ export default function GroupsPage() {
                           </div>
                         </div>
 
-                        {/* Action Buttons: Accept / Decline with Apple Rounded Corners */}
+                        {/* Action Buttons: Accept Member / Decline */}
                         <div className="flex items-center gap-2 pt-1 border-t" style={{ borderColor: 'var(--line)' }}>
                           <button
                             type="button"
@@ -593,6 +634,7 @@ export default function GroupsPage() {
                 <div className="space-y-2.5">
                   {groups.map((group) => {
                     const isMember = DataStore.isGroupMember(group.id, currentUser.username);
+                    const pendingInvite = myInvites.find((inv) => inv.groupId === group.id);
                     const hasRequested = DataStore.hasRequestedToJoinGroup(group.id, currentUser.username);
                     const memberCount = (Array.isArray(group.members) ? group.members.length : 0) || group.memberCount || 1;
                     const initials = group.name.slice(0, 2).toUpperCase();
@@ -641,7 +683,7 @@ export default function GroupsPage() {
                         </div>
 
                         {/* Action status */}
-                        <div className="flex items-center justify-between pt-1 border-t" style={{ borderColor: 'var(--line)' }}>
+                        <div className="flex items-center justify-between pt-2 border-t" style={{ borderColor: 'var(--line)' }}>
                           <button
                             type="button"
                             onClick={() => setSelectedGroup(group)}
@@ -655,6 +697,27 @@ export default function GroupsPage() {
                               <Check size={13} />
                               <span>Member ✓</span>
                             </span>
+                          ) : pendingInvite ? (
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => handleAcceptInvite(pendingInvite)}
+                                className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white btn-press cursor-pointer flex items-center gap-1 shadow-xs"
+                                title="Yes, I want to join"
+                              >
+                                <Check size={13} />
+                                <span>Yes, I want to join</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeclineInvite(pendingInvite)}
+                                className="px-2.5 py-1 rounded-full text-xs font-semibold text-red-500 border border-red-500/30 hover:bg-red-500/10 btn-press cursor-pointer flex items-center gap-1"
+                                title="No, I don't want to join"
+                              >
+                                <X size={13} />
+                                <span>No, I don&apos;t want to join</span>
+                              </button>
+                            </div>
                           ) : hasRequested ? (
                             <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-500/15 text-amber-600 border border-amber-500/30 flex items-center gap-1">
                               <Clock size={13} />
