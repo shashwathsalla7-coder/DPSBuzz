@@ -528,7 +528,11 @@ export default function SignupPage() {
 
               {favoriteSong ? (
                 <div className="pt-1">
-                  <MusicTrackPill song={favoriteSong} onRemove={() => setFavoriteSong(null)} />
+                  <MusicTrackPill
+                    song={favoriteSong}
+                    onRemove={() => setFavoriteSong(null)}
+                    onEditPart={() => setShowSongPicker(true)}
+                  />
                 </div>
               ) : (
                 <button
@@ -697,6 +701,7 @@ export default function SignupPage() {
       <SongPickerModal
         isOpen={showSongPicker}
         onClose={() => setShowSongPicker(false)}
+        initialTrack={favoriteSong || undefined}
         onSelectSong={(track) => {
           setFavoriteSong(track);
           setShowSongPicker(false);

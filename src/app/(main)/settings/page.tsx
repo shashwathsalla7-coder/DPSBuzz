@@ -394,7 +394,11 @@ export default function SettingsPage() {
             </p>
             {currentUser?.song ? (
               <div className="space-y-2.5">
-                <MusicTrackPill song={currentUser.song} onRemove={() => handleUpdateProfileSong(undefined)} />
+                <MusicTrackPill
+                  song={currentUser.song}
+                  onRemove={() => handleUpdateProfileSong(undefined)}
+                  onEditPart={() => setShowSongPicker(true)}
+                />
                 <div className="flex gap-2">
                   <button
                     type="button"
@@ -1083,6 +1087,7 @@ export default function SettingsPage() {
       <SongPickerModal
         isOpen={showSongPicker}
         onClose={() => setShowSongPicker(false)}
+        initialTrack={currentUser?.song || undefined}
         onSelectSong={(track) => {
           handleUpdateProfileSong(track);
           setShowSongPicker(false);

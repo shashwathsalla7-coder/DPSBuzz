@@ -738,6 +738,14 @@ export const ChatNotesTray: React.FC<ChatNotesTrayProps> = ({ onReplyToNote }) =
                     </div>
                     <button
                       type="button"
+                      onClick={() => setIsSongPickerOpen(true)}
+                      className="px-2 py-0.5 rounded-full text-[9.5px] font-bold bg-pink-500/20 text-pink-300 hover:bg-pink-500/30 transition-colors flex items-center gap-0.5 cursor-pointer shrink-0"
+                      title="Choose chorus or main part ✂️"
+                    >
+                      <span>✂️ Part</span>
+                    </button>
+                    <button
+                      type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         globalAudio.toggleTrack(selectedSong);
@@ -831,6 +839,7 @@ export const ChatNotesTray: React.FC<ChatNotesTrayProps> = ({ onReplyToNote }) =
       <SongPickerModal
         isOpen={isSongPickerOpen}
         onClose={() => setIsSongPickerOpen(false)}
+        initialTrack={selectedSong || undefined}
         onSelectSong={(song) => setSelectedSong(song)}
         title="Add Music to Note 🎵"
       />

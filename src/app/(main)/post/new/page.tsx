@@ -591,6 +591,7 @@ export default function NewPostPage() {
               <MusicTrackPill
                 song={selectedSong}
                 onRemove={() => setSelectedSong(null)}
+                onEditPart={() => setShowSongPicker(true)}
               />
             </div>
           ) : (
@@ -618,13 +619,18 @@ export default function NewPostPage() {
                       reader.onload = (event) => {
                         const dataUrl = event.target?.result as string;
                         const cleanTitle = file.name.replace(/\.[^/.]+$/, '');
-                        setSelectedSong({
+                        const newUploadedTrack = {
                           id: `custom-song-${Date.now()}`,
                           title: cleanTitle,
                           artist: currentUser?.fullName || 'Uploaded Audio',
                           previewUrl: dataUrl,
                           artworkUrl: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=150&auto=format&fit=crop&q=80',
-                        });
+                          durationSeconds: 180,
+                          startTime: 14,
+                          clipDuration: 15,
+                        };
+                        setSelectedSong(newUploadedTrack);
+                        setShowSongPicker(true);
                       };
                       reader.readAsDataURL(file);
                     }
@@ -928,6 +934,7 @@ export default function NewPostPage() {
       <SongPickerModal
         isOpen={showSongPicker}
         onClose={() => setShowSongPicker(false)}
+        initialTrack={selectedSong}
         onSelectSong={(song) => setSelectedSong(song)}
         title="Attach Music to Post 🎵"
       />

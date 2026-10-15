@@ -158,7 +158,11 @@ export const PostCard: React.FC<PostCardProps> = ({
         {post.song ? (
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <div className="flex-1 min-w-0">
-              <MusicTrackPill song={post.song} compact />
+              <MusicTrackPill
+                song={post.song}
+                compact
+                onEditPart={isAuthor ? () => setShowSongPicker(true) : undefined}
+              />
             </div>
             {isAuthor && (
               <button
@@ -415,6 +419,7 @@ export const PostCard: React.FC<PostCardProps> = ({
       <SongPickerModal
         isOpen={showSongPicker}
         onClose={() => setShowSongPicker(false)}
+        initialTrack={post.song || undefined}
         onSelectSong={(song) => {
           DataStore.updatePostSong(post.id, song);
           post.song = song;

@@ -1031,6 +1031,7 @@ export default function ProfileClient({ username }: { username: string }) {
                 song={profile.song}
                 compact
                 onRemove={isOwnProfile ? () => handleUpdateProfileSong(undefined) : undefined}
+                onEditPart={isOwnProfile ? () => setShowSongPickerModal(true) : undefined}
               />
               {isOwnProfile && (
                 <button
@@ -3085,6 +3086,7 @@ export default function ProfileClient({ username }: { username: string }) {
       <SongPickerModal
         isOpen={showSongPickerModal}
         onClose={() => setShowSongPickerModal(false)}
+        initialTrack={profile.song || undefined}
         onSelectSong={(song) => handleUpdateProfileSong(song)}
         title="Choose Your Profile Song 🎵"
       />
@@ -3093,6 +3095,7 @@ export default function ProfileClient({ username }: { username: string }) {
       <SongPickerModal
         isOpen={showNoteSongPickerModal}
         onClose={() => setShowNoteSongPickerModal(false)}
+        initialTrack={noteSong || undefined}
         onSelectSong={(song) => {
           setNoteSong(song);
           setShowNoteSongPickerModal(false);
@@ -3104,6 +3107,7 @@ export default function ProfileClient({ username }: { username: string }) {
       <SongPickerModal
         isOpen={showPostSongPickerModal}
         onClose={() => setShowPostSongPickerModal(false)}
+        initialTrack={selectedPostDetail?.song || undefined}
         onSelectSong={(song) => {
           if (selectedPostDetail) {
             DataStore.updatePostSong(selectedPostDetail.id, song);

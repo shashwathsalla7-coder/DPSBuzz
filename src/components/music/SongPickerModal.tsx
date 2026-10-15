@@ -16,6 +16,7 @@ import {
   ArrowLeft,
   Clock,
   Radio,
+  Flame,
 } from 'lucide-react';
 import { SongTrack } from '@/lib/dataStore';
 import { globalAudio, AudioPlayerState } from '@/lib/audioManager';
@@ -36,6 +37,8 @@ export const AAYA_SHER_TRACK: SongTrack = {
   artworkUrl: 'https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/9f/33/28/9f3328b5-d70d-7511-123c-1a096a317042/820200508461.jpg/200x200bb.jpg',
   previewUrl: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/46/0d/df/460ddf71-f084-822e-1fe1-ea2ceb91cb7a/mzaf_5932094318792648449.plus.aac.p.m4a',
   durationSeconds: 287,
+  startTime: 14,
+  clipDuration: 15,
 };
 
 // Client-side instant pre-cache for popular artists (< 5ms response time)
@@ -49,6 +52,8 @@ export const POPULAR_ARTIST_PRECACHE: Record<string, SongTrack[]> = {
       artworkUrl: 'https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/9a/c0/81/9ac08173-0d5b-433b-85fa-7104b9015ebc/8902894358897_cover.jpg/200x200bb.jpg',
       previewUrl: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview115/v4/05/23/b0/0523b05f-7557-ca59-a2e0-f20387401c10/mzaf_6135805213601815316.plus.aac.p.m4a',
       durationSeconds: 230,
+      startTime: 14,
+      clipDuration: 15,
     },
     {
       id: '1576432420',
@@ -57,6 +62,8 @@ export const POPULAR_ARTIST_PRECACHE: Record<string, SongTrack[]> = {
       artworkUrl: 'https://is1-ssl.mzstatic.com/image/thumb/Music122/v4/64/59/94/645994f7-be75-d1ce-cb15-4ad9bf43ee9e/196589308103.jpg/200x200bb.jpg',
       previewUrl: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview122/v4/a4/4f/44/a44f447a-6f09-b695-1f92-5eb36b44a2b9/mzaf_5980005706927429141.plus.aac.p.m4a',
       durationSeconds: 279,
+      startTime: 14,
+      clipDuration: 15,
     },
     {
       id: '1692800366',
@@ -65,6 +72,8 @@ export const POPULAR_ARTIST_PRECACHE: Record<string, SongTrack[]> = {
       artworkUrl: 'https://is1-ssl.mzstatic.com/image/thumb/Music116/v4/31/d1/2f/31d12f46-0ce7-2696-224d-e9c1584cf50a/197188737217.jpg/200x200bb.jpg',
       previewUrl: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview116/v4/e5/22/e1/e522e118-2454-944a-9ef8-e04e9a0889f4/mzaf_10034637777176527582.plus.aac.p.m4a',
       durationSeconds: 238,
+      startTime: 14,
+      clipDuration: 15,
     },
   ],
   'sid sriram': [
@@ -75,6 +84,8 @@ export const POPULAR_ARTIST_PRECACHE: Record<string, SongTrack[]> = {
       artworkUrl: 'https://is1-ssl.mzstatic.com/image/thumb/Music128/v4/95/9d/54/959d54e8-f7b5-fb30-8041-e9bf3beaa1c3/8902894354394_cover.jpg/200x200bb.jpg',
       previewUrl: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview118/v4/5a/a0/0b/5aa00b3e-e67c-175f-fb1b-5353597d5eb4/mzaf_4091657388914619379.plus.aac.p.m4a',
       durationSeconds: 266,
+      startTime: 14,
+      clipDuration: 15,
     },
     {
       id: '1540061298',
@@ -83,6 +94,8 @@ export const POPULAR_ARTIST_PRECACHE: Record<string, SongTrack[]> = {
       artworkUrl: 'https://is1-ssl.mzstatic.com/image/thumb/Music124/v4/7c/4a/14/7c4a14aa-7132-75d5-22eb-91b65e94df40/8903431792683_cover.jpg/200x200bb.jpg',
       previewUrl: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview124/v4/4c/80/7e/4c807e38-4e89-1382-7472-fb1e2daebcb6/mzaf_5942484395277150821.plus.aac.p.m4a',
       durationSeconds: 214,
+      startTime: 14,
+      clipDuration: 15,
     },
   ],
   'arijit singh': [
@@ -93,6 +106,8 @@ export const POPULAR_ARTIST_PRECACHE: Record<string, SongTrack[]> = {
       artworkUrl: 'https://is1-ssl.mzstatic.com/image/thumb/Music69/v4/7a/ff/d1/7affd11d-ef1f-9da8-d1a2-51c6b16259d0/8902894350396_cover.jpg/200x200bb.jpg',
       previewUrl: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview128/v4/b5/d9/b4/b5d9b431-7290-7cb8-9f17-bb1c9e83ec9e/mzaf_7493630656095304381.plus.aac.p.m4a',
       durationSeconds: 262,
+      startTime: 14,
+      clipDuration: 15,
     },
     {
       id: '1479836365',
@@ -101,6 +116,8 @@ export const POPULAR_ARTIST_PRECACHE: Record<string, SongTrack[]> = {
       artworkUrl: 'https://is1-ssl.mzstatic.com/image/thumb/Music123/v4/f4/19/04/f41904e5-4a6f-f2ae-e6da-df333d93d395/8902894356459_cover.jpg/200x200bb.jpg',
       previewUrl: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview123/v4/91/9f/fa/919ffa9a-9e73-b788-cb94-850f75f6cf68/mzaf_2622723706076395353.plus.aac.p.m4a',
       durationSeconds: 302,
+      startTime: 14,
+      clipDuration: 15,
     },
   ],
   'thaman s': [
@@ -111,6 +128,8 @@ export const POPULAR_ARTIST_PRECACHE: Record<string, SongTrack[]> = {
       artworkUrl: 'https://is1-ssl.mzstatic.com/image/thumb/Music124/v4/7c/4a/14/7c4a14aa-7132-75d5-22eb-91b65e94df40/8903431792683_cover.jpg/200x200bb.jpg',
       previewUrl: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview124/v4/6e/c3/ce/6ec3ce04-0376-787f-df6c-f232bf318ebc/mzaf_13506198656686161427.plus.aac.p.m4a',
       durationSeconds: 198,
+      startTime: 14,
+      clipDuration: 15,
     },
   ],
   'taylor swift': [
@@ -121,6 +140,8 @@ export const POPULAR_ARTIST_PRECACHE: Record<string, SongTrack[]> = {
       artworkUrl: 'https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/64/73/45/647345aa-c692-a169-d4ff-f6faee28e67a/00602547071759.rgb.jpg/200x200bb.jpg',
       previewUrl: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview125/v4/e5/22/e1/e522e118-2454-944a-9ef8-e04e9a0889f4/mzaf_10034637777176527582.plus.aac.p.m4a',
       durationSeconds: 219,
+      startTime: 14,
+      clipDuration: 15,
     },
     {
       id: '1440935930',
@@ -129,6 +150,8 @@ export const POPULAR_ARTIST_PRECACHE: Record<string, SongTrack[]> = {
       artworkUrl: 'https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/64/73/45/647345aa-c692-a169-d4ff-f6faee28e67a/00602547071759.rgb.jpg/200x200bb.jpg',
       previewUrl: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview125/v4/a4/4f/44/a44f447a-6f09-b695-1f92-5eb36b44a2b9/mzaf_5980005706927429141.plus.aac.p.m4a',
       durationSeconds: 231,
+      startTime: 14,
+      clipDuration: 15,
     },
   ],
 };
@@ -155,20 +178,11 @@ const PRESET_CATEGORIES = [
   { label: '✨ Global Pop', query: 'taylor swift weeknd pop' },
 ];
 
-// Presets for quick part selection
-const PART_PRESETS = [
-  { label: 'Intro', seconds: 0, icon: '🎬' },
-  { label: 'Verse', seconds: 5, icon: '🎵' },
-  { label: 'Pre-Chorus', seconds: 10, icon: '⚡' },
-  { label: 'Chorus 🔥', seconds: 15, icon: '🔥' },
-  { label: 'Hook', seconds: 20, icon: '✨' },
-];
-
-// Mock waveform bar heights (30 bars for 30 seconds)
+// Mock waveform bar heights (30 bars)
 const WAVEFORM_HEIGHTS = [
-  35, 45, 60, 50, 40, 55, 75, 90, 85, 70, 
-  80, 95, 100, 90, 85, 95, 100, 90, 80, 85, 
-  70, 65, 75, 80, 60, 50, 45, 55, 40, 30
+  30, 40, 50, 45, 55, 65, 80, 95, 100, 95,
+  85, 90, 100, 100, 95, 90, 100, 95, 85, 90,
+  75, 70, 80, 85, 65, 55, 45, 50, 40, 30,
 ];
 
 export const SongPickerModal: React.FC<SongPickerModalProps> = ({
@@ -191,12 +205,36 @@ export const SongPickerModal: React.FC<SongPickerModalProps> = ({
 
   // Trimmer / Part Selector State
   const [trimmingTrack, setTrimmingTrack] = useState<SongTrack | null>(initialTrack);
-  const [clipStart, setClipStart] = useState<number>(initialTrack?.startTime || 10);
+  const [clipStart, setClipStart] = useState<number>(initialTrack?.startTime ?? 14);
   const [clipDuration, setClipDuration] = useState<number>(initialTrack?.clipDuration || 15);
   const [clipDurationMode, setClipDurationMode] = useState<'15' | '30' | 'full'>('15');
 
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const seekDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Helper to format any seconds into M:SS
+  const formatSec = (sec: number) => {
+    const s = Math.max(0, Math.floor(sec));
+    const mins = Math.floor(s / 60);
+    const remainder = s % 60;
+    return `${mins}:${remainder.toString().padStart(2, '0')}`;
+  };
+
+  // Determine if current track is a full uploaded song or 30s preview
+  const isFullSong = Boolean(
+    trimmingTrack?.previewUrl?.startsWith('data:audio') ||
+    trimmingTrack?.id?.startsWith('custom-song-') ||
+    (globalAudio.getAudioDuration() > 35)
+  );
+
+  const totalTrackSeconds = isFullSong
+    ? Math.round(globalAudio.getAudioDuration() || trimmingTrack?.durationSeconds || 180)
+    : 30;
+
+  // Determine the optimal Main Part (Chorus) cue time
+  const getMainPartStartTime = (): number => {
+    return isFullSong ? 60 : 14;
+  };
 
   // Subscribe to audio state
   useEffect(() => {
@@ -206,7 +244,7 @@ export const SongPickerModal: React.FC<SongPickerModalProps> = ({
     return unsub;
   }, []);
 
-  // Fetch songs with client pre-cache and sub-3s fast execution
+  // Fetch songs with client pre-cache
   const fetchSongs = async (q: string) => {
     const cleanQ = q.toLowerCase().trim();
 
@@ -241,6 +279,12 @@ export const SongPickerModal: React.FC<SongPickerModalProps> = ({
         ) {
           fetched = [AAYA_SHER_TRACK, ...fetched.filter((t) => t.id !== AAYA_SHER_TRACK.id)];
         }
+        // Ensure default startTime is set to main chorus (14s) rather than 0s
+        fetched = fetched.map((t) => ({
+          ...t,
+          startTime: t.startTime ?? 14,
+          clipDuration: t.clipDuration ?? 15,
+        }));
         setTracks(fetched);
       }
     } catch (err) {
@@ -256,11 +300,13 @@ export const SongPickerModal: React.FC<SongPickerModalProps> = ({
     if (isOpen) {
       if (initialTrack) {
         setTrimmingTrack(initialTrack);
-        setClipStart(initialTrack.startTime || 10);
-        setClipDuration(initialTrack.clipDuration || 15);
-        globalAudio.previewSegment(initialTrack, initialTrack.startTime || 10, initialTrack.clipDuration || 15);
+        const start = initialTrack.startTime !== undefined ? initialTrack.startTime : 14;
+        const dur = initialTrack.clipDuration || 15;
+        setClipStart(start);
+        setClipDuration(dur);
+        globalAudio.previewSegment(initialTrack, start, dur);
       } else {
-        // Pre-seed with Aaya Sher and top hits instantly
+        // Pre-seed with Aaya Sher and top hits
         setTracks([AAYA_SHER_TRACK, ...POPULAR_ARTIST_PRECACHE['anirudh'].filter((t) => t.id !== AAYA_SHER_TRACK.id)]);
         fetchSongs(PRESET_CATEGORIES[0].query);
       }
@@ -275,7 +321,6 @@ export const SongPickerModal: React.FC<SongPickerModalProps> = ({
     setSearchQuery(val);
     setActiveChip('');
 
-    // Instant match for Aaya Sher or Anirudh while typing
     const lower = val.toLowerCase().trim();
     if (lower.includes('aaya') || lower.includes('sher') || lower.includes('paradise')) {
       setTracks([AAYA_SHER_TRACK]);
@@ -284,7 +329,7 @@ export const SongPickerModal: React.FC<SongPickerModalProps> = ({
     if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
     searchDebounceRef.current = setTimeout(() => {
       fetchSongs(val.trim() || PRESET_CATEGORIES[0].query);
-    }, 150); // Under 150ms debounce
+    }, 150);
   };
 
   const handleSelectArtist = (artist: typeof POPULAR_ARTISTS[0]) => {
@@ -303,19 +348,20 @@ export const SongPickerModal: React.FC<SongPickerModalProps> = ({
     fetchSongs(cat.query);
   };
 
-  // Open Trimmer for a specific track
-  const handleOpenTrimmer = (track: SongTrack, defaultStart = 10) => {
+  // Open Trimmer for a track, defaulting to the Main Part (Chorus)
+  const handleOpenTrimmer = (track: SongTrack, defaultStart?: number) => {
     setTrimmingTrack(track);
-    const total = track.durationSeconds || 30;
-    const dur = clipDurationMode === 'full' ? total : clipDurationMode === '30' ? 30 : 15;
-    const maxStart = clipDurationMode === 'full' ? 0 : Math.max(0, Math.min(30, total) - dur);
-    const safeStart = Math.min(defaultStart, maxStart);
+    const chosenStart = defaultStart !== undefined ? defaultStart : 14;
+    const dur = clipDurationMode === 'full' ? totalTrackSeconds : clipDurationMode === '30' ? 30 : 15;
+    const maxStart = clipDurationMode === 'full' ? 0 : Math.max(0, totalTrackSeconds - dur);
+    const safeStart = Math.min(chosenStart, maxStart);
+
     setClipStart(safeStart);
     setClipDuration(dur);
     globalAudio.previewSegment(track, safeStart, dur);
   };
 
-  // Slider change in Trimmer with smooth 60ms debounce to eliminate stuttering
+  // Slider change in Trimmer
   const handleClipStartChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newStart = parseInt(e.target.value, 10);
     setClipStart(newStart);
@@ -329,15 +375,14 @@ export const SongPickerModal: React.FC<SongPickerModalProps> = ({
     }, 60);
   };
 
-  // Preset button click in Trimmer
+  // Snap to preset part
   const handlePresetSelect = (seconds: number) => {
-    const total = trimmingTrack?.durationSeconds || 30;
     if (clipDurationMode === 'full') {
       setClipDurationMode('15');
       setClipDuration(15);
     }
     const dur = clipDurationMode === 'full' ? 15 : clipDuration;
-    const safeMax = Math.max(0, Math.min(30, total) - dur);
+    const safeMax = Math.max(0, totalTrackSeconds - dur);
     const safeStart = Math.min(seconds, safeMax);
     setClipStart(safeStart);
     if (trimmingTrack) {
@@ -345,22 +390,27 @@ export const SongPickerModal: React.FC<SongPickerModalProps> = ({
     }
   };
 
+  // Dedicated "Jump to Main Part / Chorus" Action
+  const handleJumpToMainPart = () => {
+    const mainSec = getMainPartStartTime();
+    handlePresetSelect(mainSec);
+  };
+
   // Duration toggle in Trimmer (15s vs 30s vs Full Song)
   const handleDurationToggle = (mode: '15' | '30' | 'full') => {
     setClipDurationMode(mode);
-    const total = trimmingTrack?.durationSeconds || 30;
     if (mode === 'full') {
-      setClipDuration(total);
+      setClipDuration(totalTrackSeconds);
       setClipStart(0);
       if (trimmingTrack) {
-        globalAudio.previewSegment(trimmingTrack, 0, total);
+        globalAudio.previewSegment(trimmingTrack, 0, totalTrackSeconds);
       }
       return;
     }
 
     const dur = mode === '30' ? 30 : 15;
     setClipDuration(dur);
-    const safeMax = Math.max(0, Math.min(30, total) - dur);
+    const safeMax = Math.max(0, totalTrackSeconds - dur);
     const safeStart = Math.min(clipStart, safeMax);
     setClipStart(safeStart);
     if (trimmingTrack) {
@@ -391,15 +441,21 @@ export const SongPickerModal: React.FC<SongPickerModalProps> = ({
     onClose();
   };
 
-  // Quick direct select (with default 15s clip starting at 0s or 10s)
-  const handleQuickSelect = (track: SongTrack) => {
+  // One-tap select Main Part (Chorus) directly from song list
+  const handleSelectMainPartDirect = (track: SongTrack) => {
     globalAudio.stop();
+    const mainSec = 14;
     onSelectSong({
       ...track,
-      startTime: 0,
+      startTime: mainSec,
       clipDuration: 15,
     });
     onClose();
+  };
+
+  // Quick use fallback
+  const handleQuickSelect = (track: SongTrack) => {
+    handleSelectMainPartDirect(track);
   };
 
   const handleClose = () => {
@@ -408,16 +464,29 @@ export const SongPickerModal: React.FC<SongPickerModalProps> = ({
     onClose();
   };
 
-  const formatSec = (sec: number) => `0:${Math.floor(sec).toString().padStart(2, '0')}`;
-
   if (!isOpen) return null;
+
+  // Presets based on whether the track is a full uploaded song or 30s preview
+  const activePresets = isFullSong
+    ? [
+        { label: '🔥 Main Chorus', seconds: 60, icon: '🔥', highlight: true },
+        { label: '⚡ Peak Drop', seconds: 90, icon: '⚡' },
+        { label: '🎵 Verse', seconds: 30, icon: '🎵' },
+        { label: '🎬 Intro', seconds: 0, icon: '🎬' },
+      ]
+    : [
+        { label: '🔥 Main Chorus', seconds: 14, icon: '🔥', highlight: true },
+        { label: '⚡ Hook / Drop', seconds: 20, icon: '⚡' },
+        { label: '🎵 Verse', seconds: 6, icon: '🎵' },
+        { label: '🎬 Intro', seconds: 0, icon: '🎬' },
+      ];
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-md animate-fade-in">
       <div className="bg-zinc-950 border border-zinc-800 w-full max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[92vh] overflow-hidden">
         
         {/* ======================================================== */}
-        {/* VIEW 1: SONG TRIMMER & PART SELECTOR (Instagram Style)     */}
+        {/* VIEW 1: SONG TRIMMER & MAIN PART SELECTOR                */}
         {/* ======================================================== */}
         {trimmingTrack ? (
           <div className="flex flex-col h-full animate-fade-in">
@@ -439,10 +508,10 @@ export const SongPickerModal: React.FC<SongPickerModalProps> = ({
               <div className="text-center">
                 <h3 className="text-sm font-bold text-white flex items-center justify-center gap-1.5">
                   <Scissors size={15} className="text-pink-400" />
-                  <span>Choose Song Part</span>
+                  <span>Select Main Part 🎵</span>
                 </h3>
                 <p className="text-[11px] text-zinc-400">
-                  Pick the exact moment for your story / note
+                  Pick the chorus or best moment in the whole song
                 </p>
               </div>
 
@@ -457,11 +526,11 @@ export const SongPickerModal: React.FC<SongPickerModalProps> = ({
             </div>
 
             {/* Trimmer Content Area */}
-            <div className="flex-1 overflow-y-auto p-5 flex flex-col items-center space-y-5">
+            <div className="flex-1 overflow-y-auto p-5 flex flex-col items-center space-y-4">
               {/* Vinyl Album Artwork Hero */}
               <div className="relative group mt-1">
                 <div
-                  className={`w-28 h-28 sm:w-32 sm:h-32 rounded-3xl overflow-hidden shadow-2xl relative border-2 transition-all duration-300 ${
+                  className={`w-24 h-24 sm:w-28 sm:h-28 rounded-3xl overflow-hidden shadow-2xl relative border-2 transition-all duration-300 ${
                     playerState.isPlaying
                       ? 'border-pink-500 shadow-pink-500/30 scale-105'
                       : 'border-zinc-700'
@@ -472,7 +541,6 @@ export const SongPickerModal: React.FC<SongPickerModalProps> = ({
                     alt={trimmingTrack.title}
                     className="w-full h-full object-cover"
                   />
-                  {/* Subtle Vinyl Grooves Overlay */}
                   <div className="absolute inset-0 bg-gradient-to-tr from-black/50 via-transparent to-white/10 pointer-events-none" />
                 </div>
 
@@ -501,7 +569,7 @@ export const SongPickerModal: React.FC<SongPickerModalProps> = ({
                 </p>
               </div>
 
-              {/* Selected Segment Range Badge */}
+              {/* Selected Segment Range Pill */}
               <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-zinc-900 border border-zinc-800 text-zinc-200 shadow-inner">
                 <Radio size={14} className={playerState.isPlaying ? 'text-pink-400 animate-pulse' : 'text-zinc-500'} />
                 <span className="text-xs font-mono font-bold text-pink-400">
@@ -509,9 +577,39 @@ export const SongPickerModal: React.FC<SongPickerModalProps> = ({
                     ? `Full Song (${formatSec(clipDuration)})`
                     : `${formatSec(clipStart)} — ${formatSec(clipStart + clipDuration)}`}
                 </span>
-                <span className="text-[10px] text-zinc-500">
-                  ({clipDurationMode === 'full' ? 'Complete track' : `${clipDuration}s clip fixed`})
+                <span className="text-[10px] text-zinc-500 font-medium">
+                  {clipDurationMode === 'full'
+                    ? 'Entire track'
+                    : clipStart >= 12 && clipStart <= 20
+                    ? '🔥 Chorus Part Selected'
+                    : `${clipDuration}s clip`}
                 </span>
+              </div>
+
+              {/* ONE-TAP JUMP TO MAIN PART (CHORUS) HERO BUTTON */}
+              <div className="w-full">
+                <button
+                  type="button"
+                  onClick={handleJumpToMainPart}
+                  className="w-full py-2.5 px-4 rounded-2xl bg-gradient-to-r from-pink-600/20 via-purple-600/20 to-orange-600/20 hover:from-pink-600/30 hover:to-orange-600/30 border border-pink-500/40 text-pink-200 flex items-center justify-between transition-all active:scale-[0.98] cursor-pointer shadow-md group"
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-full gradient-bg flex items-center justify-center text-white shadow-xs group-hover:scale-110 transition-transform">
+                      <Flame size={15} />
+                    </div>
+                    <div className="text-left">
+                      <span className="text-xs font-bold text-white block">
+                        Select Main Part / Chorus 🔥
+                      </span>
+                      <span className="text-[10px] text-pink-300/80">
+                        Auto-cues to the most popular chorus hook ({formatSec(getMainPartStartTime())})
+                      </span>
+                    </div>
+                  </div>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-pink-500/20 text-pink-300 font-bold border border-pink-500/30 shrink-0">
+                    Snap ⚡
+                  </span>
+                </button>
               </div>
 
               {/* Interactive Audio Waveform Visualizer */}
@@ -522,41 +620,59 @@ export const SongPickerModal: React.FC<SongPickerModalProps> = ({
                     <Sparkles size={12} className="text-pink-400" />
                   </span>
                   <span className="text-zinc-500 font-mono text-[10px]">
-                    Drag slider to choose part
+                    Drag to pick any part in whole song
                   </span>
                 </div>
 
-                {/* Simulated Audio Waveform */}
-                <div className="h-14 flex items-end justify-between gap-[3px] px-1 py-1 bg-zinc-950/70 rounded-xl overflow-hidden border border-zinc-800/80">
-                  {WAVEFORM_HEIGHTS.map((heightPercent, secIdx) => {
-                    const isInClip =
-                      clipDurationMode === 'full' ||
-                      (secIdx >= clipStart && secIdx < clipStart + clipDuration);
-                    const isPlayhead =
-                      playerState.isPlaying &&
-                      Math.floor(playerState.currentTime) === secIdx;
+                {/* Simulated Audio Waveform with Chorus Marker */}
+                <div className="relative h-14 bg-zinc-950/80 rounded-xl overflow-hidden border border-zinc-800/80 p-1">
+                  {/* Glowing Chorus Zone Indicator Overlay (12s to 26s zone) */}
+                  <div
+                    className="absolute top-0 bottom-0 pointer-events-none rounded bg-gradient-to-r from-pink-500/10 via-orange-500/15 to-pink-500/10 border-x border-pink-500/30 flex items-center justify-center"
+                    style={{
+                      left: isFullSong ? '25%' : '40%',
+                      width: isFullSong ? '35%' : '45%',
+                    }}
+                  >
+                    <span className="text-[8px] font-black uppercase tracking-wider text-pink-400/80 bg-zinc-950/70 px-1 py-0.5 rounded border border-pink-500/20">
+                      🔥 Main Chorus
+                    </span>
+                  </div>
 
-                    return (
-                      <div
-                        key={secIdx}
-                        className="flex-1 flex flex-col justify-end items-center h-full"
-                      >
+                  {/* Waveform Bars */}
+                  <div className="h-full flex items-end justify-between gap-[3px]">
+                    {WAVEFORM_HEIGHTS.map((heightPercent, secIdx) => {
+                      const totalBars = WAVEFORM_HEIGHTS.length;
+                      const barTime = (secIdx / totalBars) * totalTrackSeconds;
+                      const isInClip =
+                        clipDurationMode === 'full' ||
+                        (barTime >= clipStart && barTime < clipStart + clipDuration);
+                      const isPlayhead =
+                        playerState.isPlaying &&
+                        Math.abs(playerState.currentTime - barTime) < (totalTrackSeconds / totalBars);
+
+                      return (
                         <div
-                          style={{ height: `${heightPercent}%` }}
-                          className={`w-full rounded-full transition-all duration-150 ${
-                            isPlayhead
-                              ? 'bg-white shadow-xs shadow-white'
-                              : isInClip
-                              ? 'gradient-bg shadow-xs shadow-pink-500/30'
-                              : 'bg-zinc-800/70'
-                          }`}
-                        />
-                      </div>
-                    );
-                  })}
+                          key={secIdx}
+                          className="flex-1 flex flex-col justify-end items-center h-full"
+                        >
+                          <div
+                            style={{ height: `${heightPercent}%` }}
+                            className={`w-full rounded-full transition-all duration-150 ${
+                              isPlayhead
+                                ? 'bg-white shadow-xs shadow-white'
+                                : isInClip
+                                ? 'gradient-bg shadow-xs shadow-pink-500/30'
+                                : 'bg-zinc-800/70'
+                            }`}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
 
-                {/* Range Slider for Selecting Start Offset */}
+                {/* Range Slider for Selecting Start Offset across the Whole Song */}
                 <div className="space-y-1.5 pt-1">
                   <input
                     type="range"
@@ -564,7 +680,7 @@ export const SongPickerModal: React.FC<SongPickerModalProps> = ({
                     max={
                       clipDurationMode === 'full'
                         ? 0
-                        : Math.max(0, Math.min(30, trimmingTrack.durationSeconds || 30) - clipDuration)
+                        : Math.max(0, totalTrackSeconds - clipDuration)
                     }
                     disabled={clipDurationMode === 'full'}
                     step="1"
@@ -577,10 +693,10 @@ export const SongPickerModal: React.FC<SongPickerModalProps> = ({
                     <span>0:00 (Start)</span>
                     <span className="text-pink-400 font-semibold">
                       {clipDurationMode === 'full'
-                        ? `Full Song (0:00 - ${formatSec(clipDuration)})`
-                        : `Part Fixed: ${formatSec(clipStart)} - ${formatSec(clipStart + clipDuration)} (${clipDuration}s)`}
+                        ? `Whole Song (0:00 - ${formatSec(totalTrackSeconds)})`
+                        : `Selected: ${formatSec(clipStart)} — ${formatSec(clipStart + clipDuration)} (${clipDuration}s)`}
                     </span>
-                    <span>0:30 (End)</span>
+                    <span>{formatSec(totalTrackSeconds)} (End)</span>
                   </div>
                 </div>
               </div>
@@ -589,13 +705,13 @@ export const SongPickerModal: React.FC<SongPickerModalProps> = ({
               <div className="w-full space-y-2">
                 <div className="flex items-center justify-between px-1">
                   <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">
-                    Quick Parts ⚡
+                    Quick Song Moments ⚡
                   </span>
-                  <span className="text-[10px] text-zinc-500">Tap to jump & listen</span>
+                  <span className="text-[10px] text-zinc-500">Tap to listen & preview</span>
                 </div>
                 <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
-                  {PART_PRESETS.map((preset) => {
-                    const isSelected = clipStart === preset.seconds && clipDurationMode !== 'full';
+                  {activePresets.map((preset) => {
+                    const isSelected = Math.abs(clipStart - preset.seconds) <= 2 && clipDurationMode !== 'full';
                     return (
                       <button
                         key={preset.label}
@@ -604,6 +720,8 @@ export const SongPickerModal: React.FC<SongPickerModalProps> = ({
                         className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 flex-shrink-0 transition-all cursor-pointer ${
                           isSelected
                             ? 'gradient-bg text-white shadow-md shadow-pink-500/20'
+                            : preset.highlight
+                            ? 'bg-pink-500/15 text-pink-300 hover:bg-pink-500/25 border border-pink-500/30'
                             : 'bg-zinc-900 text-zinc-300 hover:bg-zinc-850 hover:text-white border border-zinc-800'
                         }`}
                       >
@@ -627,7 +745,7 @@ export const SongPickerModal: React.FC<SongPickerModalProps> = ({
                     <p className="text-[10px] text-zinc-500">
                       {clipDurationMode === 'full'
                         ? 'Full song playback'
-                        : `${clipDuration}s clip fixed at ${formatSec(clipStart)}`}
+                        : `${clipDuration}s segment at ${formatSec(clipStart)}`}
                     </p>
                   </div>
                 </div>
@@ -680,7 +798,7 @@ export const SongPickerModal: React.FC<SongPickerModalProps> = ({
                 <Check size={18} strokeWidth={2.5} />
                 <span>
                   {clipDurationMode === 'full'
-                    ? `Attach Full Song (${formatSec(clipDuration)}) 🎵`
+                    ? `Attach Whole Song (${formatSec(clipDuration)}) 🎵`
                     : `Attach This ${clipDuration}s Part (${formatSec(clipStart)} - ${formatSec(clipStart + clipDuration)}) 🎵`}
                 </span>
               </button>
@@ -700,7 +818,7 @@ export const SongPickerModal: React.FC<SongPickerModalProps> = ({
                 <div>
                   <h3 className="text-sm font-bold text-white leading-tight">{title}</h3>
                   <p className="text-[11px] text-zinc-400">
-                    Search ANY artist • 30s Legal Previews • Pick Any Part ✂️
+                    Search ANY artist • Choose Main Chorus / Any Part ✂️
                   </p>
                 </div>
               </div>
@@ -825,7 +943,7 @@ export const SongPickerModal: React.FC<SongPickerModalProps> = ({
                     >
                       {/* Left: Play button + Artwork + Info */}
                       <div
-                        onClick={() => handleOpenTrimmer(track, 10)}
+                        onClick={() => handleOpenTrimmer(track, 14)}
                         className="flex items-center gap-3 min-w-0 flex-1 pr-2 cursor-pointer group"
                       >
                         {/* Artwork with play button */}
@@ -862,40 +980,40 @@ export const SongPickerModal: React.FC<SongPickerModalProps> = ({
                             {track.artist}
                           </p>
                           <div className="flex items-center gap-1.5">
-                            <span className="text-[9px] text-pink-400 font-semibold">
-                              30s Preview
+                            <span className="text-[9px] px-1.5 py-0.2 rounded bg-pink-500/15 text-pink-400 font-bold">
+                              🔥 Main Chorus Ready
                             </span>
                             {isPlaying && (
                               <span className="text-[9px] text-zinc-400 font-mono">
-                                {formatSec(playerState.currentTime)} / 0:30
+                                {formatSec(playerState.currentTime)} / {formatSec(totalTrackSeconds)}
                               </span>
                             )}
                           </div>
                         </div>
                       </div>
 
-                      {/* Right: Trimmer / Select Action Buttons */}
+                      {/* Right: Dedicated Main Part / Choose Part Action Buttons */}
                       <div className="flex items-center gap-1.5 shrink-0">
-                        {/* Main "Pick Part" Button (Instagram Style) */}
+                        {/* Option 1: One-tap Select Main Part (Chorus) */}
                         <button
                           type="button"
-                          onClick={() => handleOpenTrimmer(track, 10)}
-                          className="px-3 py-1.5 rounded-xl bg-pink-500/15 hover:gradient-bg text-pink-300 hover:text-white border border-pink-500/30 hover:border-transparent text-xs font-bold transition-all active:scale-95 flex items-center gap-1 cursor-pointer shadow-xs"
-                          title="Pick exact 15s chorus/verse part"
+                          onClick={() => handleSelectMainPartDirect(track)}
+                          className="px-2.5 py-1.5 rounded-xl gradient-bg text-white text-xs font-bold transition-all active:scale-95 flex items-center gap-1 cursor-pointer shadow-sm hover:opacity-90"
+                          title="Attach main chorus part instantly"
                         >
-                          <Scissors size={12} />
-                          <span>Pick Part</span>
+                          <Flame size={12} className="fill-white" />
+                          <span>Main Part</span>
                         </button>
 
-                        {/* Quick Direct Use Button */}
+                        {/* Option 2: Choose / Trim Part anywhere in song */}
                         <button
                           type="button"
-                          onClick={() => handleQuickSelect(track)}
-                          className="p-1.5 rounded-xl bg-zinc-850 hover:bg-zinc-700 text-zinc-300 hover:text-white border border-zinc-700 text-xs font-bold transition-all active:scale-95 flex items-center cursor-pointer"
-                          aria-label="Use track without trimming"
-                          title="Quick use"
+                          onClick={() => handleOpenTrimmer(track, 14)}
+                          className="px-2.5 py-1.5 rounded-xl bg-zinc-850 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-700 text-xs font-semibold transition-all active:scale-95 flex items-center gap-1 cursor-pointer"
+                          title="Pick custom start point in the whole song"
                         >
-                          <Check size={14} />
+                          <Scissors size={12} />
+                          <span>Choose</span>
                         </button>
                       </div>
                     </div>
@@ -908,7 +1026,7 @@ export const SongPickerModal: React.FC<SongPickerModalProps> = ({
             {playerState.currentTrack && (
               <div className="p-3 bg-zinc-900 border-t border-zinc-800 flex items-center justify-between gap-3 animate-slide-up">
                 <div
-                  onClick={() => handleOpenTrimmer(playerState.currentTrack!, 10)}
+                  onClick={() => handleOpenTrimmer(playerState.currentTrack!, 14)}
                   className="flex items-center gap-2.5 min-w-0 flex-1 cursor-pointer"
                 >
                   <img
@@ -920,8 +1038,8 @@ export const SongPickerModal: React.FC<SongPickerModalProps> = ({
                     <p className="text-xs font-bold text-white truncate leading-tight">
                       {playerState.currentTrack.title}
                     </p>
-                    <p className="text-[10px] text-zinc-400 truncate leading-tight">
-                      {playerState.currentTrack.artist} • Tap to trim part ✂️
+                    <p className="text-[10px] text-pink-400 font-semibold truncate leading-tight">
+                      🔥 Main Chorus Part • Tap to adjust
                     </p>
                   </div>
                 </div>
@@ -938,11 +1056,20 @@ export const SongPickerModal: React.FC<SongPickerModalProps> = ({
 
                   <button
                     type="button"
-                    onClick={() => handleOpenTrimmer(playerState.currentTrack!, 10)}
-                    className="px-3.5 py-1.5 rounded-full gradient-bg text-white text-xs font-bold cursor-pointer active:scale-95 shadow-md flex items-center gap-1"
+                    onClick={() => handleSelectMainPartDirect(playerState.currentTrack!)}
+                    className="px-3 py-1.5 rounded-full gradient-bg text-white text-xs font-bold cursor-pointer active:scale-95 shadow-md flex items-center gap-1"
+                  >
+                    <Flame size={12} className="fill-white" />
+                    <span>Use Main Part 🔥</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleOpenTrimmer(playerState.currentTrack!, 14)}
+                    className="px-2.5 py-1.5 rounded-full bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-medium cursor-pointer active:scale-95 border border-zinc-700 flex items-center gap-1"
                   >
                     <Scissors size={12} />
-                    <span>Choose Part ✂️</span>
+                    <span>Scrub</span>
                   </button>
                 </div>
               </div>

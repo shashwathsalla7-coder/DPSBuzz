@@ -253,10 +253,19 @@ class AudioManager {
 
   public seekSeconds(seconds: number) {
     if (!this.audio) return;
-    const target = Math.max(0, Math.min(seconds, 30));
+    const maxDur =
+      this.audio.duration && !isNaN(this.audio.duration) && isFinite(this.audio.duration)
+        ? this.audio.duration
+        : this.currentTrack?.durationSeconds || 300;
+    const target = Math.max(0, Math.min(seconds, maxDur));
     this.safeSetCurrentTime(target);
-    const duration = (this.audio.duration && !isNaN(this.audio.duration)) ? this.audio.duration : 30;
+    const duration = this.audio.duration && !isNaN(this.audio.duration) ? this.audio.duration : maxDur;
     this.notify(!this.audio.paused, Math.min(target / duration, 1), target);
+  }
+
+  public getAudioDuration(): number {
+    if (!this.audio || isNaN(this.audio.duration) || !isFinite(this.audio.duration)) return 0;
+    return this.audio.duration;
   }
 
   public stop() {

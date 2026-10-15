@@ -1199,9 +1199,58 @@
         "senderUsername": "rohan728",
         "time": "10:11 PM",
         "isDelivered": false,
-        "is_read": false,
-        "isSeen": false,
-        "conversationId": "rohan728__shashwath71845"
+        "is_read": true,
+        "isSeen": true,
+        "conversationId": "rohan728__shashwath71845",
+        "readAt": 1792082501570
+      },
+      {
+        "id": "msg-1792082518024-6g75",
+        "text": "MARI HIGGH FIELD  SUBSCRIPTION ETLA",
+        "sender": "me",
+        "senderUsername": "shashwath71845",
+        "time": "10:11 PM",
+        "isDelivered": false,
+        "is_read": true,
+        "isSeen": true,
+        "conversationId": "rohan728__shashwath71845",
+        "readAt": 1792082542462
+      },
+      {
+        "id": "msg-1792082552795-geqp",
+        "text": "Rey higgsfield free kuda undhi",
+        "sender": "me",
+        "senderUsername": "rohan728",
+        "time": "10:12 PM",
+        "isDelivered": false,
+        "is_read": true,
+        "isSeen": true,
+        "conversationId": "rohan728__shashwath71845",
+        "readAt": 1792082567608
+      },
+      {
+        "id": "msg-1792082581773-6qh3",
+        "text": "CHESUKOVACHHA",
+        "sender": "me",
+        "senderUsername": "shashwath71845",
+        "time": "10:13 PM",
+        "isDelivered": false,
+        "is_read": true,
+        "isSeen": true,
+        "conversationId": "rohan728__shashwath71845",
+        "readAt": 1792082592596
+      },
+      {
+        "id": "msg-1792082599719-adix",
+        "text": "ADS KUDA CHEYOCHU",
+        "sender": "me",
+        "senderUsername": "rohan728",
+        "time": "10:13 PM",
+        "isDelivered": false,
+        "is_read": true,
+        "isSeen": true,
+        "conversationId": "rohan728__shashwath71845",
+        "readAt": 1792082605787
       }
     ],
     "ashwith__shashwath71845": [
@@ -2403,5 +2452,5 @@
   "activeCalls": {},
   "follows": [],
   "followRequests": [],
-  "lastUpdated": 1792082482481
+  "lastUpdated": 1792082605830
 }

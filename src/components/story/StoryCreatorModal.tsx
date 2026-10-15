@@ -31,6 +31,7 @@ import {
   Palette,
   ChevronLeft,
   Settings,
+  Scissors,
 } from 'lucide-react';
 import { textStoryPresets, TextStoryPreset } from '@/config/tokens';
 import { DataStore, Profile, SongTrack } from '@/lib/dataStore';
@@ -828,7 +829,7 @@ export const StoryCreatorModal: React.FC<StoryCreatorModalProps> = ({
                       <span className="text-[10px] text-white/70 truncate max-w-[80px]">• {selectedSong.artist}</span>
                       {selectedSong.startTime !== undefined && (
                         <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-pink-500/30 text-pink-300 font-mono font-bold shrink-0">
-                          0:{Math.floor(selectedSong.startTime).toString().padStart(2, '0')}
+                          {Math.floor(selectedSong.startTime / 60)}:{Math.floor(selectedSong.startTime % 60).toString().padStart(2, '0')}
                         </span>
                       )}
                       <div className="flex items-end gap-0.5 h-3 ml-0.5 shrink-0">
@@ -838,8 +839,17 @@ export const StoryCreatorModal: React.FC<StoryCreatorModalProps> = ({
                       </div>
                       <button
                         type="button"
+                        onClick={() => setShowSongPicker(true)}
+                        className="ml-1 text-pink-300 hover:text-white cursor-pointer p-0.5"
+                        title="Choose Part / Main Chorus"
+                        aria-label="Choose song part"
+                      >
+                        <Scissors size={12} />
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => setSelectedSong(null)}
-                        className="ml-1 text-white/60 hover:text-white cursor-pointer"
+                        className="text-white/60 hover:text-white cursor-pointer"
                         aria-label="Remove music"
                       >
                         <X size={12} />
@@ -1309,6 +1319,7 @@ export const StoryCreatorModal: React.FC<StoryCreatorModalProps> = ({
       <SongPickerModal
         isOpen={showSongPicker}
         onClose={() => setShowSongPicker(false)}
+        initialTrack={selectedSong || undefined}
         onSelectSong={(song) => {
           setSelectedSong(song);
           setShowSongPicker(false);
