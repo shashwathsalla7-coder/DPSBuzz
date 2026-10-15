@@ -675,23 +675,92 @@ export async function deleteServerAccount(username: string): Promise<ServerStore
 
 // ==========================================
 // ACTIVE CALLS & WEBRTC SIGNALING STORE
+// Dedicated sub-second store (isolated 1KB file)
 // ==========================================
 
-export async function getServerActiveCalls(): Promise<Record<string, CallSession>> {
-  const store = await getServerStore();
-  return store.activeCalls || {};
+const CLOUD_CALLS_PUBLIC_ID = 'dpsbuzz_active_calls.json';
+const CALLS_LOCAL_FILE = path.join(DATA_DIR, 'active_calls.json');
+
+let callsCache: Record<string, CallSession> = {};
+let lastCallsFetchTime = 0;
+const CALLS_CACHE_TTL_MS = 600; // 600ms TTL for low-latency WebRTC polling
+
+function cleanCallsMap(calls: Record<string, CallSession>): Record<string, CallSession> {
+  const cleaned: Record<string, CallSession> = {};
+  const now = Date.now();
+  for (const [id, c] of Object.entries(calls)) {
+    if (!c || !c.callId) continue;
+    if ((c.status === 'ended' || c.status === 'rejected') && now - (c.endedAt || c.createdAt) > 15000) {
+      continue;
+    }
+    if (c.status === 'ringing' && now - c.createdAt > 45000) {
+      continue;
+    }
+    cleaned[id] = c;
+  }
+  return cleaned;
+}
+
+async function fetchCloudCalls(): Promise<Record<string, CallSession> | null> {
+  try {
+    const url = `https://res.cloudinary.com/${CLOUD_NAME}/raw/upload/${CLOUD_CALLS_PUBLIC_ID}?t=${Date.now()}`;
+    const res = await fetch(url, {
+      cache: 'no-store',
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        Pragma: 'no-cache',
+      },
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && typeof data === 'object') {
+        return cleanCallsMap(data);
+      }
+    }
+  } catch {}
+  return null;
+}
+
+async function uploadCloudCalls(calls: Record<string, CallSession>): Promise<void> {
+  try {
+    const jsonStr = JSON.stringify(calls);
+    const base64Data = 'data:application/json;base64,' + Buffer.from(jsonStr).toString('base64');
+    await cloudinary.uploader.upload(base64Data, {
+      resource_type: 'raw',
+      public_id: CLOUD_CALLS_PUBLIC_ID,
+      overwrite: true,
+      invalidate: true,
+    });
+  } catch (e) {
+    console.error('Error uploading calls to Cloudinary:', e);
+  }
+}
+
+export async function getServerActiveCalls(force = false): Promise<Record<string, CallSession>> {
+  const now = Date.now();
+  if (!force && Object.keys(callsCache).length > 0 && now - lastCallsFetchTime < CALLS_CACHE_TTL_MS) {
+    return callsCache;
+  }
+
+  const cloud = await fetchCloudCalls();
+  if (cloud) {
+    callsCache = cloud;
+    lastCallsFetchTime = now;
+    return callsCache;
+  }
+
+  return callsCache;
 }
 
 export async function getServerCall(callId: string): Promise<CallSession | null> {
-  const store = await getServerStore();
-  return store.activeCalls?.[callId] || null;
+  const calls = await getServerActiveCalls(true);
+  return calls[callId] || null;
 }
 
 export async function findUserActiveCall(username: string): Promise<CallSession | null> {
   const clean = username.toLowerCase().trim();
-  const store = await getServerStore();
-  const calls = Object.values(store.activeCalls || {});
-  for (const call of calls) {
+  const calls = await getServerActiveCalls(true);
+  for (const call of Object.values(calls)) {
     if (
       (call.receiverUsername.toLowerCase().trim() === clean ||
         call.callerUsername.toLowerCase().trim() === clean) &&
@@ -705,11 +774,12 @@ export async function findUserActiveCall(username: string): Promise<CallSession 
 }
 
 export async function saveServerCall(call: CallSession): Promise<CallSession> {
-  const current = await getServerStore({ forceRefresh: true });
-  const activeCalls = { ...(current.activeCalls || {}) };
-  activeCalls[call.callId] = call;
+  const current = await getServerActiveCalls(true);
+  const updated = { ...current, [call.callId]: call };
+  callsCache = updated;
+  lastCallsFetchTime = Date.now();
 
-  await saveServerStore({ activeCalls });
+  await uploadCloudCalls(updated);
   return call;
 }
 
@@ -717,27 +787,30 @@ export async function updateServerCall(
   callId: string,
   updates: Partial<CallSession>
 ): Promise<CallSession | null> {
-  const current = await getServerStore({ forceRefresh: true });
-  const activeCalls = { ...(current.activeCalls || {}) };
-  const existing = activeCalls[callId];
+  const current = await getServerActiveCalls(true);
+  const existing = current[callId];
   if (!existing) return null;
 
-  const updated: CallSession = {
+  const updatedCall: CallSession = {
     ...existing,
     ...updates,
   };
-  activeCalls[callId] = updated;
+  const updatedMap = { ...current, [callId]: updatedCall };
+  callsCache = updatedMap;
+  lastCallsFetchTime = Date.now();
 
-  await saveServerStore({ activeCalls });
-  return updated;
+  await uploadCloudCalls(updatedMap);
+  return updatedCall;
 }
 
 export async function deleteServerCall(callId: string): Promise<void> {
-  const current = await getServerStore({ forceRefresh: true });
-  const activeCalls = { ...(current.activeCalls || {}) };
-  if (activeCalls[callId]) {
-    delete activeCalls[callId];
-    await saveServerStore({ activeCalls });
+  const current = await getServerActiveCalls(true);
+  if (current[callId]) {
+    delete current[callId];
+    callsCache = current;
+    lastCallsFetchTime = Date.now();
+    await uploadCloudCalls(current);
   }
 }
+
 

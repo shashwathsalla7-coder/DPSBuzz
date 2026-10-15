@@ -20,26 +20,15 @@ const ICE_SERVERS: RTCConfiguration = {
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
     { urls: 'stun:stun2.l.google.com:19302' },
+    { urls: 'stun:stun3.l.google.com:19302' },
+    { urls: 'stun:stun4.l.google.com:19302' },
     { urls: 'stun:stun.cloudflare.com:3478' },
-    { urls: 'stun:stun.services.mozilla.com' },
-    // Public OpenRelay TURN relay servers for symmetric NAT & cellular network traversal
-    {
-      urls: 'turn:openrelay.metered.ca:80',
-      username: 'openrelay',
-      credential: 'openrelay',
-    },
-    {
-      urls: 'turn:openrelay.metered.ca:443',
-      username: 'openrelay',
-      credential: 'openrelay',
-    },
-    {
-      urls: 'turn:openrelay.metered.ca:443?transport=tcp',
-      username: 'openrelay',
-      credential: 'openrelay',
-    },
+    { urls: 'stun:stun.metered.ca:80' },
+    { urls: 'stun:relay.metered.ca:80' },
   ],
   iceCandidatePoolSize: 10,
+  bundlePolicy: 'max-bundle',
+  rtcpMuxPolicy: 'require',
 };
 
 function broadcastCallEvent(payload?: any) {
@@ -55,7 +44,7 @@ function broadcastCallEvent(payload?: any) {
   } catch {}
 }
 
-async function waitForIceGathering(pc: RTCPeerConnection, maxTimeoutMs = 1000): Promise<void> {
+async function waitForIceGathering(pc: RTCPeerConnection, maxTimeoutMs = 1200): Promise<void> {
   if (pc.iceGatheringState === 'complete') return;
   return new Promise((resolve) => {
     let timer: any = null;
@@ -74,15 +63,18 @@ async function waitForIceGathering(pc: RTCPeerConnection, maxTimeoutMs = 1000): 
   });
 }
 
-// Synthetic audio track generator for hardware-less environments
+// Synthetic silent audio track generator for hardware-less environments
 function createSyntheticAudioTrack(): MediaStreamTrack | null {
   try {
     const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
     if (AudioCtx) {
       const ctx = new AudioCtx();
       const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      gain.gain.value = 0; // Completely silent
       const dst = ctx.createMediaStreamDestination();
-      osc.connect(dst);
+      osc.connect(gain);
+      gain.connect(dst);
       osc.start();
       const track = dst.stream.getAudioTracks()[0];
       if (track) return track;
@@ -98,22 +90,34 @@ function createSyntheticVideoTrack(label: string): MediaStreamTrack | null {
     canvas.width = 640;
     canvas.height = 480;
     const ctx = canvas.getContext('2d');
-    if (ctx) {
-      ctx.fillStyle = '#0f172a';
-      ctx.fillRect(0, 0, 640, 480);
-      ctx.fillStyle = '#ec4899';
-      ctx.font = 'bold 28px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('🐝 DPS Buzz', 320, 220);
-      ctx.fillStyle = '#94a3b8';
-      ctx.font = '16px sans-serif';
-      ctx.fillText(label || 'Live Camera Feed', 320, 260);
-    }
+    const draw = () => {
+      if (ctx) {
+        ctx.fillStyle = '#0a0a0f';
+        ctx.fillRect(0, 0, 640, 480);
+        ctx.fillStyle = '#ec4899';
+        ctx.font = 'bold 32px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('🐝 DPS Buzz', 320, 220);
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '18px sans-serif';
+        ctx.fillText(label || 'Live Camera Feed', 320, 260);
+      }
+    };
+    draw();
+    const interval = setInterval(draw, 1000);
     const stream = (canvas as any).captureStream ? (canvas as any).captureStream(10) : null;
     if (stream) {
       const track = stream.getVideoTracks()[0];
-      if (track) return track;
+      if (track) {
+        const origStop = track.stop.bind(track);
+        track.stop = () => {
+          clearInterval(interval);
+          origStop();
+        };
+        return track;
+      }
     }
+    clearInterval(interval);
   } catch {}
   return null;
 }
@@ -132,6 +136,7 @@ export function GlobalCallProvider() {
 
   // Media streams & WebRTC references
   const localStreamRef = useRef<MediaStream | null>(null);
+  const remoteMediaStreamRef = useRef<MediaStream | null>(null);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const peerConnRef = useRef<RTCPeerConnection | null>(null);
@@ -216,6 +221,15 @@ export function GlobalCallProvider() {
         } catch {}
       });
       localStreamRef.current = null;
+    }
+
+    if (remoteMediaStreamRef.current) {
+      remoteMediaStreamRef.current.getTracks().forEach((track) => {
+        try {
+          track.stop();
+        } catch {}
+      });
+      remoteMediaStreamRef.current = null;
     }
 
     if (peerConnRef.current) {
@@ -361,20 +375,21 @@ export function GlobalCallProvider() {
       stream.getTracks().forEach((track) => pc.addTrack(track, stream));
 
       pc.ontrack = (event) => {
-        setRemoteStream((prev) => {
-          const tracks: MediaStreamTrack[] = [];
-          if (event.streams && event.streams[0]) {
-            tracks.push(...event.streams[0].getTracks());
-          } else if (event.track) {
-            tracks.push(event.track);
-          }
-          if (prev) {
-            tracks.push(...prev.getTracks());
-          }
-          const trackMap = new Map<string, MediaStreamTrack>();
-          tracks.forEach((t) => trackMap.set(t.id, t));
-          return new MediaStream(Array.from(trackMap.values()));
-        });
+        if (!remoteMediaStreamRef.current) {
+          remoteMediaStreamRef.current = new MediaStream();
+        }
+        const rStream = remoteMediaStreamRef.current;
+        if (event.track && !rStream.getTracks().some((t) => t.id === event.track.id)) {
+          rStream.addTrack(event.track);
+        }
+        if (event.streams && event.streams[0]) {
+          event.streams[0].getTracks().forEach((track) => {
+            if (!rStream.getTracks().some((t) => t.id === track.id)) {
+              rStream.addTrack(track);
+            }
+          });
+        }
+        setRemoteStream(new MediaStream(rStream.getTracks()));
       };
 
       pc.onicecandidate = (event) => {
@@ -395,9 +410,25 @@ export function GlobalCallProvider() {
       let sdpAnswer: any = null;
       if (callToAccept.sdpOffer) {
         await pc.setRemoteDescription(new RTCSessionDescription(callToAccept.sdpOffer));
+
+        // Ingest any caller ICE candidates immediately
+        if (callToAccept.iceCandidates) {
+          for (const cand of callToAccept.iceCandidates) {
+            if (cand.sender === 'caller') {
+              const key = JSON.stringify(cand);
+              if (!processedCandidatesRef.current.has(key)) {
+                processedCandidatesRef.current.add(key);
+                try {
+                  await pc.addIceCandidate(new RTCIceCandidate(cand.candidate));
+                } catch {}
+              }
+            }
+          }
+        }
+
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
-        await waitForIceGathering(pc, 1000);
+        await waitForIceGathering(pc, 1200);
         sdpAnswer = pc.localDescription || answer;
       }
 
@@ -468,20 +499,21 @@ export function GlobalCallProvider() {
         stream.getTracks().forEach((track) => pc.addTrack(track, stream));
 
         pc.ontrack = (event) => {
-          setRemoteStream((prev) => {
-            const tracks: MediaStreamTrack[] = [];
-            if (event.streams && event.streams[0]) {
-              tracks.push(...event.streams[0].getTracks());
-            } else if (event.track) {
-              tracks.push(event.track);
-            }
-            if (prev) {
-              tracks.push(...prev.getTracks());
-            }
-            const trackMap = new Map<string, MediaStreamTrack>();
-            tracks.forEach((t) => trackMap.set(t.id, t));
-            return new MediaStream(Array.from(trackMap.values()));
-          });
+          if (!remoteMediaStreamRef.current) {
+            remoteMediaStreamRef.current = new MediaStream();
+          }
+          const rStream = remoteMediaStreamRef.current;
+          if (event.track && !rStream.getTracks().some((t) => t.id === event.track.id)) {
+            rStream.addTrack(event.track);
+          }
+          if (event.streams && event.streams[0]) {
+            event.streams[0].getTracks().forEach((track) => {
+              if (!rStream.getTracks().some((t) => t.id === track.id)) {
+                rStream.addTrack(track);
+              }
+            });
+          }
+          setRemoteStream(new MediaStream(rStream.getTracks()));
         };
 
         pc.onicecandidate = (event) => {
@@ -504,7 +536,7 @@ export function GlobalCallProvider() {
           offerToReceiveVideo: params.isVideo,
         });
         await pc.setLocalDescription(offer);
-        await waitForIceGathering(pc, 1000);
+        await waitForIceGathering(pc, 1200);
         const completeOffer = pc.localDescription || offer;
 
         const res = await fetch('/api/calls', {
@@ -617,6 +649,19 @@ export function GlobalCallProvider() {
 
               if (serverCall.sdpAnswer && peerConnRef.current && !peerConnRef.current.currentRemoteDescription) {
                 await peerConnRef.current.setRemoteDescription(new RTCSessionDescription(serverCall.sdpAnswer));
+                if (serverCall.iceCandidates) {
+                  for (const cand of serverCall.iceCandidates) {
+                    if (cand.sender === 'receiver') {
+                      const key = JSON.stringify(cand);
+                      if (!processedCandidatesRef.current.has(key)) {
+                        processedCandidatesRef.current.add(key);
+                        try {
+                          await peerConnRef.current.addIceCandidate(new RTCIceCandidate(cand.candidate));
+                        } catch {}
+                      }
+                    }
+                  }
+                }
               }
 
               if (!callTimerRef.current) {
@@ -651,22 +696,12 @@ export function GlobalCallProvider() {
               }
             }
           } else if (activeCall.status === 'connected') {
-            const pcState = peerConnRef.current?.connectionState;
-            const iceState = peerConnRef.current?.iceConnectionState;
-            if (pcState === 'connected' || iceState === 'connected' || iceState === 'completed') {
-              // WebRTC media stream is alive peer-to-peer! Do not terminate call due to serverless polling delay
-              consecutiveMissedPollsRef.current = 0;
-            } else {
-              consecutiveMissedPollsRef.current++;
-              if (consecutiveMissedPollsRef.current >= 8) {
-                handleEndCall();
-                return;
-              }
-            }
+            // Keep active call connected while user is on screen
+            consecutiveMissedPollsRef.current = 0;
           } else if (isCaller && activeCall.status === 'ringing') {
-            // Ringing timeout guard: after 35 seconds of no answer, end call with unavailable message
+            // Ringing timeout guard: after 45 seconds of no answer, end call with unavailable message
             const callAge = Date.now() - (activeCall.createdAt || Date.now());
-            if (callAge > 35000) {
+            if (callAge > 45000) {
               stopCallAudio();
               alert(`No answer from @${activeCall.receiverUsername}. They are currently unavailable.`);
               handleEndCall();
@@ -708,7 +743,19 @@ export function GlobalCallProvider() {
           playCallConnectedSound();
           setActiveCall(serverCall);
           if (serverCall.sdpAnswer && peerConnRef.current && !peerConnRef.current.currentRemoteDescription) {
-            peerConnRef.current.setRemoteDescription(new RTCSessionDescription(serverCall.sdpAnswer)).catch(() => {});
+            peerConnRef.current.setRemoteDescription(new RTCSessionDescription(serverCall.sdpAnswer)).then(() => {
+              if (serverCall.iceCandidates && peerConnRef.current) {
+                for (const cand of serverCall.iceCandidates) {
+                  if (cand.sender === 'receiver') {
+                    const key = JSON.stringify(cand);
+                    if (!processedCandidatesRef.current.has(key)) {
+                      processedCandidatesRef.current.add(key);
+                      peerConnRef.current.addIceCandidate(new RTCIceCandidate(cand.candidate)).catch(() => {});
+                    }
+                  }
+                }
+              }
+            }).catch(() => {});
           }
           if (!callTimerRef.current) {
             callTimerRef.current = setInterval(() => {

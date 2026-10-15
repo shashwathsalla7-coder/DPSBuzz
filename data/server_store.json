@@ -32,8 +32,87 @@
       "habitTag": "#Studies & Revision"
     }
   ],
-  "stories": [],
+  "stories": [
+    {
+      "userId": "student-1792074799861",
+      "username": "mokshith7b",
+      "fullName": "Neelam mokshith ram",
+      "avatar": null,
+      "imageUrl": "https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?auto=format&fit=crop&w=800&q=80",
+      "background": "#0F131B",
+      "textColor": "#FFFFFF",
+      "song": {
+        "id": "1540061298",
+        "title": "Samajavaragamana (From \"Ala Vaikunthapurramuloo\")",
+        "artist": "Sid Sriram",
+        "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music124/v4/7c/4a/14/7c4a14aa-7132-75d5-22eb-91b65e94df40/8903431792683_cover.jpg/200x200bb.jpg",
+        "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview124/v4/4c/80/7e/4c807e38-4e89-1382-7472-fb1e2daebcb6/mzaf_5942484395277150821.plus.aac.p.m4a",
+        "durationSeconds": 214,
+        "startTime": 0,
+        "clipDuration": 15
+      },
+      "id": "story-1792076436050-tr66",
+      "createdAt": "2026-10-15T15:00:36.050Z",
+      "expiresAt": "2026-10-16T15:00:36.050Z",
+      "hasStory": true,
+      "isSeen": true,
+      "isNew": false,
+      "viewers": [
+        "mokshith7b",
+        "rohan728"
+      ],
+      "viewsCount": 2
+    }
+  ],
   "profiles": [
+    {
+      "id": "student-1792074799861",
+      "username": "mokshith7b",
+      "fullName": "Neelam mokshith ram",
+      "avatar": null,
+      "bio": "Class 7-B • DPS Student 🐝",
+      "class": "7",
+      "section": "B",
+      "role": "student",
+      "isVerified": true,
+      "isApproved": true,
+      "isPrivate": false,
+      "followerCount": 0,
+      "followingCount": 3,
+      "postCount": 0,
+      "spiritPoints": 50,
+      "referralCount": 0,
+      "createdAt": "2026-10-15T14:33:19.861Z",
+      "song": {
+        "id": "289076747",
+        "title": "Breakeven (Falling to Pieces)",
+        "artist": "The Script",
+        "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Features114/v4/2d/c6/72/2dc6728e-fe24-c7b3-970c-a24d8af1e4b6/dj.tjxgsvhv.jpg/200x200bb.jpg",
+        "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/a9/73/c1/a973c191-aefc-71b9-da8b-e1c0f76c0bae/mzaf_11607187956676107044.plus.aac.p.m4a",
+        "durationSeconds": 261,
+        "startTime": 0,
+        "clipDuration": 15
+      }
+    },
+    {
+      "id": "student-1792074716002",
+      "username": "rishi_one9",
+      "fullName": "Y Rishikesh Reddy",
+      "avatar": null,
+      "bio": "Class 8-G • DPS Student 🐝",
+      "class": "8",
+      "section": "G",
+      "role": "student",
+      "isVerified": true,
+      "isApproved": true,
+      "isPrivate": true,
+      "followerCount": 0,
+      "followingCount": 0,
+      "postCount": 0,
+      "spiritPoints": 50,
+      "referralCount": 0,
+      "createdAt": "2026-10-15T14:31:56.002Z"
+    },
     {
       "id": "student-1792073371014",
       "username": "sahana_3009",
@@ -139,7 +218,50 @@
       "createdAt": "2026-10-01T00:00:00.000Z"
     }
   ],
-  "chatNotes": [],
+  "chatNotes": [
+    {
+      "id": "note-1792076680666",
+      "userId": "student-1792066627891",
+      "username": "rohan728",
+      "fullName": "Rohan",
+      "avatar": null,
+      "text": "❤️‍🩹",
+      "song": {
+        "id": "1697827277",
+        "title": "Main Tera Main Tera",
+        "artist": "Pritam & Arijit Singh",
+        "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/a7/dd/e6/a7dde62b-2dc6-72ad-17ff-1e13a316cb5b/840214495540.png/200x200bb.jpg",
+        "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/ec/65/04/ec65046f-1f03-5f02-5955-e8d22212b1ef/mzaf_9657139088877533788.plus.aac.p.m4a",
+        "durationSeconds": 69,
+        "startTime": 0,
+        "clipDuration": 30
+      },
+      "colorTheme": "classic",
+      "createdAt": "2026-10-15T15:04:40.666Z",
+      "expiresAt": "2026-10-16T15:04:40.666Z"
+    },
+    {
+      "id": "note-1792075724392",
+      "userId": "student-1792074799861",
+      "username": "mokshith7b",
+      "fullName": "Neelam mokshith ram",
+      "avatar": null,
+      "text": "Listening to Aaya Sher (From \"The Paradise\") 🎵",
+      "song": {
+        "id": "1882240655",
+        "title": "Aaya Sher (From \"The Paradise\")",
+        "artist": "Anirudh Ravichander, Jangi Reddy, Arjun Chandy",
+        "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/9f/33/28/9f3328b5-d70d-7511-123c-1a096a317042/820200508461.jpg/200x200bb.jpg",
+        "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/46/0d/df/460ddf71-f084-822e-1fe1-ea2ceb91cb7a/mzaf_5932094318792648449.plus.aac.p.m4a",
+        "durationSeconds": 287,
+        "startTime": 0,
+        "clipDuration": 15
+      },
+      "colorTheme": "classic",
+      "createdAt": "2026-10-15T14:48:44.392Z",
+      "expiresAt": "2026-10-16T14:48:44.392Z"
+    }
+  ],
   "chatMessages": {
     "arjun_8a__shashwath71845": [
       {
@@ -468,8 +590,206 @@
         "is_read": true,
         "isSeen": true,
         "readAt": 1792070379028,
-        "isDelivered": true,
-        "reaction": "❤️"
+        "isDelivered": true
+      },
+      {
+        "id": "msg-1792076493128-0ltw",
+        "text": "Mokshith evadra?",
+        "sender": "me",
+        "senderUsername": "rohan728",
+        "time": "8:31 PM",
+        "isDelivered": false,
+        "is_read": true,
+        "isSeen": true,
+        "conversationId": "rohan728__shashwath71845",
+        "readAt": 1792076532634
+      },
+      {
+        "id": "msg-1792076734494-x02u",
+        "text": "Inka app lo unnapudu msg vacchindhi annattu notification pettu",
+        "sender": "me",
+        "senderUsername": "rohan728",
+        "time": "8:35 PM",
+        "isDelivered": false,
+        "is_read": true,
+        "isSeen": true,
+        "conversationId": "rohan728__shashwath71845",
+        "readAt": 1792076749972
+      },
+      {
+        "id": "msg-1792076766903-ctec",
+        "text": "Mokshith evadra",
+        "sender": "me",
+        "senderUsername": "rohan728",
+        "time": "8:36 PM",
+        "isDelivered": false,
+        "is_read": true,
+        "isSeen": true,
+        "conversationId": "rohan728__shashwath71845",
+        "readAt": 1792076767892
+      },
+      {
+        "id": "msg-1792076774059-6h63",
+        "text": "my friend",
+        "sender": "me",
+        "senderUsername": "shashwath71845",
+        "time": "8:36 PM",
+        "isDelivered": false,
+        "is_read": true,
+        "isSeen": true,
+        "conversationId": "rohan728__shashwath71845",
+        "readAt": 1792076784542
+      },
+      {
+        "id": "msg-1792076786817-sa6e",
+        "text": "School?",
+        "sender": "me",
+        "senderUsername": "rohan728",
+        "time": "8:36 PM",
+        "isDelivered": false,
+        "is_read": true,
+        "isSeen": true,
+        "conversationId": "rohan728__shashwath71845",
+        "readAt": 1792076802898
+      },
+      {
+        "id": "msg-1792076794453-rzms",
+        "text": "mana school",
+        "sender": "me",
+        "senderUsername": "shashwath71845",
+        "time": "8:36 PM",
+        "isDelivered": false,
+        "is_read": true,
+        "isSeen": true,
+        "conversationId": "rohan728__shashwath71845",
+        "readAt": 1792076811739
+      },
+      {
+        "id": "msg-1792076832910-ek65",
+        "text": "endukante vadu public",
+        "sender": "me",
+        "senderUsername": "shashwath71845",
+        "time": "8:37 PM",
+        "isDelivered": false,
+        "is_read": true,
+        "isSeen": true,
+        "conversationId": "rohan728__shashwath71845",
+        "readAt": 1792076847717
+      },
+      {
+        "id": "msg-1792076856240-xqsq",
+        "text": "emaina change cheyala",
+        "sender": "me",
+        "senderUsername": "shashwath71845",
+        "time": "8:37 PM",
+        "isDelivered": false,
+        "is_read": true,
+        "isSeen": true,
+        "conversationId": "rohan728__shashwath71845",
+        "readAt": 1792076870116
+      },
+      {
+        "id": "msg-1792076877723-mw2v",
+        "text": "ok i will do",
+        "sender": "me",
+        "senderUsername": "shashwath71845",
+        "time": "8:37 PM",
+        "isDelivered": false,
+        "is_read": true,
+        "isSeen": true,
+        "conversationId": "rohan728__shashwath71845",
+        "readAt": 1792076881703
+      },
+      {
+        "id": "msg-1792076906257-mg4w",
+        "text": "Rey na chat endhuku pothundi?",
+        "sender": "me",
+        "senderUsername": "rohan728",
+        "time": "8:38 PM",
+        "isDelivered": false,
+        "is_read": true,
+        "isSeen": true,
+        "conversationId": "rohan728__shashwath71845",
+        "readAt": 1792076959273
+      },
+      {
+        "id": "msg-1792076935291-3fgj",
+        "text": "adi code backend lo run ayitunde voice video call fix chestunna",
+        "sender": "me",
+        "senderUsername": "shashwath71845",
+        "time": "8:38 PM",
+        "isDelivered": false,
+        "is_read": true,
+        "isSeen": true,
+        "conversationId": "rohan728__shashwath71845",
+        "readAt": 1792076943489
+      },
+      {
+        "id": "msg-1792076976070-dr6m",
+        "text": "?",
+        "sender": "me",
+        "senderUsername": "rohan728",
+        "time": "8:39 PM",
+        "isDelivered": false,
+        "is_read": true,
+        "isSeen": true,
+        "conversationId": "rohan728__shashwath71845",
+        "readAt": 1792077022814
+      },
+      {
+        "id": "msg-1792076985093-5v1i",
+        "text": "Neeka?",
+        "sender": "me",
+        "senderUsername": "rohan728",
+        "time": "8:39 PM",
+        "isDelivered": false,
+        "is_read": true,
+        "isSeen": true,
+        "conversationId": "rohan728__shashwath71845",
+        "readAt": 1792077022814
+      },
+      {
+        "id": "msg-1792077249650-i614",
+        "text": "hmm",
+        "sender": "me",
+        "senderUsername": "shashwath71845",
+        "time": "8:44 PM",
+        "isDelivered": false,
+        "is_read": true,
+        "isSeen": true,
+        "conversationId": "rohan728__shashwath71845",
+        "readAt": 1792077375664
+      },
+      {
+        "id": "msg-1792077377568-mbs9",
+        "text": "?",
+        "sender": "me",
+        "senderUsername": "rohan728",
+        "time": "8:46 PM",
+        "isDelivered": false,
+        "is_read": true,
+        "isSeen": true,
+        "conversationId": "rohan728__shashwath71845",
+        "readAt": 1792077413190
+      },
+      {
+        "id": "msg-1792077453999-38n6",
+        "text": "arey reels ke storage kavali",
+        "sender": "me",
+        "senderUsername": "shashwath71845",
+        "time": "8:47 PM",
+        "isDelivered": false,
+        "is_read": false,
+        "isSeen": false,
+        "conversationId": "rohan728__shashwath71845"
+      },
+      {
+        "id": "msg-1792077485630-nrub",
+        "text": "🎵 Replying to note \"❤️‍🩹\" (Main Tera Main Tera - Pritam & Arijit Singh): ❤️",
+        "sender": "me",
+        "senderUsername": "shashwath71845",
+        "time": "8:48 PM",
+        "conversationId": "rohan728__shashwath71845"
       }
     ],
     "ashwith__shashwath71845": [
@@ -820,6 +1140,426 @@
         "isSeen": false,
         "conversationId": "sahana_3009__shashwath71845"
       }
+    ],
+    "rishi_one9__shashwath71845": [
+      {
+        "id": "msg-1792074754433-ov4k",
+        "text": "Hi",
+        "sender": "me",
+        "senderUsername": "rishi_one9",
+        "time": "8:02 PM",
+        "isDelivered": false,
+        "is_read": true,
+        "isSeen": true,
+        "conversationId": "rishi_one9__shashwath71845",
+        "readAt": 1792074786226
+      },
+      {
+        "id": "msg-1792074776438-keqw",
+        "text": "hi bro",
+        "sender": "me",
+        "senderUsername": "shashwath71845",
+        "time": "8:02 PM",
+        "isDelivered": false,
+        "is_read": true,
+        "isSeen": true,
+        "conversationId": "rishi_one9__shashwath71845",
+        "readAt": 1792074814724
+      },
+      {
+        "id": "call-log-1792074874060-5y9s",
+        "text": "📞 Voice call · 2m 18s",
+        "sender": "me",
+        "senderUsername": "rishi_one9",
+        "time": "8:04 PM",
+        "isCallLog": true,
+        "conversationId": "rishi_one9__shashwath71845",
+        "is_read": true,
+        "isSeen": true,
+        "readAt": 1792074893254
+      },
+      {
+        "id": "call-log-1792074905329-2aig",
+        "text": "📞 Voice call · 15s",
+        "sender": "me",
+        "senderUsername": "rishi_one9",
+        "time": "8:05 PM",
+        "isCallLog": true,
+        "conversationId": "rishi_one9__shashwath71845",
+        "is_read": true,
+        "isSeen": true,
+        "readAt": 1792074913264
+      },
+      {
+        "id": "call-log-1792074939491-pyr6",
+        "text": "📞 Missed voice call",
+        "sender": "me",
+        "senderUsername": "rishi_one9",
+        "time": "8:05 PM",
+        "isCallLog": true,
+        "conversationId": "rishi_one9__shashwath71845",
+        "is_read": true,
+        "isSeen": true,
+        "readAt": 1792074940976
+      },
+      {
+        "id": "call-log-1792074964269-kbep",
+        "text": "📞 Voice call · 27s",
+        "sender": "me",
+        "senderUsername": "rishi_one9",
+        "time": "8:06 PM",
+        "isCallLog": true,
+        "conversationId": "rishi_one9__shashwath71845",
+        "is_read": true,
+        "isSeen": true,
+        "readAt": 1792074968842
+      },
+      {
+        "id": "call-log-1792074974671-blqo",
+        "text": "📞 Voice call · 16s",
+        "sender": "me",
+        "senderUsername": "rishi_one9",
+        "time": "8:06 PM",
+        "isCallLog": true,
+        "conversationId": "rishi_one9__shashwath71845",
+        "is_read": true,
+        "isSeen": true,
+        "readAt": 1792074975661
+      },
+      {
+        "id": "call-log-1792074996965-7xpy",
+        "text": "📞 Voice call · 1m 54s",
+        "sender": "me",
+        "senderUsername": "rishi_one9",
+        "time": "8:06 PM",
+        "isCallLog": true,
+        "conversationId": "rishi_one9__shashwath71845",
+        "is_read": true,
+        "isSeen": true,
+        "readAt": 1792075176159
+      }
+    ],
+    "mokshith7b__shashwath71845": [
+      {
+        "id": "msg-story-1792076547499-8zoo",
+        "text": "Replied to story: \"❤️\" 💬",
+        "sender": "me",
+        "senderUsername": "shashwath71845",
+        "time": "8:32 PM",
+        "timestamp": 1792076547499,
+        "conversationId": "mokshith7b__shashwath71845",
+        "is_read": true,
+        "isSeen": true,
+        "readAt": 1792076555150
+      },
+      {
+        "id": "msg-1792076657211-laxj",
+        "text": "🎵 Replying to note \"Listening to Aaya Sher (From \"The Paradise\") 🎵\" (Aaya Sher (From \"The Paradise\") - Anirudh Ravichander, Jangi Reddy, Arjun Chandy): 🔥",
+        "sender": "me",
+        "senderUsername": "shashwath71845",
+        "time": "8:34 PM",
+        "conversationId": "mokshith7b__shashwath71845",
+        "is_read": true,
+        "isSeen": true,
+        "readAt": 1792076697996
+      },
+      {
+        "id": "msg-1792076716186-p9yx",
+        "text": "arey nee experience share cheyi insta lo oka vele ne referral code isthe neku point sostha evarikaithe ekkuva points inka followers osthe vallaki special gift plan chesta",
+        "sender": "me",
+        "senderUsername": "shashwath71845",
+        "time": "8:35 PM",
+        "isDelivered": false,
+        "is_read": true,
+        "isSeen": true,
+        "conversationId": "mokshith7b__shashwath71845",
+        "readAt": 1792076721809
+      },
+      {
+        "id": "msg-1792076724982-wkvf",
+        "text": "referral code setting lo untadi",
+        "sender": "me",
+        "senderUsername": "shashwath71845",
+        "time": "8:35 PM",
+        "isDelivered": false,
+        "is_read": true,
+        "isSeen": true,
+        "conversationId": "mokshith7b__shashwath71845",
+        "readAt": 1792076740426
+      },
+      {
+        "id": "msg-1792076756051-8935",
+        "text": "ok",
+        "sender": "me",
+        "senderUsername": "shashwath71845",
+        "time": "8:35 PM",
+        "isDelivered": false,
+        "is_read": true,
+        "isSeen": true,
+        "conversationId": "mokshith7b__shashwath71845",
+        "readAt": 1792076764179
+      },
+      {
+        "id": "msg-1792076949030-gyax",
+        "text": "Shashwath",
+        "sender": "me",
+        "senderUsername": "mokshith7b",
+        "time": "8:39 PM",
+        "isDelivered": false,
+        "is_read": true,
+        "isSeen": true,
+        "conversationId": "mokshith7b__shashwath71845",
+        "readAt": 1792077008341
+      },
+      {
+        "id": "msg-1792076954871-3xel",
+        "text": "what",
+        "sender": "me",
+        "senderUsername": "shashwath71845",
+        "time": "8:39 PM",
+        "isDelivered": false,
+        "is_read": true,
+        "isSeen": true,
+        "conversationId": "mokshith7b__shashwath71845",
+        "readAt": 1792076995001
+      },
+      {
+        "id": "msg-1792076960124-w0ld",
+        "text": "Adhi",
+        "sender": "me",
+        "senderUsername": "mokshith7b",
+        "time": "8:39 PM",
+        "isDelivered": false,
+        "is_read": true,
+        "isSeen": true,
+        "conversationId": "mokshith7b__shashwath71845",
+        "readAt": 1792077008341
+      },
+      {
+        "id": "msg-1792077013068-teqi",
+        "text": "Ok",
+        "sender": "me",
+        "senderUsername": "mokshith7b",
+        "time": "8:40 PM",
+        "isDelivered": false,
+        "is_read": true,
+        "isSeen": true,
+        "conversationId": "mokshith7b__shashwath71845",
+        "readAt": 1792077018169
+      },
+      {
+        "id": "call-log-1792077031663-0irr",
+        "text": "📞 Voice call · 5s",
+        "sender": "me",
+        "senderUsername": "mokshith7b",
+        "time": "8:40 PM",
+        "isCallLog": true,
+        "conversationId": "mokshith7b__shashwath71845",
+        "is_read": true,
+        "isSeen": true,
+        "readAt": 1792077102023
+      },
+      {
+        "id": "call-log-1792077043419-bc5a",
+        "text": "📞 Missed voice call",
+        "sender": "me",
+        "senderUsername": "mokshith7b",
+        "time": "8:40 PM",
+        "isCallLog": true,
+        "conversationId": "mokshith7b__shashwath71845",
+        "is_read": true,
+        "isSeen": true,
+        "readAt": 1792077102023
+      },
+      {
+        "id": "call-log-1792077045338-8yoz",
+        "text": "📞 Voice call · 2s",
+        "sender": "me",
+        "senderUsername": "mokshith7b",
+        "time": "8:40 PM",
+        "isCallLog": true,
+        "conversationId": "mokshith7b__shashwath71845",
+        "is_read": true,
+        "isSeen": true,
+        "readAt": 1792077102023
+      },
+      {
+        "id": "call-log-1792077046243-z6jr",
+        "text": "📞 Voice call · 3s",
+        "sender": "me",
+        "senderUsername": "mokshith7b",
+        "time": "8:40 PM",
+        "isCallLog": true,
+        "conversationId": "mokshith7b__shashwath71845",
+        "is_read": true,
+        "isSeen": true,
+        "readAt": 1792077102023
+      },
+      {
+        "id": "call-log-1792077062823-qov2",
+        "text": "📞 Voice call · 11s",
+        "sender": "me",
+        "senderUsername": "shashwath71845",
+        "time": "8:41 PM",
+        "isCallLog": true,
+        "conversationId": "mokshith7b__shashwath71845",
+        "is_read": true,
+        "isSeen": true,
+        "readAt": 1792077077606
+      },
+      {
+        "id": "call-log-1792077097595-8979",
+        "text": "📞 Voice call · 7s",
+        "sender": "me",
+        "senderUsername": "mokshith7b",
+        "time": "8:41 PM",
+        "isCallLog": true,
+        "conversationId": "mokshith7b__shashwath71845",
+        "is_read": true,
+        "isSeen": true,
+        "readAt": 1792077102023
+      },
+      {
+        "id": "msg-1792077107057-jr0v",
+        "text": "arey call feauture oka bug undi wait cheyi time paduthadi kavalnte me inti bayataki raa",
+        "sender": "me",
+        "senderUsername": "shashwath71845",
+        "time": "8:41 PM",
+        "isDelivered": false,
+        "is_read": true,
+        "isSeen": true,
+        "conversationId": "mokshith7b__shashwath71845",
+        "readAt": 1792077112473
+      },
+      {
+        "id": "msg-1792077106974-d3tx",
+        "text": "Hello",
+        "sender": "me",
+        "senderUsername": "mokshith7b",
+        "time": "8:41 PM",
+        "isDelivered": false,
+        "is_read": true,
+        "isSeen": true,
+        "conversationId": "mokshith7b__shashwath71845",
+        "readAt": 1792077123609
+      },
+      {
+        "id": "msg-1792077128691-qbc6",
+        "text": "yeah",
+        "sender": "me",
+        "senderUsername": "shashwath71845",
+        "time": "8:42 PM",
+        "isDelivered": false,
+        "is_read": true,
+        "isSeen": true,
+        "conversationId": "mokshith7b__shashwath71845",
+        "readAt": 1792077132185
+      },
+      {
+        "id": "msg-1792077138337-lpi3",
+        "text": "bayati raa",
+        "sender": "me",
+        "senderUsername": "shashwath71845",
+        "time": "8:42 PM",
+        "isDelivered": false,
+        "is_read": true,
+        "isSeen": true,
+        "conversationId": "mokshith7b__shashwath71845",
+        "readAt": 1792077140096
+      },
+      {
+        "id": "msg-1792077154314-51sa",
+        "text": "Vacha",
+        "sender": "me",
+        "senderUsername": "mokshith7b",
+        "time": "8:42 PM",
+        "isDelivered": false,
+        "is_read": true,
+        "isSeen": true,
+        "conversationId": "mokshith7b__shashwath71845",
+        "readAt": 1792077158920
+      },
+      {
+        "id": "call-log-1792077175073-lzk1",
+        "text": "📞 Missed voice call",
+        "sender": "me",
+        "senderUsername": "mokshith7b",
+        "time": "8:42 PM",
+        "isCallLog": true,
+        "conversationId": "mokshith7b__shashwath71845",
+        "is_read": true,
+        "isSeen": true,
+        "readAt": 1792077187143
+      },
+      {
+        "id": "call-log-1792077318680-65yf",
+        "text": "📞 Voice call · 7s",
+        "sender": "me",
+        "senderUsername": "shashwath71845",
+        "time": "8:45 PM",
+        "isCallLog": true,
+        "conversationId": "mokshith7b__shashwath71845"
+      },
+      {
+        "id": "call-log-1792077331815-i93g",
+        "text": "📞 Voice call · 6s",
+        "sender": "me",
+        "senderUsername": "shashwath71845",
+        "time": "8:45 PM",
+        "isCallLog": true,
+        "conversationId": "mokshith7b__shashwath71845"
+      },
+      {
+        "id": "call-log-1792077345735-wk18",
+        "text": "📞 Missed voice call",
+        "sender": "me",
+        "senderUsername": "shashwath71845",
+        "time": "8:45 PM",
+        "isCallLog": true,
+        "conversationId": "mokshith7b__shashwath71845"
+      },
+      {
+        "id": "msg-1792077547784-elde",
+        "text": "arey follow cheyi nannu",
+        "sender": "me",
+        "senderUsername": "shashwath71845",
+        "time": "8:49 PM",
+        "isDelivered": false,
+        "is_read": false,
+        "isSeen": false,
+        "conversationId": "mokshith7b__shashwath71845"
+      },
+      {
+        "id": "call-log-1792077724088-d70p",
+        "text": "📞 Voice call · 16s",
+        "sender": "me",
+        "senderUsername": "shashwath71845",
+        "time": "8:52 PM",
+        "isCallLog": true,
+        "conversationId": "mokshith7b__shashwath71845"
+      },
+      {
+        "id": "call-log-1792077743277-vokg",
+        "text": "📞 Missed voice call",
+        "sender": "me",
+        "senderUsername": "shashwath71845",
+        "time": "8:52 PM",
+        "isCallLog": true,
+        "conversationId": "mokshith7b__shashwath71845"
+      }
+    ],
+    "rishi_one9__rohan728": [
+      {
+        "id": "msg-1792077428014-fy2j",
+        "text": "Hey bto",
+        "sender": "me",
+        "senderUsername": "rohan728",
+        "time": "8:47 PM",
+        "isDelivered": false,
+        "is_read": false,
+        "isSeen": false,
+        "conversationId": "rishi_one9__rohan728"
+      }
     ]
   },
   "comments": {},
@@ -850,6 +1590,36 @@
   ],
   "deletedUsernames": [],
   "notifications": [
+    {
+      "id": "notif-srv-admin-1792074716689-vkud",
+      "userId": "shashwath71845",
+      "type": "system",
+      "title": "🎉 New Student Signed Up!",
+      "body": "@rishi_one9 (Y Rishikesh Reddy) from Class 8-G just joined DPS Buzz.",
+      "timeAgo": "Just now",
+      "isRead": false,
+      "link": "/u/rishi_one9"
+    },
+    {
+      "id": "notif-srv-school-1792074716689-fl23",
+      "userId": "admin",
+      "type": "system",
+      "title": "🎉 New Student Signed Up!",
+      "body": "@rishi_one9 (Y Rishikesh Reddy) from Class 8-G just joined DPS Buzz.",
+      "timeAgo": "Just now",
+      "isRead": false,
+      "link": "/u/rishi_one9"
+    },
+    {
+      "id": "notif-srv-welcome-1792074716689-52ht",
+      "userId": "rishi_one9",
+      "type": "system",
+      "title": "🐝 Welcome to DPS Buzz!",
+      "body": "Hi Y Rishikesh Reddy, welcome to the DPS campus social network! Your profile is live.",
+      "timeAgo": "Just now",
+      "isRead": false,
+      "link": "/home"
+    },
     {
       "id": "notif-srv-admin-1792073371809-xc3z",
       "userId": "shashwath71845",
@@ -942,5 +1712,5 @@
     }
   ],
   "activeCalls": {},
-  "lastUpdated": 1792074212738
+  "lastUpdated": 1792077769270
 }

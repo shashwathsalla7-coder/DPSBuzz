@@ -12,8 +12,6 @@ import {
   VolumeX,
   Shield,
   Sparkles,
-  Maximize2,
-  Minimize2,
 } from 'lucide-react';
 import type { CallSession } from '@/app/api/calls/route';
 import { getAvatarColorPair } from '@/config/tokens';
@@ -55,10 +53,13 @@ export function CallModal({
   onToggleSpeaker,
   onEndCall,
 }: CallModalProps) {
-  const localVideoRef = useRef<HTMLVideoElement | null>(null);
-  const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
+  const mainVideoRef = useRef<HTMLVideoElement | null>(null);
+  const pipVideoRef = useRef<HTMLVideoElement | null>(null);
   const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
+
   const [isPipSwapped, setIsPipSwapped] = useState(false);
+  const [hasRemoteVideo, setHasRemoteVideo] = useState(false);
+  const [needsAudioUnlock, setNeedsAudioUnlock] = useState(false);
 
   const otherPersonName = isCaller
     ? call.receiverName || call.receiverUsername
@@ -68,44 +69,106 @@ export function CallModal({
   const colors = getAvatarColorPair(otherPersonUsername || otherPersonName);
   const initials = (otherPersonName || 'User').slice(0, 2).toUpperCase();
 
-  // Attach remote audio stream to dedicated audio element (guarantees voice audio in both voice and video calls)
+  // Monitor remote video tracks to dynamically reveal video once frames arrive
   useEffect(() => {
-    if (remoteAudioRef.current && remoteStream) {
-      remoteAudioRef.current.srcObject = remoteStream;
+    if (!remoteStream) {
+      setHasRemoteVideo(false);
+      return;
+    }
+
+    const checkVideoTracks = () => {
+      const vTracks = remoteStream.getVideoTracks();
+      const hasLiveTrack = vTracks.length > 0 && vTracks.some((t) => t.readyState === 'live');
+      setHasRemoteVideo(hasLiveTrack);
+    };
+
+    checkVideoTracks();
+
+    const vTracks = remoteStream.getVideoTracks();
+    vTracks.forEach((t) => {
+      t.addEventListener('unmute', checkVideoTracks);
+      t.addEventListener('mute', checkVideoTracks);
+      t.addEventListener('ended', checkVideoTracks);
+    });
+
+    remoteStream.addEventListener('addtrack', checkVideoTracks);
+    remoteStream.addEventListener('removetrack', checkVideoTracks);
+
+    return () => {
+      vTracks.forEach((t) => {
+        t.removeEventListener('unmute', checkVideoTracks);
+        t.removeEventListener('mute', checkVideoTracks);
+        t.removeEventListener('ended', checkVideoTracks);
+      });
+      remoteStream.removeEventListener('addtrack', checkVideoTracks);
+      remoteStream.removeEventListener('removetrack', checkVideoTracks);
+    };
+  }, [remoteStream]);
+
+  // Voice Call Audio Element: only bound when NOT a video call to avoid mobile audio sink conflicts
+  useEffect(() => {
+    if (!call.isVideo && remoteAudioRef.current && remoteStream) {
+      if (remoteAudioRef.current.srcObject !== remoteStream) {
+        remoteAudioRef.current.srcObject = remoteStream;
+      }
       remoteAudioRef.current.play().catch((err) => {
-        console.warn('Audio play autoplay restricted, waiting for user interaction:', err);
-        const resumeAudio = () => {
-          if (remoteAudioRef.current) {
-            remoteAudioRef.current.play().catch(() => {});
-          }
-        };
-        window.addEventListener('click', resumeAudio, { once: true });
-        window.addEventListener('touchstart', resumeAudio, { once: true });
+        console.warn('Audio play restricted on mobile:', err);
+        setNeedsAudioUnlock(true);
       });
     }
-  }, [remoteStream, isSpeakerMuted]);
+  }, [call.isVideo, remoteStream, isSpeakerMuted]);
 
-  // Attach local media stream to local video element
+  // Video Call Main Video Element
   useEffect(() => {
-    if (localVideoRef.current && localStream) {
-      localVideoRef.current.srcObject = localStream;
-      localVideoRef.current.play().catch(() => {});
+    if (!call.isVideo) return;
+    const targetStream = isPipSwapped ? localStream : remoteStream;
+    if (mainVideoRef.current && targetStream) {
+      if (mainVideoRef.current.srcObject !== targetStream) {
+        mainVideoRef.current.srcObject = targetStream;
+      }
+      mainVideoRef.current.play().catch((err) => {
+        if (!isPipSwapped) {
+          console.warn('Main video play restricted:', err);
+          setNeedsAudioUnlock(true);
+        }
+      });
     }
-  }, [localStream, isPipSwapped]);
+  }, [call.isVideo, localStream, remoteStream, isPipSwapped, isSpeakerMuted]);
 
-  // Attach remote media stream to remote video element
+  // Video Call Floating PIP Video Element
   useEffect(() => {
-    if (remoteVideoRef.current && remoteStream) {
-      remoteVideoRef.current.srcObject = remoteStream;
-      remoteVideoRef.current.play().catch(() => {});
+    if (!call.isVideo) return;
+    const pipStream = isPipSwapped ? remoteStream : localStream;
+    if (pipVideoRef.current && pipStream) {
+      if (pipVideoRef.current.srcObject !== pipStream) {
+        pipVideoRef.current.srcObject = pipStream;
+      }
+      pipVideoRef.current.play().catch(() => {});
     }
-  }, [remoteStream, isPipSwapped]);
+  }, [call.isVideo, localStream, remoteStream, isPipSwapped, isSpeakerMuted]);
 
-  const hasRemoteVideo = Boolean(
-    remoteStream &&
-      remoteStream.getVideoTracks().length > 0 &&
-      remoteStream.getVideoTracks().some((t) => t.enabled)
-  );
+  // Global user interaction listener to unlock any blocked audio/video on mobile browsers
+  useEffect(() => {
+    const handleUnlock = () => {
+      if (remoteAudioRef.current) {
+        remoteAudioRef.current.play().then(() => setNeedsAudioUnlock(false)).catch(() => {});
+      }
+      if (mainVideoRef.current) {
+        mainVideoRef.current.play().then(() => setNeedsAudioUnlock(false)).catch(() => {});
+      }
+      if (pipVideoRef.current) {
+        pipVideoRef.current.play().catch(() => {});
+      }
+    };
+
+    window.addEventListener('click', handleUnlock);
+    window.addEventListener('touchstart', handleUnlock);
+
+    return () => {
+      window.removeEventListener('click', handleUnlock);
+      window.removeEventListener('touchstart', handleUnlock);
+    };
+  }, []);
 
   const isConnected = call.status === 'connected';
 
@@ -121,22 +184,24 @@ export function CallModal({
       aria-modal="true"
       aria-label={`${call.isVideo ? 'Video' : 'Voice'} call with ${otherPersonName}`}
     >
-      {/* Dedicated Audio Sink: position offscreen instead of display:none (hidden) to prevent mobile browser throttling */}
-      <audio
-        ref={remoteAudioRef}
-        autoPlay
-        playsInline
-        muted={isSpeakerMuted}
-        style={{
-          position: 'fixed',
-          top: '-200px',
-          left: '-200px',
-          width: '1px',
-          height: '1px',
-          opacity: 0.001,
-          pointerEvents: 'none',
-        }}
-      />
+      {/* Voice-only Dedicated Audio Sink (Offscreen) */}
+      {!call.isVideo && (
+        <audio
+          ref={remoteAudioRef}
+          autoPlay
+          playsInline
+          muted={isSpeakerMuted}
+          style={{
+            position: 'fixed',
+            top: '-200px',
+            left: '-200px',
+            width: '1px',
+            height: '1px',
+            opacity: 0.001,
+            pointerEvents: 'none',
+          }}
+        />
+      )}
 
       {/* Top Header Bar */}
       <header className="relative z-20 flex items-center justify-between gap-3 pt-2">
@@ -167,24 +232,36 @@ export function CallModal({
         </div>
       </header>
 
+      {/* Autoplay Unlock Pill (shown if mobile browser suspends media) */}
+      {needsAudioUnlock && (
+        <div className="relative z-30 mx-auto -mt-2 animate-bounce cursor-pointer">
+          <div className="px-4 py-1.5 rounded-full bg-amber-500/90 text-black text-xs font-bold shadow-lg flex items-center gap-1.5">
+            <Volume2 size={14} />
+            <span>Tap anywhere to enable sound</span>
+          </div>
+        </div>
+      )}
+
       {/* Main Call View Stage */}
       <main className="relative z-10 flex-1 flex flex-col items-center justify-center my-auto min-h-[360px] w-full">
         {call.isVideo ? (
           // VIDEO CALL STAGE
           <div className="relative w-full max-w-2xl h-[58vh] sm:h-[64vh] rounded-3xl overflow-hidden bg-zinc-950 border border-white/10 shadow-2xl flex items-center justify-center">
-            {/* Remote Video Element - ALWAYS rendered in DOM so srcObject is attached and never lost */}
+            {/* Main Stage Video Element */}
             <video
-              ref={isPipSwapped ? localVideoRef : remoteVideoRef}
+              ref={mainVideoRef}
               autoPlay
               playsInline
-              muted={isPipSwapped}
+              muted={isPipSwapped ? true : isSpeakerMuted}
               className={`w-full h-full object-cover transition-opacity duration-300 ${
-                hasRemoteVideo && (!isPipSwapped || !isCameraOff) ? 'opacity-100' : 'opacity-0 absolute pointer-events-none'
-              }`}
+                (isPipSwapped && !isCameraOff) || (!isPipSwapped && hasRemoteVideo)
+                  ? 'opacity-100'
+                  : 'opacity-0 absolute pointer-events-none'
+              } ${isPipSwapped ? 'transform -scale-x-100' : ''}`}
             />
 
-            {/* Remote video placeholder when remote camera is off or initializing */}
-            {(!hasRemoteVideo || (isPipSwapped && isCameraOff)) && (
+            {/* Placeholder when remote camera is off or initializing */}
+            {((!isPipSwapped && !hasRemoteVideo) || (isPipSwapped && isCameraOff)) && (
               <div className="flex flex-col items-center justify-center space-y-4">
                 <div
                   className="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-2 border-white/20 flex items-center justify-center text-3xl font-bold shadow-xl overflow-hidden"
@@ -210,22 +287,22 @@ export function CallModal({
             )}
 
             {/* Floating Picture-in-Picture Preview Window */}
-            {localStream && (
+            {(localStream || remoteStream) && (
               <div
                 onClick={() => setIsPipSwapped((prev) => !prev)}
                 className="absolute bottom-4 right-4 w-28 sm:w-36 aspect-[3/4] rounded-2xl overflow-hidden border-2 border-white/30 shadow-2xl cursor-pointer hover:scale-105 transition-transform bg-zinc-900 group"
-                title="Click to swap view"
+                title="Tap to swap view"
               >
                 <video
-                  ref={isPipSwapped ? remoteVideoRef : localVideoRef}
+                  ref={pipVideoRef}
                   autoPlay
                   playsInline
-                  muted={!isPipSwapped}
-                  className={`w-full h-full object-cover transform -scale-x-100 ${
+                  muted={isPipSwapped ? isSpeakerMuted : true}
+                  className={`w-full h-full object-cover ${
                     (!isPipSwapped && !isCameraOff) || (isPipSwapped && hasRemoteVideo)
                       ? 'block'
                       : 'hidden'
-                  }`}
+                  } ${!isPipSwapped ? 'transform -scale-x-100' : ''}`}
                 />
 
                 {((!isPipSwapped && isCameraOff) || (isPipSwapped && !hasRemoteVideo)) && (

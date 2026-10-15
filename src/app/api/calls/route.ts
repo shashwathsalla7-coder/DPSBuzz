@@ -29,38 +29,22 @@ export async function GET(req: NextRequest) {
     const callId = searchParams.get('callId');
 
     if (callId) {
-      // First check local cache
-      let call = localCache.get(callId) || null;
-      // If not in local cache or status is ringing, check serverStore to get cross-container updates
-      if (!call || call.status === 'ringing') {
-        const serverCall = await getServerCall(callId);
-        if (serverCall) {
-          call = serverCall;
-          localCache.set(callId, serverCall);
-        }
+      const serverCall = await getServerCall(callId);
+      if (serverCall) {
+        localCache.set(callId, serverCall);
+        return NextResponse.json({ success: true, call: serverCall, activeCall: serverCall });
       }
-      return NextResponse.json({ success: true, call: call || null, activeCall: call || null });
+      const call = localCache.get(callId) || null;
+      return NextResponse.json({ success: true, call, activeCall: call });
     }
 
     if (username) {
-      // Check local cache first
-      for (const call of localCache.values()) {
-        if (
-          (call.receiverUsername.toLowerCase() === username ||
-            call.callerUsername.toLowerCase() === username) &&
-          call.status !== 'ended' &&
-          call.status !== 'rejected'
-        ) {
-          return NextResponse.json({ success: true, activeCall: call });
-        }
-      }
-
-      // Check serverStore for cross-container calls
       const serverCall = await findUserActiveCall(username);
       if (serverCall) {
         localCache.set(serverCall.callId, serverCall);
         return NextResponse.json({ success: true, activeCall: serverCall });
       }
+      return NextResponse.json({ success: true, activeCall: null });
     }
 
     return NextResponse.json({ success: true, activeCall: null });
