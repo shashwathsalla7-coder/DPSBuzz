@@ -1,12 +1,29 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 export default function RootPage() {
   const router = useRouter();
 
   useEffect(() => {
+    try {
+      const stored = localStorage.getItem('dpsbuzz_user');
+      if (stored) {
+        const u = JSON.parse(stored);
+        if (u && u.username && u.username.toLowerCase() !== 'guest') {
+          if (u.username.toLowerCase() === 'shashwath71845') {
+            if (localStorage.getItem('dpsbuzz_shashwath_authenticated') === 'true') {
+              router.replace('/home');
+              return;
+            }
+          } else {
+            router.replace('/home');
+            return;
+          }
+        }
+      }
+    } catch {}
     router.replace('/login');
   }, [router]);
 

@@ -106,8 +106,24 @@ export default function SettingsPage() {
     const stored = localStorage.getItem('dpsbuzz_user');
     if (stored) {
       try {
-        setCurrentUser(JSON.parse(stored));
-      } catch {}
+        const u = JSON.parse(stored);
+        if (u && u.username && u.username.toLowerCase() !== 'guest') {
+          if (u.username.toLowerCase() === 'shashwath71845' && !localStorage.getItem('dpsbuzz_shashwath_authenticated')) {
+            router.replace('/login');
+            return;
+          }
+          setCurrentUser(u);
+        } else {
+          router.replace('/login');
+          return;
+        }
+      } catch {
+        router.replace('/login');
+        return;
+      }
+    } else {
+      router.replace('/login');
+      return;
     }
     const savedTheme = localStorage.getItem('dpsbuzz_theme') as 'system' | 'light' | 'dark' | null;
     if (savedTheme) {

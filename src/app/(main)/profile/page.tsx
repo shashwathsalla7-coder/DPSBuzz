@@ -12,23 +12,50 @@ export default function ProfileRedirect() {
       const stored = localStorage.getItem('dpsbuzz_user');
       if (stored) {
         const parsed = JSON.parse(stored);
-        if (parsed.username && !DUMMY_TEST_USERNAMES.has(parsed.username.toLowerCase())) {
-          router.replace(`/u/${parsed.username}`);
-          return;
+        if (
+          parsed &&
+          parsed.username &&
+          parsed.username.toLowerCase() !== 'guest' &&
+          !DUMMY_TEST_USERNAMES.has(parsed.username.toLowerCase())
+        ) {
+          if (parsed.username.toLowerCase() === 'shashwath71845') {
+            if (localStorage.getItem('dpsbuzz_shashwath_authenticated') === 'true') {
+              router.replace(`/u/${parsed.username}`);
+              return;
+            }
+          } else {
+            router.replace(`/u/${parsed.username}`);
+            return;
+          }
         }
       }
     } catch {}
+
     const cur = DataStore.getCurrentUser();
-    if (cur && cur.username && !DUMMY_TEST_USERNAMES.has(cur.username.toLowerCase())) {
-      router.replace(`/u/${cur.username}`);
-    } else {
-      router.replace('/login');
+    if (
+      cur &&
+      cur.username &&
+      cur.username.toLowerCase() !== 'guest' &&
+      !DUMMY_TEST_USERNAMES.has(cur.username.toLowerCase())
+    ) {
+      if (cur.username.toLowerCase() === 'shashwath71845') {
+        if (localStorage.getItem('dpsbuzz_shashwath_authenticated') === 'true') {
+          router.replace(`/u/${cur.username}`);
+          return;
+        }
+      } else {
+        router.replace(`/u/${cur.username}`);
+        return;
+      }
     }
+
+    router.replace('/login');
   }, [router]);
 
   return (
-    <div className="p-8 text-center text-xs" style={{ color: 'var(--text-muted)' }}>
-      Opening profile...
+    <div className="min-h-[50vh] flex flex-col items-center justify-center p-4">
+      <div className="w-8 h-8 rounded-full border-2 border-pink-500 border-t-transparent animate-spin mb-3" />
+      <p className="text-xs text-neutral-400 font-medium">Opening profile...</p>
     </div>
   );
 }

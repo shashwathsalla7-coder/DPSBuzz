@@ -42,6 +42,12 @@ export default function HomePage() {
 
 function HomeContent() {
   const router = useRouter();
+  if (typeof window !== 'undefined') {
+    const cur = DataStore.getCurrentUser();
+    if (!cur || !cur.username || cur.username.toLowerCase() === 'guest') {
+      return null;
+    }
+  }
   const [posts, setPosts] = useState<Post[]>([]);
   const [notices, setNotices] = useState<Notice[]>([]);
   const [broadcastAlert, setBroadcastAlert] = useState<BroadcastAlert | null>(null);
@@ -119,6 +125,14 @@ function HomeContent() {
   const currentUser = DataStore.getCurrentUser();
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const cur = DataStore.getCurrentUser();
+      if (!cur || !cur.username || cur.username.toLowerCase() === 'guest') {
+        router.replace('/login');
+        return;
+      }
+    }
+
     // Check URL parameters for demo states (?state=loading or ?state=empty)
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);

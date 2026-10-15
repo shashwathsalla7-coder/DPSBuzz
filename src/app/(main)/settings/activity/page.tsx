@@ -98,8 +98,11 @@ function YourActivityContent() {
 
   const loadAllData = () => {
     const cur = DataStore.getCurrentUser();
+    if (!cur || !cur.username || cur.username.toLowerCase() === 'guest') {
+      router.replace('/login');
+      return;
+    }
     setCurrentUser(cur);
-    if (!cur?.username) return;
 
     const username = cur.username;
     setLikedPosts(DataStore.getUserLikedPosts(username));

@@ -34,6 +34,7 @@ import {
   GripVertical,
   Tag,
   Maximize2,
+  Lock,
 } from 'lucide-react';
 import Link from 'next/link';
 import { DataStore, type Profile, type HabitStreak, type SongTrack, type Post } from '@/lib/dataStore';
@@ -361,13 +362,23 @@ export default function ProfileClient({ username }: { username: string }) {
       const stored = localStorage.getItem('dpsbuzz_user');
       if (stored) {
         const parsed = JSON.parse(stored);
-        if (parsed?.username && parsed.username.toLowerCase().trim() === profile.username.toLowerCase().trim()) {
-          return true;
+        if (parsed?.username && parsed.username.toLowerCase() !== 'guest') {
+          if (parsed.username.toLowerCase().trim() === profile.username.toLowerCase().trim()) {
+            if (parsed.username.toLowerCase() === 'shashwath71845') {
+              return localStorage.getItem('dpsbuzz_shashwath_authenticated') === 'true';
+            }
+            return true;
+          }
         }
       }
       const cur = DataStore.getCurrentUser();
-      if (cur?.username && cur.username.toLowerCase().trim() === profile.username.toLowerCase().trim()) {
-        return true;
+      if (cur?.username && cur.username.toLowerCase() !== 'guest') {
+        if (cur.username.toLowerCase().trim() === profile.username.toLowerCase().trim()) {
+          if (cur.username.toLowerCase() === 'shashwath71845') {
+            return localStorage.getItem('dpsbuzz_shashwath_authenticated') === 'true';
+          }
+          return true;
+        }
       }
     } catch {}
     return false;
@@ -1014,59 +1025,78 @@ export default function ProfileClient({ username }: { username: string }) {
           )}
         </div>
 
-        {/* Highlights Row */}
-        <div className="pt-1.5 flex items-center gap-4 overflow-x-auto no-scrollbar">
-          {/* (+) New Highlight Button */}
-          <div
-            onClick={() => setShowNewHighlightModal(true)}
-            className="flex flex-col items-center gap-1 shrink-0 cursor-pointer group"
-          >
-            <div
-              className="w-14 h-14 rounded-full border border-dashed flex items-center justify-center group-hover:border-[var(--primary)] transition-colors"
-              style={{
-                borderColor: 'var(--line-strong)',
-                backgroundColor: 'var(--surface-sunken)',
-                color: 'var(--text-muted)',
-              }}
-            >
-              <span className="text-xl font-light leading-none">+</span>
-            </div>
-            <span className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>
-              New
-            </span>
-          </div>
-
-          {/* User's Highlights */}
-          {highlights.map((h) => (
-            <div
-              key={h.id}
-              onClick={() => showToast(`Opening "${h.label}" highlight stories`)}
-              className="flex flex-col items-center gap-1 shrink-0 cursor-pointer group"
-            >
+        {/* Highlights Row (Only visible to owner, or if public, or if following) */}
+        {(isOwnProfile || !profile.isPrivate || isFollowing) && (
+          <div className="pt-1.5 flex items-center gap-4 overflow-x-auto no-scrollbar">
+            {/* (+) New Highlight Button (Only visible to account owner) */}
+            {isOwnProfile && (
               <div
-                className="w-14 h-14 rounded-full border flex items-center justify-center text-xl transition-transform group-hover:scale-105"
-                style={{
-                  borderColor: 'var(--line)',
-                  backgroundColor: 'var(--surface-sunken)',
-                }}
+                onClick={() => setShowNewHighlightModal(true)}
+                className="flex flex-col items-center gap-1 shrink-0 cursor-pointer group"
               >
-                {h.emoji}
+                <div
+                  className="w-14 h-14 rounded-full border border-dashed flex items-center justify-center group-hover:border-[var(--primary)] transition-colors"
+                  style={{
+                    borderColor: 'var(--line-strong)',
+                    backgroundColor: 'var(--surface-sunken)',
+                    color: 'var(--text-muted)',
+                  }}
+                >
+                  <span className="text-xl font-light leading-none">+</span>
+                </div>
+                <span className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>
+                  New
+                </span>
               </div>
-              <span className="text-[11px] font-medium truncate max-w-[60px]" style={{ color: 'var(--text)' }}>
-                {h.label}
-              </span>
-            </div>
-          ))}
-        </div>
+            )}
+
+            {/* User's Highlights */}
+            {highlights.map((h) => (
+              <div
+                key={h.id}
+                onClick={() => showToast(`Opening "${h.label}" highlight stories`)}
+                className="flex flex-col items-center gap-1 shrink-0 cursor-pointer group"
+              >
+                <div
+                  className="w-14 h-14 rounded-full border flex items-center justify-center text-xl transition-transform group-hover:scale-105"
+                  style={{
+                    borderColor: 'var(--line)',
+                    backgroundColor: 'var(--surface-sunken)',
+                  }}
+                >
+                  {h.emoji}
+                </div>
+                <span className="text-[11px] font-medium truncate max-w-[60px]" style={{ color: 'var(--text)' }}>
+                  {h.label}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Grid Tab Bar */}
-      <div
-        className="flex items-center justify-between border-t border-b mt-2 max-w-[480px] mx-auto px-1"
-        style={{
-          borderColor: 'var(--line)',
-        }}
-      >
+      {/* If Account is Private and Viewer is Not Following & Not Own Profile */}
+      {!isOwnProfile && Boolean(profile.isPrivate) && !isFollowing ? (
+        <div className="max-w-[480px] mx-auto px-6 py-20 text-center space-y-4 select-none border-t border-[var(--line)] mt-3">
+          <div className="w-16 h-16 rounded-full bg-[var(--surface-sunken)] border border-[var(--line)] mx-auto flex items-center justify-center text-[var(--text-muted)] shadow-xs">
+            <Lock size={28} />
+          </div>
+          <div className="space-y-1">
+            <h3 className="text-sm font-bold text-[var(--text)]">This Account is Private 🔒</h3>
+            <p className="text-xs text-[var(--text-muted)] max-w-xs mx-auto leading-relaxed">
+              Follow @{profile.username} to see their photos, stories, and posts.
+            </p>
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* Grid Tab Bar */}
+          <div
+            className="flex items-center justify-between border-t border-b mt-2 max-w-[480px] mx-auto px-1"
+            style={{
+              borderColor: 'var(--line)',
+            }}
+          >
         <div className="flex flex-1">
           <button
             onClick={() => setActiveTab('posts')}
@@ -1503,6 +1533,8 @@ export default function ProfileClient({ username }: { username: string }) {
           </div>
         )}
       </div>
+    </>
+  )}
 
       {/* ─── Post Detail Modal (Interactive view & Repost from Grid) ─────────── */}
       {selectedPostDetail && (
