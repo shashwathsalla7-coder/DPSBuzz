@@ -11,6 +11,16 @@ import {
 
 export type { CallSession };
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+export const fetchCache = 'force-no-store';
+
+const NO_CACHE_HEADERS = {
+  'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0, s-maxage=0',
+  Pragma: 'no-cache',
+  Expires: '0',
+};
+
 // In-memory fast cache for instantaneous same-container lookups
 declare global {
   var __dpsbuzz_active_calls: Map<string, CallSession> | undefined;
@@ -32,24 +42,33 @@ export async function GET(req: NextRequest) {
       const serverCall = await getServerCall(callId);
       if (serverCall) {
         localCache.set(callId, serverCall);
-        return NextResponse.json({ success: true, call: serverCall, activeCall: serverCall });
+        return NextResponse.json(
+          { success: true, call: serverCall, activeCall: serverCall },
+          { headers: NO_CACHE_HEADERS }
+        );
       }
       const call = localCache.get(callId) || null;
-      return NextResponse.json({ success: true, call, activeCall: call });
+      return NextResponse.json(
+        { success: true, call, activeCall: call },
+        { headers: NO_CACHE_HEADERS }
+      );
     }
 
     if (username) {
       const serverCall = await findUserActiveCall(username);
       if (serverCall) {
         localCache.set(serverCall.callId, serverCall);
-        return NextResponse.json({ success: true, activeCall: serverCall });
+        return NextResponse.json(
+          { success: true, activeCall: serverCall },
+          { headers: NO_CACHE_HEADERS }
+        );
       }
-      return NextResponse.json({ success: true, activeCall: null });
+      return NextResponse.json({ success: true, activeCall: null }, { headers: NO_CACHE_HEADERS });
     }
 
-    return NextResponse.json({ success: true, activeCall: null });
+    return NextResponse.json({ success: true, activeCall: null }, { headers: NO_CACHE_HEADERS });
   } catch (err: any) {
-    return NextResponse.json({ success: true, activeCall: null });
+    return NextResponse.json({ success: true, activeCall: null }, { headers: NO_CACHE_HEADERS });
   }
 }
 
