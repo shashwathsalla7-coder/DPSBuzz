@@ -864,10 +864,16 @@ export async function updateServerCall(
   if (updates.iceCandidates) {
     const candMap = new Map<string, any>();
     mergedCandidates.forEach((c) => {
-      if (c && c.candidate) candMap.set(JSON.stringify(c.candidate), c);
+      if (c && c.candidate) {
+        const key = `${c.sender || ''}_${typeof c.candidate === 'string' ? c.candidate : JSON.stringify(c.candidate)}`;
+        candMap.set(key, c);
+      }
     });
     updates.iceCandidates.forEach((c) => {
-      if (c && c.candidate) candMap.set(JSON.stringify(c.candidate), c);
+      if (c && c.candidate) {
+        const key = `${c.sender || ''}_${typeof c.candidate === 'string' ? c.candidate : JSON.stringify(c.candidate)}`;
+        candMap.set(key, c);
+      }
     });
     mergedCandidates = Array.from(candMap.values());
   }

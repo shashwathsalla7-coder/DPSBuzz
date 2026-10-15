@@ -139,6 +139,16 @@ function createSyntheticAudioTrack(): MediaStreamTrack | null {
   return null;
 }
 
+// Ensure candidate preserves sdpMid and sdpMLineIndex for valid WebRTC audio/video routing
+function serializeCandidate(c: RTCIceCandidate) {
+  return {
+    candidate: c.candidate,
+    sdpMid: c.sdpMid !== null && c.sdpMid !== undefined ? c.sdpMid : '0',
+    sdpMLineIndex: c.sdpMLineIndex !== null && c.sdpMLineIndex !== undefined ? c.sdpMLineIndex : 0,
+    usernameFragment: c.usernameFragment || undefined,
+  };
+}
+
 // Synthetic video track generator
 function createSyntheticVideoTrack(label: string): MediaStreamTrack | null {
   try {
@@ -206,17 +216,25 @@ export function GlobalCallProvider() {
   const ingestIceCandidate = useCallback(async (pc: RTCPeerConnection, cand: any) => {
     try {
       if (!cand) return;
-      const rawCandidate = cand.candidate !== undefined ? cand.candidate : cand;
-      if (!rawCandidate) return;
+      const raw = cand.candidate !== undefined ? cand.candidate : cand;
+      if (!raw) return;
 
-      const key = typeof rawCandidate === 'string' ? rawCandidate : JSON.stringify(rawCandidate);
-      if (processedCandidatesRef.current.has(key)) return;
-      processedCandidatesRef.current.add(key);
+      const rawString = typeof raw === 'string' ? raw : (raw.candidate || JSON.stringify(raw));
+      if (!rawString) return;
 
-      let candidateInit: any = rawCandidate;
-      if (typeof rawCandidate === 'string') {
-        candidateInit = { candidate: rawCandidate };
-      }
+      if (processedCandidatesRef.current.has(rawString)) return;
+      processedCandidatesRef.current.add(rawString);
+
+      const candidateInit: RTCIceCandidateInit = typeof raw === 'string'
+        ? { candidate: raw, sdpMid: '0', sdpMLineIndex: 0 }
+        : {
+            candidate: raw.candidate || rawString,
+            sdpMid: raw.sdpMid !== undefined && raw.sdpMid !== null ? String(raw.sdpMid) : '0',
+            sdpMLineIndex: raw.sdpMLineIndex !== undefined && raw.sdpMLineIndex !== null ? Number(raw.sdpMLineIndex) : 0,
+            usernameFragment: raw.usernameFragment,
+          };
+
+      if (!candidateInit.candidate) return;
 
       if (pc.remoteDescription && pc.remoteDescription.type) {
         await pc.addIceCandidate(new RTCIceCandidate(candidateInit));
@@ -512,10 +530,14 @@ export function GlobalCallProvider() {
       peerConnRef.current = pc;
 
       // Add local media tracks to peer connection
-      stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+      stream.getTracks().forEach((track) => {
+        track.enabled = true;
+        pc.addTrack(track, stream);
+      });
 
       pc.ontrack = (event) => {
         console.log('[WebRTC] Receiver received remote track:', event.track.kind);
+        event.track.enabled = true;
         let targetStream = remoteMediaStreamRef.current;
         if (!targetStream) {
           targetStream = event.streams && event.streams[0] ? event.streams[0] : new MediaStream();
@@ -533,6 +555,45 @@ export function GlobalCallProvider() {
           try { pc.restartIce(); } catch {}
         }
       };
+
+      const handleReceiverDisconnect = () => {
+        const cState = pc.connectionState;
+        const iState = pc.iceConnectionState;
+        console.log('[WebRTC] Receiver connection state:', cState, 'ICE:', iState);
+        if (
+          cState === 'disconnected' ||
+          cState === 'failed' ||
+          cState === 'closed' ||
+          iState === 'disconnected' ||
+          iState === 'failed' ||
+          iState === 'closed'
+        ) {
+          setTimeout(() => {
+            const currentPc = peerConnRef.current;
+            if (!currentPc) return;
+            const cs = currentPc.connectionState;
+            const is = currentPc.iceConnectionState;
+            if (
+              cs === 'disconnected' ||
+              cs === 'failed' ||
+              cs === 'closed' ||
+              is === 'disconnected' ||
+              is === 'failed' ||
+              is === 'closed'
+            ) {
+              console.log('[WebRTC] Remote peer disconnected or closed.');
+              stopCallAudio();
+              playCallEndedSound();
+              cleanUpCallResources();
+              setActiveCall(null);
+              setDurationSeconds(0);
+            }
+          }, 1500);
+        }
+      };
+
+      pc.onconnectionstatechange = handleReceiverDisconnect;
+      pc.oniceconnectionstatechange = handleReceiverDisconnect;
 
       // Batch receiver ICE candidates in 80ms bursts to prevent HTTP spam
       let candidateBatch: any[] = [];
@@ -557,7 +618,7 @@ export function GlobalCallProvider() {
 
       pc.onicecandidate = (event) => {
         if (event.candidate) {
-          candidateBatch.push(event.candidate);
+          candidateBatch.push(serializeCandidate(event.candidate));
           if (batchTimer) clearTimeout(batchTimer);
           batchTimer = setTimeout(flushCandidates, 80);
         }
@@ -594,6 +655,7 @@ export function GlobalCallProvider() {
 
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
+        await waitForIceGathering(pc, 400);
         sdpAnswer = pc.localDescription || answer;
       }
 
@@ -720,10 +782,14 @@ export function GlobalCallProvider() {
         const pc = new RTCPeerConnection(ICE_SERVERS);
         peerConnRef.current = pc;
 
-        stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+        stream.getTracks().forEach((track) => {
+          track.enabled = true;
+          pc.addTrack(track, stream);
+        });
 
         pc.ontrack = (event) => {
           console.log('[WebRTC] Caller received remote track:', event.track.kind);
+          event.track.enabled = true;
           let targetStream = remoteMediaStreamRef.current;
           if (!targetStream) {
             targetStream = event.streams && event.streams[0] ? event.streams[0] : new MediaStream();
@@ -735,15 +801,47 @@ export function GlobalCallProvider() {
           setRemoteStream(new MediaStream(targetStream.getTracks()));
         };
 
-        pc.oniceconnectionstatechange = () => {
-          console.log('[WebRTC] Caller ICE connection state:', pc.iceConnectionState);
-          if (pc.iceConnectionState === 'failed') {
-            try { pc.restartIce(); } catch {}
+        const handleCallerDisconnect = () => {
+          const cState = pc.connectionState;
+          const iState = pc.iceConnectionState;
+          console.log('[WebRTC] Caller connection state:', cState, 'ICE:', iState);
+          if (
+            cState === 'disconnected' ||
+            cState === 'failed' ||
+            cState === 'closed' ||
+            iState === 'disconnected' ||
+            iState === 'failed' ||
+            iState === 'closed'
+          ) {
+            setTimeout(() => {
+              const currentPc = peerConnRef.current;
+              if (!currentPc) return;
+              const cs = currentPc.connectionState;
+              const is = currentPc.iceConnectionState;
+              if (
+                cs === 'disconnected' ||
+                cs === 'failed' ||
+                cs === 'closed' ||
+                is === 'disconnected' ||
+                is === 'failed' ||
+                is === 'closed'
+              ) {
+                console.log('[WebRTC] Remote peer disconnected or closed.');
+                stopCallAudio();
+                playCallEndedSound();
+                cleanUpCallResources();
+                setActiveCall(null);
+                setDurationSeconds(0);
+              }
+            }, 1500);
           }
         };
 
+        pc.onconnectionstatechange = handleCallerDisconnect;
+        pc.oniceconnectionstatechange = handleCallerDisconnect;
+
         // Candidate batching to prevent HTTP queue storms and Cloudinary collisions
-        let candidateBatch: RTCIceCandidate[] = [];
+        let candidateBatch: any[] = [];
         let batchTimer: any = null;
 
         const flushCandidates = () => {
@@ -766,7 +864,7 @@ export function GlobalCallProvider() {
 
         pc.onicecandidate = (event) => {
           if (event.candidate) {
-            candidateBatch.push(event.candidate);
+            candidateBatch.push(serializeCandidate(event.candidate));
             if (batchTimer) clearTimeout(batchTimer);
             batchTimer = setTimeout(flushCandidates, 80);
           }
@@ -899,12 +997,19 @@ export function GlobalCallProvider() {
               }
             } else if (serverCall.status === 'rejected') {
               stopCallAudio();
+              playCallEndedSound();
+              cleanUpCallResources();
+              setActiveCall(null);
+              setDurationSeconds(0);
               alert(`${activeCall.receiverName || 'Student'} declined the call.`);
-              handleEndCall();
               return;
             } else if (serverCall.status === 'ended') {
+              console.log('[WebRTC] Remote peer ended call on server. Terminating locally.');
               stopCallAudio();
-              handleEndCall();
+              playCallEndedSound();
+              cleanUpCallResources();
+              setActiveCall(null);
+              setDurationSeconds(0);
               return;
             } else if (isCaller && activeCall.status === 'ringing') {
               // Ringing timeout guard while still ringing on server
@@ -926,17 +1031,28 @@ export function GlobalCallProvider() {
                 }
               }
             }
-          } else if (activeCall.status === 'connected') {
-            // Keep active call connected while user is on screen
-            consecutiveMissedPollsRef.current = 0;
-          } else if (isCaller && activeCall.status === 'ringing') {
-            // Ringing timeout guard: after 45 seconds of no answer, end call with unavailable message
-            const callAge = Date.now() - (activeCall.createdAt || Date.now());
-            if (callAge > 45000) {
-              stopCallAudio();
-              alert(`No answer from @${activeCall.receiverUsername}. They are currently unavailable.`);
-              handleEndCall();
-              return;
+          } else {
+            // serverCall is absent or mismatched
+            if (activeCall.status === 'connected') {
+              consecutiveMissedPollsRef.current += 1;
+              if (consecutiveMissedPollsRef.current >= 3) {
+                console.log('[WebRTC] Active call ended or missing from server for 3 polls. Terminating locally.');
+                stopCallAudio();
+                playCallEndedSound();
+                cleanUpCallResources();
+                setActiveCall(null);
+                setDurationSeconds(0);
+                return;
+              }
+            } else if (isCaller && activeCall.status === 'ringing') {
+              // Ringing timeout guard: after 45 seconds of no answer, end call with unavailable message
+              const callAge = Date.now() - (activeCall.createdAt || Date.now());
+              if (callAge > 45000) {
+                stopCallAudio();
+                alert(`No answer from @${activeCall.receiverUsername}. They are currently unavailable.`);
+                handleEndCall();
+                return;
+              }
             }
           }
         }
@@ -1002,6 +1118,7 @@ export function GlobalCallProvider() {
       if (msg.type === 'CALL_ENDED' || msg.type === 'CALL_REJECTED') {
         if (activeCall?.callId === msg.callId || incomingCall?.callId === msg.callId) {
           stopCallAudio();
+          playCallEndedSound();
           cleanUpCallResources();
           setActiveCall(null);
           setIncomingCall(null);

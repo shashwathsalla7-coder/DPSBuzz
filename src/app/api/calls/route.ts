@@ -248,8 +248,10 @@ export async function POST(req: NextRequest) {
         endedAt: Date.now(),
         durationSeconds: 0,
       };
-      localCache.delete(callId);
-      await updateServerCall(callId, call ? { ...call, ...updates } : updates);
+      const finalCall = call ? { ...call, ...updates } : ({ callId, ...updates } as any);
+      localCache.set(callId, finalCall);
+      setTimeout(() => localCache.delete(callId), 15000);
+      await updateServerCall(callId, finalCall);
       return NextResponse.json({ success: true });
     }
 
@@ -268,8 +270,26 @@ export async function POST(req: NextRequest) {
         endedAt,
         durationSeconds,
       };
-      localCache.delete(callId);
-      await updateServerCall(callId, call ? { ...call, ...updates } : updates);
+      const finalCall: CallSession = {
+        callId,
+        callerUsername: call?.callerUsername || body.callerUsername || '',
+        callerName: call?.callerName || '',
+        callerAvatar: call?.callerAvatar || null,
+        receiverUsername: call?.receiverUsername || body.receiverUsername || '',
+        receiverName: call?.receiverName || '',
+        receiverAvatar: call?.receiverAvatar || null,
+        isVideo: call?.isVideo ?? false,
+        createdAt: call?.createdAt || Date.now(),
+        ...call,
+        ...updates,
+        status: 'ended',
+      };
+
+      // Keep in localCache for 15s so polling peers receive the ended status cleanly
+      localCache.set(callId, finalCall);
+      setTimeout(() => localCache.delete(callId), 15000);
+
+      await updateServerCall(callId, finalCall);
       return NextResponse.json({ success: true, durationSeconds });
     }
 
@@ -307,28 +327,30 @@ export async function POST(req: NextRequest) {
       const candidates = call.iceCandidates ? [...call.iceCandidates] : [];
       let addedAny = false;
 
-      // Handle single candidate
+      // Handle single candidate (preserving full object with sdpMid & sdpMLineIndex)
       if (candidate && sender) {
-        const rawCandidate = candidate.candidate !== undefined ? candidate.candidate : candidate;
+        const candObj = typeof candidate === 'object' ? candidate : { candidate };
+        const key = typeof candObj.candidate === 'string' ? candObj.candidate : JSON.stringify(candObj);
         const exists = candidates.some(
-          (c) => c.sender === sender && JSON.stringify(c.candidate) === JSON.stringify(rawCandidate)
+          (c) => c.sender === sender && (typeof c.candidate === 'string' ? c.candidate : JSON.stringify(c.candidate)) === key
         );
         if (!exists) {
-          candidates.push({ sender, candidate: rawCandidate });
+          candidates.push({ sender, candidate: candObj });
           addedAny = true;
         }
       }
 
-      // Handle batch candidates array
+      // Handle batch candidates array (preserving full object with sdpMid & sdpMLineIndex)
       if (body.candidates && Array.isArray(body.candidates) && sender) {
         body.candidates.forEach((cand: any) => {
           if (!cand) return;
-          const rawCandidate = cand.candidate !== undefined ? cand.candidate : cand;
+          const candObj = typeof cand === 'object' ? cand : { candidate: cand };
+          const key = typeof candObj.candidate === 'string' ? candObj.candidate : JSON.stringify(candObj);
           const exists = candidates.some(
-            (c) => c.sender === sender && JSON.stringify(c.candidate) === JSON.stringify(rawCandidate)
+            (c) => c.sender === sender && (typeof c.candidate === 'string' ? c.candidate : JSON.stringify(c.candidate)) === key
           );
           if (!exists) {
-            candidates.push({ sender, candidate: rawCandidate });
+            candidates.push({ sender, candidate: candObj });
             addedAny = true;
           }
         });

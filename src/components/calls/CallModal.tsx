@@ -57,6 +57,11 @@ export function CallModal({
   const pipVideoRef = useRef<HTMLVideoElement | null>(null);
   const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
 
+  // Web Audio Context & Node refs for mobile loudspeaker amplification
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const sourceNodeRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const gainNodeRef = useRef<GainNode | null>(null);
+
   const [isPipSwapped, setIsPipSwapped] = useState(false);
   const [hasRemoteVideo, setHasRemoteVideo] = useState(false);
   const [needsAudioUnlock, setNeedsAudioUnlock] = useState(false);
@@ -78,7 +83,7 @@ export function CallModal({
 
     const checkVideoTracks = () => {
       const vTracks = remoteStream.getVideoTracks();
-      const hasLiveTrack = vTracks.length > 0 && vTracks.some((t) => t.readyState === 'live');
+      const hasLiveTrack = vTracks.length > 0 && vTracks.some((t) => t.enabled && t.readyState !== 'ended');
       setHasRemoteVideo(hasLiveTrack);
     };
 
@@ -132,6 +137,7 @@ export function CallModal({
 
     const audioTracks = remoteStream.getAudioTracks();
     audioTracks.forEach((t) => {
+      t.enabled = true;
       t.addEventListener('unmute', playAudio);
     });
     remoteStream.addEventListener('addtrack', playAudio);
@@ -144,7 +150,60 @@ export function CallModal({
     };
   }, [remoteStream, isSpeakerMuted]);
 
-  // Video Call Main Video Element (Visual only, strictly muted)
+  // Web Audio Destination Bridge: amplifies and routes WebRTC audio to mobile loudspeakers
+  useEffect(() => {
+    if (!remoteStream) return;
+    const audioTracks = remoteStream.getAudioTracks();
+    if (audioTracks.length === 0) return;
+
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+
+      if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
+        audioCtxRef.current = new AudioCtx();
+      }
+      const ctx = audioCtxRef.current;
+      if (ctx.state === 'suspended') {
+        ctx.resume().catch(() => {});
+      }
+
+      if (sourceNodeRef.current) {
+        try { sourceNodeRef.current.disconnect(); } catch {}
+        sourceNodeRef.current = null;
+      }
+
+      const audioStream = new MediaStream(audioTracks);
+      const source = ctx.createMediaStreamSource(audioStream);
+      const gain = ctx.createGain();
+      gain.gain.value = isSpeakerMuted ? 0 : 1.0;
+      source.connect(gain);
+      gain.connect(ctx.destination);
+      sourceNodeRef.current = source;
+      gainNodeRef.current = gain;
+    } catch (e) {
+      console.warn('[WebAudio] Bridge setup non-fatal warning:', e);
+    }
+
+    return () => {
+      if (sourceNodeRef.current) {
+        try { sourceNodeRef.current.disconnect(); } catch {}
+        sourceNodeRef.current = null;
+      }
+    };
+  }, [remoteStream, isSpeakerMuted]);
+
+  // React to Speaker Mute Toggle
+  useEffect(() => {
+    if (gainNodeRef.current) {
+      gainNodeRef.current.gain.value = isSpeakerMuted ? 0 : 1.0;
+    }
+    if (remoteAudioRef.current) {
+      remoteAudioRef.current.muted = isSpeakerMuted;
+    }
+  }, [isSpeakerMuted]);
+
+  // Video Call Main Video Element
   useEffect(() => {
     if (!call.isVideo) return;
     const targetStream = isPipSwapped ? localStream : remoteStream;
@@ -152,12 +211,12 @@ export function CallModal({
       if (mainVideoRef.current.srcObject !== targetStream) {
         mainVideoRef.current.srcObject = targetStream;
       }
-      mainVideoRef.current.muted = true;
+      mainVideoRef.current.muted = isPipSwapped ? true : isSpeakerMuted;
       mainVideoRef.current.play().catch(() => {});
     }
-  }, [call.isVideo, localStream, remoteStream, isPipSwapped]);
+  }, [call.isVideo, localStream, remoteStream, isPipSwapped, isSpeakerMuted]);
 
-  // Video Call Floating PIP Video Element (Visual only, strictly muted)
+  // Video Call Floating PIP Video Element
   useEffect(() => {
     if (!call.isVideo) return;
     const pipStream = isPipSwapped ? remoteStream : localStream;
@@ -165,14 +224,17 @@ export function CallModal({
       if (pipVideoRef.current.srcObject !== pipStream) {
         pipVideoRef.current.srcObject = pipStream;
       }
-      pipVideoRef.current.muted = true;
+      pipVideoRef.current.muted = isPipSwapped ? isSpeakerMuted : true;
       pipVideoRef.current.play().catch(() => {});
     }
-  }, [call.isVideo, localStream, remoteStream, isPipSwapped]);
+  }, [call.isVideo, localStream, remoteStream, isPipSwapped, isSpeakerMuted]);
 
   // Global user interaction listener to unlock any blocked audio on mobile browsers
   useEffect(() => {
     const handleUnlock = () => {
+      if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') {
+        audioCtxRef.current.resume().catch(() => {});
+      }
       if (remoteAudioRef.current) {
         remoteAudioRef.current
           .play()
@@ -204,13 +266,22 @@ export function CallModal({
       aria-modal="true"
       aria-label={`${call.isVideo ? 'Video' : 'Voice'} call with ${otherPersonName}`}
     >
-      {/* Dedicated Remote Audio Element (In-DOM sr-only for mobile engine compliance) */}
+      {/* Dedicated Remote Audio Element */}
       <audio
         ref={remoteAudioRef}
         autoPlay
         playsInline
         muted={isSpeakerMuted}
-        className="sr-only"
+        style={{
+          position: 'fixed',
+          bottom: 0,
+          left: 0,
+          width: '10px',
+          height: '10px',
+          opacity: 0.001,
+          pointerEvents: 'none',
+          zIndex: -1,
+        }}
         aria-hidden="true"
       />
 
@@ -263,7 +334,9 @@ export function CallModal({
               ref={mainVideoRef}
               autoPlay
               playsInline
-              muted={true}
+              muted={isPipSwapped ? true : isSpeakerMuted}
+              onLoadedMetadata={() => setHasRemoteVideo(true)}
+              onPlaying={() => setHasRemoteVideo(true)}
               className={`w-full h-full object-cover transition-opacity duration-300 ${
                 (isPipSwapped && !isCameraOff) || (!isPipSwapped && hasRemoteVideo)
                   ? 'opacity-100'
@@ -308,7 +381,7 @@ export function CallModal({
                   ref={pipVideoRef}
                   autoPlay
                   playsInline
-                  muted={true}
+                  muted={isPipSwapped ? isSpeakerMuted : true}
                   className={`w-full h-full object-cover ${
                     (!isPipSwapped && !isCameraOff) || (isPipSwapped && hasRemoteVideo)
                       ? 'block'
