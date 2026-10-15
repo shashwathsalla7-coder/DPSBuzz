@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useEffect, useRef, Suspense } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import {
   ArrowLeft,
   Send,
@@ -21,6 +21,10 @@ import {
   Palette,
   Smile,
   Image as ImageIcon,
+  Ghost,
+  Camera,
+  Shield,
+  UserX,
 } from 'lucide-react';
 import { ChatsHeader } from '@/components/chats/ChatsHeader';
 import { ChatSearch } from '@/components/chats/ChatSearch';
@@ -55,6 +59,12 @@ interface ChatMessage {
     imageUrl?: string | null;
     caption?: string;
   };
+  is_vanish_mode_message?: boolean;
+  isVanishMode?: boolean;
+  is_deleted?: boolean;
+  is_read?: boolean;
+  isSeen?: boolean;
+  readAt?: number;
 }
 
 const INITIAL_CONVERSATIONS: ConversationItem[] = [];
@@ -64,6 +74,7 @@ const INITIAL_REQUESTS: MessageRequestItem[] = [];
 type ChipTab = 'all' | 'groups' | 'requests';
 
 function ChatsContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const stateParam = searchParams.get('state');
   const viewParam = searchParams.get('view') || searchParams.get('tab');
@@ -135,12 +146,31 @@ function ChatsContent() {
       setIsMaintenanceActive(!isAdminUser && DataStore.isMaintenanceActive());
       if (typeof window !== 'undefined') {
         try {
-          const savedMsgs = localStorage.getItem('dpsbuzz_chat_messages_v1');
-          if (savedMsgs) setChatMessages(JSON.parse(savedMsgs));
-          const savedConvs = localStorage.getItem('dpsbuzz_chat_conversations_v2');
-          if (savedConvs) {
-            const parsed = JSON.parse(savedConvs);
-            setConversations(parsed.filter((c: ConversationItem) => !c.username || !DUMMY_TEST_USERNAMES.has(c.username.toLowerCase())));
+          if (currentUsername && currentUsername !== 'guest') {
+            const userMsgKey = `dpsbuzz_chat_messages_${currentUsername}_v3`;
+            const savedMsgs = localStorage.getItem(userMsgKey);
+            if (savedMsgs) {
+              const parsed = JSON.parse(savedMsgs);
+              const cleanMap: Record<string, ChatMessage[]> = {};
+              for (const [k, v] of Object.entries(parsed)) {
+                if (k.startsWith('conv-group-')) {
+                  cleanMap[k] = v as ChatMessage[];
+                } else if (k.includes('__')) {
+                  const parts = k.split('__').map((p) => p.trim().toLowerCase());
+                  if (parts.includes(currentUsername)) {
+                    cleanMap[k] = v as ChatMessage[];
+                  }
+                }
+              }
+              setChatMessages(cleanMap);
+            }
+
+            const userConvKey = `dpsbuzz_chat_conversations_${currentUsername}_v3`;
+            const savedConvs = localStorage.getItem(userConvKey);
+            if (savedConvs) {
+              const parsed = JSON.parse(savedConvs);
+              setConversations(parsed.filter((c: ConversationItem) => !c.username || !DUMMY_TEST_USERNAMES.has(c.username.toLowerCase())));
+            }
           }
           refreshLiveStudents();
         } catch {}
@@ -152,7 +182,7 @@ function ChatsContent() {
       window.removeEventListener('dpsbuzz:content_updated', handleUpdate);
       window.removeEventListener('storage', handleUpdate);
     };
-  }, [isAdminUser]);
+  }, [isAdminUser, currentUsername]);
 
   const [activeChip, setActiveChip] = useState<ChipTab>(
     viewParam === 'requests' ? 'requests' : viewParam === 'groups' ? 'groups' : 'all'
@@ -161,16 +191,22 @@ function ChatsContent() {
   const [conversations, setConversations] = useState<ConversationItem[]>(() => {
     if (typeof window !== 'undefined') {
       try {
-        const saved = localStorage.getItem('dpsbuzz_chat_conversations_v2');
-        if (saved) {
-          const parsed: ConversationItem[] = JSON.parse(saved);
-          return parsed.filter((c) => !c.username || !DUMMY_TEST_USERNAMES.has(c.username.toLowerCase()));
+        const u = DataStore.getCurrentUser();
+        const uname = (u?.username || '').toLowerCase().trim();
+        if (uname && uname !== 'guest') {
+          const userConvKey = `dpsbuzz_chat_conversations_${uname}_v3`;
+          const saved = localStorage.getItem(userConvKey);
+          if (saved) {
+            const parsed: ConversationItem[] = JSON.parse(saved);
+            return parsed.filter((c) => !c.username || !DUMMY_TEST_USERNAMES.has(c.username.toLowerCase()));
+          }
         }
       } catch {}
     }
     return INITIAL_CONVERSATIONS;
   });
-  const [requests, setRequests] = useState<MessageRequestItem[]>(INITIAL_REQUESTS);
+  const [requestsState, setRequestsState] = useState<MessageRequestItem[]>(INITIAL_REQUESTS);
+  const [isVanishMode, setIsVanishMode] = useState(false);
   const [demoState, setDemoState] = useState<'normal' | 'loading' | 'empty' | 'error' | 'offline'>(
     stateParam === 'loading'
       ? 'loading'
@@ -198,18 +234,34 @@ function ChatsContent() {
   // Chat Wallpaper / Background & Emoji Drawer State
   const [isBgSelectorOpen, setIsBgSelectorOpen] = useState(false);
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
-  const [chatBackgrounds, setChatBackgrounds] = useState<Record<string, ChatBackgroundOption>>({});
+  const [chatBackgrounds, setChatBackgrounds] = useState<Record<string, ChatBackgroundOption>>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const u = DataStore.getCurrentUser();
+        const uname = (u?.username || '').toLowerCase().trim();
+        if (uname && uname !== 'guest') {
+          const bgKey = `dpsbuzz_chat_backgrounds_${uname}_v2`;
+          const saved = localStorage.getItem(bgKey);
+          if (saved) return JSON.parse(saved);
+        }
+      } catch {}
+    }
+    return {};
+  });
   const chatMediaInputRef = useRef<HTMLInputElement | null>(null);
 
   // Load persisted chat backgrounds from localStorage
   useEffect(() => {
     try {
-      const saved = localStorage.getItem('dpsbuzz_chat_backgrounds_v1');
-      if (saved) {
-        setChatBackgrounds(JSON.parse(saved));
+      if (currentUsername && currentUsername !== 'guest') {
+        const bgKey = `dpsbuzz_chat_backgrounds_${currentUsername}_v2`;
+        const saved = localStorage.getItem(bgKey);
+        if (saved) {
+          setChatBackgrounds(JSON.parse(saved));
+        }
       }
     } catch {}
-  }, []);
+  }, [currentUsername]);
 
   const handleSelectChatBg = (bg: ChatBackgroundOption, applyToAll = false) => {
     if (!activeConversation) return;
@@ -222,7 +274,10 @@ function ChatsContent() {
         next['global_default'] = bg;
       }
       try {
-        localStorage.setItem('dpsbuzz_chat_backgrounds_v1', JSON.stringify(next));
+        if (currentUsername && currentUsername !== 'guest') {
+          const bgKey = `dpsbuzz_chat_backgrounds_${currentUsername}_v2`;
+          localStorage.setItem(bgKey, JSON.stringify(next));
+        }
         window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated'));
       } catch {}
       return next;
@@ -260,28 +315,92 @@ function ChatsContent() {
   const [chatMessages, setChatMessages] = useState<Record<string, ChatMessage[]>>(() => {
     if (typeof window !== 'undefined') {
       try {
-        const saved = localStorage.getItem('dpsbuzz_chat_messages_v1');
-        if (saved) return JSON.parse(saved);
+        const u = DataStore.getCurrentUser();
+        const uname = (u?.username || '').toLowerCase().trim();
+        if (uname && uname !== 'guest') {
+          const userMsgKey = `dpsbuzz_chat_messages_${uname}_v3`;
+          const saved = localStorage.getItem(userMsgKey);
+          if (saved) return JSON.parse(saved);
+        }
       } catch {}
     }
     return {};
   });
 
-  // Automatically persist conversations to localStorage
+  // Automatically persist conversations to localStorage (scoped to current user)
   useEffect(() => {
+    if (typeof window === 'undefined' || !currentUsername) return;
     try {
-      localStorage.setItem('dpsbuzz_chat_conversations_v2', JSON.stringify(conversations));
+      localStorage.setItem(`dpsbuzz_chat_conversations_${currentUsername}_v3`, JSON.stringify(conversations));
     } catch {}
-  }, [conversations]);
+  }, [conversations, currentUsername]);
 
-  // Automatically persist messages to localStorage
+  // Automatically persist messages to localStorage (scoped to current user)
   useEffect(() => {
+    if (typeof window === 'undefined' || !currentUsername) return;
     try {
-      localStorage.setItem('dpsbuzz_chat_messages_v1', JSON.stringify(chatMessages));
+      localStorage.setItem(`dpsbuzz_chat_messages_${currentUsername}_v3`, JSON.stringify(chatMessages));
     } catch {}
-  }, [chatMessages]);
+  }, [chatMessages, currentUsername]);
 
-  // Live real-time polling (1.5s) when a conversation is actively open
+  // Computed Requests deriving from stranger threads + initial requests
+  const computedRequests = useMemo<MessageRequestItem[]>(() => {
+    if (!currentUsername || currentUsername === 'guest') return [];
+    const reqs: MessageRequestItem[] = [];
+    const seenUsers = new Set<string>();
+
+    for (const conv of conversations) {
+      if (conv.isGroup) continue;
+      const target = (conv.username || conv.id.replace(/^conv-/, '')).toLowerCase().trim();
+      if (!target || target === currentUsername) continue;
+      if (DataStore.isBlocked(currentUsername, target)) continue;
+
+      const tier = conv.inboxTier || DataStore.getInboxTier(currentUsername, target);
+      if (tier === 'REQUESTS') {
+        const msgs = chatMessages[conv.id] || chatMessages[[currentUsername, target].sort().join('__')] || [];
+        const lastMsg = msgs[msgs.length - 1];
+        const lastMsgIsMe = lastMsg
+          ? (lastMsg.senderUsername ? lastMsg.senderUsername.toLowerCase() === currentUsername : lastMsg.sender === 'me')
+          : false;
+
+        if (!lastMsgIsMe && !DataStore.getAcceptedMessageRequests(currentUsername).includes(target)) {
+          seenUsers.add(target);
+          reqs.push({
+            id: conv.id,
+            name: conv.name,
+            username: conv.username || target,
+            avatar: conv.avatar || null,
+            avatarUrl: conv.avatar || null,
+            studentClass: conv.studentClass || 'Student',
+            messagePreview: conv.lastMessage || 'Sent you a message',
+            timeAgo: conv.timeAgo || 'Just now',
+            mutualFollowsCount: DataStore.getMutualFollows(currentUsername, target).length,
+          });
+        }
+      }
+    }
+
+    for (const r of requestsState) {
+      const t = r.username.toLowerCase();
+      if (!seenUsers.has(t) && !DataStore.isBlocked(currentUsername, t) && !DataStore.getAcceptedMessageRequests(currentUsername).includes(t)) {
+        reqs.push(r);
+      }
+    }
+
+    return reqs;
+  }, [conversations, chatMessages, currentUsername, requestsState]);
+
+  // Sync Vanish Mode state for actively opened conversation
+  useEffect(() => {
+    if (activeConversation && !activeConversation.isGroup) {
+      const canonicalId = getCanonicalConvId(activeConversation);
+      setIsVanishMode(DataStore.getVanishMode(canonicalId));
+    } else {
+      setIsVanishMode(false);
+    }
+  }, [activeConversation]);
+
+  // Live accelerated polling (400ms) when a conversation is actively open
   useEffect(() => {
     if (!activeConversation) return;
     const rawId = activeConversation.id;
@@ -289,15 +408,35 @@ function ChatsContent() {
 
     const pollMessages = async () => {
       try {
-        const res = await fetch(`/api/chats?conversationId=${encodeURIComponent(canonicalId)}`);
+        const queryUrl = `/api/chats?conversationId=${encodeURIComponent(canonicalId)}&username=${encodeURIComponent(currentUsername)}`;
+        const res = await fetch(queryUrl);
+        if (res.status === 403 || res.status === 401) {
+          // Security Guard: User is not authorized to read this conversation!
+          setActiveConversation(null);
+          return;
+        }
         const data = await res.json();
         if (data.success && Array.isArray(data.messages) && data.messages.length > 0) {
           setChatMessages((prev) => {
             const currentList = prev[rawId] || prev[canonicalId] || [];
-            const existingIds = new Set(currentList.map((m) => m.id));
-            const newOnes = data.messages.filter((m: ChatMessage) => !existingIds.has(m.id));
-            if (newOnes.length > 0) {
-              const merged = [...currentList, ...newOnes];
+            let changed = false;
+            const msgMap = new Map(currentList.map((m) => [m.id, m]));
+            for (const sMsg of data.messages) {
+              const local = msgMap.get(sMsg.id);
+              if (!local) {
+                msgMap.set(sMsg.id, sMsg);
+                changed = true;
+              } else if (
+                Boolean(local.is_read) !== Boolean(sMsg.is_read) ||
+                Boolean(local.isSeen) !== Boolean(sMsg.isSeen) ||
+                local.reaction !== sMsg.reaction
+              ) {
+                msgMap.set(sMsg.id, { ...local, ...sMsg });
+                changed = true;
+              }
+            }
+            if (changed) {
+              const merged = Array.from(msgMap.values());
               return {
                 ...prev,
                 [rawId]: merged,
@@ -311,9 +450,267 @@ function ChatsContent() {
     };
 
     pollMessages();
-    const interval = setInterval(pollMessages, 1500);
+    const interval = setInterval(pollMessages, 400);
     return () => clearInterval(interval);
   }, [activeConversation, currentUsername]);
+
+  // Real-Time 0ms Instant Message Receiver (BroadcastChannel + CustomEvent)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleRealtimeChatEvent = (eventData: any) => {
+      if (!eventData || !eventData.type) return;
+      const { type, conversationId, message, msgId, reaction, isVanishMode: nextVanish, senderUsername } = eventData;
+
+      const isGroup = conversationId && conversationId.startsWith('conv-group-');
+      const isDirectWithMe = conversationId && conversationId.includes('__') &&
+        conversationId.split('__').map((p: string) => p.trim().toLowerCase()).includes(currentUsername);
+
+      if (!isGroup && !isDirectWithMe) return;
+
+      if (type === 'MESSAGE_SENT' && message) {
+        const incomingSender = (message.senderUsername || senderUsername || '').toLowerCase().trim();
+        const isMe = incomingSender === currentUsername;
+        const formattedMsg: ChatMessage = {
+          ...message,
+          sender: isMe ? 'me' : 'them',
+        };
+
+        setChatMessages((prev) => {
+          const rawId = activeConversation?.id;
+          const currentList = prev[conversationId] || (rawId ? prev[rawId] : []) || [];
+          if (currentList.some((m) => m.id === formattedMsg.id)) {
+            return prev;
+          }
+          const updated = [...currentList, formattedMsg];
+          const nextMap = {
+            ...prev,
+            [conversationId]: updated,
+            ...(rawId ? { [rawId]: updated } : {}),
+          };
+          try {
+            if (currentUsername) {
+              localStorage.setItem(`dpsbuzz_chat_messages_${currentUsername}_v3`, JSON.stringify(nextMap));
+            }
+          } catch {}
+          return nextMap;
+        });
+
+        const otherUser = conversationId.includes('__')
+          ? conversationId.split('__').map((p: string) => p.trim().toLowerCase()).find((p: string) => p !== currentUsername) || incomingSender
+          : incomingSender;
+
+        setConversations((prev) => {
+          const existingIdx = prev.findIndex(
+            (c) =>
+              (c.username || '').toLowerCase() === otherUser ||
+              c.id === `conv-${otherUser}` ||
+              c.id === conversationId
+          );
+          const previewText = isMe ? `You: ${message.text || 'Photo'}` : (message.text || 'Photo');
+          const isCurrentlyViewingThis =
+            activeConversation &&
+            ((activeConversation.username || '').toLowerCase() === otherUser ||
+              activeConversation.id === conversationId);
+
+          if (existingIdx >= 0) {
+            const updated = [...prev];
+            updated[existingIdx] = {
+              ...updated[existingIdx],
+              lastMessage: previewText,
+              timeAgo: 'Just now',
+              isUnread: isCurrentlyViewingThis ? false : !isMe,
+              unreadCount: isCurrentlyViewingThis ? 0 : isMe ? updated[existingIdx].unreadCount : (updated[existingIdx].unreadCount || 0) + 1,
+            };
+            const [item] = updated.splice(existingIdx, 1);
+            updated.unshift(item);
+            try {
+              if (currentUsername) {
+                localStorage.setItem(`dpsbuzz_chat_conversations_${currentUsername}_v3`, JSON.stringify(updated));
+              }
+            } catch {}
+            return updated;
+          } else {
+            const allProfiles = DataStore.getProfiles();
+            const prof = allProfiles.find((p) => (p.username || '').toLowerCase() === otherUser);
+            const incomingTier = DataStore.getInboxTier(currentUsername, otherUser);
+            const newConv: ConversationItem = {
+              id: `conv-${otherUser}`,
+              name: prof ? prof.fullName : otherUser,
+              username: otherUser,
+              avatar: prof?.avatar || null,
+              studentClass: prof ? `Class ${prof.class}-${prof.section || 'A'}` : 'Student',
+              lastMessage: previewText,
+              timeAgo: 'Just now',
+              inboxTier: incomingTier,
+              isUnread: isCurrentlyViewingThis ? false : !isMe,
+              unreadCount: isCurrentlyViewingThis ? 0 : isMe ? 0 : 1,
+            };
+            const updated = [newConv, ...prev];
+            try {
+              if (currentUsername) {
+                localStorage.setItem(`dpsbuzz_chat_conversations_${currentUsername}_v3`, JSON.stringify(updated));
+              }
+            } catch {}
+            return updated;
+          }
+        });
+      } else if (type === 'MESSAGE_UNSENT' && msgId) {
+        setChatMessages((prev) => {
+          const rawId = activeConversation?.id;
+          const currentList = prev[conversationId] || (rawId ? prev[rawId] : []) || [];
+          const filtered = currentList.filter((m) => m.id !== msgId);
+          return {
+            ...prev,
+            [conversationId]: filtered,
+            ...(rawId ? { [rawId]: filtered } : {}),
+          };
+        });
+      } else if (type === 'MESSAGE_REACTION' && msgId) {
+        setChatMessages((prev) => {
+          const rawId = activeConversation?.id;
+          const currentList = prev[conversationId] || (rawId ? prev[rawId] : []) || [];
+          const updated = currentList.map((m) => (m.id === msgId ? { ...m, reaction } : m));
+          return {
+            ...prev,
+            [conversationId]: updated,
+            ...(rawId ? { [rawId]: updated } : {}),
+          };
+        });
+      } else if (type === 'VANISH_TOGGLE') {
+        if (activeConversation && getCanonicalConvId(activeConversation) === conversationId) {
+          setIsVanishMode(!!nextVanish);
+        }
+      } else if (type === 'VANISH_PURGE') {
+        setChatMessages((prev) => {
+          const rawId = activeConversation?.id;
+          const currentList = prev[conversationId] || (rawId ? prev[rawId] : []) || [];
+          const nonVanish = currentList.filter((m) => !m.is_vanish_mode_message && !m.isVanishMode);
+          return {
+            ...prev,
+            [conversationId]: nonVanish,
+            ...(rawId ? { [rawId]: nonVanish } : {}),
+          };
+        });
+      } else if (type === 'MESSAGES_READ') {
+        const reader = (eventData.senderUsername || '').toLowerCase().trim();
+        setChatMessages((prev) => {
+          const rawId = activeConversation?.id;
+          const currentList = prev[conversationId] || (rawId ? prev[rawId] : []) || [];
+          let updatedAny = false;
+          const marked = currentList.map((m) => {
+            const sender = (m.senderUsername || '').toLowerCase().trim();
+            if (sender && sender !== reader && !m.is_read && !m.isSeen && !m.readAt) {
+              updatedAny = true;
+              return { ...m, is_read: true, isSeen: true, readAt: Date.now() };
+            }
+            return m;
+          });
+          if (!updatedAny) return prev;
+          return {
+            ...prev,
+            [conversationId]: marked,
+            ...(rawId ? { [rawId]: marked } : {}),
+          };
+        });
+      }
+    };
+
+    let channel: BroadcastChannel | null = null;
+    if (typeof BroadcastChannel !== 'undefined') {
+      try {
+        channel = new BroadcastChannel('dpsbuzz_realtime_chats');
+        channel.onmessage = (e) => {
+          handleRealtimeChatEvent(e.data);
+        };
+      } catch {}
+    }
+
+    const handleCustomChatEvent = (e: any) => {
+      handleRealtimeChatEvent(e.detail);
+    };
+    window.addEventListener('dpsbuzz:chat_event', handleCustomChatEvent);
+
+    return () => {
+      if (channel) channel.close();
+      window.removeEventListener('dpsbuzz:chat_event', handleCustomChatEvent);
+    };
+  }, [currentUsername, activeConversation]);
+
+  // Track active chat in sessionStorage for foreground heads-up notification silencing
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (activeConversation && !activeConversation.isGroup) {
+      const targetUser = (activeConversation.username || activeConversation.id.replace(/^conv-/, '')).toLowerCase().trim();
+      sessionStorage.setItem('dpsbuzz_active_chat_user', targetUser);
+    } else {
+      sessionStorage.removeItem('dpsbuzz_active_chat_user');
+    }
+    return () => {
+      sessionStorage.removeItem('dpsbuzz_active_chat_user');
+    };
+  }, [activeConversation]);
+
+  // Mark messages as read when active conversation is opened or viewed
+  useEffect(() => {
+    if (!activeConversation || activeConversation.isGroup || !currentUsername) return;
+    if (activeConversation.inboxTier === 'REQUESTS') return;
+
+    const canonicalId = getCanonicalConvId(activeConversation);
+    DataStore.markMessagesAsRead(canonicalId, currentUsername);
+  }, [activeConversation, currentUsername]);
+
+  // Handle incoming notification banner clicks / instantaneous switch
+  useEffect(() => {
+    const handleOpenChatEvent = (e: any) => {
+      const targetUser = (e.detail?.username || '').toLowerCase().trim();
+      if (!targetUser || (currentUsername && targetUser === currentUsername)) return;
+
+      const all = DataStore.getProfiles();
+      const prof = all.find((p) => (p.username || '').toLowerCase() === targetUser);
+      const displayName = prof ? prof.fullName : targetUser;
+      const displayClass = prof ? `Class ${prof.class}-${prof.section || 'A'}` : 'Student';
+
+      setConversations((prev) => {
+        const existing = prev.find((c) => (c.username || '').toLowerCase() === targetUser);
+        if (existing) {
+          const readConv = { ...existing, isUnread: false, unreadCount: 0 };
+          setActiveConversation(readConv);
+          const updated = prev.map((c) => (c.id === existing.id ? readConv : c));
+          try {
+            if (currentUsername) {
+              localStorage.setItem(`dpsbuzz_chat_conversations_${currentUsername}_v3`, JSON.stringify(updated));
+            }
+            window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated'));
+          } catch {}
+          return updated;
+        }
+        const newConv: ConversationItem = {
+          id: `conv-${targetUser}`,
+          name: displayName,
+          username: targetUser,
+          studentClass: displayClass,
+          avatar: prof?.avatar || null,
+          lastMessage: 'Started new conversation',
+          timeAgo: 'Just now',
+          isUnread: false,
+          unreadCount: 0,
+        };
+        setActiveConversation(newConv);
+        const updated = [newConv, ...prev];
+        try {
+          if (currentUsername) {
+            localStorage.setItem(`dpsbuzz_chat_conversations_${currentUsername}_v3`, JSON.stringify(updated));
+          }
+          window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated'));
+        } catch {}
+        return updated;
+      });
+    };
+
+    window.addEventListener('dpsbuzz:open_chat' as any, handleOpenChatEvent);
+    return () => window.removeEventListener('dpsbuzz:open_chat' as any, handleOpenChatEvent);
+  }, [currentUsername]);
 
   // Keep demoState synced if query parameter changes
   useEffect(() => {
@@ -345,7 +742,9 @@ function ChatsContent() {
         setActiveConversation(readConv);
         const updated = prev.map((c) => (c.id === existing.id ? readConv : c));
         try {
-          localStorage.setItem('dpsbuzz_chat_conversations_v2', JSON.stringify(updated));
+          if (currentUsername) {
+            localStorage.setItem(`dpsbuzz_chat_conversations_${currentUsername}_v3`, JSON.stringify(updated));
+          }
           window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated'));
         } catch {}
         return updated;
@@ -363,7 +762,9 @@ function ChatsContent() {
       setActiveConversation(newConv);
       const updated = [newConv, ...prev];
       try {
-        localStorage.setItem('dpsbuzz_chat_conversations_v2', JSON.stringify(updated));
+        if (currentUsername) {
+          localStorage.setItem(`dpsbuzz_chat_conversations_${currentUsername}_v3`, JSON.stringify(updated));
+        }
         window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated'));
       } catch {}
       return updated;
@@ -376,20 +777,25 @@ function ChatsContent() {
     refreshLiveStudents();
   }, []);
 
-  // Continuous background sync from cloud store (every 2.0s)
+  // Continuous background sync from cloud store (every 2.0s) with strict user parameter
   useEffect(() => {
     const fetchLatestSync = async () => {
       try {
-        const res = await fetch('/api/sync');
+        const syncUrl = currentUsername ? `/api/sync?username=${encodeURIComponent(currentUsername)}` : '/api/sync';
+        const res = await fetch(syncUrl);
         if (res.ok) {
           const data = await res.json();
           if (data.success) {
-            // 1. Merge incoming chat messages
+            // 1. Merge incoming chat messages strictly for this user
             if (data.chatMessages && typeof data.chatMessages === 'object') {
               setChatMessages((prev) => {
                 const merged = { ...prev };
                 let hasNew = false;
                 for (const [key, list] of Object.entries(data.chatMessages)) {
+                  const isGroup = key.startsWith('conv-group-');
+                  const isDirectWithMe = key.includes('__') && key.split('__').map((p) => p.trim().toLowerCase()).includes(currentUsername);
+                  if (!isGroup && !isDirectWithMe) continue;
+
                   if (Array.isArray(list)) {
                     const current = merged[key] || [];
                     const existingIds = new Set(current.map((m: any) => m.id));
@@ -402,7 +808,9 @@ function ChatsContent() {
                 }
                 if (hasNew) {
                   try {
-                    localStorage.setItem('dpsbuzz_chat_messages_v1', JSON.stringify(merged));
+                    if (currentUsername) {
+                      localStorage.setItem(`dpsbuzz_chat_messages_${currentUsername}_v3`, JSON.stringify(merged));
+                    }
                   } catch {}
                   return merged;
                 }
@@ -432,11 +840,11 @@ function ChatsContent() {
     };
 
     fetchLatestSync();
-    const interval = setInterval(fetchLatestSync, 2000);
+    const interval = setInterval(fetchLatestSync, 1000);
     return () => clearInterval(interval);
   }, [currentUsername]);
 
-  // Auto-sync inbox conversations list from chatMessages
+  // Auto-sync inbox conversations list from chatMessages strictly scoped to current user
   useEffect(() => {
     if (!currentUsername) return;
     const allProfiles = DataStore.getProfiles();
@@ -451,23 +859,43 @@ function ChatsContent() {
         if (!lastMsg) continue;
 
         let targetUser = '';
+        let isGroupConv = false;
         if (key.includes('__')) {
           const parts = key.split('__').map((p) => p.trim().toLowerCase());
           if (parts.includes(currentUsername)) {
             targetUser = parts.find((p) => p !== currentUsername) || '';
           }
-        } else if (key.startsWith('conv-') && !key.startsWith('conv-group-')) {
-          const raw = key.replace(/^conv-/, '').toLowerCase();
-          if (raw !== currentUsername) {
-            targetUser = raw;
-          }
+        } else if (key.startsWith('conv-group-')) {
+          isGroupConv = true;
         }
 
-        if (targetUser) {
+        if (isGroupConv) {
+          const convIdx = updated.findIndex((c) => c.id === key);
+          if (convIdx >= 0) {
+            const existing = updated[convIdx];
+            if (existing.lastMessage !== lastMsg.text || existing.timeAgo !== (lastMsg.time || 'Just now')) {
+              updated[convIdx] = {
+                ...existing,
+                lastMessage: lastMsg.text,
+                timeAgo: lastMsg.time || 'Just now',
+              };
+              changed = true;
+            }
+          }
+        } else if (targetUser && targetUser !== currentUsername) {
           const isMe = lastMsg.senderUsername
             ? lastMsg.senderUsername.toLowerCase() === currentUsername
             : lastMsg.sender === 'me';
-          const msgPreview = isMe ? `You: ${lastMsg.text}` : lastMsg.text;
+
+          let msgPreview = isMe ? `You: ${lastMsg.text}` : lastMsg.text;
+          const storyMatch = lastMsg.text.match(/^(?:You replied to their story|Replied to their story|Replied to your story|Replied to story):\s*["']?([\s\S]*?)["']?\s*(?:💬)?$/i);
+          if (storyMatch) {
+            const rawContent = storyMatch[1].replace(/^["']|["']$/g, '').trim();
+            msgPreview = isMe
+              ? `You replied to their story: "${rawContent}" 💬`
+              : `Replied to your story: "${rawContent}" 💬`;
+          }
+
           const convIdx = updated.findIndex((c) => (c.username || '').toLowerCase() === targetUser);
 
           if (convIdx >= 0) {
@@ -505,11 +933,36 @@ function ChatsContent() {
   const liveFollowing = useMemo(() => liveStudents.filter((s) => s.isFollowing), [liveStudents]);
   const liveOthers = useMemo(() => liveStudents.filter((s) => !s.isFollowing), [liveStudents]);
 
-  // Filter conversations
+  // Filter conversations with strict privacy check
   const filteredConversations = useMemo(() => {
     if (demoState === 'empty') return [];
 
     let list = [...conversations];
+
+    // Privacy guard: Never include conversations that belong to other users or self
+    list = list.filter((c) => {
+      if (c.isGroup || c.type === 'group' || c.id.startsWith('conv-group-')) return true;
+      const target = (c.username || c.id.replace(/^conv-/, '')).toLowerCase().trim();
+      if (!target || target === currentUsername) return false;
+      if (DataStore.isBlocked(currentUsername, target)) return false;
+
+      // Instagram Architecture: In PRIMARY ('all') inbox, hide incoming message requests from strangers
+      if (activeChip !== 'requests') {
+        const tier = c.inboxTier || DataStore.getInboxTier(currentUsername, target);
+        if (tier === 'REQUESTS') {
+          const msgs = chatMessages[c.id] || chatMessages[[currentUsername, target].sort().join('__')] || [];
+          const lastMsg = msgs[msgs.length - 1];
+          const lastMsgIsMe = lastMsg
+            ? (lastMsg.senderUsername ? lastMsg.senderUsername.toLowerCase() === currentUsername : lastMsg.sender === 'me')
+            : false;
+          if (!lastMsgIsMe && !DataStore.getAcceptedMessageRequests(currentUsername).includes(target)) {
+            return false;
+          }
+        }
+      }
+
+      return true;
+    });
 
     if (activeChip === 'groups') {
       list = list.filter((c) => c.isGroup || c.type === 'group');
@@ -527,7 +980,7 @@ function ChatsContent() {
     }
 
     return list;
-  }, [conversations, activeChip, searchQuery, demoState]);
+  }, [conversations, chatMessages, activeChip, searchQuery, demoState, currentUsername]);
 
   // Separate pinned, today, earlier
   const { pinnedList, todayList, earlierList } = useMemo(() => {
@@ -570,6 +1023,18 @@ function ChatsContent() {
   };
 
   const openConversation = (conv: ConversationItem) => {
+    const target = (conv.username || conv.id.replace(/^conv-/, '')).toLowerCase().trim();
+    const isIncomingReq =
+      !conv.isGroup &&
+      target &&
+      DataStore.getInboxTier(currentUsername, target) === 'REQUESTS';
+
+    // Anonymity (Invisible Reads): Opening/reading a message request never emits seen or clears unread
+    if (isIncomingReq) {
+      setActiveConversation(conv);
+      return;
+    }
+
     const readConv = { ...conv, isUnread: false, unreadCount: 0 };
     setActiveConversation(readConv);
     setConversations((prev) => {
@@ -579,7 +1044,9 @@ function ChatsContent() {
           : c
       );
       try {
-        localStorage.setItem('dpsbuzz_chat_conversations_v2', JSON.stringify(updated));
+        if (currentUsername && currentUsername !== 'guest') {
+          localStorage.setItem(`dpsbuzz_chat_conversations_${currentUsername}_v3`, JSON.stringify(updated));
+        }
         window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated'));
       } catch {}
       return updated;
@@ -659,7 +1126,9 @@ function ChatsContent() {
           [canonicalId]: updated,
         };
         try {
-          localStorage.setItem('dpsbuzz_chat_messages_v1', JSON.stringify(nextMap));
+          if (currentUsername) {
+            localStorage.setItem(`dpsbuzz_chat_messages_${currentUsername}_v3`, JSON.stringify(nextMap));
+          }
         } catch {}
         return nextMap;
       });
@@ -672,12 +1141,22 @@ function ChatsContent() {
         )
       );
 
+      // Instant 0ms broadcast across all tabs and components
+      DataStore.broadcastChatEvent({
+        type: 'MESSAGE_SENT',
+        conversationId: canonicalId,
+        message: newMsg,
+        senderUsername: currentUsername,
+        recipientUsername: note.username,
+      });
+
       // Dispatch to server endpoint for instant cross-device delivery
       fetch('/api/chats', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           conversationId: canonicalId,
+          senderUsername: currentUsername,
           recipientUsername: note.username,
           message: newMsg,
         }),
@@ -687,18 +1166,108 @@ function ChatsContent() {
     setActiveConversation(targetConv);
   };
 
-  const handleAcceptRequest = (req: MessageRequestItem) => {
-    const newConv: ConversationItem = {
-      id: `conv-${req.username}`,
-      name: req.name,
-      username: req.username,
-      studentClass: req.studentClass,
-      lastMessage: req.messagePreview,
-      timeAgo: req.timeAgo,
-      isUnread: true,
-    };
-    setConversations((prev) => [newConv, ...prev]);
-    setRequests((prev) => prev.filter((r) => r.id !== req.id));
+  const handleToggleVanishMode = () => {
+    if (!activeConversation || activeConversation.isGroup) return;
+    const canonicalId = getCanonicalConvId(activeConversation);
+    const nextVal = !isVanishMode;
+    setIsVanishMode(nextVal);
+    DataStore.setVanishMode(canonicalId, nextVal);
+  };
+
+  const handleCloseActiveChat = () => {
+    if (activeConversation) {
+      const canonicalId = getCanonicalConvId(activeConversation);
+      // Disappearance rule: purge vanish messages from storage & client state
+      DataStore.purgeVanishMessages(canonicalId, currentUsername);
+      setChatMessages((prev) => {
+        const existing = prev[canonicalId] || [];
+        const nonVanish = existing.filter((m) => !m.is_vanish_mode_message && !m.isVanishMode);
+        return {
+          ...prev,
+          [canonicalId]: nonVanish,
+          [activeConversation.id]: nonVanish,
+        };
+      });
+    }
+    setActiveConversation(null);
+  };
+
+  const handleAcceptRequestFromSandbox = (targetUser: string) => {
+    const cleanTarget = targetUser.toLowerCase().trim();
+    DataStore.acceptMessageRequest(currentUsername, cleanTarget);
+
+    setRequestsState((prev) => prev.filter((r) => r.username.toLowerCase() !== cleanTarget));
+
+    setConversations((prev) => {
+      const existingIdx = prev.findIndex(
+        (c) => (c.username || '').toLowerCase() === cleanTarget || c.id === `conv-${cleanTarget}`
+      );
+      if (existingIdx >= 0) {
+        return prev.map((c, i) =>
+          i === existingIdx ? { ...c, inboxTier: 'PRIMARY' as const, isUnread: false, unreadCount: 0 } : c
+        );
+      }
+      const newConv: ConversationItem = {
+        id: `conv-${cleanTarget}`,
+        name: cleanTarget,
+        username: cleanTarget,
+        studentClass: 'Student',
+        lastMessage: 'Message request accepted',
+        timeAgo: 'Just now',
+        inboxTier: 'PRIMARY' as const,
+        isUnread: false,
+      };
+      return [newConv, ...prev];
+    });
+
+    if (activeConversation && (activeConversation.username || '').toLowerCase() === cleanTarget) {
+      setActiveConversation((prev) =>
+        prev ? { ...prev, inboxTier: 'PRIMARY', isUnread: false, unreadCount: 0 } : null
+      );
+    }
+  };
+
+  const handleDeleteRequest = (targetUser: string) => {
+    const cleanTarget = targetUser.toLowerCase().trim();
+    setRequestsState((prev) => prev.filter((r) => r.username.toLowerCase() !== cleanTarget));
+    setConversations((prev) =>
+      prev.filter(
+        (c) => (c.username || '').toLowerCase() !== cleanTarget && c.id !== `conv-${cleanTarget}`
+      )
+    );
+    if (activeConversation && (activeConversation.username || '').toLowerCase() === cleanTarget) {
+      setActiveConversation(null);
+    }
+  };
+
+  const handleBlockStranger = (targetUser: string) => {
+    const cleanTarget = targetUser.toLowerCase().trim();
+    if (cleanTarget === currentUsername) {
+      alert('You cannot block your own account.');
+      return;
+    }
+    DataStore.blockUser(currentUsername, cleanTarget);
+    handleDeleteRequest(cleanTarget);
+    alert(`Blocked @${cleanTarget}. They can no longer send you messages.`);
+  };
+
+  const handleUnsendMessage = (msgId: string) => {
+    if (!activeConversation) return;
+    const rawId = activeConversation.id;
+    const canonicalId = getCanonicalConvId(activeConversation);
+
+    setChatMessages((prev) => {
+      const existing = prev[canonicalId] || prev[rawId] || [];
+      const filtered = existing.filter((m) => m.id !== msgId);
+      return {
+        ...prev,
+        [rawId]: filtered,
+        [canonicalId]: filtered,
+      };
+    });
+
+    DataStore.unsendMessage(canonicalId, msgId, currentUsername);
+    setActiveReactionMsgId(null);
   };
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -738,6 +1307,7 @@ function ChatsContent() {
       sender: 'me',
       senderUsername: currentUsername,
       time: new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date()),
+      ...(isVanishMode ? { is_vanish_mode_message: true, isVanishMode: true } : {}),
     };
 
     setChatMessages((prev) => {
@@ -749,7 +1319,9 @@ function ChatsContent() {
         [canonicalId]: updated,
       };
       try {
-        localStorage.setItem('dpsbuzz_chat_messages_v1', JSON.stringify(nextMap));
+        if (currentUsername) {
+          localStorage.setItem(`dpsbuzz_chat_messages_${currentUsername}_v3`, JSON.stringify(nextMap));
+        }
       } catch {}
       return nextMap;
     });
@@ -762,12 +1334,22 @@ function ChatsContent() {
       )
     );
 
+    // Instant 0ms broadcast across all tabs and components
+    DataStore.broadcastChatEvent({
+      type: 'MESSAGE_SENT',
+      conversationId: canonicalId,
+      message: newMsg,
+      senderUsername: currentUsername,
+      recipientUsername: activeConversation.username,
+    });
+
     // Dispatch to server endpoint for instant cross-device delivery
     fetch('/api/chats', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         conversationId: canonicalId,
+        senderUsername: currentUsername,
         message: newMsg,
       }),
     }).catch((err) => console.warn('Failed to sync chat message:', err));
@@ -800,20 +1382,31 @@ function ChatsContent() {
         [canonicalId]: updated,
       };
       try {
-        localStorage.setItem('dpsbuzz_chat_messages_v1', JSON.stringify(nextMap));
+        if (currentUsername) {
+          localStorage.setItem(`dpsbuzz_chat_messages_${currentUsername}_v3`, JSON.stringify(nextMap));
+        }
       } catch {}
       return nextMap;
     });
 
     setActiveReactionMsgId(null);
 
-    // Sync to server so classmate sees reaction in real time
+    // Sync to server and broadcast so classmate sees reaction in 0ms real time
     if (updatedTargetMsg) {
+      DataStore.broadcastChatEvent({
+        type: 'MESSAGE_REACTION',
+        conversationId: canonicalId,
+        msgId,
+        reaction: (updatedTargetMsg as ChatMessage).reaction,
+        senderUsername: currentUsername,
+      });
+
       fetch('/api/chats', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           conversationId: canonicalId,
+          senderUsername: currentUsername,
           message: updatedTargetMsg,
         }),
       }).catch((err) => console.warn('Failed to sync reaction:', err));
@@ -850,6 +1443,7 @@ function ChatsContent() {
       sender: 'me',
       senderUsername: currentUsername,
       time: new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date()),
+      ...(isVanishMode ? { is_vanish_mode_message: true, isVanishMode: true } : {}),
     };
 
     setChatMessages((prev) => {
@@ -861,7 +1455,9 @@ function ChatsContent() {
         [canonicalId]: updated,
       };
       try {
-        localStorage.setItem('dpsbuzz_chat_messages_v1', JSON.stringify(nextMap));
+        if (currentUsername) {
+          localStorage.setItem(`dpsbuzz_chat_messages_${currentUsername}_v3`, JSON.stringify(nextMap));
+        }
       } catch {}
       return nextMap;
     });
@@ -876,12 +1472,22 @@ function ChatsContent() {
 
     setMessageInput('');
 
+    // Instant 0ms broadcast across all tabs and components
+    DataStore.broadcastChatEvent({
+      type: 'MESSAGE_SENT',
+      conversationId: canonicalId,
+      message: newMsg,
+      senderUsername: currentUsername,
+      recipientUsername: activeConversation.username,
+    });
+
     // Dispatch to server endpoint for instant cross-device delivery
     fetch('/api/chats', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         conversationId: canonicalId,
+        senderUsername: currentUsername,
         message: newMsg,
       }),
     }).catch((err) => console.warn('Failed to sync chat message:', err));
@@ -893,6 +1499,16 @@ function ChatsContent() {
     if (!file.type.startsWith('image/')) {
       alert('Please select a valid photo to send.');
       return;
+    }
+
+    const targetUser = (activeConversation.username || activeConversation.id.replace(/^conv-/, '')).toLowerCase().trim();
+    if (!activeConversation.isGroup && targetUser) {
+      const check = DataStore.canChatAndShare(currentUsername, targetUser);
+      if (!check.allowMedia) {
+        alert('Photos and rich media are restricted until the recipient accepts your message request.');
+        if (chatMediaInputRef.current) chatMediaInputRef.current.value = '';
+        return;
+      }
     }
 
     const reader = new FileReader();
@@ -908,6 +1524,7 @@ function ChatsContent() {
         sender: 'me',
         senderUsername: currentUsername,
         time: 'Just now',
+        ...(isVanishMode ? { is_vanish_mode_message: true, isVanishMode: true } : {}),
         sharedPost: {
           id: `img-${Date.now()}`,
           username: currentUsername,
@@ -925,10 +1542,21 @@ function ChatsContent() {
           [canonicalId]: next,
         };
         try {
-          localStorage.setItem('dpsbuzz_chat_messages_v1', JSON.stringify(nextMap));
+          if (currentUsername) {
+            localStorage.setItem(`dpsbuzz_chat_messages_${currentUsername}_v3`, JSON.stringify(nextMap));
+          }
           window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated'));
         } catch {}
         return nextMap;
+      });
+
+      // Instant 0ms broadcast across all tabs and components
+      DataStore.broadcastChatEvent({
+        type: 'MESSAGE_SENT',
+        conversationId: canonicalId,
+        message: newMsg,
+        senderUsername: currentUsername,
+        recipientUsername: activeConversation.username,
       });
 
       fetch('/api/chats', {
@@ -936,6 +1564,7 @@ function ChatsContent() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           conversationId: canonicalId,
+          senderUsername: currentUsername,
           message: newMsg,
         }),
       }).catch((err) => console.warn('Failed to sync chat message:', err));
@@ -949,7 +1578,18 @@ function ChatsContent() {
   // ACTIVE CONVERSATION VIEW (Full screen on mobile, NO active now or last seen status)
   if (activeConversation) {
     const canonicalId = getCanonicalConvId(activeConversation);
-    const messages = chatMessages[canonicalId] || chatMessages[activeConversation.id] || [];
+    const isGroup = activeConversation.isGroup || activeConversation.id.startsWith('conv-group-');
+
+    // Strict Privacy Guard: If direct chat does not involve currentUsername, block viewing!
+    if (!isGroup && canonicalId.includes('__')) {
+      const participants = canonicalId.split('__').map((p) => p.trim().toLowerCase());
+      if (!participants.includes(currentUsername)) {
+        setActiveConversation(null);
+        return null;
+      }
+    }
+
+    const messages = chatMessages[canonicalId] || (isGroup ? chatMessages[activeConversation.id] : []) || [];
     const colors = getAvatarColorPair(activeConversation.username || activeConversation.name);
     const initials = activeConversation.name.slice(0, 2).toUpperCase();
 
@@ -973,7 +1613,7 @@ function ChatsContent() {
           <div className="flex items-center gap-2.5 min-w-0">
             <button
               type="button"
-              onClick={() => setActiveConversation(null)}
+              onClick={handleCloseActiveChat}
               className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-[var(--surface-sunken)] cursor-pointer"
               style={{ color: 'var(--text)' }}
               aria-label="Back to inbox"
@@ -983,8 +1623,14 @@ function ChatsContent() {
 
             {/* Avatar 36px (circle for people, 10px rounded for groups) */}
             <div
+              onClick={() => {
+                if (!activeConversation.isGroup && targetUser) {
+                  router.push(`/u/${targetUser}`);
+                }
+              }}
+              title={!activeConversation.isGroup ? `View @${targetUser}'s profile` : undefined}
               className={`w-9 h-9 flex items-center justify-center font-bold text-xs shrink-0 border overflow-hidden ${
-                activeConversation.isGroup ? 'rounded-[10px]' : 'rounded-full'
+                activeConversation.isGroup ? 'rounded-[10px]' : 'rounded-full cursor-pointer hover:opacity-85'
               }`}
               style={{
                 backgroundColor: activeConversation.isGroup ? 'var(--primary)' : colors.bg,
@@ -1001,7 +1647,14 @@ function ChatsContent() {
               )}
             </div>
 
-            <div className="min-w-0">
+            <div
+              onClick={() => {
+                if (!activeConversation.isGroup && targetUser) {
+                  router.push(`/u/${targetUser}`);
+                }
+              }}
+              className={`min-w-0 ${!activeConversation.isGroup ? 'cursor-pointer hover:opacity-85' : ''}`}
+            >
               <h2 className="text-sm font-semibold truncate leading-tight" style={{ color: 'var(--text)' }}>
                 {activeConversation.name}
               </h2>
@@ -1022,6 +1675,23 @@ function ChatsContent() {
             >
               <Palette size={18} />
             </button>
+
+            {/* Vanish Mode Toggle (Instagram Architecture Section 5) */}
+            {!activeConversation.isGroup && targetUser && (
+              <button
+                type="button"
+                onClick={handleToggleVanishMode}
+                className={`w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer ${
+                  isVanishMode
+                    ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30'
+                    : 'hover:bg-[var(--surface-sunken)] text-[var(--text-muted)] hover:text-purple-400'
+                }`}
+                aria-label="Toggle Vanish Mode"
+                title={isVanishMode ? 'Vanish Mode is ON (tap to turn off)' : 'Turn on Vanish Mode'}
+              >
+                <Ghost size={18} />
+              </button>
+            )}
 
             {!activeConversation.isGroup && targetUser && !isSelfChat && (
               <>
@@ -1089,11 +1759,32 @@ function ChatsContent() {
           </div>
         </header>
 
+        {/* Vanish Mode Banner */}
+        {isVanishMode && (
+          <div className="px-4 py-2 bg-gradient-to-r from-purple-900/60 to-indigo-900/60 border-b border-purple-500/30 text-white text-xs font-medium flex items-center justify-between shrink-0 animate-fade-in">
+            <div className="flex items-center gap-2">
+              <Ghost size={14} className="text-purple-300 shrink-0" />
+              <span>Vanish Mode is ON • Messages disappear when you close the chat</span>
+            </div>
+            <button
+              type="button"
+              onClick={handleToggleVanishMode}
+              className="text-[11px] underline font-semibold text-purple-200 hover:text-white cursor-pointer ml-2 shrink-0"
+            >
+              Turn Off
+            </button>
+          </div>
+        )}
+
         {/* Messages Stream with dynamic persistent background */}
         <div
           className="flex-1 p-4 space-y-3 overflow-y-auto relative transition-all"
           style={
-            activeChatBg && activeChatBg.type === 'image'
+            isVanishMode
+              ? {
+                  background: 'radial-gradient(ellipse at top, #1e112a 0%, #0c0a09 100%)',
+                }
+              : activeChatBg && activeChatBg.type === 'image'
               ? {
                   backgroundImage: `url(${activeChatBg.value})`,
                   backgroundSize: 'cover',
@@ -1151,6 +1842,22 @@ function ChatsContent() {
                           {emoji}
                         </button>
                       ))}
+
+                      {/* Unsend Protocol (Instagram Architecture Section 5) */}
+                      {isMe && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleUnsendMessage(msg.id);
+                          }}
+                          className="ml-1 pl-1.5 pr-2 py-0.5 border-l border-zinc-200 dark:border-zinc-700 text-rose-500 hover:text-rose-600 hover:bg-rose-500/10 rounded-full text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors"
+                          title="Unsend for everyone"
+                        >
+                          <Trash2 size={12} />
+                          <span>Unsend</span>
+                        </button>
+                      )}
                     </div>
                   )}
 
@@ -1233,9 +1940,30 @@ function ChatsContent() {
                         <span className="text-3xl inline-block animate-heart-pop py-0.5 select-none leading-none">
                           ❤️
                         </span>
-                      ) : (
-                        <span>{msg.text}</span>
-                      )}
+                      ) : (() => {
+                        const storyMatch = msg.text.match(/^(?:You replied to their story|Replied to their story|Replied to your story|Replied to story):\s*["']?([\s\S]*?)["']?\s*(?:💬)?$/i);
+                        if (storyMatch) {
+                          const replyContent = storyMatch[1].replace(/^["']|["']$/g, '').trim();
+                          return (
+                            <div className="flex flex-col gap-1.5 py-0.5 text-left">
+                              <div
+                                className={`text-[11px] font-semibold tracking-wide flex items-center gap-1.5 select-none pb-1 border-b ${
+                                  isMe
+                                    ? 'text-white/85 border-white/20'
+                                    : 'text-zinc-500 dark:text-zinc-400 border-black/10 dark:border-white/10'
+                                }`}
+                              >
+                                <span className="text-xs">📖</span>
+                                <span>{isMe ? 'You replied to their story' : 'Replied to your story'}</span>
+                              </div>
+                              <div className="text-[14px] leading-relaxed break-words font-medium">
+                                &ldquo;{replyContent}&rdquo;
+                              </div>
+                            </div>
+                          );
+                        }
+                        return <span>{msg.text}</span>;
+                      })()}
                     </div>
 
                     {/* Emoji Reaction Badge on corner of bubble */}
@@ -1256,13 +1984,28 @@ function ChatsContent() {
                     )}
                   </div>
 
-                  {/* Message Time and Delivery Checkmarks */}
+                  {/* Message Time, Vanish Indicator, and Delivery Checkmarks */}
                   <div className="flex items-center gap-1 px-1 mt-1">
+                    {(msg.is_vanish_mode_message || msg.isVanishMode) && (
+                      <span title="Disappears when chat is closed" className="text-[10px] text-purple-400 flex items-center select-none">
+                        👻
+                      </span>
+                    )}
                     <span className="text-[10px] text-[var(--text-muted)] tabular-nums font-medium">
                       {msg.time}
                     </span>
                     {isMe && (
-                      <CheckCheck size={13} className="text-[#007AFF] shrink-0" />
+                      <span
+                        className="inline-flex items-center shrink-0"
+                        title={msg.is_read || msg.isSeen || msg.readAt ? 'Read' : 'Delivered'}
+                      >
+                        <CheckCheck
+                          size={13}
+                          className={`${
+                            msg.is_read || msg.isSeen || msg.readAt ? 'text-[#007AFF]' : 'text-zinc-400'
+                          } shrink-0`}
+                        />
+                      </span>
                     )}
                   </div>
                 </div>
@@ -1280,79 +2023,126 @@ function ChatsContent() {
           </div>
         )}
 
-        {/* Input Bar */}
-        <form
-          onSubmit={handleSendMessage}
-          className="p-3 border-t flex items-center gap-2 bg-[var(--surface)] relative z-20"
-          style={{
-            borderColor: 'var(--line)',
-            paddingBottom: 'max(14px, env(safe-area-inset-bottom, 14px))',
-          }}
-        >
-          {/* Hidden file input for photo sharing */}
-          <input
-            type="file"
-            ref={chatMediaInputRef}
-            accept="image/*"
-            onChange={handleImageAttachment}
-            className="hidden"
-          />
-
-          {/* Photo attachment button */}
-          <button
-            type="button"
-            onClick={() => chatMediaInputRef.current?.click()}
-            disabled={isMaintenanceActive}
-            className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-[var(--surface-sunken)] cursor-pointer text-[var(--text-muted)] hover:text-[#007AFF] transition-colors shrink-0 disabled:opacity-40"
-            aria-label="Attach photo"
-            title="Send photo"
+        {/* Stranger Sandbox Action Bar (Instagram Architecture Section 4) */}
+        {!activeConversation.isGroup &&
+        targetUser &&
+        DataStore.getInboxTier(currentUsername, targetUser) === 'REQUESTS' ? (
+          <div className="p-4 border-t border-[var(--line)] bg-[var(--surface)] space-y-3 shrink-0 relative z-20">
+            <div className="flex items-center justify-center gap-1.5 text-xs text-[var(--text-muted)] text-center px-2">
+              <Shield size={14} className="text-amber-500 shrink-0" />
+              <span>
+                <strong>@{targetUser}</strong> wants to send you a message. They won&apos;t know you&apos;ve seen it until you accept.
+              </span>
+            </div>
+            <div className="flex items-center gap-2 max-w-md mx-auto">
+              <button
+                type="button"
+                onClick={() => handleBlockStranger(targetUser)}
+                className="flex-1 py-2.5 rounded-full text-xs font-bold text-rose-500 bg-rose-500/10 hover:bg-rose-500/20 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1"
+              >
+                <UserX size={14} />
+                <span>Block</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDeleteRequest(targetUser)}
+                className="flex-1 py-2.5 rounded-full text-xs font-bold text-[var(--text-muted)] bg-[var(--surface-sunken)] border border-[var(--line)] hover:text-[var(--text)] active:scale-95 transition-all cursor-pointer"
+              >
+                Delete
+              </button>
+              <button
+                type="button"
+                onClick={() => handleAcceptRequestFromSandbox(targetUser)}
+                className="flex-1 py-2.5 rounded-full text-xs font-bold text-white bg-[var(--primary)] hover:opacity-90 active:scale-95 transition-all cursor-pointer shadow-xs"
+              >
+                Accept
+              </button>
+            </div>
+          </div>
+        ) : (
+          /* Input Bar */
+          <form
+            onSubmit={handleSendMessage}
+            className="p-3 border-t flex items-center gap-2 bg-[var(--surface)] relative z-20"
+            style={{
+              borderColor: 'var(--line)',
+              paddingBottom: 'max(14px, env(safe-area-inset-bottom, 14px))',
+            }}
           >
-            <ImageIcon size={20} />
-          </button>
+            {/* Hidden file input for photo sharing */}
+            <input
+              type="file"
+              ref={chatMediaInputRef}
+              accept="image/*"
+              onChange={handleImageAttachment}
+              className="hidden"
+            />
 
-          {/* Emoji drawer button */}
-          <button
-            type="button"
-            onClick={() => setIsEmojiPickerOpen(true)}
-            disabled={isMaintenanceActive}
-            className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-[var(--surface-sunken)] cursor-pointer text-[var(--text-muted)] hover:text-[#007AFF] transition-colors shrink-0 disabled:opacity-40"
-            aria-label="Pick emoji"
-            title="Emoji picker"
-          >
-            <Smile size={20} />
-          </button>
-
-          <input
-            type="text"
-            value={messageInput}
-            disabled={isMaintenanceActive}
-            onChange={(e) => setMessageInput(e.target.value)}
-            placeholder={isMaintenanceActive ? 'Chat is disabled during scheduled maintenance 🔒' : 'Message...'}
-            className="flex-1 h-11 px-4 rounded-full bg-[var(--surface-sunken)] text-[14px] outline-none border border-[var(--line)] focus:border-[#007AFF] focus:ring-1 focus:ring-[#007AFF] placeholder:text-[var(--text-muted)] disabled:opacity-50 transition-all font-normal"
-            style={{ color: 'var(--text)' }}
-          />
-
-          {messageInput.trim() ? (
-            <button
-              type="submit"
-              disabled={isMaintenanceActive}
-              className="w-11 h-11 rounded-full flex items-center justify-center cursor-pointer transition-transform active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shrink-0 bg-[#007AFF] text-white shadow-xs"
-              aria-label="Send message"
-            >
-              <Send size={18} />
-            </button>
-          ) : (
+            {/* Photo attachment button */}
             <button
               type="button"
+              onClick={() => {
+                if (!activeConversation.isGroup && targetUser) {
+                  const check = DataStore.canChatAndShare(currentUsername, targetUser);
+                  if (!check.allowMedia) {
+                    alert('Photos and rich media are restricted until the recipient accepts your message request.');
+                    return;
+                  }
+                }
+                chatMediaInputRef.current?.click();
+              }}
               disabled={isMaintenanceActive}
-              onClick={handleSendHeart}
-              className="w-11 h-11 rounded-full flex items-center justify-center cursor-pointer transition-transform active:scale-75 hover:scale-110 text-rose-500 shrink-0 disabled:opacity-40"
-              aria-label="Send heart"
+              className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-[var(--surface-sunken)] cursor-pointer text-[var(--text-muted)] hover:text-[#007AFF] transition-colors shrink-0 disabled:opacity-40"
+              aria-label="Attach photo"
+              title="Send photo"
             >
-              <Heart size={22} className="fill-rose-500" />
+              <ImageIcon size={20} />
             </button>
-          )}
-        </form>
+
+            {/* Emoji drawer button */}
+            <button
+              type="button"
+              onClick={() => setIsEmojiPickerOpen(true)}
+              disabled={isMaintenanceActive}
+              className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-[var(--surface-sunken)] cursor-pointer text-[var(--text-muted)] hover:text-[#007AFF] transition-colors shrink-0 disabled:opacity-40"
+              aria-label="Pick emoji"
+              title="Emoji picker"
+            >
+              <Smile size={20} />
+            </button>
+
+            <input
+              type="text"
+              value={messageInput}
+              disabled={isMaintenanceActive}
+              onChange={(e) => setMessageInput(e.target.value)}
+              placeholder={isMaintenanceActive ? 'Chat is disabled during scheduled maintenance 🔒' : 'Message...'}
+              className="flex-1 h-11 px-4 rounded-full bg-[var(--surface-sunken)] text-[14px] outline-none border border-[var(--line)] focus:border-[#007AFF] focus:ring-1 focus:ring-[#007AFF] placeholder:text-[var(--text-muted)] disabled:opacity-50 transition-all font-normal"
+              style={{ color: 'var(--text)' }}
+            />
+
+            {messageInput.trim() ? (
+              <button
+                type="submit"
+                disabled={isMaintenanceActive}
+                className="w-11 h-11 rounded-full flex items-center justify-center cursor-pointer transition-transform active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shrink-0 bg-[#007AFF] text-white shadow-xs"
+                aria-label="Send message"
+              >
+                <Send size={18} />
+              </button>
+            ) : (
+              <button
+                type="button"
+                disabled={isMaintenanceActive}
+                onClick={handleSendHeart}
+                className="w-11 h-11 rounded-full flex items-center justify-center cursor-pointer transition-transform active:scale-75 hover:scale-110 text-rose-500 shrink-0 disabled:opacity-40"
+                aria-label="Send heart"
+              >
+                <Heart size={22} className="fill-rose-500" />
+              </button>
+            )}
+          </form>
+        )}
 
         {/* Chat Actions Sheet inside active chat view */}
         <ChatActionsSheet
@@ -1497,10 +2287,10 @@ function ChatsContent() {
               ? 'bg-[var(--primary)] text-[var(--on-primary)] shadow-xs'
               : 'bg-[var(--surface-sunken)] text-[var(--text-muted)] border border-[var(--line)] hover:text-[var(--text)]'
           }`}
-          aria-label={`Message requests (${requests.length})`}
+          aria-label={`Message requests (${computedRequests.length})`}
         >
           <span>Requests</span>
-          {requests.length > 0 && (
+          {computedRequests.length > 0 && (
             <span
               className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold tabular-nums ${
                 activeChip === 'requests'
@@ -1508,7 +2298,7 @@ function ChatsContent() {
                   : 'bg-[var(--primary)] text-[var(--on-primary)]'
               }`}
             >
-              {requests.length}
+              {computedRequests.length}
             </span>
           )}
         </button>
@@ -1529,15 +2319,28 @@ function ChatsContent() {
       {activeChip === 'requests' ? (
         <div className="pb-36">
           <RequestsList
-            initialRequests={requests}
-            onAccept={handleAcceptRequest}
-            onIgnore={(id) => setRequests((prev) => prev.filter((r) => r.id !== id))}
-            onBlock={(req) => {
-              if (req.username && req.username.toLowerCase() === currentUsername) {
-                alert('You cannot block your own account.');
-                return;
-              }
-              setRequests((prev) => prev.filter((r) => r.id !== req.id));
+            initialRequests={computedRequests}
+            onAccept={(req) => handleAcceptRequestFromSandbox(req.username)}
+            onIgnore={(id) => {
+              const req = computedRequests.find((r) => r.id === id);
+              if (req) handleDeleteRequest(req.username);
+            }}
+            onBlock={(req) => handleBlockStranger(req.username)}
+            onSelectRequest={(req) => {
+              const conv = conversations.find(
+                (c) => (c.username || '').toLowerCase() === req.username.toLowerCase()
+              ) || {
+                id: req.id.startsWith('conv-') ? req.id : `conv-${req.username}`,
+                name: req.name,
+                username: req.username,
+                studentClass: req.studentClass,
+                avatar: req.avatar || req.avatarUrl || null,
+                lastMessage: req.messagePreview,
+                timeAgo: req.timeAgo,
+                inboxTier: 'REQUESTS' as const,
+                isUnread: true,
+              };
+              openConversation(conv);
             }}
           />
         </div>

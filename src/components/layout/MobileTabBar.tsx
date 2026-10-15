@@ -17,9 +17,11 @@ export const MobileTabBar: FC = () => {
       const user = DataStore.getCurrentUser();
       setCurrentUser(user);
 
-      // Check unread conversations
+      // Check unread conversations (strictly scoped to current user)
       try {
-        const convs = JSON.parse(localStorage.getItem('dpsbuzz_chat_conversations_v2') || '[]');
+        const u = user?.username?.toLowerCase().trim();
+        const convKey = u && u !== 'guest' ? `dpsbuzz_chat_conversations_${u}_v3` : null;
+        const convs = convKey ? JSON.parse(localStorage.getItem(convKey) || '[]') : [];
         const count = convs.filter((c: any) => (c.unreadCount || 0) > 0 || c.isUnread).length;
         setUnreadChatsCount(count);
       } catch {

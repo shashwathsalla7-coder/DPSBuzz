@@ -1,9 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerStore, saveServerStore } from '@/lib/serverStore';
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const { searchParams } = new URL(req.url);
+    const username = searchParams.get('username')?.toLowerCase().trim();
+
     const store = await getServerStore();
+
+    // STRICT PRIVACY: Only return chat messages for conversations the requesting user belongs to
+    const filteredChatMessages: Record<string, any[]> = {};
+    if (username) {
+      for (const [key, msgs] of Object.entries(store.chatMessages || {})) {
+        if (key.includes('__')) {
+          const participants = key.split('__').map((p) => p.trim().toLowerCase());
+          if (participants.includes(username)) {
+            filteredChatMessages[key] = msgs;
+          }
+        } else if (key.startsWith('conv-group-')) {
+          // Group chat
+          filteredChatMessages[key] = msgs;
+        }
+      }
+    }
+
     return NextResponse.json({
       success: true,
       posts: store.posts,
@@ -12,7 +32,7 @@ export async function GET() {
       comments: store.comments,
       likes: store.likes,
       chatNotes: store.chatNotes,
-      chatMessages: store.chatMessages,
+      chatMessages: filteredChatMessages, // Never expose all messages globally!
       deletedPostIds: store.deletedPostIds || [],
       notifications: store.notifications || [],
       lastUpdated: store.lastUpdated,

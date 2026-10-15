@@ -113,6 +113,7 @@ export default function SettingsPage() {
             return;
           }
           setCurrentUser(u);
+          setPrivateAccount(Boolean(u.isPrivate));
         } else {
           router.replace('/login');
           return;
@@ -174,9 +175,23 @@ export default function SettingsPage() {
     }
   };
 
+  const handleTogglePrivateAccount = (newVal: boolean) => {
+    setPrivateAccount(newVal);
+    if (!currentUser || !currentUser.username) return;
+    const updated = DataStore.updateProfile(currentUser.username, { isPrivate: newVal });
+    if (updated) {
+      setCurrentUser(updated);
+      localStorage.setItem('dpsbuzz_user', JSON.stringify(updated));
+      showToast(newVal ? 'Account set to Private 🔒 (Follow requests required)' : 'Account set to Public 🌐 (Anyone can follow)');
+    }
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('dpsbuzz_user');
     localStorage.removeItem('dpsbuzz_shashwath_authenticated');
+    localStorage.removeItem('dpsbuzz_chat_conversations_v2');
+    localStorage.removeItem('dpsbuzz_chat_messages_v1');
+    sessionStorage.clear();
     document.cookie = 'dpsbuzz_user=; path=/; max-age=0; SameSite=Lax';
     router.push('/login');
   };
@@ -724,17 +739,25 @@ export default function SettingsPage() {
             </div>
 
             <div className="p-3.5 flex items-center justify-between gap-3">
-              <div>
-                <p className="text-sm font-semibold text-[var(--text)]">Private Account</p>
-                <p className="text-xs text-[var(--text-muted)]">
-                  Only classmates you approve can see your posts
+              <div className="flex-1 pr-2">
+                <div className="flex items-center gap-1.5">
+                  <p className="text-sm font-semibold text-[var(--text)]">Account Privacy</p>
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${privateAccount ? 'bg-amber-500/15 text-amber-500 border border-amber-500/20' : 'bg-emerald-500/15 text-emerald-500 border border-emerald-500/20'}`}>
+                    {privateAccount ? 'Private 🔒' : 'Public 🌐'}
+                  </span>
+                </div>
+                <p className="text-xs text-[var(--text-muted)] mt-0.5 leading-snug">
+                  {privateAccount
+                    ? 'Only classmates you approve can follow you, view your posts, and send messages.'
+                    : 'Your account is public. Any student at DPS can follow and see your posts.'}
                 </p>
               </div>
               <input
                 type="checkbox"
                 checked={privateAccount}
-                onChange={(e) => setPrivateAccount(e.target.checked)}
-                className="w-5 h-5 accent-[var(--primary)] rounded cursor-pointer"
+                onChange={(e) => handleTogglePrivateAccount(e.target.checked)}
+                className="w-5 h-5 accent-[var(--primary)] rounded cursor-pointer shrink-0"
+                aria-label="Toggle Account Privacy"
               />
             </div>
 

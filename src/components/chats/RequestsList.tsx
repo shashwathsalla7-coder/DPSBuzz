@@ -9,8 +9,10 @@ export interface MessageRequestItem {
   username: string;
   studentClass: string;
   avatarUrl?: string | null;
+  avatar?: string | null;
   messagePreview: string;
   timeAgo: string;
+  mutualFollowsCount?: number;
 }
 
 export interface RequestsListProps {
@@ -18,6 +20,7 @@ export interface RequestsListProps {
   onAccept?: (req: MessageRequestItem) => void;
   onIgnore?: (id: string) => void;
   onBlock?: (req: MessageRequestItem) => void;
+  onSelectRequest?: (req: MessageRequestItem) => void;
   className?: string;
 }
 
@@ -52,9 +55,14 @@ export const RequestsList: React.FC<RequestsListProps> = ({
   onAccept,
   onIgnore,
   onBlock,
+  onSelectRequest,
   className = '',
 }) => {
   const [requests, setRequests] = useState<MessageRequestItem[]>(initialRequests);
+
+  React.useEffect(() => {
+    setRequests(initialRequests);
+  }, [initialRequests]);
 
   const handleAccept = (req: MessageRequestItem) => {
     setRequests((prev) => prev.filter((r) => r.id !== req.id));
@@ -115,7 +123,10 @@ export const RequestsList: React.FC<RequestsListProps> = ({
                   backgroundColor: 'var(--surface)',
                 }}
               >
-                <div className="flex items-start gap-3">
+                <div
+                  className="flex items-start gap-3 cursor-pointer group"
+                  onClick={() => onSelectRequest?.(req)}
+                >
                   {/* 52px Avatar */}
                   <div
                     className="w-[52px] h-[52px] rounded-full flex items-center justify-center font-bold text-sm shrink-0 border overflow-hidden"

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { X, Search, Users } from 'lucide-react';
 import { getAvatarColorPair } from '@/config/tokens';
 
@@ -28,6 +29,7 @@ export const NewChatSheet: React.FC<NewChatSheetProps> = ({
   onClose,
   onSelectStudent,
 }) => {
+  const router = useRouter();
   const [query, setQuery] = useState('');
 
   if (!isOpen) return null;
@@ -151,7 +153,13 @@ export const NewChatSheet: React.FC<NewChatSheetProps> = ({
                         }`}
                       >
                         <div
-                          className={`w-11 h-11 rounded-full flex items-center justify-center font-bold text-xs shrink-0 border ${
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onClose();
+                            router.push(`/u/${student.username}`);
+                          }}
+                          title={`View ${student.name}'s profile`}
+                          className={`w-11 h-11 rounded-full flex items-center justify-center font-bold text-xs shrink-0 border cursor-pointer hover:opacity-80 transition-opacity ${
                             isShash ? 'border-amber-400 text-black text-sm' : ''
                           }`}
                           style={{
@@ -215,7 +223,13 @@ export const NewChatSheet: React.FC<NewChatSheetProps> = ({
                     className="w-full px-4 py-3 flex items-center gap-3.5 text-left hover:bg-[var(--surface-sunken)] transition-colors cursor-pointer btn-press"
                   >
                     <div
-                      className="w-11 h-11 rounded-full flex items-center justify-center font-bold text-xs shrink-0 border"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onClose();
+                        router.push(`/u/${student.username}`);
+                      }}
+                      title={`View ${student.name}'s profile`}
+                      className="w-11 h-11 rounded-full flex items-center justify-center font-bold text-xs shrink-0 border cursor-pointer hover:opacity-80 transition-opacity"
                       style={{
                         backgroundColor: colors.bg,
                         color: colors.text,

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { Pin, VolumeX, Trash2, MoreVertical, BellOff } from 'lucide-react';
 import { getAvatarColorPair } from '@/config/tokens';
 
@@ -25,6 +26,7 @@ export interface ConversationItem {
   isPinned?: boolean;
   previewType?: string;
   section?: 'pinned' | 'today' | 'earlier';
+  inboxTier?: 'PRIMARY' | 'GENERAL' | 'REQUESTS';
 }
 
 export interface ConversationRowProps {
@@ -44,6 +46,7 @@ export const ConversationRow: React.FC<ConversationRowProps> = ({
   onDeleteRequest,
   onLongPress,
 }) => {
+  const router = useRouter();
   const [swipeOffset, setSwipeOffset] = useState(0);
   const touchStartX = useRef(0);
   const pressTimer = useRef<NodeJS.Timeout | null>(null);
@@ -151,7 +154,19 @@ export const ConversationRow: React.FC<ConversationRowProps> = ({
       >
         <div className="flex items-center gap-3 min-w-0 flex-1 mr-3">
           {/* Avatar 52px: Circle for people, 14px-radius square for groups */}
-          <div className="relative shrink-0">
+          <div
+            className={`relative shrink-0 ${!isGroup ? 'cursor-pointer hover:opacity-85' : ''}`}
+            onClick={(e) => {
+              if (!isGroup) {
+                const target = conversation.username || (conversation.id ? conversation.id.replace(/^conv-/, '') : '');
+                if (target) {
+                  e.stopPropagation();
+                  router.push(`/u/${target}`);
+                }
+              }
+            }}
+            title={!isGroup ? `View ${conversation.name}'s profile` : undefined}
+          >
             {hasStory && !isGroup ? (
               /* Neon story ring wrapper */
               <div

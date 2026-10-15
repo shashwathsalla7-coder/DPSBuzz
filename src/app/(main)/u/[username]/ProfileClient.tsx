@@ -37,7 +37,7 @@ import {
   Lock,
 } from 'lucide-react';
 import Link from 'next/link';
-import { DataStore, type Profile, type HabitStreak, type SongTrack, type Post } from '@/lib/dataStore';
+import { DataStore, type Profile, type HabitStreak, type SongTrack, type Post, type ProfileHighlight } from '@/lib/dataStore';
 import { getAvatarColorPair } from '@/config/tokens';
 import StreakTierLadder from '@/components/mascot/StreakTierLadder';
 import { MusicTrackPill } from '@/components/music/MusicTrackPill';
@@ -69,8 +69,28 @@ export default function ProfileClient({ username }: { username: string }) {
 
   const [profile, setProfile] = useState<Profile>(initialProfile);
   const [activeTab, setActiveTab] = useState<'posts' | 'reposts' | 'tagged' | 'saved'>('posts');
-  const [isFollowing, setIsFollowing] = useState(false);
   const [postsVersion, setPostsVersion] = useState(0);
+
+  // Persistent follow status check for the viewer and the profile on load
+  const [isFollowing, setIsFollowing] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const cur = DataStore.getCurrentUser();
+      if (cur?.username && cur.username.toLowerCase() !== 'guest') {
+        return DataStore.isFollowing(cur.username, username);
+      }
+    }
+    return false;
+  });
+
+  const [isRequested, setIsRequested] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const cur = DataStore.getCurrentUser();
+      if (cur?.username && cur.username.toLowerCase() !== 'guest') {
+        return DataStore.isFollowRequested(cur.username, username);
+      }
+    }
+    return false;
+  });
 
   // Interactive Button Modals & Sheets
   const [showProfileOptions, setShowProfileOptions] = useState(false);
@@ -81,6 +101,7 @@ export default function ProfileClient({ username }: { username: string }) {
   const [showSongPickerModal, setShowSongPickerModal] = useState(false);
   const [showNoteSongPickerModal, setShowNoteSongPickerModal] = useState(false);
   const [showPostSongPickerModal, setShowPostSongPickerModal] = useState(false);
+  const [showEnlargedPhoto, setShowEnlargedPhoto] = useState(false);
   const [detailSlideIndex, setDetailSlideIndex] = useState(0);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -189,6 +210,11 @@ export default function ProfileClient({ username }: { username: string }) {
       const updated = DataStore.getProfileByUsername(username);
       if (updated) setProfile(updated);
       setStreaksList(DataStore.getHabitStreaks());
+      const cur = DataStore.getCurrentUser();
+      if (cur?.username && cur.username.toLowerCase() !== 'guest') {
+        setIsFollowing(DataStore.isFollowing(cur.username, username));
+        setIsRequested(DataStore.isFollowRequested(cur.username, username));
+      }
     };
     window.addEventListener('dpsbuzz:content_updated', handleUpdate);
     window.addEventListener('storage', handleUpdate);
@@ -198,10 +224,95 @@ export default function ProfileClient({ username }: { username: string }) {
     };
   }, [username]);
 
-  // Note on avatar
-  const [currentNote, setCurrentNote] = useState<string>('Note...');
-  const [noteSong, setNoteSong] = useState<SongTrack | null>(null);
+  // Check if active profile belongs to current logged-in user
+  const isOwnProfile = useMemo(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      const stored = localStorage.getItem('dpsbuzz_user');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed?.username && parsed.username.toLowerCase() !== 'guest') {
+          if (parsed.username.toLowerCase().trim() === profile.username.toLowerCase().trim()) {
+            if (parsed.username.toLowerCase() === 'shashwath71845') {
+              return localStorage.getItem('dpsbuzz_shashwath_authenticated') === 'true';
+            }
+            return true;
+          }
+        }
+      }
+      const cur = DataStore.getCurrentUser();
+      if (cur?.username && cur.username.toLowerCase() !== 'guest') {
+        if (cur.username.toLowerCase().trim() === profile.username.toLowerCase().trim()) {
+          if (cur.username.toLowerCase() === 'shashwath71845') {
+            return localStorage.getItem('dpsbuzz_shashwath_authenticated') === 'true';
+          }
+          return true;
+        }
+      }
+    } catch {}
+    return false;
+  }, [profile.username]);
+
+  // Note on avatar: specifically for the profile being viewed
+  const profileNote = useMemo(() => {
+    return DataStore.getNoteForUser(profile.username);
+  }, [profile.username, postsVersion]);
+
+  const [currentNote, setCurrentNote] = useState<string>(() => {
+    const existing = DataStore.getNoteForUser(username);
+    if (existing) return existing.text;
+    return isOwnProfile ? 'Note...' : '';
+  });
+  const [noteSong, setNoteSong] = useState<SongTrack | null>(() => {
+    const existing = DataStore.getNoteForUser(username);
+    return existing?.song || null;
+  });
   const [noteInput, setNoteInput] = useState<string>('');
+
+  useEffect(() => {
+    if (profileNote) {
+      setCurrentNote(profileNote.text);
+      setNoteSong(profileNote.song || null);
+    } else {
+      setCurrentNote(isOwnProfile ? 'Note...' : '');
+      setNoteSong(null);
+    }
+  }, [profileNote, isOwnProfile]);
+
+  // Active story detection for story gradient ring
+  const userStories = useMemo(() => {
+    return DataStore.getStories().filter(
+      (s) => s.username.toLowerCase().trim() === profile.username.toLowerCase().trim()
+    );
+  }, [profile.username, postsVersion]);
+  const hasActiveStory = userStories.length > 0;
+
+  // Highlights state: per-user, owner-managed from DataStore
+  const [highlights, setHighlights] = useState<ProfileHighlight[]>(() => {
+    if (typeof window !== 'undefined') {
+      return DataStore.getHighlights(username);
+    }
+    return [];
+  });
+  const [newHighlightName, setNewHighlightName] = useState('');
+  const [newHighlightEmoji, setNewHighlightEmoji] = useState('⭐');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && profile?.username) {
+      setHighlights(DataStore.getHighlights(profile.username));
+    }
+  }, [profile?.username, postsVersion]);
+
+  // Listen for call errors to surface clear feedback to user
+  useEffect(() => {
+    const handleCallError = (e: any) => {
+      if (e.detail?.message) {
+        showToast(e.detail.message);
+      }
+    };
+    window.addEventListener('dpsbuzz:call_error', handleCallError);
+    return () => window.removeEventListener('dpsbuzz:call_error', handleCallError);
+  }, []);
 
   // Habit streak & Star Board panel state
   const [showHabitPostModal, setShowHabitPostModal] = useState(false);
@@ -217,14 +328,6 @@ export default function ProfileClient({ username }: { username: string }) {
     }
     return [];
   });
-
-  // Highlights state
-  const [highlights, setHighlights] = useState<Array<{ id: string; label: string; emoji: string }>>([
-    { id: 'h1', label: 'Sports', emoji: '🏏' },
-    { id: 'h2', label: 'Expo', emoji: '🔬' },
-  ]);
-  const [newHighlightName, setNewHighlightName] = useState('');
-  const [newHighlightEmoji, setNewHighlightEmoji] = useState('⭐');
 
   // Edit profile form state
   const [editFullName, setEditFullName] = useState(initialProfile.fullName);
@@ -329,7 +432,7 @@ export default function ProfileClient({ username }: { username: string }) {
 
   const handleHabitSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!habitCaption.trim() || !profile) return;
+    if (!isOwnProfile || !habitCaption.trim() || !profile) return;
     const result = DataStore.recordHabitPost(profile.username, habitCaption.trim(), habitCategory);
     DataStore.addPost({
       userId: profile.id || 'user-me',
@@ -355,34 +458,6 @@ export default function ProfileClient({ username }: { username: string }) {
       </div>
     );
   }
-
-  const isOwnProfile = useMemo(() => {
-    if (typeof window === 'undefined') return false;
-    try {
-      const stored = localStorage.getItem('dpsbuzz_user');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (parsed?.username && parsed.username.toLowerCase() !== 'guest') {
-          if (parsed.username.toLowerCase().trim() === profile.username.toLowerCase().trim()) {
-            if (parsed.username.toLowerCase() === 'shashwath71845') {
-              return localStorage.getItem('dpsbuzz_shashwath_authenticated') === 'true';
-            }
-            return true;
-          }
-        }
-      }
-      const cur = DataStore.getCurrentUser();
-      if (cur?.username && cur.username.toLowerCase() !== 'guest') {
-        if (cur.username.toLowerCase().trim() === profile.username.toLowerCase().trim()) {
-          if (cur.username.toLowerCase() === 'shashwath71845') {
-            return localStorage.getItem('dpsbuzz_shashwath_authenticated') === 'true';
-          }
-          return true;
-        }
-      }
-    } catch {}
-    return false;
-  }, [profile.username]);
 
   const pair = getAvatarColorPair(profile.username);
   const isOfficial = profile.username.toLowerCase() === 'dpsbuzz_official';
@@ -472,31 +547,69 @@ export default function ProfileClient({ username }: { username: string }) {
 
   const handleSaveNote = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isOwnProfile) {
+      showToast('You can only post notes on your own profile ✍️');
+      return;
+    }
     if (!noteInput.trim() && !noteSong) return;
     const textToSave = noteInput.trim() || (noteSong ? `Listening to ${noteSong.title} 🎵` : 'Note...');
-    setCurrentNote(textToSave);
-    if (isOwnProfile) {
-      DataStore.saveChatNote({
+    DataStore.saveChatNote(
+      {
         text: textToSave,
         song: noteSong || undefined,
-      });
-      window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated'));
-    }
+      },
+      profile.username
+    );
+    setCurrentNote(textToSave);
     setNoteInput('');
     setShowNoteModal(false);
+    setPostsVersion((v) => v + 1);
     showToast(noteSong ? `Note shared with "${noteSong.title}" 🎵` : 'Note shared! 💭');
+  };
+
+  const handleDeleteNote = () => {
+    if (!isOwnProfile) return;
+    DataStore.deleteChatNote(profile.username);
+    setCurrentNote(isOwnProfile ? 'Note...' : '');
+    setNoteSong(null);
+    setShowNoteModal(false);
+    setPostsVersion((v) => v + 1);
+    showToast('Note deleted 🗑️');
   };
 
   const handleAddHighlight = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isOwnProfile) {
+      showToast('You can only create highlights on your own profile ⭐');
+      return;
+    }
     if (!newHighlightName.trim()) return;
-    setHighlights((prev) => [
-      ...prev,
-      { id: 'h-' + Date.now(), label: newHighlightName.trim(), emoji: newHighlightEmoji },
-    ]);
-    setNewHighlightName('');
-    setShowNewHighlightModal(false);
-    showToast('Highlight added to profile! ⭐');
+    try {
+      const created = DataStore.addHighlight(profile.username, {
+        label: newHighlightName.trim(),
+        emoji: newHighlightEmoji,
+      });
+      setHighlights((prev) => [...prev, created]);
+      setNewHighlightName('');
+      setShowNewHighlightModal(false);
+      setPostsVersion((v) => v + 1);
+      showToast('Highlight added to profile! ⭐');
+    } catch (err: any) {
+      showToast(err?.message || 'Could not add highlight');
+    }
+  };
+
+  const handleDeleteHighlight = (highlightId: string) => {
+    if (!isOwnProfile) {
+      showToast('You cannot delete highlights from another account 🙅');
+      return;
+    }
+    const wasDeleted = DataStore.deleteHighlight(profile.username, highlightId);
+    if (wasDeleted) {
+      setHighlights((prev) => prev.filter((h) => h.id !== highlightId));
+      setPostsVersion((v) => v + 1);
+      showToast('Highlight deleted');
+    }
   };
 
   const handleCopyProfileLink = () => {
@@ -592,14 +705,18 @@ export default function ProfileClient({ username }: { username: string }) {
           paddingTop: 'max(env(safe-area-inset-top, 0px), 12px)',
         }}
       >
-        <Link
-          href="/home"
-          className="w-10 h-10 rounded-full flex items-center justify-center btn-press hover:bg-[var(--surface-sunken)] border border-transparent hover:border-[var(--line)]"
-          style={{ color: 'var(--text)' }}
-          aria-label="Back to home"
-        >
-          <ArrowLeft size={20} />
-        </Link>
+        {isOwnProfile ? (
+          <div className="w-10 h-10" />
+        ) : (
+          <Link
+            href="/home"
+            className="w-10 h-10 rounded-full flex items-center justify-center btn-press hover:bg-[var(--surface-sunken)] border border-transparent hover:border-[var(--line)]"
+            style={{ color: 'var(--text)' }}
+            aria-label="Back to home"
+          >
+            <ArrowLeft size={20} />
+          </Link>
+        )}
         <div className="flex items-center gap-1.5 font-bold text-sm tracking-tight" style={{ color: 'var(--text)' }}>
           <span>{profile.username}</span>
           {profile.isVerified && (
@@ -626,34 +743,68 @@ export default function ProfileClient({ username }: { username: string }) {
         <div className="flex items-center justify-between gap-6">
           {/* Avatar 82px Circle with Interactive Note Bubble */}
           <div className="relative shrink-0">
-            {/* Note Bubble (Clickable!) */}
-            <button
-              onClick={() => setShowNoteModal(true)}
-              className="absolute -top-3.5 left-0 z-10 px-2.5 py-0.5 rounded-full shadow-xs text-[10px] font-medium border flex items-center gap-1.5 cursor-pointer hover:scale-105 transition-transform max-w-[130px]"
-              style={{
-                backgroundColor: 'var(--surface-sunken)',
-                borderColor: 'var(--line)',
-                color: 'var(--text)',
-              }}
-              title="Click to share or edit note"
-            >
-              {noteSong && (
-                <Music size={10} className="text-pink-500 animate-pulse shrink-0" />
-              )}
-              <span className="truncate">{currentNote}</span>
-              <div
-                className="absolute -bottom-1 left-3 w-1.5 h-1.5 rotate-45 border-r border-b"
+            {/* Note Bubble: Editable by owner; Read-only for other users if active; Hidden for other users if empty */}
+            {isOwnProfile ? (
+              <button
+                type="button"
+                onClick={() => setShowNoteModal(true)}
+                className="absolute -top-3.5 left-0 z-10 px-2.5 py-0.5 rounded-full shadow-xs text-[10px] font-medium border flex items-center gap-1.5 cursor-pointer hover:scale-105 transition-transform max-w-[130px]"
                 style={{
                   backgroundColor: 'var(--surface-sunken)',
                   borderColor: 'var(--line)',
+                  color: 'var(--text)',
                 }}
-              />
-            </button>
-
-            {/* Circular Avatar with Diagonal Light Shimmer */}
-            <div className="relative">
+                title="Click to share or edit note"
+              >
+                {noteSong && (
+                  <Music size={10} className="text-pink-500 animate-pulse shrink-0" />
+                )}
+                <span className="truncate">{currentNote || '+ Note'}</span>
+                <div
+                  className="absolute -bottom-1 left-3 w-1.5 h-1.5 rotate-45 border-r border-b"
+                  style={{
+                    backgroundColor: 'var(--surface-sunken)',
+                    borderColor: 'var(--line)',
+                  }}
+                />
+              </button>
+            ) : profileNote && profileNote.text ? (
               <div
-                className="w-[82px] h-[82px] rounded-full flex items-center justify-center font-bold text-xl overflow-hidden border shadow-sm profile-light-sweep"
+                onClick={() => showToast(`@${profile.username}: "${profileNote.text}" 💭`)}
+                className="absolute -top-3.5 left-0 z-10 px-2.5 py-0.5 rounded-full shadow-xs text-[10px] font-medium border flex items-center gap-1.5 cursor-pointer hover:scale-105 transition-transform max-w-[130px]"
+                style={{
+                  backgroundColor: 'var(--surface-sunken)',
+                  borderColor: 'var(--line)',
+                  color: 'var(--text)',
+                }}
+                title={`Note from @${profile.username}`}
+              >
+                {profileNote.song && (
+                  <Music size={10} className="text-pink-500 animate-pulse shrink-0" />
+                )}
+                <span className="truncate">{profileNote.text}</span>
+                <div
+                  className="absolute -bottom-1 left-3 w-1.5 h-1.5 rotate-45 border-r border-b"
+                  style={{
+                    backgroundColor: 'var(--surface-sunken)',
+                    borderColor: 'var(--line)',
+                  }}
+                />
+              </div>
+            ) : null}
+
+            {/* Circular Avatar with Optional Story Ring & Detail View on click */}
+            <div
+              className={`relative rounded-full transition-all ${
+                hasActiveStory
+                  ? 'story-ring p-[3px] bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-600 shadow-md cursor-pointer'
+                  : ''
+              }`}
+              onClick={() => setShowEnlargedPhoto(true)}
+              title="Click to view profile picture in detail"
+            >
+              <div
+                className="w-[82px] h-[82px] rounded-full flex items-center justify-center font-bold text-xl overflow-hidden border shadow-sm profile-light-sweep cursor-pointer"
                 style={{
                   backgroundColor: pair.bg,
                   color: pair.text,
@@ -671,11 +822,12 @@ export default function ProfileClient({ username }: { username: string }) {
                 )}
               </div>
 
-              {/* Camera upload badge for own profile */}
+              {/* Camera upload badge for own profile ONLY */}
               {isOwnProfile && (
                 <button
                   type="button"
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation();
                     setShowEditModal(true);
                     setTimeout(() => profilePhotoInputRef.current?.click(), 150);
                   }}
@@ -689,11 +841,11 @@ export default function ProfileClient({ username }: { username: string }) {
             </div>
           </div>
 
-          {/* 3 Horizontal Stats: Posts, Followers, Following */}
+          {/* 3 Horizontal Stats: Posts, Followers, Following (Strictly Authoritative) */}
           <div className="flex-1 flex items-center justify-around text-center select-none tabular-nums">
             <div className="cursor-pointer" onClick={() => setActiveTab('posts')}>
               <div className="text-base font-bold leading-tight" style={{ color: 'var(--text)' }}>
-                {userPosts.length || profile.postCount || 0}
+                {userPosts.length}
               </div>
               <div className="text-[12px] lowercase font-normal" style={{ color: 'var(--text-muted)' }}>
                 posts
@@ -705,7 +857,7 @@ export default function ProfileClient({ username }: { username: string }) {
               title={`View ${profile.username}'s followers`}
             >
               <div className="text-base font-bold leading-tight" style={{ color: 'var(--text)' }}>
-                {followersList.length || profile.followerCount || 0}
+                {followersList.length}
               </div>
               <div className="text-[12px] lowercase font-normal" style={{ color: 'var(--text-muted)' }}>
                 followers
@@ -717,7 +869,7 @@ export default function ProfileClient({ username }: { username: string }) {
               title={`View who ${profile.username} follows`}
             >
               <div className="text-base font-bold leading-tight" style={{ color: 'var(--text)' }}>
-                {followingList.length || profile.followingCount || 0}
+                {followingList.length}
               </div>
               <div className="text-[12px] lowercase font-normal" style={{ color: 'var(--text-muted)' }}>
                 following
@@ -827,6 +979,7 @@ export default function ProfileClient({ username }: { username: string }) {
           {isOwnProfile ? (
             <>
               <button
+                type="button"
                 onClick={() => setShowEditModal(true)}
                 className="flex-1 h-9 rounded-full text-xs font-semibold border flex items-center justify-center gap-1 btn-press cursor-pointer"
                 style={{
@@ -838,6 +991,19 @@ export default function ProfileClient({ username }: { username: string }) {
                 <span>Edit profile</span>
               </button>
               <button
+                type="button"
+                onClick={handleShareProfile}
+                className="flex-1 h-9 rounded-full text-xs font-semibold border flex items-center justify-center gap-1 btn-press cursor-pointer"
+                style={{
+                  backgroundColor: 'var(--surface-sunken)',
+                  borderColor: 'var(--line)',
+                  color: 'var(--text)',
+                }}
+              >
+                <span>Share profile</span>
+              </button>
+              <button
+                type="button"
                 onClick={() => setShowArchiveModal(true)}
                 className="flex-1 h-9 rounded-full text-xs font-semibold border flex items-center justify-center gap-1 btn-press cursor-pointer"
                 style={{
@@ -846,7 +1012,7 @@ export default function ProfileClient({ username }: { username: string }) {
                   color: 'var(--text)',
                 }}
               >
-                <span>View archive</span>
+                <span>Archive</span>
               </button>
             </>
           ) : (
@@ -855,24 +1021,73 @@ export default function ProfileClient({ username }: { username: string }) {
                 type="button"
                 onClick={() => {
                   const currentUser = DataStore.getCurrentUser();
-                  if (!currentUser || currentUser.username.toLowerCase().trim() === profile.username.toLowerCase().trim()) {
+                  if (!currentUser || !currentUser.username || currentUser.username.toLowerCase() === 'guest') {
+                    showToast('Please log in to follow students 👤');
+                    return;
+                  }
+                  if (currentUser.username.toLowerCase().trim() === profile.username.toLowerCase().trim()) {
                     showToast('You cannot follow yourself! 🙅');
                     return;
                   }
+
+                  // If already following, unfollow directly
+                  if (isFollowing) {
+                    const isNow = DataStore.toggleFollow(currentUser.username, profile.username);
+                    setIsFollowing(isNow);
+                    setIsRequested(false);
+                    setPostsVersion((v) => v + 1);
+                    const updated = DataStore.getProfileByUsername(profile.username);
+                    if (updated) setProfile(updated);
+                    showToast(`Unfollowed @${profile.username}`);
+                    return;
+                  }
+
+                  // If profile is private, handle Follow Request
+                  if (profile.isPrivate) {
+                    if (isRequested) {
+                      DataStore.cancelFollowRequest(currentUser.username, profile.username);
+                      setIsRequested(false);
+                      showToast(`Follow request cancelled for @${profile.username}`);
+                    } else {
+                      DataStore.requestFollow(currentUser.username, profile.username);
+                      setIsRequested(true);
+                      showToast(`Follow request sent to @${profile.username} 🔒`);
+                      try {
+                        DataStore.addNotification({
+                          id: `notif-freq-${Date.now()}`,
+                          type: 'follow',
+                          title: 'New Follow Request',
+                          message: `@${currentUser.username} requested to follow you`,
+                          timeAgo: 'Just now',
+                          createdAt: new Date().toISOString(),
+                          read: false,
+                          recipientUsername: profile.username.toLowerCase().trim(),
+                          senderUsername: currentUser.username,
+                          senderAvatar: currentUser.avatar || null,
+                          targetId: currentUser.username,
+                        } as any);
+                      } catch {}
+                    }
+                    return;
+                  }
+
+                  // If public, direct follow
                   const isNow = DataStore.toggleFollow(currentUser.username, profile.username);
                   setIsFollowing(isNow);
+                  setIsRequested(false);
+                  setPostsVersion((v) => v + 1);
                   const updated = DataStore.getProfileByUsername(profile.username);
                   if (updated) setProfile(updated);
-                  showToast(isNow ? `Following @${profile.username}` : `Unfollowed @${profile.username}`);
+                  showToast(`Following @${profile.username}`);
                 }}
                 className="flex-1 h-9 rounded-full text-xs font-semibold btn-press flex items-center justify-center cursor-pointer shadow-xs"
                 style={{
-                  backgroundColor: isFollowing ? 'var(--surface-sunken)' : 'var(--accent-cta)',
-                  color: isFollowing ? 'var(--text)' : 'var(--on-accent-cta)',
-                  border: isFollowing ? '1px solid var(--line)' : 'none',
+                  backgroundColor: isFollowing || isRequested ? 'var(--surface-sunken)' : 'var(--accent-cta)',
+                  color: isFollowing || isRequested ? 'var(--text)' : 'var(--on-accent-cta)',
+                  border: isFollowing || isRequested ? '1px solid var(--line)' : 'none',
                 }}
               >
-                {isFollowing ? 'Following' : 'Follow'}
+                {isFollowing ? 'Following' : isRequested ? 'Requested' : 'Follow'}
               </button>
               <Link
                 href={`/chats?user=${profile.username}`}
@@ -888,6 +1103,16 @@ export default function ProfileClient({ username }: { username: string }) {
               <button
                 type="button"
                 onClick={() => {
+                  const cur = DataStore.getCurrentUser();
+                  if (!cur || !cur.username || cur.username.toLowerCase() === 'guest') {
+                    showToast('Please log in to place voice calls 📞');
+                    return;
+                  }
+                  if (cur.username.toLowerCase().trim() === profile.username.toLowerCase().trim()) {
+                    showToast('You cannot call your own account 🙅');
+                    return;
+                  }
+                  showToast(`Calling @${profile.username}...`);
                   window.dispatchEvent(
                     new CustomEvent('dpsbuzz:start_call', {
                       detail: {
@@ -912,6 +1137,16 @@ export default function ProfileClient({ username }: { username: string }) {
               <button
                 type="button"
                 onClick={() => {
+                  const cur = DataStore.getCurrentUser();
+                  if (!cur || !cur.username || cur.username.toLowerCase() === 'guest') {
+                    showToast('Please log in to place video calls 📹');
+                    return;
+                  }
+                  if (cur.username.toLowerCase().trim() === profile.username.toLowerCase().trim()) {
+                    showToast('You cannot call your own account 🙅');
+                    return;
+                  }
+                  showToast(`Video calling @${profile.username}...`);
                   window.dispatchEvent(
                     new CustomEvent('dpsbuzz:start_call', {
                       detail: {
@@ -1005,7 +1240,7 @@ export default function ProfileClient({ username }: { username: string }) {
           <StreakTierLadder
             currentStreakDays={userStreak.streakDays}
             habitPoints={userStreak.habitPoints}
-            onPostClick={() => setShowHabitPostModal(true)}
+            onPostClick={isOwnProfile ? () => setShowHabitPostModal(true) : undefined}
           />
 
           {/* Post Today's Habit button if own profile */}
@@ -1025,8 +1260,8 @@ export default function ProfileClient({ username }: { username: string }) {
           )}
         </div>
 
-        {/* Highlights Row (Only visible to owner, or if public, or if following) */}
-        {(isOwnProfile || !profile.isPrivate || isFollowing) && (
+        {/* Highlights Row (Only visible to owner, or if public/following and has highlights) */}
+        {(isOwnProfile || ((!profile.isPrivate || isFollowing) && highlights.length > 0)) && (
           <div className="pt-1.5 flex items-center gap-4 overflow-x-auto no-scrollbar">
             {/* (+) New Highlight Button (Only visible to account owner) */}
             {isOwnProfile && (
@@ -1055,7 +1290,7 @@ export default function ProfileClient({ username }: { username: string }) {
               <div
                 key={h.id}
                 onClick={() => showToast(`Opening "${h.label}" highlight stories`)}
-                className="flex flex-col items-center gap-1 shrink-0 cursor-pointer group"
+                className="flex flex-col items-center gap-1 shrink-0 cursor-pointer group relative"
               >
                 <div
                   className="w-14 h-14 rounded-full border flex items-center justify-center text-xl transition-transform group-hover:scale-105"
@@ -1069,6 +1304,22 @@ export default function ProfileClient({ username }: { username: string }) {
                 <span className="text-[11px] font-medium truncate max-w-[60px]" style={{ color: 'var(--text)' }}>
                   {h.label}
                 </span>
+                {isOwnProfile && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (confirm(`Delete highlight "${h.label}"?`)) {
+                        handleDeleteHighlight(h.id);
+                      }
+                    }}
+                    className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center text-xs shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
+                    title="Delete highlight"
+                    aria-label={`Delete highlight ${h.label}`}
+                  >
+                    ×
+                  </button>
+                )}
               </div>
             ))}
           </div>
@@ -1084,7 +1335,9 @@ export default function ProfileClient({ username }: { username: string }) {
           <div className="space-y-1">
             <h3 className="text-sm font-bold text-[var(--text)]">This Account is Private 🔒</h3>
             <p className="text-xs text-[var(--text-muted)] max-w-xs mx-auto leading-relaxed">
-              Follow @{profile.username} to see their photos, stories, and posts.
+              {isRequested
+                ? `Follow request sent. Waiting for @${profile.username} to accept.`
+                : `Follow @${profile.username} to see their photos, stories, and posts.`}
             </p>
           </div>
         </div>
@@ -1482,7 +1735,8 @@ export default function ProfileClient({ username }: { username: string }) {
               </p>
             </div>
           )
-        ) : savedPosts.length > 0 ? (
+        ) : isOwnProfile && activeTab === 'saved' ? (
+          savedPosts.length > 0 ? (
           <div className="grid grid-cols-3 gap-1.5">
             {savedPosts.map((post) => {
               const displayImg = post.imageUrl || (post.images && post.images.length > 0 ? post.images[0] : null);
@@ -1531,7 +1785,7 @@ export default function ProfileClient({ username }: { username: string }) {
               Tap the bookmark icon on any post to save it for later. Only you can see what you&apos;ve saved.
             </p>
           </div>
-        )}
+        )) : null}
       </div>
     </>
   )}
@@ -1768,14 +2022,33 @@ export default function ProfileClient({ username }: { username: string }) {
                 <button
                   type="button"
                   onClick={() => {
-                    setSelectedPostDetail((prev) => (prev ? { ...prev, likes: prev.likes + 1 } : null));
-                    showToast('Liked post! ❤️');
+                    const cur = DataStore.getCurrentUser();
+                    if (!cur?.username || cur.username.toLowerCase() === 'guest') {
+                      showToast('Please log in to like posts ❤️');
+                      return;
+                    }
+                    const res = DataStore.toggleLikePost(selectedPostDetail.id, cur.username);
+                    setSelectedPostDetail((prev) =>
+                      prev ? { ...prev, likes: res.likesCount } : null
+                    );
+                    setPostsVersion((v) => v + 1);
+                    showToast(res.liked ? 'Liked post! ❤️' : 'Unliked post');
                   }}
                   className="flex items-center gap-1 text-xs font-semibold hover:text-red-500 transition-colors cursor-pointer"
                   style={{ color: 'var(--text)' }}
                 >
-                  <Heart size={20} className={selectedPostDetail.likes > 0 ? 'fill-red-500 text-red-500' : ''} />
-                  <span>{selectedPostDetail.likes || 0}</span>
+                  <Heart
+                    size={20}
+                    className={
+                      (() => {
+                        const cur = DataStore.getCurrentUser();
+                        return (cur?.username && DataStore.isPostLiked(selectedPostDetail.id, cur.username))
+                          ? 'fill-red-500 text-red-500'
+                          : '';
+                      })()
+                    }
+                  />
+                  <span>{DataStore.getPostLikes(selectedPostDetail.id)}</span>
                 </button>
                 <button
                   type="button"
@@ -2272,7 +2545,7 @@ export default function ProfileClient({ username }: { username: string }) {
       )}
 
       {/* ─── 4. New Highlight Modal ───────────────────────────────────────── */}
-      {showNewHighlightModal && (
+      {showNewHighlightModal && isOwnProfile && (
         <div
           className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in"
           onClick={() => setShowNewHighlightModal(false)}
@@ -2371,7 +2644,7 @@ export default function ProfileClient({ username }: { username: string }) {
       )}
 
       {/* ─── 5. Note Modal ────────────────────────────────────────────────── */}
-      {showNoteModal && (
+      {showNoteModal && isOwnProfile && (
         <div
           className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in"
           onClick={() => setShowNoteModal(false)}
@@ -2470,6 +2743,15 @@ export default function ProfileClient({ username }: { username: string }) {
               </div>
 
               <div className="pt-2 flex gap-2">
+                {profileNote && (
+                  <button
+                    type="button"
+                    onClick={handleDeleteNote}
+                    className="py-2 px-3 text-xs font-semibold border rounded-full cursor-pointer text-red-500 border-red-500/30 hover:bg-red-500/10"
+                  >
+                    Delete
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => setShowNoteModal(false)}
@@ -2499,8 +2781,51 @@ export default function ProfileClient({ username }: { username: string }) {
         </div>
       )}
 
+      {/* ─── Enlarged Profile Photo Modal ─────────────────────────────────── */}
+      {showEnlargedPhoto && (
+        <div
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in"
+          onClick={() => setShowEnlargedPhoto(false)}
+        >
+          <div
+            className="relative max-w-sm w-full bg-[var(--surface)] border border-[var(--line)] rounded-3xl p-5 flex flex-col items-center gap-4 shadow-2xl animate-scale-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setShowEnlargedPhoto(false)}
+              className="absolute top-4 right-4 p-1.5 rounded-full bg-[var(--surface-sunken)] hover:bg-[var(--line)] text-[var(--text)] transition-colors cursor-pointer"
+              aria-label="Close enlarged photo"
+            >
+              <X size={20} />
+            </button>
+
+            <div className="w-64 h-64 sm:w-72 sm:h-72 rounded-full overflow-hidden border-2 border-[var(--primary)] shadow-lg bg-[var(--surface-sunken)] flex items-center justify-center">
+              {profile.avatar ? (
+                <img
+                  src={profile.avatar}
+                  alt={profile.fullName}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center text-[var(--text-muted)] bg-gradient-to-tr from-purple-500/20 via-pink-500/20 to-orange-500/20">
+                  <span className="text-6xl font-bold text-[var(--primary)]">
+                    {(profile.fullName || profile.username || '?').charAt(0).toUpperCase()}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <div className="text-center">
+              <h3 className="text-base font-bold text-[var(--text)]">{profile.fullName}</h3>
+              <p className="text-xs text-[var(--text-muted)]">@{profile.username}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Quick Habit Post Modal for Star Board */}
-      {showHabitPostModal && (
+      {showHabitPostModal && isOwnProfile && (
         <div
           className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 select-none"
           role="dialog"
@@ -2879,33 +3204,41 @@ export default function ProfileClient({ username }: { username: string }) {
               <button
                 type="button"
                 onClick={() => {
-                  const currentlyLiked = !!peekLikedPosts[peekPost.id];
-                  const newLiked = !currentlyLiked;
-                  setPeekLikedPosts((prev) => ({ ...prev, [peekPost.id]: newLiked }));
-                  setPeekPost((prev) => (prev ? { ...prev, likes: prev.likes + (newLiked ? 1 : -1) } : null));
-                  showToast(newLiked ? 'Liked post! ❤️' : 'Unliked post');
-                  fetch(`/api/posts/${peekPost.id}/like`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username: profile.username }),
-                  }).catch(() => {});
+                  const cur = DataStore.getCurrentUser();
+                  if (!cur?.username || cur.username.toLowerCase() === 'guest') {
+                    showToast('Please log in to like posts ❤️');
+                    return;
+                  }
+                  const res = DataStore.toggleLikePost(peekPost.id, cur.username);
+                  setPeekLikedPosts((prev) => ({ ...prev, [peekPost.id]: res.liked }));
+                  setPeekPost((prev) => (prev ? { ...prev, likes: res.likesCount } : null));
+                  setPostsVersion((v) => v + 1);
+                  showToast(res.liked ? 'Liked post! ❤️' : 'Unliked post');
                 }}
                 className="w-full px-4 py-3 flex items-center gap-3 text-left text-xs font-semibold hover:bg-[var(--surface-sunken)] transition-colors cursor-pointer text-[var(--text)] group"
               >
                 <Heart
                   size={18}
                   className={`shrink-0 transition-colors ${
-                    peekLikedPosts[peekPost.id] || peekPost.likes > 0
-                      ? 'text-red-500 fill-red-500'
-                      : 'text-[var(--text-muted)] group-hover:text-red-500'
+                    (() => {
+                      const cur = typeof window !== 'undefined' ? DataStore.getCurrentUser() : null;
+                      const isLiked = (cur?.username && DataStore.isPostLiked(peekPost.id, cur.username)) || !!peekLikedPosts[peekPost.id];
+                      return isLiked ? 'text-red-500 fill-red-500' : 'text-[var(--text-muted)] group-hover:text-red-500';
+                    })()
                   }`}
                 />
                 <div className="flex-1 min-w-0">
                   <span className="flex items-center gap-1.5">
-                    <span>{peekLikedPosts[peekPost.id] ? 'Liked' : 'Like'}</span>
+                    <span>
+                      {(() => {
+                        const cur = typeof window !== 'undefined' ? DataStore.getCurrentUser() : null;
+                        const isLiked = (cur?.username && DataStore.isPostLiked(peekPost.id, cur.username)) || !!peekLikedPosts[peekPost.id];
+                        return isLiked ? 'Liked' : 'Like';
+                      })()}
+                    </span>
                     <span className="text-[10px] text-[var(--text-muted)] font-normal">(Curtir)</span>
                   </span>
-                  <p className="text-[10px] font-normal text-[var(--text-muted)]">{peekPost.likes || 0} likes</p>
+                  <p className="text-[10px] font-normal text-[var(--text-muted)]">{DataStore.getPostLikes(peekPost.id)} likes</p>
                 </div>
               </button>
 

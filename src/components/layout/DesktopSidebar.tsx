@@ -37,7 +37,9 @@ export const DesktopSidebar: FC = () => {
       setUnreadNotifsCount(notifs.filter((n) => !n.isRead).length);
 
       try {
-        const convs = JSON.parse(localStorage.getItem('dpsbuzz_chat_conversations_v2') || '[]');
+        const u = cur?.username?.toLowerCase().trim();
+        const convKey = u && u !== 'guest' ? `dpsbuzz_chat_conversations_${u}_v3` : null;
+        const convs = convKey ? JSON.parse(localStorage.getItem(convKey) || '[]') : [];
         const count = convs.filter((c: any) => c.isUnread || (c.unreadCount || 0) > 0).length;
         setUnreadChatsCount(count);
       } catch {

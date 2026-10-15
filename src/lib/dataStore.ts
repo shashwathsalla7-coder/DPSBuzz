@@ -154,6 +154,15 @@ export interface HabitStreak {
   quote?: string;
 }
 
+export interface ProfileHighlight {
+  id: string;
+  username: string;
+  label: string;
+  emoji: string;
+  coverImage?: string | null;
+  createdAt: string;
+}
+
 export interface Story {
   id: string;
   userId: string;
@@ -439,6 +448,10 @@ const STORAGE_KEYS = {
   STORY_REPLIES: 'dpsbuzz_story_replies_v1',
   BAN_APPEALS: 'dpsbuzz_ban_appeals_v1',
   ACCOUNT_AUDIT_LOG: 'dpsbuzz_account_audit_log_v1',
+  HIGHLIGHTS: 'dpsbuzz_highlights_v1',
+  BLOCKS: 'dpsbuzz_blocked_users_v1',
+  ACCEPTED_MESSAGE_REQUESTS: 'dpsbuzz_accepted_message_requests_v1',
+  VANISH_CHATS: 'dpsbuzz_vanish_mode_chats_v1',
 };
 
 function getStorage<T>(key: string, defaultValue: T): T {
@@ -744,11 +757,23 @@ export const DataStore = {
         setStorage(STORAGE_KEYS.CHAT_NOTES, Array.from(noteMap.values()));
       }
 
-      // 6. Merge chat messages
-      if (data.chatMessages && typeof data.chatMessages === 'object') {
-        const localMessages = getStorage<Record<string, any[]>>(STORAGE_KEYS.CHAT_MESSAGES, {});
+      // 6. Merge chat messages strictly scoped to active user
+      if (data.chatMessages && typeof data.chatMessages === 'object' && activeUser && activeUser.username) {
+        const myUser = activeUser.username.toLowerCase().trim();
+        const userMsgKey = `dpsbuzz_chat_messages_${myUser}_v3`;
+        const userConvKey = `dpsbuzz_chat_conversations_${myUser}_v3`;
+        const localMessages = getStorage<Record<string, any[]>>(userMsgKey, {});
         const mergedMessages = { ...localMessages };
+
         for (const [convId, list] of Object.entries(data.chatMessages)) {
+          // Strict privacy: only merge chats involving active user
+          if (convId.includes('__')) {
+            const participants = convId.split('__').map((p) => p.trim().toLowerCase());
+            if (!participants.includes(myUser)) continue;
+          } else if (!convId.startsWith('conv-group-')) {
+            continue;
+          }
+
           if (Array.isArray(list)) {
             const currentList = mergedMessages[convId] || [];
             const msgMap = new Map<string, any>();
@@ -764,79 +789,72 @@ export const DataStore = {
             mergedMessages[convId] = Array.from(msgMap.values());
           }
         }
-        setStorage(STORAGE_KEYS.CHAT_MESSAGES, mergedMessages);
+        setStorage(userMsgKey, mergedMessages);
 
         // 7. Auto-update conversations list for any incoming messages
-        if (activeUser && activeUser.username) {
-          const myUser = activeUser.username.toLowerCase();
-          const savedConvs = getStorage<any[]>('dpsbuzz_chat_conversations_v2', []);
-          const updatedConvs = [...savedConvs];
-          let convsChanged = false;
-          const allProfilesList = getStorage<Profile[]>(STORAGE_KEYS.PROFILES, []);
+        const savedConvs = getStorage<any[]>(userConvKey, []);
+        const updatedConvs = [...savedConvs];
+        let convsChanged = false;
+        const allProfilesList = getStorage<Profile[]>(STORAGE_KEYS.PROFILES, []);
 
-          for (const [key, list] of Object.entries(mergedMessages)) {
-            if (!Array.isArray(list) || list.length === 0) continue;
-            const lastMsg = list[list.length - 1];
-            if (!lastMsg) continue;
+        for (const [key, list] of Object.entries(mergedMessages)) {
+          if (!Array.isArray(list) || list.length === 0) continue;
+          const lastMsg = list[list.length - 1];
+          if (!lastMsg) continue;
 
-            let otherUsername = '';
-            if (key.includes('__')) {
-              const parts = key.split('__').map((p) => p.trim().toLowerCase());
-              if (parts.includes(myUser)) {
-                otherUsername = parts.find((p) => p !== myUser) || '';
-              }
-            } else if (key.startsWith('conv-') && !key.startsWith('conv-group-')) {
-              const raw = key.replace(/^conv-/, '').toLowerCase();
-              if (raw !== myUser) {
-                otherUsername = raw;
-              }
+          let otherUsername = '';
+          if (key.includes('__')) {
+            const parts = key.split('__').map((p) => p.trim().toLowerCase());
+            if (parts.includes(myUser)) {
+              otherUsername = parts.find((p) => p !== myUser) || '';
             }
+          }
 
-            if (otherUsername) {
-              const isMe = lastMsg.senderUsername
-                ? lastMsg.senderUsername.toLowerCase() === myUser
-                : lastMsg.sender === 'me';
-              const msgPreview = isMe ? `You: ${lastMsg.text}` : lastMsg.text;
-              const convIdx = updatedConvs.findIndex(
-                (c) => (c.username || '').toLowerCase() === otherUsername
-              );
+          if (otherUsername) {
+            const isMe = lastMsg.senderUsername
+              ? lastMsg.senderUsername.toLowerCase() === myUser
+              : lastMsg.sender === 'me';
+            const msgPreview = isMe ? `You: ${lastMsg.text}` : lastMsg.text;
+            const convIdx = updatedConvs.findIndex(
+              (c) => (c.username || '').toLowerCase() === otherUsername
+            );
 
-              if (convIdx >= 0) {
-                if (
-                  updatedConvs[convIdx].lastMessage !== msgPreview ||
-                  updatedConvs[convIdx].timeAgo !== (lastMsg.time || 'Just now')
-                ) {
-                  updatedConvs[convIdx] = {
-                    ...updatedConvs[convIdx],
-                    lastMessage: msgPreview,
-                    timeAgo: lastMsg.time || 'Just now',
-                    isUnread: !isMe,
-                  };
-                  convsChanged = true;
-                }
-              } else {
-                const prof = allProfilesList.find(
-                  (p) => (p.username || '').toLowerCase() === otherUsername
-                );
-                updatedConvs.unshift({
-                  id: `conv-${otherUsername}`,
-                  name: prof ? prof.fullName : otherUsername,
-                  username: otherUsername,
-                  studentClass: prof ? `Class ${prof.class}-${prof.section || 'A'}` : 'Student',
-                  avatar: prof?.avatar || null,
+            if (convIdx >= 0) {
+              if (
+                updatedConvs[convIdx].lastMessage !== msgPreview ||
+                updatedConvs[convIdx].timeAgo !== (lastMsg.time || 'Just now')
+              ) {
+                updatedConvs[convIdx] = {
+                  ...updatedConvs[convIdx],
                   lastMessage: msgPreview,
                   timeAgo: lastMsg.time || 'Just now',
                   isUnread: !isMe,
-                });
+                };
                 convsChanged = true;
               }
+            } else {
+              const prof = allProfilesList.find(
+                (p) => (p.username || '').toLowerCase() === otherUsername
+              );
+              updatedConvs.unshift({
+                id: `conv-${otherUsername}`,
+                name: prof ? prof.fullName : otherUsername,
+                username: otherUsername,
+                studentClass: prof ? `Class ${prof.class}-${prof.section || 'A'}` : 'Student',
+                avatar: prof?.avatar || null,
+                lastMessage: msgPreview,
+                timeAgo: lastMsg.time || 'Just now',
+                inboxTier: DataStore.getInboxTier(myUser, otherUsername),
+                isUnread: !isMe,
+              });
+              convsChanged = true;
             }
           }
+        }
 
-          if (convsChanged) {
-            setStorage('dpsbuzz_chat_conversations_v2', updatedConvs);
-            changed = true;
-          }
+        if (convsChanged) {
+          setStorage(userConvKey, updatedConvs);
+          changed = true;
         }
       }
 
@@ -1038,7 +1056,14 @@ export const DataStore = {
       return true;
     });
 
-    return filtered;
+    const likesMap = this.getPostLikesMap();
+    const commentsMap = this.getAllCommentsMap();
+
+    return filtered.map((p) => ({
+      ...p,
+      likes: Array.isArray(likesMap[p.id]) ? likesMap[p.id].length : (p.likes || 0),
+      comments: Array.isArray(commentsMap[p.id]) ? commentsMap[p.id].length : (p.comments || 0),
+    }));
   },
 
   addPost(post: Omit<Post, 'id' | 'createdAt' | 'timeAgo' | 'likes' | 'comments'>): Post {
@@ -1811,15 +1836,20 @@ export const DataStore = {
     );
   },
 
-  saveChatNote(data: { text: string; song?: SongTrack; colorTheme?: string }): ChatNote {
+  saveChatNote(data: { text: string; song?: SongTrack; colorTheme?: string }, targetUsername?: string): ChatNote {
     const user = this.getCurrentUser();
-    const notes = this.getChatNotes().filter((n) => n.username.toLowerCase() !== user.username.toLowerCase());
+    const cleanTarget = (targetUsername || user.username).toLowerCase().trim();
+    const isOwner = user?.username && user.username.toLowerCase().trim() === cleanTarget;
+    if (!isOwner) {
+      throw new Error('Unauthorized: You can only add or update a note on your own profile');
+    }
+    const notes = this.getChatNotes().filter((n) => n.username.toLowerCase() !== cleanTarget);
     const newNote: ChatNote = {
       id: 'note-' + Date.now(),
       userId: user.id,
-      username: user.username,
-      fullName: user.fullName,
-      avatar: user.avatar,
+      username: cleanTarget,
+      fullName: cleanTarget === user.username.toLowerCase().trim() ? user.fullName : cleanTarget,
+      avatar: cleanTarget === user.username.toLowerCase().trim() ? user.avatar : null,
       text: data.text.trim(),
       song: data.song,
       colorTheme: data.colorTheme || 'sunset',
@@ -1841,6 +1871,12 @@ export const DataStore = {
 
   deleteChatNote(username: string): void {
     const clean = username.toLowerCase().trim();
+    const user = this.getCurrentUser();
+    const isOwner = user?.username && user.username.toLowerCase().trim() === clean;
+    const isAdmin = user?.role === 'admin';
+    if (!isOwner && !isAdmin) {
+      throw new Error('Unauthorized to delete note for another account');
+    }
     const notes = this.getChatNotes().filter((n) => n.username.toLowerCase() !== clean);
     setStorage(STORAGE_KEYS.CHAT_NOTES, notes);
     if (typeof window !== 'undefined') {
@@ -1849,6 +1885,64 @@ export const DataStore = {
       }).catch(() => {});
       window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated'));
     }
+  },
+
+  getNoteForUser(username: string): ChatNote | null {
+    if (!username) return null;
+    const clean = username.toLowerCase().trim();
+    const notes = this.getChatNotes();
+    return notes.find((n) => n.username.toLowerCase().trim() === clean) || null;
+  },
+
+  // Profile Highlights (Per-user, owner-managed)
+  getHighlights(targetUsername: string): ProfileHighlight[] {
+    if (!targetUsername) return [];
+    const clean = targetUsername.toLowerCase().trim();
+    const stored = getStorage<ProfileHighlight[]>(STORAGE_KEYS.HIGHLIGHTS, []);
+    return stored.filter((h) => h && h.username && h.username.toLowerCase().trim() === clean);
+  },
+
+  addHighlight(targetUsername: string, data: { label: string; emoji: string; coverImage?: string | null }): ProfileHighlight {
+    if (!targetUsername) throw new Error('Target username is required');
+    const clean = targetUsername.toLowerCase().trim();
+    const user = this.getCurrentUser();
+    const isOwner = user?.username && user.username.toLowerCase().trim() === clean;
+    if (!isOwner) {
+      throw new Error('Unauthorized: You can only create highlights on your own profile');
+    }
+    const all = getStorage<ProfileHighlight[]>(STORAGE_KEYS.HIGHLIGHTS, []);
+    const newHighlight: ProfileHighlight = {
+      id: 'hl-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
+      username: clean,
+      label: data.label.trim(),
+      emoji: data.emoji.trim() || '⭐',
+      coverImage: data.coverImage || null,
+      createdAt: new Date().toISOString(),
+    };
+    all.push(newHighlight);
+    setStorage(STORAGE_KEYS.HIGHLIGHTS, all);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated'));
+    }
+    return newHighlight;
+  },
+
+  deleteHighlight(targetUsername: string, highlightId: string): boolean {
+    if (!targetUsername || !highlightId) return false;
+    const clean = targetUsername.toLowerCase().trim();
+    const user = this.getCurrentUser();
+    const isOwner = user?.username && user.username.toLowerCase().trim() === clean;
+    if (!isOwner) {
+      throw new Error('Unauthorized: You can only delete highlights from your own profile');
+    }
+    const all = getStorage<ProfileHighlight[]>(STORAGE_KEYS.HIGHLIGHTS, []);
+    const filtered = all.filter((h) => !(h.id === highlightId && h.username.toLowerCase().trim() === clean));
+    const wasDeleted = filtered.length < all.length;
+    setStorage(STORAGE_KEYS.HIGHLIGHTS, filtered);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated'));
+    }
+    return wasDeleted;
   },
 
   // Notices (Strictly real school notices, starts empty)
@@ -3177,6 +3271,19 @@ export const DataStore = {
     });
     setStorage(STORAGE_KEYS.PROFILES, profiles);
 
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('dpsbuzz:content_updated', {
+          detail: {
+            type: 'follow',
+            follower: cleanFollower,
+            following: cleanFollowing,
+            isNowFollowing,
+          },
+        })
+      );
+    }
+
     return isNowFollowing;
   },
 
@@ -3230,39 +3337,397 @@ export const DataStore = {
       list.push({ follower: cleanReq, following: cleanTar });
       setStorage(STORAGE_KEYS.FOLLOWS, list);
 
+      const targetFollowersCount = list.filter((f) => f.following.toLowerCase().trim() === cleanTar).length;
+      const reqFollowingCount = list.filter((f) => f.follower.toLowerCase().trim() === cleanReq).length;
+
       const profiles = this.getProfiles().map((p) => {
         if (p.username.toLowerCase() === cleanTar) {
-          return { ...p, followerCount: p.followerCount + 1 };
+          return { ...p, followerCount: targetFollowersCount };
         }
         if (p.username.toLowerCase() === cleanReq) {
-          return { ...p, followingCount: p.followingCount + 1 };
+          return { ...p, followingCount: reqFollowingCount };
         }
         return p;
       });
       setStorage(STORAGE_KEYS.PROFILES, profiles);
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('dpsbuzz:content_updated', {
+            detail: {
+              type: 'follow_accepted',
+              target: cleanTar,
+              requester: cleanReq,
+            },
+          })
+        );
+      }
     }
   },
 
-  // Privacy Rule: Public accounts can chat immediately; Private accounts must be followed & accepted first!
-  canChatAndShare(requester: string, targetUsername: string): { allowed: boolean; isPrivate: boolean; reason?: string } {
-    const targetProfile = this.getProfileByUsername(targetUsername);
-    if (!targetProfile) return { allowed: true, isPrivate: false };
-    const isPrivate = Boolean(targetProfile.isPrivate);
-    if (!isPrivate) {
-      return { allowed: true, isPrivate: false };
+  declineFollowRequest(target: string, requester: string): void {
+    this.cancelFollowRequest(requester, target);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('dpsbuzz:content_updated', {
+          detail: { type: 'follow_declined', target, requester },
+        })
+      );
     }
-    const isFollowing = this.isFollowing(requester, targetUsername);
-    if (isFollowing) {
-      return { allowed: true, isPrivate: true };
+  },
+
+  // =====================================================
+  // INSTAGRAM DIRECT MESSAGES & INBOX TIERS ARCHITECTURE
+  // =====================================================
+
+  // Blocks Table
+  getBlockedUsers(username?: string): string[] {
+    const cur = (username || this.getCurrentUser()?.username || '').toLowerCase().trim();
+    if (!cur) return [];
+    const allBlocks = getStorage<Record<string, string[]>>(STORAGE_KEYS.BLOCKS, {});
+    return allBlocks[cur] || [];
+  },
+
+  isBlocked(blocker: string, target: string): boolean {
+    const list = this.getBlockedUsers(blocker);
+    return list.includes(target.toLowerCase().trim());
+  },
+
+  blockUser(blocker: string, target: string): void {
+    const cleanB = blocker.toLowerCase().trim();
+    const cleanT = target.toLowerCase().trim();
+    if (!cleanB || !cleanT || cleanB === cleanT) return;
+    const allBlocks = getStorage<Record<string, string[]>>(STORAGE_KEYS.BLOCKS, {});
+    const list = allBlocks[cleanB] || [];
+    if (!list.includes(cleanT)) {
+      list.push(cleanT);
+      allBlocks[cleanB] = list;
+      setStorage(STORAGE_KEYS.BLOCKS, allBlocks);
     }
-    const isRequested = this.isFollowRequested(requester, targetUsername);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('dpsbuzz:content_updated', {
+          detail: { type: 'user_blocked', blocker: cleanB, target: cleanT },
+        })
+      );
+    }
+  },
+
+  unblockUser(blocker: string, target: string): void {
+    const cleanB = blocker.toLowerCase().trim();
+    const cleanT = target.toLowerCase().trim();
+    const allBlocks = getStorage<Record<string, string[]>>(STORAGE_KEYS.BLOCKS, {});
+    if (allBlocks[cleanB]) {
+      allBlocks[cleanB] = allBlocks[cleanB].filter((u) => u !== cleanT);
+      setStorage(STORAGE_KEYS.BLOCKS, allBlocks);
+    }
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('dpsbuzz:content_updated', {
+          detail: { type: 'user_unblocked', blocker: cleanB, target: cleanT },
+        })
+      );
+    }
+  },
+
+  // Accepted Message Requests
+  getAcceptedMessageRequests(username?: string): string[] {
+    const cur = (username || this.getCurrentUser()?.username || '').toLowerCase().trim();
+    if (!cur) return [];
+    const map = getStorage<Record<string, string[]>>(STORAGE_KEYS.ACCEPTED_MESSAGE_REQUESTS, {});
+    return map[cur] || [];
+  },
+
+  acceptMessageRequest(recipientUsername: string, senderUsername: string): void {
+    const cleanRec = recipientUsername.toLowerCase().trim();
+    const cleanSend = senderUsername.toLowerCase().trim();
+    if (!cleanRec || !cleanSend) return;
+    const map = getStorage<Record<string, string[]>>(STORAGE_KEYS.ACCEPTED_MESSAGE_REQUESTS, {});
+    const list = map[cleanRec] || [];
+    if (!list.includes(cleanSend)) {
+      list.push(cleanSend);
+      map[cleanRec] = list;
+      setStorage(STORAGE_KEYS.ACCEPTED_MESSAGE_REQUESTS, map);
+    }
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('dpsbuzz:content_updated', {
+          detail: { type: 'message_request_accepted', recipient: cleanRec, sender: cleanSend },
+        })
+      );
+    }
+  },
+
+  /**
+   * Section 3.B & Section 4: Instagram Inbox Tier Determination
+   * - If recipient follows sender -> PRIMARY
+   * - If recipient has accepted sender's message request -> PRIMARY
+   * - If stranger (recipient does NOT follow sender and hasn't accepted) -> REQUESTS
+   */
+  getInboxTier(recipientUsername: string, senderUsername: string): 'PRIMARY' | 'REQUESTS' {
+    const cleanRec = recipientUsername.toLowerCase().trim();
+    const cleanSend = senderUsername.toLowerCase().trim();
+    if (cleanRec === cleanSend) return 'PRIMARY';
+
+    // Check if recipient follows sender
+    if (this.isFollowing(cleanRec, cleanSend)) {
+      return 'PRIMARY';
+    }
+
+    // Check if recipient has accepted message request from sender
+    const accepted = this.getAcceptedMessageRequests(cleanRec);
+    if (accepted.includes(cleanSend)) {
+      return 'PRIMARY';
+    }
+
+    return 'REQUESTS';
+  },
+
+  /**
+   * Message Routing & Gatekeeper Logic:
+   * Instagram separates social graph from message flow:
+   * Anyone can send message requests to anyone (unless blocked).
+   * If recipient doesn't follow requester, message lands in REQUESTS tier.
+   * Media is restricted for strangers until accepted.
+   */
+  canChatAndShare(requester: string, targetUsername: string): {
+    allowed: boolean;
+    isPrivate: boolean;
+    inboxTier: 'PRIMARY' | 'REQUESTS';
+    allowMedia: boolean;
+    reason?: string;
+  } {
+    const cleanReq = requester.toLowerCase().trim();
+    const cleanTar = targetUsername.toLowerCase().trim();
+
+    // Check if blocked
+    if (this.isBlocked(cleanTar, cleanReq)) {
+      return {
+        allowed: false,
+        isPrivate: false,
+        inboxTier: 'REQUESTS',
+        allowMedia: false,
+        reason: 'Unable to message this user.',
+      };
+    }
+
+    const targetProfile = this.getProfileByUsername(cleanTar);
+    const isPrivate = Boolean(targetProfile?.isPrivate);
+
+    // Determine inbox tier according to whether target follows requester
+    const tier = this.getInboxTier(cleanTar, cleanReq);
+
     return {
-      allowed: false,
-      isPrivate: true,
-      reason: isRequested
-        ? `@${targetUsername}'s account is private. Your follow request is waiting for them to accept.`
-        : `@${targetUsername}'s account is private. Send a follow request and wait for them to accept before you can chat and send posts or photos.`,
+      allowed: true,
+      isPrivate,
+      inboxTier: tier,
+      allowMedia: tier === 'PRIMARY',
+      reason: tier === 'REQUESTS'
+        ? `@${cleanTar} does not follow you. Your message will be sent as a Message Request.`
+        : undefined,
     };
+  },
+
+  // Real-Time 0ms Event Broadcaster (Cross-Tab via BroadcastChannel & Intra-Window via CustomEvent)
+  broadcastChatEvent(payload: {
+    type: 'MESSAGE_SENT' | 'MESSAGE_UNSENT' | 'MESSAGE_REACTION' | 'VANISH_TOGGLE' | 'VANISH_PURGE' | 'MESSAGES_READ';
+    conversationId: string;
+    message?: any;
+    msgId?: string;
+    reaction?: string;
+    isVanishMode?: boolean;
+    senderUsername: string;
+    recipientUsername?: string;
+  }): void {
+    if (typeof window === 'undefined') return;
+    try {
+      if (typeof BroadcastChannel !== 'undefined') {
+        const channel = new BroadcastChannel('dpsbuzz_realtime_chats');
+        channel.postMessage(payload);
+        channel.close();
+      }
+      window.dispatchEvent(new CustomEvent('dpsbuzz:chat_event', { detail: payload }));
+    } catch {}
+  },
+
+  // Unsend Protocol (Section 5)
+  unsendMessage(conversationId: string, messageId: string, username: string): boolean {
+    const cur = username.toLowerCase().trim();
+    let canonicalId = conversationId;
+    if (conversationId.includes('__')) {
+      canonicalId = conversationId.split('__').map((p) => p.trim().toLowerCase()).sort().join('__');
+    }
+
+    // Server hard-delete
+    if (typeof window !== 'undefined') {
+      fetch('/api/chats', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'unsend',
+          conversationId: canonicalId,
+          messageId,
+          senderUsername: cur,
+        }),
+      }).catch(() => {});
+    }
+
+    // Update local storage for current user
+    const userMsgKey = `dpsbuzz_chat_messages_${cur}_v3`;
+    const stored = getStorage<Record<string, any[]>>(userMsgKey, {});
+    const list = stored[canonicalId] || stored[conversationId] || [];
+    const filtered = list.filter((m) => m.id !== messageId);
+    stored[canonicalId] = filtered;
+    if (canonicalId !== conversationId) {
+      stored[conversationId] = filtered;
+    }
+    setStorage(userMsgKey, stored);
+
+    // Instant 0ms broadcast across all tabs and components
+    this.broadcastChatEvent({
+      type: 'MESSAGE_UNSENT',
+      conversationId: canonicalId,
+      msgId: messageId,
+      senderUsername: cur,
+    });
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('dpsbuzz:content_updated', {
+          detail: { type: 'message_unsend', conversationId: canonicalId, messageId },
+        })
+      );
+    }
+    return true;
+  },
+
+  // Vanish Mode State Engine (Section 5)
+  getVanishMode(conversationId: string): boolean {
+    let canonicalId = conversationId;
+    if (conversationId.includes('__')) {
+      canonicalId = conversationId.split('__').map((p) => p.trim().toLowerCase()).sort().join('__');
+    }
+    const map = getStorage<Record<string, boolean>>(STORAGE_KEYS.VANISH_CHATS, {});
+    return Boolean(map[canonicalId]);
+  },
+
+  setVanishMode(conversationId: string, enabled: boolean): void {
+    let canonicalId = conversationId;
+    if (conversationId.includes('__')) {
+      canonicalId = conversationId.split('__').map((p) => p.trim().toLowerCase()).sort().join('__');
+    }
+    const map = getStorage<Record<string, boolean>>(STORAGE_KEYS.VANISH_CHATS, {});
+    map[canonicalId] = enabled;
+    setStorage(STORAGE_KEYS.VANISH_CHATS, map);
+
+    // Instant 0ms broadcast across all tabs and components
+    this.broadcastChatEvent({
+      type: 'VANISH_TOGGLE',
+      conversationId: canonicalId,
+      isVanishMode: enabled,
+      senderUsername: this.getCurrentUser().username,
+    });
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('dpsbuzz:content_updated', {
+          detail: { type: 'vanish_mode_toggled', conversationId: canonicalId, enabled },
+        })
+      );
+    }
+  },
+
+  purgeVanishMessages(conversationId: string, username: string): void {
+    const cur = username.toLowerCase().trim();
+    let canonicalId = conversationId;
+    if (conversationId.includes('__')) {
+      canonicalId = conversationId.split('__').map((p) => p.trim().toLowerCase()).sort().join('__');
+    }
+
+    const userMsgKey = `dpsbuzz_chat_messages_${cur}_v3`;
+    const stored = getStorage<Record<string, any[]>>(userMsgKey, {});
+    const list = stored[canonicalId] || stored[conversationId] || [];
+    const nonVanish = list.filter((m) => !m.is_vanish_mode_message && !m.isVanishMode);
+    stored[canonicalId] = nonVanish;
+    if (canonicalId !== conversationId) stored[conversationId] = nonVanish;
+    setStorage(userMsgKey, stored);
+
+    // Instant 0ms broadcast across all tabs and components
+    this.broadcastChatEvent({
+      type: 'VANISH_PURGE',
+      conversationId: canonicalId,
+      senderUsername: cur,
+    });
+
+    if (typeof window !== 'undefined') {
+      fetch('/api/chats', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'purge_vanish',
+          conversationId: canonicalId,
+          senderUsername: cur,
+        }),
+      }).catch(() => {});
+
+      window.dispatchEvent(
+        new CustomEvent('dpsbuzz:content_updated', {
+          detail: { type: 'vanish_messages_purged', conversationId: canonicalId },
+        })
+      );
+    }
+  },
+
+  markMessagesAsRead(conversationId: string, readerUsername: string): void {
+    const cur = readerUsername.toLowerCase().trim();
+    let canonicalId = conversationId;
+    if (conversationId.includes('__')) {
+      canonicalId = conversationId.split('__').map((p) => p.trim().toLowerCase()).sort().join('__');
+    }
+
+    const userMsgKey = `dpsbuzz_chat_messages_${cur}_v3`;
+    const stored = getStorage<Record<string, any[]>>(userMsgKey, {});
+    const list = stored[canonicalId] || stored[conversationId] || [];
+    let changed = false;
+
+    const updatedList = list.map((m: any) => {
+      const sender = (m.senderUsername || '').toLowerCase().trim();
+      if (sender && sender !== cur && !m.is_read && !m.isSeen && !m.readAt) {
+        changed = true;
+        return {
+          ...m,
+          is_read: true,
+          isSeen: true,
+          readAt: Date.now(),
+        };
+      }
+      return m;
+    });
+
+    if (changed) {
+      stored[canonicalId] = updatedList;
+      if (canonicalId !== conversationId) stored[conversationId] = updatedList;
+      setStorage(userMsgKey, stored);
+    }
+
+    // Instant 0ms broadcast across all tabs and components
+    this.broadcastChatEvent({
+      type: 'MESSAGES_READ',
+      conversationId: canonicalId,
+      senderUsername: cur,
+    });
+
+    if (typeof window !== 'undefined') {
+      fetch('/api/chats', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'mark_read',
+          conversationId: canonicalId,
+          readerUsername: cur,
+        }),
+      }).catch(() => {});
+    }
   },
 
   getMutualFollows(myUsername: string, targetUsername: string): string[] {
@@ -3702,9 +4167,13 @@ export const DataStore = {
     points: number;
     reason: string;
   } {
+    const cur = this.getCurrentUser();
+    const cleanUser = username.toLowerCase().trim();
+    if (!cur || cur.username.toLowerCase().trim() !== cleanUser) {
+      throw new Error('Unauthorized: You can only record habit posts for your own profile');
+    }
     const evalResult = this.evaluateHabitPost(caption, category);
     const list = this.getHabitStreaks();
-    const cleanUser = username.toLowerCase().trim();
     const existingIndex = list.findIndex((s) => s.username.toLowerCase() === cleanUser);
 
     const userProfile = this.getProfileByUsername(username);
@@ -4056,8 +4525,10 @@ export const DataStore = {
     const cur = (senderUsername || this.getCurrentUser().username).toLowerCase().trim();
 
     try {
-      const storedConv = JSON.parse(localStorage.getItem('dpsbuzz_chat_conversations_v2') || '[]');
-      const storedMsgs = JSON.parse(localStorage.getItem('dpsbuzz_chat_messages_v1') || '{}');
+      const userConvKey = cur ? `dpsbuzz_chat_conversations_${cur}_v3` : 'dpsbuzz_chat_conversations_v2';
+      const userMsgKey = cur ? `dpsbuzz_chat_messages_${cur}_v3` : 'dpsbuzz_chat_messages_v1';
+      const storedConv = JSON.parse(localStorage.getItem(userConvKey) || '[]');
+      const storedMsgs = JSON.parse(localStorage.getItem(userMsgKey) || '{}');
       const profiles = this.getProfiles();
       const curProfile = profiles.find((p) => (p.username || '').toLowerCase() === cur);
       const senderName = curProfile ? curProfile.fullName : cur;
@@ -4113,12 +4584,22 @@ export const DataStore = {
         storedMsgs[convId] = [...(storedMsgs[convId] || []), newMsg];
         storedMsgs[canonicalId] = [...(storedMsgs[canonicalId] || []), newMsg];
 
+        // Instant 0ms broadcast across all tabs and components
+        this.broadcastChatEvent({
+          type: 'MESSAGE_SENT',
+          conversationId: canonicalId,
+          message: newMsg,
+          senderUsername: cur,
+          recipientUsername: cleanT,
+        });
+
         // Sync to cloud chat store so recipient gets it over the cloud!
         fetch('/api/chats', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             conversationId: canonicalId,
+            senderUsername: cur,
             recipientUsername: cleanT,
             message: newMsg,
           }),
@@ -4134,8 +4615,10 @@ export const DataStore = {
         });
       });
 
-      localStorage.setItem('dpsbuzz_chat_conversations_v2', JSON.stringify(storedConv));
-      localStorage.setItem('dpsbuzz_chat_messages_v1', JSON.stringify(storedMsgs));
+      if (cur) {
+        localStorage.setItem(`dpsbuzz_chat_conversations_${cur}_v3`, JSON.stringify(storedConv));
+        localStorage.setItem(`dpsbuzz_chat_messages_${cur}_v3`, JSON.stringify(storedMsgs));
+      }
 
       window.dispatchEvent(
         new CustomEvent('dpsbuzz:content_updated', { detail: { type: 'post_shared_to_chat' } })
@@ -4154,18 +4637,21 @@ export const DataStore = {
     try {
       const convId = `conv-${authorUsername}`;
       const canonicalId = [cur, authorUsername].sort().join('__');
-      const storedConv = JSON.parse(localStorage.getItem('dpsbuzz_chat_conversations_v2') || '[]');
-      const storedMsgs = JSON.parse(localStorage.getItem('dpsbuzz_chat_messages_v1') || '{}');
+      const userConvKey = cur ? `dpsbuzz_chat_conversations_${cur}_v3` : 'dpsbuzz_chat_conversations_v2';
+      const userMsgKey = cur ? `dpsbuzz_chat_messages_${cur}_v3` : 'dpsbuzz_chat_messages_v1';
+      const storedConv = JSON.parse(localStorage.getItem(userConvKey) || '[]');
+      const storedMsgs = JSON.parse(localStorage.getItem(userMsgKey) || '{}');
       const profiles = this.getProfiles();
       const targetProf = profiles.find((p) => (p.username || '').toLowerCase() === authorUsername);
-      const targetName = story.fullName || targetProf?.fullName || authorUsername;
-      const formattedMsg = `Replied to your story: "${replyText}" 💬`;
+      const targetName = targetProf?.fullName || story.username || authorUsername;
+      const canonicalMsgText = `Replied to story: "${replyText}" 💬`;
+      const senderPreview = `You replied to their story: "${replyText}" 💬`;
       const timeNow = 'Just now';
       const timeStr = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date());
 
       const existingIdx = storedConv.findIndex((c: any) => (c.username || '').toLowerCase() === authorUsername || c.id === convId || c.id === canonicalId);
       if (existingIdx >= 0) {
-        storedConv[existingIdx].lastMessage = `You: ${formattedMsg}`;
+        storedConv[existingIdx].lastMessage = senderPreview;
         storedConv[existingIdx].timeAgo = timeNow;
       } else {
         storedConv.unshift({
@@ -4173,7 +4659,7 @@ export const DataStore = {
           name: targetName,
           username: authorUsername,
           studentClass: targetProf?.class ? `${targetProf.class}-${targetProf.section || ''}` : '8-A',
-          lastMessage: `You: ${formattedMsg}`,
+          lastMessage: senderPreview,
           timeAgo: timeNow,
           isUnread: false,
         });
@@ -4181,7 +4667,7 @@ export const DataStore = {
 
       const newMsg = {
         id: `msg-story-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-        text: formattedMsg,
+        text: canonicalMsgText,
         sender: 'me' as const,
         senderUsername: cur,
         time: timeStr,
@@ -4191,8 +4677,19 @@ export const DataStore = {
       storedMsgs[convId] = [...(storedMsgs[convId] || []), newMsg];
       storedMsgs[canonicalId] = [...(storedMsgs[canonicalId] || []), newMsg];
 
-      localStorage.setItem('dpsbuzz_chat_conversations_v2', JSON.stringify(storedConv));
-      localStorage.setItem('dpsbuzz_chat_messages_v1', JSON.stringify(storedMsgs));
+      if (cur) {
+        localStorage.setItem(`dpsbuzz_chat_conversations_${cur}_v3`, JSON.stringify(storedConv));
+        localStorage.setItem(`dpsbuzz_chat_messages_${cur}_v3`, JSON.stringify(storedMsgs));
+      }
+
+      // Instant 0ms broadcast across all tabs and components
+      this.broadcastChatEvent({
+        type: 'MESSAGE_SENT',
+        conversationId: canonicalId,
+        message: newMsg,
+        senderUsername: cur,
+        recipientUsername: authorUsername,
+      });
 
       // Sync to cloud chat store
       fetch('/api/chats', {
@@ -4200,6 +4697,7 @@ export const DataStore = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           conversationId: canonicalId,
+          senderUsername: cur,
           recipientUsername: authorUsername,
           message: newMsg,
         }),
@@ -4241,6 +4739,11 @@ export const DataStore = {
     return (map[postId] || []).map((u) => u.toLowerCase()).includes(cur);
   },
 
+  getPostLikes(postId: string): number {
+    const map = this.getPostLikesMap();
+    return Array.isArray(map[postId]) ? map[postId].length : 0;
+  },
+
   getUserLikedPostIds(username?: string): string[] {
     const cur = (username || this.getCurrentUser()?.username || '').toLowerCase().trim();
     if (!cur) return [];
@@ -4276,15 +4779,12 @@ export const DataStore = {
     map[postId] = likers;
     setStorage(STORAGE_KEYS.POST_LIKES, map);
 
-    // Update post likes count in stored posts
+    // Update post likes count in stored posts strictly matching likers.length
     const posts = this.getPosts(true);
-    let newCount = likers.length;
+    const newCount = likers.length;
     const updatedPosts = posts.map((p) => {
       if (p.id === postId) {
-        const baseLikes = Math.max(0, p.likes || 0);
-        const count = Math.max(likers.length, liked ? baseLikes + 1 : Math.max(0, baseLikes - 1));
-        newCount = count;
-        return { ...p, likes: count };
+        return { ...p, likes: newCount };
       }
       return p;
     });

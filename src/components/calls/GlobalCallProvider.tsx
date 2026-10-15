@@ -14,16 +14,48 @@ import {
   stopCallAudio,
 } from '@/lib/callAudio';
 
-const ICE_SERVERS = {
+const ICE_SERVERS: RTCConfiguration = {
   iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
     { urls: 'stun:stun2.l.google.com:19302' },
+    { urls: 'stun:stun.cloudflare.com:3478' },
+    { urls: 'stun:stun.services.mozilla.com' },
+    // Public OpenRelay TURN relay servers for symmetric NAT & cellular network traversal
+    {
+      urls: 'turn:openrelay.metered.ca:80',
+      username: 'openrelay',
+      credential: 'openrelay',
+    },
+    {
+      urls: 'turn:openrelay.metered.ca:443',
+      username: 'openrelay',
+      credential: 'openrelay',
+    },
+    {
+      urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+      username: 'openrelay',
+      credential: 'openrelay',
+    },
   ],
+  iceCandidatePoolSize: 10,
 };
 
+function broadcastCallEvent() {
+  try {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('dpsbuzz:call_event_sync'));
+      if ('BroadcastChannel' in window) {
+        const bc = new BroadcastChannel('dpsbuzz_calls_sync');
+        bc.postMessage({ type: 'CALL_STATUS_CHANGED', timestamp: Date.now() });
+        bc.close();
+      }
+    }
+  } catch {}
+}
+
 // Synthetic audio track generator for hardware-less environments
-function createSyntheticAudioTrack(): MediaStreamTrack {
+function createSyntheticAudioTrack(): MediaStreamTrack | null {
   try {
     const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
     if (AudioCtx) {
@@ -36,11 +68,11 @@ function createSyntheticAudioTrack(): MediaStreamTrack {
       if (track) return track;
     }
   } catch {}
-  return new MediaStream().getTracks()[0];
+  return null;
 }
 
 // Synthetic video track generator
-function createSyntheticVideoTrack(label: string): MediaStreamTrack {
+function createSyntheticVideoTrack(label: string): MediaStreamTrack | null {
   try {
     const canvas = document.createElement('canvas');
     canvas.width = 640;
@@ -57,11 +89,13 @@ function createSyntheticVideoTrack(label: string): MediaStreamTrack {
       ctx.font = '16px sans-serif';
       ctx.fillText(label || 'Live Camera Feed', 320, 260);
     }
-    const stream = (canvas as any).captureStream ? (canvas as any).captureStream(10) : new MediaStream();
-    const track = stream.getVideoTracks()[0];
-    if (track) return track;
+    const stream = (canvas as any).captureStream ? (canvas as any).captureStream(10) : null;
+    if (stream) {
+      const track = stream.getVideoTracks()[0];
+      if (track) return track;
+    }
   } catch {}
-  return new MediaStream().getTracks()[0];
+  return null;
 }
 
 export function GlobalCallProvider() {
@@ -83,6 +117,7 @@ export function GlobalCallProvider() {
   const peerConnRef = useRef<RTCPeerConnection | null>(null);
   const callTimerRef = useRef<any>(null);
   const processedCandidatesRef = useRef<Set<string>>(new Set());
+  const consecutiveMissedPollsRef = useRef(0);
 
   // Log call record into chat history
   const logCallToChat = useCallback(
@@ -122,17 +157,21 @@ export function GlobalCallProvider() {
         };
 
         // Update local storage
-        const savedMsgs = JSON.parse(localStorage.getItem('dpsbuzz_chat_messages_v1') || '{}');
-        const list = savedMsgs[pair] || [];
-        savedMsgs[pair] = [...list, logMsg];
-        localStorage.setItem('dpsbuzz_chat_messages_v1', JSON.stringify(savedMsgs));
+        if (currentUsername && currentUsername !== 'guest') {
+          const userMsgKey = `dpsbuzz_chat_messages_${currentUsername}_v3`;
+          const savedMsgs = JSON.parse(localStorage.getItem(userMsgKey) || '{}');
+          const list = savedMsgs[pair] || [];
+          savedMsgs[pair] = [...list, logMsg];
+          localStorage.setItem(userMsgKey, JSON.stringify(savedMsgs));
+        }
 
-        // Sync to server chat endpoint
+        // Sync to server chat endpoint with sender authentication
         fetch('/api/chats', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             conversationId: pair,
+            senderUsername: currentUsername,
             message: logMsg,
           }),
         }).catch(() => {});
@@ -192,6 +231,7 @@ export function GlobalCallProvider() {
             callId: currentCall.callId,
           }),
         });
+        broadcastCallEvent();
       } catch {}
     }
 
@@ -218,6 +258,7 @@ export function GlobalCallProvider() {
           callId: incomingCall.callId,
         }),
       });
+      broadcastCallEvent();
     } catch {}
 
     setIncomingCall(null);
@@ -241,18 +282,22 @@ export function GlobalCallProvider() {
           });
           audioTrack = stream.getAudioTracks()[0] || null;
           videoTrack = stream.getVideoTracks()[0] || null;
-        } catch {
-          // If camera fails, retry audio-only first
+        } catch (mediaErr: any) {
+          console.warn('Camera/mic access error, attempting audio-only fallback:', mediaErr);
           try {
             const audioOnly = await navigator.mediaDevices.getUserMedia({ audio: true });
             audioTrack = audioOnly.getAudioTracks()[0] || null;
-          } catch {}
+          } catch (aErr: any) {
+            console.warn('Microphone access restricted, falling back to synthetic track:', aErr);
+          }
         }
       } else {
         try {
           const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
           audioTrack = stream.getAudioTracks()[0] || null;
-        } catch {}
+        } catch (mediaErr: any) {
+          console.warn('Microphone access restricted, falling back to synthetic track:', mediaErr);
+        }
       }
     }
 
@@ -339,6 +384,7 @@ export function GlobalCallProvider() {
           sdpAnswer,
         }),
       });
+      broadcastCallEvent();
 
       const updatedCall: CallSession = {
         ...callToAccept,
@@ -444,14 +490,31 @@ export function GlobalCallProvider() {
           }),
         });
 
+        if (!res.ok) {
+          throw new Error(`Server returned status ${res.status}. Call could not be connected.`);
+        }
+
         const data = await res.json();
         if (data.success && data.call) {
           setActiveCall(data.call);
+          broadcastCallEvent();
+        } else {
+          throw new Error(data.error || 'Call could not be placed. Please try again.');
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error('Failed to initiate call:', err);
         cleanUpCallResources();
         stopCallAudio();
+        const errorMsg =
+          err?.message || 'Unable to place call. Please check your network and browser permissions.';
+        alert(errorMsg);
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(
+            new CustomEvent('dpsbuzz:call_error', {
+              detail: { message: errorMsg },
+            })
+          );
+        }
       }
     },
     [cleanUpCallResources, facingMode]
@@ -479,12 +542,13 @@ export function GlobalCallProvider() {
     const pollCallStatus = async () => {
       try {
         if (!isPolling) return;
-        const res = await fetch(`/api/calls?username=${encodeURIComponent(currentUsername)}&t=${Date.now()}`);
+        const callParam = activeCall?.callId ? `&callId=${encodeURIComponent(activeCall.callId)}` : '';
+        const res = await fetch(`/api/calls?username=${encodeURIComponent(currentUsername)}${callParam}&t=${Date.now()}`);
         if (!res.ok) return;
         const data = await res.json();
         if (!data.success) return;
 
-        const serverCall: CallSession | null = data.activeCall;
+        const serverCall: CallSession | null = data.activeCall || data.call || null;
 
         // Case 1: Incoming call arrived for current user while idle
         if (serverCall && serverCall.receiverUsername === currentUsername && serverCall.status === 'ringing') {
@@ -501,58 +565,94 @@ export function GlobalCallProvider() {
         }
 
         // Case 3: Active call state synchronization (For both Caller and Receiver)
-        if (activeCall && serverCall) {
-          // If we are caller waiting for receiver to answer
-          if (isCaller && activeCall.status === 'ringing' && serverCall.status === 'connected') {
-            stopCallAudio();
-            playCallConnectedSound();
-            setActiveCall(serverCall);
+        if (activeCall) {
+          if (serverCall && serverCall.callId === activeCall.callId) {
+            consecutiveMissedPollsRef.current = 0;
 
-            if (serverCall.sdpAnswer && peerConnRef.current && !peerConnRef.current.currentRemoteDescription) {
-              await peerConnRef.current.setRemoteDescription(new RTCSessionDescription(serverCall.sdpAnswer));
+            // If we are caller waiting for receiver to answer
+            if (isCaller && activeCall.status === 'ringing' && serverCall.status === 'connected') {
+              stopCallAudio();
+              playCallConnectedSound();
+              setActiveCall(serverCall);
+
+              if (serverCall.sdpAnswer && peerConnRef.current && !peerConnRef.current.currentRemoteDescription) {
+                await peerConnRef.current.setRemoteDescription(new RTCSessionDescription(serverCall.sdpAnswer));
+              }
+
+              if (!callTimerRef.current) {
+                callTimerRef.current = setInterval(() => {
+                  setDurationSeconds((prev) => prev + 1);
+                }, 1000);
+              }
+            } else if (serverCall.status === 'rejected') {
+              stopCallAudio();
+              alert(`${activeCall.receiverName || 'Student'} declined the call.`);
+              handleEndCall();
+              return;
+            } else if (serverCall.status === 'ended') {
+              stopCallAudio();
+              handleEndCall();
+              return;
             }
 
-            if (!callTimerRef.current) {
-              callTimerRef.current = setInterval(() => {
-                setDurationSeconds((prev) => prev + 1);
-              }, 1000);
-            }
-          } else if (serverCall.status === 'rejected') {
-            alert(`${activeCall.receiverName || 'Student'} declined the call.`);
-            handleEndCall();
-          } else if (serverCall.status === 'ended') {
-            handleEndCall();
-          }
-
-          // SYMMETRIC ICE INGESTION: Both Caller and Receiver ingest remote candidates
-          const myRole = isCaller ? 'caller' : 'receiver';
-          if (serverCall.iceCandidates && peerConnRef.current && peerConnRef.current.remoteDescription) {
-            for (const cand of serverCall.iceCandidates) {
-              const key = JSON.stringify(cand);
-              if (cand.sender !== myRole && !processedCandidatesRef.current.has(key)) {
-                processedCandidatesRef.current.add(key);
-                try {
-                  await peerConnRef.current.addIceCandidate(new RTCIceCandidate(cand.candidate));
-                } catch (err) {
-                  console.warn('ICE candidate addition non-fatal error:', err);
+            // SYMMETRIC ICE INGESTION: Both Caller and Receiver ingest remote candidates
+            const myRole = isCaller ? 'caller' : 'receiver';
+            if (serverCall.iceCandidates && peerConnRef.current && peerConnRef.current.remoteDescription) {
+              for (const cand of serverCall.iceCandidates) {
+                const key = JSON.stringify(cand);
+                if (cand.sender !== myRole && !processedCandidatesRef.current.has(key)) {
+                  processedCandidatesRef.current.add(key);
+                  try {
+                    await peerConnRef.current.addIceCandidate(new RTCIceCandidate(cand.candidate));
+                  } catch (err) {
+                    console.warn('ICE candidate addition non-fatal error:', err);
+                  }
                 }
               }
             }
+          } else if (activeCall.status === 'connected') {
+            // Only terminate connected calls after 3 consecutive empty polls
+            consecutiveMissedPollsRef.current++;
+            if (consecutiveMissedPollsRef.current >= 3) {
+              handleEndCall();
+              return;
+            }
+          } else if (isCaller && activeCall.status === 'ringing') {
+            // Ringing timeout guard: after 35 seconds of no answer, end call with unavailable message
+            const callAge = Date.now() - (activeCall.createdAt || Date.now());
+            if (callAge > 35000) {
+              stopCallAudio();
+              alert(`No answer from @${activeCall.receiverUsername}. They are currently unavailable.`);
+              handleEndCall();
+              return;
+            }
           }
-        }
-
-        // Case 4: Remote party hung up active connected call
-        if (activeCall && (!serverCall || serverCall.status === 'ended')) {
-          handleEndCall();
         }
       } catch {}
     };
 
-    // 1-second polling interval for snappy real-time signaling
+    // 0ms instant signaling across tabs & windows via BroadcastChannel + CustomEvent
+    let bc: BroadcastChannel | null = null;
+    try {
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        bc = new BroadcastChannel('dpsbuzz_calls_sync');
+        bc.onmessage = () => {
+          pollCallStatus();
+        };
+      }
+    } catch {}
+
+    const handleLocalSync = () => pollCallStatus();
+    window.addEventListener('dpsbuzz:call_event_sync', handleLocalSync);
+
+    // Initial poll + 1-second fallback interval for cross-device signaling
+    pollCallStatus();
     const interval = setInterval(pollCallStatus, 1000);
     return () => {
       isPolling = false;
       clearInterval(interval);
+      window.removeEventListener('dpsbuzz:call_event_sync', handleLocalSync);
+      if (bc) bc.close();
     };
   }, [activeCall, incomingCall, isCaller, handleEndCall]);
 

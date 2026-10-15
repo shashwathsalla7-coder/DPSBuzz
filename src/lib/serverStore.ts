@@ -95,7 +95,23 @@ function normalizeStore(parsed: any): ServerStoreData {
     stories: activeStories,
     profiles: Array.isArray(parsed.profiles) && parsed.profiles.length > 0 ? parsed.profiles : [DEFAULT_ADMIN],
     chatNotes: Array.isArray(parsed.chatNotes) ? parsed.chatNotes : [],
-    chatMessages: parsed.chatMessages && typeof parsed.chatMessages === 'object' ? parsed.chatMessages : {},
+    chatMessages: (() => {
+      const sanitized: Record<string, any[]> = {};
+      if (parsed.chatMessages && typeof parsed.chatMessages === 'object') {
+        for (const [key, msgs] of Object.entries(parsed.chatMessages)) {
+          if (!Array.isArray(msgs)) continue;
+          if (key.includes('__')) {
+            const parts = key.split('__').map((p) => p.trim().toLowerCase()).filter(Boolean);
+            if (parts.length === 2 && parts[0] !== parts[1]) {
+              sanitized[parts.sort().join('__')] = msgs;
+            }
+          } else if (key.startsWith('conv-group-')) {
+            sanitized[key] = msgs;
+          }
+        }
+      }
+      return sanitized;
+    })(),
     comments: parsed.comments && typeof parsed.comments === 'object' ? parsed.comments : {},
     likes: parsed.likes && typeof parsed.likes === 'object' ? parsed.likes : {},
     notices: Array.isArray(parsed.notices) ? parsed.notices : [],
@@ -348,9 +364,9 @@ export async function addServerChatMessage(
     ...current.chatMessages,
     [targetKey]: filtered,
   };
-  // Also store under conversationId if different
-  if (targetKey !== conversationId) {
-    updatedChatMessages[conversationId] = filtered;
+  // Prevent cross-user chat leaks: Remove legacy loose conv-xxx single user key if direct chat
+  if (targetKey !== conversationId && !conversationId.startsWith('conv-group-')) {
+    delete updatedChatMessages[conversationId];
   }
 
   return await saveServerStore({
@@ -360,9 +376,6 @@ export async function addServerChatMessage(
 
 export async function getServerChatMessages(conversationId: string): Promise<any[]> {
   const current = await getServerStore();
-  if (current.chatMessages[conversationId]) {
-    return current.chatMessages[conversationId];
-  }
   if (conversationId.includes('__')) {
     const parts = conversationId.split('__').map((p) => p.trim().toLowerCase());
     const canonicalKey = parts.sort().join('__');
@@ -374,7 +387,107 @@ export async function getServerChatMessages(conversationId: string): Promise<any
       return current.chatMessages[reversedKey];
     }
   }
+  if (current.chatMessages[conversationId]) {
+    return current.chatMessages[conversationId];
+  }
   return [];
+}
+
+export async function unsendServerChatMessage(
+  conversationId: string,
+  messageId: string
+): Promise<ServerStoreData> {
+  const current = await getServerStore({ forceRefresh: true });
+  let targetKey = conversationId;
+  if (conversationId.includes('__')) {
+    const parts = conversationId.split('__').map((p) => p.trim().toLowerCase());
+    targetKey = parts.sort().join('__');
+  }
+
+  const existing = current.chatMessages[targetKey] || current.chatMessages[conversationId] || [];
+  const filtered = existing.filter((m) => m.id !== messageId);
+
+  const updatedChatMessages = {
+    ...current.chatMessages,
+    [targetKey]: filtered,
+  };
+  if (targetKey !== conversationId && !conversationId.startsWith('conv-group-')) {
+    delete updatedChatMessages[conversationId];
+  }
+
+  return await saveServerStore({
+    chatMessages: updatedChatMessages,
+  });
+}
+
+export async function purgeVanishServerChatMessages(
+  conversationId: string
+): Promise<ServerStoreData> {
+  const current = await getServerStore({ forceRefresh: true });
+  let targetKey = conversationId;
+  if (conversationId.includes('__')) {
+    const parts = conversationId.split('__').map((p) => p.trim().toLowerCase());
+    targetKey = parts.sort().join('__');
+  }
+
+  const existing = current.chatMessages[targetKey] || current.chatMessages[conversationId] || [];
+  const filtered = existing.filter((m: any) => !m.is_vanish_mode_message && !m.isVanishMode);
+
+  const updatedChatMessages = {
+    ...current.chatMessages,
+    [targetKey]: filtered,
+  };
+  if (targetKey !== conversationId && !conversationId.startsWith('conv-group-')) {
+    delete updatedChatMessages[conversationId];
+  }
+
+  return await saveServerStore({
+    chatMessages: updatedChatMessages,
+  });
+}
+
+export async function markServerChatMessagesRead(
+  conversationId: string,
+  readerUsername: string
+): Promise<ServerStoreData> {
+  const current = await getServerStore({ forceRefresh: true });
+  let targetKey = conversationId;
+  if (conversationId.includes('__')) {
+    const parts = conversationId.split('__').map((p) => p.trim().toLowerCase());
+    targetKey = parts.sort().join('__');
+  }
+
+  const cleanReader = readerUsername.toLowerCase().trim();
+  const existing = current.chatMessages[targetKey] || current.chatMessages[conversationId] || [];
+  let updatedAny = false;
+
+  const marked = existing.map((m: any) => {
+    const sender = (m.senderUsername || '').toLowerCase().trim();
+    if (sender && sender !== cleanReader && !m.is_read && !m.isSeen && !m.readAt) {
+      updatedAny = true;
+      return {
+        ...m,
+        is_read: true,
+        isSeen: true,
+        readAt: Date.now(),
+      };
+    }
+    return m;
+  });
+
+  if (!updatedAny) return current;
+
+  const updatedChatMessages = {
+    ...current.chatMessages,
+    [targetKey]: marked,
+  };
+  if (targetKey !== conversationId && !conversationId.startsWith('conv-group-')) {
+    delete updatedChatMessages[conversationId];
+  }
+
+  return await saveServerStore({
+    chatMessages: updatedChatMessages,
+  });
 }
 
 export async function addServerChatNote(note: ChatNote): Promise<ServerStoreData> {

@@ -388,6 +388,7 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
 
   // Next Story / Next Profile Handler
   const handleNext = useCallback(() => {
+    setShowActivitySheet(false);
     if (currentStoryIndex < currentStories.length - 1) {
       // 1. Same Profile: advance to NEXT story of this profile!
       setCurrentStoryIndex((prev) => prev + 1);
@@ -411,6 +412,7 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
 
   // Previous Story / Previous Profile Handler
   const handlePrev = useCallback(() => {
+    setShowActivitySheet(false);
     if (currentStoryIndex > 0) {
       // 1. Same Profile: go back to PREVIOUS story of this profile!
       setCurrentStoryIndex((prev) => prev - 1);
@@ -438,6 +440,7 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
 
   // Jump directly to Next Profile
   const handleNextProfile = useCallback(() => {
+    setShowActivitySheet(false);
     if (currentUserIndex < effectiveGroups.length - 1) {
       setCurrentUserIndex((prev) => prev + 1);
       setCurrentStoryIndex(0);
@@ -451,6 +454,7 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
 
   // Jump directly to Previous Profile
   const handlePrevProfile = useCallback(() => {
+    setShowActivitySheet(false);
     if (currentUserIndex > 0) {
       setCurrentUserIndex((prev) => prev - 1);
       setCurrentStoryIndex(0);
@@ -514,8 +518,8 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
       const deltaY = e.changedTouches[0].clientY - touchStartY.current;
       const deltaX = e.changedTouches[0].clientX - touchStartX.current;
 
-      // Swipe up from bottom area -> open Activity Sheet!
-      if (deltaY < -70 && touchStartY.current > 300 && Math.abs(deltaY) > Math.abs(deltaX) * 1.3) {
+      // Swipe up from bottom area -> open Activity Sheet (STRICTLY FOR STORY CREATOR ONLY)
+      if (isOwnStory && deltaY < -70 && touchStartY.current > 300 && Math.abs(deltaY) > Math.abs(deltaX) * 1.3) {
         handlePause();
         setShowActivitySheet(true);
         return;
@@ -972,24 +976,8 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
                 ))}
               </div>
 
-              {/* Main row: Views Pill + Input + Like Button */}
+              {/* Main row: Message Input + Heart Like (NO views pill for classmate stories) */}
               <div className="flex items-center gap-2">
-                {/* Views count pill */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    handlePause();
-                    setActivityTab('views');
-                    setShowActivitySheet(true);
-                  }}
-                  className="h-11 px-3 flex items-center gap-1.5 bg-black/65 hover:bg-black/85 active:scale-95 backdrop-blur-md border border-white/30 rounded-full text-white text-xs font-semibold cursor-pointer transition-all shadow-lg shrink-0"
-                  title="See who saw this story"
-                  aria-label={`${currentViewsCount} members saw this story`}
-                >
-                  <Eye size={15} className="text-cyan-300" />
-                  <span className="font-bold">{currentViewsCount}</span>
-                </button>
-
                 {/* Reply Message Input */}
                 <div className="flex-1 relative flex items-center">
                   <input
@@ -1044,8 +1032,8 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
           )}
         </div>
 
-        {/* Story Activity Sheet Modal (Instagram Style: Viewers & Likers) */}
-        {showActivitySheet && (
+        {/* Story Activity Sheet Modal (Instagram Style: Viewers & Likers - STRICTLY FOR STORY CREATOR ONLY) */}
+        {showActivitySheet && isOwnStory && (
           <div
             className="absolute inset-0 z-50 flex flex-col justify-end bg-black/75 backdrop-blur-sm animate-fade-in"
             onClick={() => {

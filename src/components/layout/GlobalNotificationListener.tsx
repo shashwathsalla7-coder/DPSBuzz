@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { ChevronRight, X } from 'lucide-react';
+import { ChevronRight, X, MessageCircle } from 'lucide-react';
 import { DataStore } from '@/lib/dataStore';
 import { getAvatarColorPair } from '@/config/tokens';
 
@@ -23,8 +23,8 @@ export function GlobalNotificationListener() {
   const seenMessageIdsRef = useRef<Set<string>>(new Set());
   const isFirstRunRef = useRef(true);
 
-  // Play synthetic gentle high-fidelity chime (Web Audio API)
-  const playNotificationChime = () => {
+  // Gentle high-fidelity Web Audio chime
+  const playNotificationChime = useCallback(() => {
     try {
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
       if (!AudioCtx) return;
@@ -45,28 +45,50 @@ export function GlobalNotificationListener() {
       osc.start(now);
       osc.stop(now + 0.35);
     } catch {}
-  };
+  }, []);
+
+  const handleOpenChatFromToast = useCallback((senderUsername: string) => {
+    setActiveToast(null);
+    if (typeof window !== 'undefined') {
+      // 1. Dispatch custom event for instantaneous in-memory switch if already on /chats
+      window.dispatchEvent(
+        new CustomEvent('dpsbuzz:open_chat', {
+          detail: { username: senderUsername },
+        })
+      );
+    }
+    // 2. Route navigation
+    router.push(`/chats?user=${encodeURIComponent(senderUsername)}`);
+  }, [router]);
 
   useEffect(() => {
-    // Populate already known messages on initial load so we don't spam toasts for old history
+    const user = DataStore.getCurrentUser();
+    const currentUsername = (user?.username || '').toLowerCase().trim();
+
+    // Populate already known messages on initial load so old messages don't spam toasts
     try {
-      const localMsgs = JSON.parse(localStorage.getItem('dpsbuzz_chat_messages_v1') || '{}');
-      for (const list of Object.values(localMsgs)) {
-        if (Array.isArray(list)) {
-          for (const m of list as any[]) {
-            if (m && m.id) seenMessageIdsRef.current.add(m.id);
+      if (currentUsername && currentUsername !== 'guest') {
+        const userMsgKey = `dpsbuzz_chat_messages_${currentUsername}_v3`;
+        const localMsgs = JSON.parse(localStorage.getItem(userMsgKey) || '{}');
+        for (const list of Object.values(localMsgs)) {
+          if (Array.isArray(list)) {
+            for (const m of list as any[]) {
+              if (m && m.id) seenMessageIdsRef.current.add(m.id);
+            }
           }
         }
       }
     } catch {}
 
     const checkIncoming = async () => {
-      const user = DataStore.getCurrentUser();
-      const currentUsername = (user?.username || '').toLowerCase().trim();
-      if (!currentUsername || currentUsername === 'guest') return;
+      const currentUser = DataStore.getCurrentUser();
+      const uname = (currentUser?.username || '').toLowerCase().trim();
+      if (!uname || uname === 'guest') return;
 
       try {
-        const res = await fetch('/api/sync?t=' + Date.now());
+        // Query server sync WITH the authenticated username query param
+        const syncUrl = `/api/sync?username=${encodeURIComponent(uname)}&t=${Date.now()}`;
+        const res = await fetch(syncUrl);
         if (!res.ok) return;
         const data = await res.json();
         if (!data.success || !data.chatMessages) return;
@@ -82,14 +104,11 @@ export function GlobalNotificationListener() {
           let otherUsername = '';
           if (convKey.includes('__')) {
             const parts = convKey.split('__').map((p) => p.trim().toLowerCase());
-            if (parts.includes(currentUsername)) {
-              otherUsername = parts.find((p) => p !== currentUsername) || '';
+            if (parts.includes(uname)) {
+              otherUsername = parts.find((p) => p !== uname) || '';
             }
-          } else if (convKey.startsWith('conv-') && !convKey.startsWith('conv-group-')) {
-            const raw = convKey.replace(/^conv-/, '').toLowerCase();
-            if (raw !== currentUsername) {
-              otherUsername = raw;
-            }
+          } else if (convKey.startsWith('conv-group-')) {
+            otherUsername = 'group';
           }
 
           if (!otherUsername) continue;
@@ -98,7 +117,7 @@ export function GlobalNotificationListener() {
             if (!msg || !msg.id) continue;
 
             const isFromSomeoneElse = msg.senderUsername
-              ? msg.senderUsername.toLowerCase() !== currentUsername
+              ? msg.senderUsername.toLowerCase() !== uname
               : msg.sender !== 'me';
 
             if (!seenMessageIdsRef.current.has(msg.id)) {
@@ -107,36 +126,49 @@ export function GlobalNotificationListener() {
 
               // If it's from someone else and this is NOT initial page load
               if (isFromSomeoneElse && !isFirstRunRef.current) {
+                const senderUser = (msg.senderUsername || otherUsername).toLowerCase().trim();
                 const senderProf = allProfiles.find(
-                  (p) => (p.username || '').toLowerCase() === (msg.senderUsername || otherUsername).toLowerCase()
+                  (p) => (p.username || '').toLowerCase() === senderUser
                 );
                 const senderName = senderProf ? senderProf.fullName : (msg.senderUsername || otherUsername);
 
+                const tier = DataStore.getInboxTier(uname, senderUser);
+                let toastText = msg.text;
+                let notifTitle = tier === 'REQUESTS'
+                  ? `💬 Message Request from @${senderUser}`
+                  : `💬 New Message from @${senderUser}`;
+                const storyMatch = msg.text.match(/^(?:You replied to their story|Replied to their story|Replied to your story|Replied to story):\s*["']?([\s\S]*?)["']?\s*(?:💬)?$/i);
+                if (storyMatch) {
+                  const content = storyMatch[1].replace(/^["']|["']$/g, '').trim();
+                  toastText = `Replied to your story: "${content}" 💬`;
+                  notifTitle = `📖 @${senderUser} replied to your story`;
+                }
+
                 newestIncomingMsg = {
                   id: msg.id,
-                  senderUsername: msg.senderUsername || otherUsername,
+                  senderUsername: senderUser,
                   senderName,
-                  senderAvatar: senderProf?.avatar,
-                  text: msg.text,
+                  senderAvatar: senderProf?.avatar || null,
+                  text: toastText,
                   time: msg.time || 'Just now',
                   conversationId: convKey,
                 };
 
                 // Add to notifications feed in DataStore
                 DataStore.addNotification({
-                  userId: currentUsername,
+                  userId: uname,
                   type: 'chat',
-                  title: `💬 New Message from @${msg.senderUsername || otherUsername}`,
-                  body: msg.text,
-                  link: `/chats?user=${msg.senderUsername || otherUsername}`,
+                  title: notifTitle,
+                  body: toastText,
+                  link: tier === 'REQUESTS' ? `/chats?view=requests` : `/chats?user=${senderUser}`,
                 });
 
                 // Trigger browser push notification if permitted
                 if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
                   try {
-                    new Notification(`DPS Buzz • @${msg.senderUsername || otherUsername}`, {
-                      body: msg.text,
-                      icon: '/icons/icon-192.png',
+                    new Notification(`DPS Buzz • ${senderName}`, {
+                      body: toastText,
+                      icon: senderProf?.avatar || '/icons/icon-192.png',
                     });
                   } catch {}
                 }
@@ -147,23 +179,33 @@ export function GlobalNotificationListener() {
 
         isFirstRunRef.current = false;
 
-        // If there's an incoming message and user is not currently in THAT active chat:
+        // If there's an incoming message:
         if (newestIncomingMsg) {
           try {
-            const convs = JSON.parse(localStorage.getItem('dpsbuzz_chat_conversations_v2') || '[]');
-            const localMsgs = JSON.parse(localStorage.getItem('dpsbuzz_chat_messages_v1') || '{}');
+            const userConvKey = `dpsbuzz_chat_conversations_${uname}_v3`;
+            const userMsgKey = `dpsbuzz_chat_messages_${uname}_v3`;
+            const convs = JSON.parse(localStorage.getItem(userConvKey) || '[]');
+            const localMsgs = JSON.parse(localStorage.getItem(userMsgKey) || '{}');
 
             const otherUser = newestIncomingMsg.senderUsername.toLowerCase();
             const fullList = data.chatMessages[newestIncomingMsg.conversationId] || [];
             localMsgs[newestIncomingMsg.conversationId] = fullList;
-            localMsgs[`conv-${otherUser}`] = fullList;
-            localStorage.setItem('dpsbuzz_chat_messages_v1', JSON.stringify(localMsgs));
+            localStorage.setItem(userMsgKey, JSON.stringify(localMsgs));
 
-            const existingIdx = convs.findIndex((c: any) => (c.username || '').toLowerCase() === otherUser || c.id === `conv-${otherUser}` || c.id === newestIncomingMsg!.conversationId);
+            const existingIdx = convs.findIndex(
+              (c: any) =>
+                (c.username || '').toLowerCase() === otherUser ||
+                c.id === `conv-${otherUser}` ||
+                c.id === newestIncomingMsg!.conversationId
+            );
+
+            const incomingTier = DataStore.getInboxTier(uname, otherUser);
+
             if (existingIdx >= 0) {
               convs[existingIdx].lastMessage = newestIncomingMsg.text;
               convs[existingIdx].timeAgo = newestIncomingMsg.time;
               convs[existingIdx].isUnread = true;
+              convs[existingIdx].inboxTier = incomingTier;
               convs[existingIdx].unreadCount = (convs[existingIdx].unreadCount || 0) + 1;
             } else {
               convs.unshift({
@@ -174,14 +216,22 @@ export function GlobalNotificationListener() {
                 studentClass: 'Student',
                 lastMessage: newestIncomingMsg.text,
                 timeAgo: newestIncomingMsg.time,
+                inboxTier: incomingTier,
                 isUnread: true,
                 unreadCount: 1,
               });
             }
-            localStorage.setItem('dpsbuzz_chat_conversations_v2', JSON.stringify(convs));
+            localStorage.setItem(userConvKey, JSON.stringify(convs));
           } catch {}
 
-          const isCurrentlyInThisChat = pathname === '/chats' && window.location.search.includes(newestIncomingMsg.senderUsername);
+          // Determine if user is currently inside THIS specific sender's chat
+          const activeChatUser = (typeof window !== 'undefined' ? (sessionStorage.getItem('dpsbuzz_active_chat_user') || '') : '').toLowerCase().trim();
+          const isCurrentlyInThisChat =
+            pathname === '/chats' &&
+            activeChatUser !== '' &&
+            activeChatUser === newestIncomingMsg.senderUsername.toLowerCase();
+
+          // If they are in another chat (or anywhere else in the app), SHOW THE HEADS-UP NOTIFICATION!
           if (!isCurrentlyInThisChat) {
             playNotificationChime();
             setActiveToast(newestIncomingMsg);
@@ -194,11 +244,124 @@ export function GlobalNotificationListener() {
       } catch {}
     };
 
-    // Run immediately and poll every 2.5s
+    // Run immediately and poll every 800ms for continuous sync
     checkIncoming();
-    const interval = setInterval(checkIncoming, 2500);
-    return () => clearInterval(interval);
-  }, [pathname]);
+    const interval = setInterval(checkIncoming, 800);
+
+    // Also trigger immediately on internal updates
+    window.addEventListener('dpsbuzz:content_updated', checkIncoming);
+    window.addEventListener('storage', checkIncoming);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('dpsbuzz:content_updated', checkIncoming);
+      window.removeEventListener('storage', checkIncoming);
+    };
+  }, [pathname, playNotificationChime]);
+
+  // Real-Time 0ms Instant Push / Chime Listener via BroadcastChannel & CustomEvent
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleRealtimeIncoming = (data: any) => {
+      if (!data || data.type !== 'MESSAGE_SENT' || !data.message) return;
+      const { conversationId, message, senderUsername } = data;
+      const currentUser = DataStore.getCurrentUser();
+      const uname = (currentUser?.username || '').toLowerCase().trim();
+      if (!uname || uname === 'guest') return;
+
+      const senderUser = (message.senderUsername || senderUsername || '').toLowerCase().trim();
+      if (senderUser === uname) return; // Do not notify yourself
+
+      // Verify if current user is involved in this conversation
+      const isGroup = conversationId && conversationId.startsWith('conv-group-');
+      const isDirectWithMe = conversationId && conversationId.includes('__') &&
+        conversationId.split('__').map((p: string) => p.trim().toLowerCase()).includes(uname);
+
+      if (!isGroup && !isDirectWithMe) return;
+
+      if (seenMessageIdsRef.current.has(message.id)) return;
+      seenMessageIdsRef.current.add(message.id);
+
+      const allProfiles = DataStore.getProfiles();
+      const senderProf = allProfiles.find((p) => (p.username || '').toLowerCase() === senderUser);
+      const senderName = senderProf ? senderProf.fullName : senderUser;
+      const tier = DataStore.getInboxTier(uname, senderUser);
+
+      let toastText = message.text || 'Sent an attachment';
+      let notifTitle = tier === 'REQUESTS'
+        ? `💬 Message Request from @${senderUser}`
+        : `💬 New Message from @${senderUser}`;
+
+      const storyMatch = (message.text || '').match(/^(?:You replied to their story|Replied to their story|Replied to your story|Replied to story):\s*["']?([\s\S]*?)["']?\s*(?:💬)?$/i);
+      if (storyMatch) {
+        const content = storyMatch[1].replace(/^["']|["']$/g, '').trim();
+        toastText = `Replied to your story: "${content}" 💬`;
+        notifTitle = `📖 @${senderUser} replied to your story`;
+      }
+
+      const toastItem: IncomingChatToast = {
+        id: message.id,
+        senderUsername: senderUser,
+        senderName,
+        senderAvatar: senderProf?.avatar || null,
+        text: toastText,
+        time: message.time || 'Just now',
+        conversationId,
+      };
+
+      // Record in notifications feed
+      DataStore.addNotification({
+        userId: uname,
+        type: 'chat',
+        title: notifTitle,
+        body: toastText,
+        link: tier === 'REQUESTS' ? `/chats?view=requests` : `/chats?user=${senderUser}`,
+      });
+
+      // Browser push notification if permitted
+      if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+        try {
+          new Notification(`DPS Buzz • ${senderName}`, {
+            body: toastText,
+            icon: senderProf?.avatar || '/icons/icon-192.png',
+          });
+        } catch {}
+      }
+
+      // Check if user is currently inside THIS specific sender's chat
+      const activeChatUser = (typeof window !== 'undefined' ? (sessionStorage.getItem('dpsbuzz_active_chat_user') || '') : '').toLowerCase().trim();
+      const isCurrentlyInThisChat =
+        pathname === '/chats' &&
+        activeChatUser !== '' &&
+        activeChatUser === senderUser;
+
+      if (!isCurrentlyInThisChat) {
+        playNotificationChime();
+        setActiveToast(toastItem);
+      }
+    };
+
+    let channel: BroadcastChannel | null = null;
+    if (typeof BroadcastChannel !== 'undefined') {
+      try {
+        channel = new BroadcastChannel('dpsbuzz_realtime_chats');
+        channel.onmessage = (e) => {
+          handleRealtimeIncoming(e.data);
+        };
+      } catch {}
+    }
+
+    const handleCustomChatEvent = (e: any) => {
+      handleRealtimeIncoming(e.detail);
+    };
+    window.addEventListener('dpsbuzz:chat_event', handleCustomChatEvent);
+
+    return () => {
+      if (channel) channel.close();
+      window.removeEventListener('dpsbuzz:chat_event', handleCustomChatEvent);
+    };
+  }, [pathname, playNotificationChime]);
 
   // Auto-dismiss toast banner after 5.5 seconds
   useEffect(() => {
@@ -216,48 +379,50 @@ export function GlobalNotificationListener() {
 
   return (
     <div
-      className="fixed top-3 left-3 right-3 max-w-md mx-auto z-50 animate-slide-down select-none"
+      className="fixed top-3 left-3 right-3 max-w-md mx-auto z-[100] animate-slide-down select-none pointer-events-auto"
       role="alert"
       aria-live="assertive"
     >
       <div
-        className="rounded-2xl border p-3.5 shadow-2xl backdrop-blur-xl flex items-center gap-3 transition-all cursor-pointer hover:opacity-95"
+        className="rounded-2xl border p-3 shadow-2xl backdrop-blur-2xl flex items-center gap-3 transition-all cursor-pointer hover:scale-[1.01] active:scale-[0.99]"
         style={{
-          backgroundColor: 'var(--surface-sunken)',
-          borderColor: 'var(--primary)',
-          boxShadow: '0 12px 32px rgba(0, 0, 0, 0.45), 0 0 0 1px var(--primary)',
+          backgroundColor: 'rgba(18, 18, 18, 0.96)',
+          borderColor: 'rgba(236, 72, 153, 0.45)',
+          boxShadow: '0 16px 40px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(236, 72, 153, 0.3)',
         }}
-        onClick={() => {
-          setActiveToast(null);
-          router.push(`/chats?user=${encodeURIComponent(activeToast.senderUsername)}`);
-        }}
+        onClick={() => handleOpenChatFromToast(activeToast.senderUsername)}
       >
-        {/* Sender Avatar */}
-        <div
-          className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center font-bold text-xs shrink-0 border"
-          style={{
-            backgroundColor: colors.bg,
-            color: colors.text,
-            borderColor: 'var(--line)',
-          }}
-        >
-          {activeToast.senderAvatar ? (
-            <img src={activeToast.senderAvatar} alt={activeToast.senderName} className="w-full h-full object-cover" />
-          ) : (
-            initials
-          )}
+        {/* Sender Avatar with Online Story Ring Accent */}
+        <div className="relative shrink-0">
+          <div
+            className="w-11 h-11 rounded-full overflow-hidden flex items-center justify-center font-bold text-xs border"
+            style={{
+              backgroundColor: colors.bg,
+              color: colors.text,
+              borderColor: 'rgba(255, 255, 255, 0.15)',
+            }}
+          >
+            {activeToast.senderAvatar ? (
+              <img src={activeToast.senderAvatar} alt={activeToast.senderName} className="w-full h-full object-cover" />
+            ) : (
+              initials
+            )}
+          </div>
+          <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-emerald-500 border-2 border-[#121212] flex items-center justify-center">
+            <MessageCircle size={8} className="text-white fill-white" />
+          </span>
         </div>
 
-        {/* Message Content */}
+        {/* Message Content: Sender Profile Name + Message Preview */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-1">
-            <p className="text-xs font-bold truncate text-[var(--text)] flex items-center gap-1.5">
+            <p className="text-xs font-bold truncate text-white flex items-center gap-1.5">
               <span>{activeToast.senderName}</span>
-              <span className="text-[10px] text-[var(--text-muted)] font-normal">@{activeToast.senderUsername}</span>
+              <span className="text-[11px] text-zinc-400 font-normal">@{activeToast.senderUsername}</span>
             </p>
-            <span className="text-[10px] text-[var(--text-muted)] shrink-0">{activeToast.time}</span>
+            <span className="text-[10px] text-zinc-400 shrink-0 font-medium">{activeToast.time}</span>
           </div>
-          <p className="text-xs text-[var(--text-muted)] truncate mt-0.5 font-medium">
+          <p className="text-xs text-zinc-200 truncate mt-0.5 font-medium leading-snug">
             {activeToast.text}
           </p>
         </div>
@@ -266,22 +431,19 @@ export function GlobalNotificationListener() {
         <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
           <button
             type="button"
-            onClick={() => {
-              setActiveToast(null);
-              router.push(`/chats?user=${encodeURIComponent(activeToast.senderUsername)}`);
-            }}
-            className="px-2.5 py-1.5 rounded-xl gradient-bg text-white text-[11px] font-bold flex items-center gap-1 shadow-xs hover:opacity-90 active:scale-95 cursor-pointer"
+            onClick={() => handleOpenChatFromToast(activeToast.senderUsername)}
+            className="px-3 py-1.5 rounded-xl gradient-bg text-white text-xs font-bold flex items-center gap-1 shadow-sm hover:opacity-90 active:scale-95 cursor-pointer"
           >
             <span>Reply</span>
-            <ChevronRight size={12} strokeWidth={2.5} />
+            <ChevronRight size={13} strokeWidth={2.5} />
           </button>
           <button
             type="button"
             onClick={() => setActiveToast(null)}
-            className="w-7 h-7 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--line)] cursor-pointer"
+            className="w-7 h-7 rounded-full flex items-center justify-center text-zinc-400 hover:text-white hover:bg-white/10 cursor-pointer transition-colors"
             aria-label="Close notification"
           >
-            <X size={15} />
+            <X size={16} />
           </button>
         </div>
       </div>

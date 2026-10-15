@@ -139,35 +139,39 @@ export const ChatNotesTray: React.FC<ChatNotesTrayProps> = ({ onReplyToNote }) =
     } else {
       // Fallback: save to localStorage chat messages
       try {
-        const myUsername = (currentUser?.username || 'me').toLowerCase().trim();
-        const convId = [myUsername, note.username.toLowerCase().trim()].sort().join('__');
-        const saved = localStorage.getItem('dpsbuzz_chat_messages_v1');
-        const map = saved ? JSON.parse(saved) : {};
+        const myUsername = (currentUser?.username || '').toLowerCase().trim();
+        if (myUsername && myUsername !== 'guest') {
+          const convId = [myUsername, note.username.toLowerCase().trim()].sort().join('__');
+          const userMsgKey = `dpsbuzz_chat_messages_${myUsername}_v3`;
+          const saved = localStorage.getItem(userMsgKey);
+          const map = saved ? JSON.parse(saved) : {};
 
-        const formatted = note.song
-          ? `🎵 Replying to note "${note.text}" (${note.song.title} - ${note.song.artist}): ${trimmed}`
-          : `💭 Replying to note "${note.text}": ${trimmed}`;
+          const formatted = note.song
+            ? `🎵 Replying to note "${note.text}" (${note.song.title} - ${note.song.artist}): ${trimmed}`
+            : `💭 Replying to note "${note.text}": ${trimmed}`;
 
-        const newMsg = {
-          id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-          text: formatted,
-          sender: 'me',
-          senderUsername: myUsername,
-          time: new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date()),
-        };
+          const newMsg = {
+            id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+            text: formatted,
+            sender: 'me',
+            senderUsername: myUsername,
+            time: new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date()),
+          };
 
-        map[convId] = [...(map[convId] || []), newMsg];
-        localStorage.setItem('dpsbuzz_chat_messages_v1', JSON.stringify(map));
+          map[convId] = [...(map[convId] || []), newMsg];
+          localStorage.setItem(userMsgKey, JSON.stringify(map));
 
-        fetch('/api/chats', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            conversationId: convId,
-            recipientUsername: note.username,
-            message: newMsg,
-          }),
-        }).catch(() => {});
+          fetch('/api/chats', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              conversationId: convId,
+              senderUsername: myUsername,
+              recipientUsername: note.username,
+              message: newMsg,
+            }),
+          }).catch(() => {});
+        }
       } catch {}
     }
 

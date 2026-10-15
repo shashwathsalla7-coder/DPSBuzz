@@ -106,10 +106,7 @@ export async function GET(req: NextRequest) {
 
   if (callId) {
     const call = activeCalls.get(callId);
-    if (!call) {
-      return NextResponse.json({ success: true, call: null });
-    }
-    return NextResponse.json({ success: true, call });
+    return NextResponse.json({ success: true, call: call || null, activeCall: call || null });
   }
 
   if (username) {
