@@ -190,7 +190,7 @@ export const StoriesRow: React.FC<StoriesRowProps> = ({ currentUser }) => {
               <span
                 className="text-[12px] w-[88px] truncate text-center font-semibold"
                 style={{
-                  color: isSeen ? 'var(--text-muted)' : 'var(--text)',
+                  color: isSeen ? 'var(--text-secondary)' : 'var(--text)',
                 }}
               >
                 {group.username}

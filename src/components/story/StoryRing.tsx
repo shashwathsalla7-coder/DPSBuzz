@@ -20,7 +20,7 @@ export interface StoryRingProps {
 /**
  * StoryRing Component
  * - Unseen ring: Instagram vibrant orange-pink gradient ring
- * - Seen ring: Clean grey ring (never white)
+ * - Seen ring: Visible soft off-white ring when stories are already seen
  * - Active indicator: Green dot badge showing user is active
  * - Displays username consistently
  */

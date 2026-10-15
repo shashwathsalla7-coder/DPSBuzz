@@ -175,7 +175,7 @@ export const ConversationRow: React.FC<ConversationRowProps> = ({
                 style={{
                   background: conversation.hasUnseenStory !== false
                     ? 'linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)'
-                    : '#737373',
+                    : 'linear-gradient(135deg, rgba(255, 255, 255, 0.88) 0%, rgba(255, 255, 255, 0.65) 100%)',
                 }}
               >
                 <div className="w-full h-full rounded-full border-2 border-[var(--surface)] overflow-hidden flex items-center justify-center">

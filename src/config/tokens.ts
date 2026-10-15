@@ -193,8 +193,8 @@ export function getAvatarColorPair(username: string, isDark = false) {
  */
 export const storyTokens = {
   unseenGradient: 'linear-gradient(135deg, #FF8A1F 0%, #FF2E93 35%, #A855F7 68%, #3B82F6 100%)',
-  seenLight: '#C4CCD8',
-  seenDark: '#3A4357',
+  seenLight: '#CBD5E1',
+  seenDark: 'rgba(255, 255, 255, 0.85)',
   darkGlow: '0 0 10px rgba(255, 70, 150, 0.45)',
   outerSize: '62px',
   ringThickness: '3px',
