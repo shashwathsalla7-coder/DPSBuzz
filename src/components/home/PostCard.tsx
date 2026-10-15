@@ -103,7 +103,7 @@ export const PostCard: React.FC<PostCardProps> = ({
     setTimeout(() => setShowHeartPop(false), 700);
   };
 
-  const likesCount = (post.likes || 0) + (isLiked ? 1 : 0);
+  const likesCount = post.likes ?? 0;
 
   const renderCaption = (text: string) => {
     const parts = text.split(/(#[a-zA-Z0-9_]+|@[a-zA-Z0-9_]+)/g);

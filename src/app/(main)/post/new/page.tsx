@@ -283,7 +283,11 @@ export default function NewPostPage() {
       userId: user.id || 'user-me',
       username: user.username || 'student',
       fullName: user.fullName || 'Student',
-      class: 'Class 8-G',
+      class: user.class
+        ? (user.class.toString().toLowerCase().startsWith('class')
+            ? user.class
+            : `Class ${user.class}${user.section ? `-${user.section}` : ''}`)
+        : 'DPS Student',
       avatar: user.avatar || null,
       caption: finalCaption,
       images: selectedPhotos,

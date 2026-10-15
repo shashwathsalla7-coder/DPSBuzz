@@ -1073,8 +1073,9 @@ function HomeContent() {
             <button
               type="button"
               onClick={() => {
-                navigator.clipboard?.writeText(window.location.origin + `/u/${selectedOptionsPost.username}`);
-                showToast('Link copied to clipboard 📋');
+                const postUrl = `${window.location.origin}/u/${selectedOptionsPost.username}?post=${selectedOptionsPost.id}`;
+                navigator.clipboard?.writeText(postUrl);
+                showToast('Post link copied to clipboard 📋');
                 setSelectedOptionsPost(null);
               }}
               className="w-full py-3 px-3 rounded-[12px] flex items-center gap-3 text-xs font-semibold hover:bg-[var(--surface-sunken)] cursor-pointer text-[var(--text)] transition-colors"

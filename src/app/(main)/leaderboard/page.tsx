@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import {
   ArrowLeft,
@@ -15,6 +15,7 @@ import {
   Zap,
   Crown,
   Medal,
+  Camera,
 } from 'lucide-react';
 import { getAvatarColorPair } from '@/config/tokens';
 import { DataStore, HabitStreak, STARTER_HABIT_STREAKS, DUMMY_TEST_USERNAMES } from '@/lib/dataStore';
@@ -34,6 +35,19 @@ export default function LeaderboardPage() {
     'https://images.unsplash.com/photo-1577896851231-70ef18881754?w=800&auto=format&fit=crop&q=80'
   );
   const [moderationWarning, setModerationWarning] = useState<string | null>(null);
+  const quickPhotoInputRef = useRef<HTMLInputElement>(null);
+
+  const handleQuickPhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        setQuickPhoto(reader.result);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
 
   // Live data from DataStore
   const [streaks, setStreaks] = useState<HabitStreak[]>(() => {
@@ -664,20 +678,41 @@ export default function LeaderboardPage() {
               </div>
             </div>
 
-            {/* Photo Attachment (Mandatory Preview) */}
+            {/* Photo Attachment (Custom Upload or Preview) */}
             <div className="space-y-1.5">
+              <input
+                type="file"
+                ref={quickPhotoInputRef}
+                accept="image/*"
+                onChange={handleQuickPhotoChange}
+                className="hidden"
+              />
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider">
-                  Photo Attached:
+                  Habit Photo:
                 </span>
-                <span className="text-[10px] text-emerald-500 font-bold">✓ Ready</span>
+                <button
+                  type="button"
+                  onClick={() => quickPhotoInputRef.current?.click()}
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--primary)] hover:underline cursor-pointer"
+                >
+                  <Camera size={13} />
+                  <span>Upload / Change Photo</span>
+                </button>
               </div>
-              <div className="relative aspect-video rounded-[18px] overflow-hidden border border-[var(--line)]">
+              <div
+                onClick={() => quickPhotoInputRef.current?.click()}
+                className="relative aspect-video rounded-[18px] overflow-hidden border border-[var(--line)] cursor-pointer group hover:opacity-95 transition-opacity"
+              >
                 <img
                   src={quickPhoto}
                   alt="Habit photo"
                   className="w-full h-full object-cover"
                 />
+                <div className="absolute inset-0 bg-black/35 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-xs font-bold gap-2">
+                  <Camera size={18} />
+                  <span>Tap to choose your own photo</span>
+                </div>
               </div>
             </div>
 

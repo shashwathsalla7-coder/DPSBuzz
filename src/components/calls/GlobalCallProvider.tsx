@@ -611,11 +611,17 @@ export function GlobalCallProvider() {
               }
             }
           } else if (activeCall.status === 'connected') {
-            // Only terminate connected calls after 3 consecutive empty polls
-            consecutiveMissedPollsRef.current++;
-            if (consecutiveMissedPollsRef.current >= 3) {
-              handleEndCall();
-              return;
+            const pcState = peerConnRef.current?.connectionState;
+            const iceState = peerConnRef.current?.iceConnectionState;
+            if (pcState === 'connected' || iceState === 'connected' || iceState === 'completed') {
+              // WebRTC media stream is alive peer-to-peer! Do not terminate call due to serverless polling delay
+              consecutiveMissedPollsRef.current = 0;
+            } else {
+              consecutiveMissedPollsRef.current++;
+              if (consecutiveMissedPollsRef.current >= 8) {
+                handleEndCall();
+                return;
+              }
             }
           } else if (isCaller && activeCall.status === 'ringing') {
             // Ringing timeout guard: after 35 seconds of no answer, end call with unavailable message

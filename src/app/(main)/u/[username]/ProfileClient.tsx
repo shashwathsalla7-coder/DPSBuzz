@@ -689,6 +689,23 @@ export default function ProfileClient({ username }: { username: string }) {
       showToast('You cannot follow yourself! 🙅');
       return;
     }
+    const isCurrentlyFollowing = DataStore.isFollowing(cur.username, targetUsername);
+    if (!isCurrentlyFollowing) {
+      const all = DataStore.getProfiles();
+      const targetProf = all.find((p) => p.username.toLowerCase() === targetUsername.toLowerCase());
+      if (targetProf && targetProf.isPrivate) {
+        const hasReq = DataStore.hasRequestedFollow(cur.username, targetUsername);
+        if (hasReq) {
+          DataStore.cancelFollowRequest(cur.username, targetUsername);
+          showToast(`Cancelled follow request to @${targetUsername}`);
+        } else {
+          DataStore.requestFollow(cur.username, targetUsername);
+          showToast(`Follow request sent to @${targetUsername} 🔒`);
+        }
+        setPostsVersion((v) => v + 1);
+        return;
+      }
+    }
     const isNow = DataStore.toggleFollow(cur.username, targetUsername);
     setPostsVersion((v) => v + 1);
     showToast(isNow ? `Following @${targetUsername}! 🤝` : `Unfollowed @${targetUsername}`);

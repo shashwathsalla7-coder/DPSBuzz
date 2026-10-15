@@ -21,8 +21,24 @@ export interface CallSession {
   iceCandidates?: Array<{ sender: string; candidate: any }>;
 }
 
-const DATA_DIR = path.join(process.cwd(), 'data');
-const CALLS_FILE = path.join(DATA_DIR, 'active_calls.json');
+import os from 'os';
+
+const CALLS_FILE_LOCAL = path.join(process.cwd(), 'data', 'active_calls.json');
+const CALLS_FILE_TMP = path.join(os.tmpdir(), 'dpsbuzz_active_calls.json');
+
+function getWritableCallsFile(): string {
+  try {
+    const dataDir = path.join(process.cwd(), 'data');
+    if (fs.existsSync(dataDir)) {
+      // Test if dataDir is writable
+      const testFile = path.join(dataDir, '.test_write');
+      fs.writeFileSync(testFile, '1');
+      fs.unlinkSync(testFile);
+      return CALLS_FILE_LOCAL;
+    }
+  } catch {}
+  return CALLS_FILE_TMP;
+}
 
 // In-memory active calls map + persistent disk fallback
 declare global {
@@ -37,33 +53,37 @@ const activeCalls = globalThis.__dpsbuzz_active_calls;
 
 // Helper to load calls from disk if map is empty (e.g. across worker processes)
 function loadCallsFromDisk() {
-  try {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
-    }
-    if (fs.existsSync(CALLS_FILE)) {
-      const data = fs.readFileSync(CALLS_FILE, 'utf-8');
-      const parsed = JSON.parse(data);
-      if (Array.isArray(parsed)) {
-        for (const call of parsed) {
-          if (call && call.callId && !activeCalls.has(call.callId)) {
-            activeCalls.set(call.callId, call);
+  const filesToRead = [CALLS_FILE_LOCAL, CALLS_FILE_TMP];
+  for (const file of filesToRead) {
+    try {
+      if (fs.existsSync(/*turbopackIgnore: true*/ file)) {
+        const data = fs.readFileSync(/*turbopackIgnore: true*/ file, 'utf-8');
+        const parsed = JSON.parse(data);
+        if (Array.isArray(parsed)) {
+          for (const call of parsed) {
+            if (call && call.callId && !activeCalls.has(call.callId)) {
+              activeCalls.set(call.callId, call);
+            }
           }
         }
       }
-    }
-  } catch {}
+    } catch {}
+  }
 }
 
 // Helper to save calls to disk
 function saveCallsToDisk() {
+  const callsArray = Array.from(activeCalls.values());
+  const data = JSON.stringify(callsArray);
+  const targetFile = getWritableCallsFile();
+
   try {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
-    }
-    const callsArray = Array.from(activeCalls.values());
-    fs.writeFileSync(CALLS_FILE, JSON.stringify(callsArray), 'utf-8');
-  } catch {}
+    fs.writeFileSync(targetFile, data, 'utf-8');
+  } catch {
+    try {
+      fs.writeFileSync(CALLS_FILE_TMP, data, 'utf-8');
+    } catch {}
+  }
 }
 
 // Initial load

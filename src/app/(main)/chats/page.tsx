@@ -65,6 +65,7 @@ interface ChatMessage {
   is_read?: boolean;
   isSeen?: boolean;
   readAt?: number;
+  isDelivered?: boolean;
 }
 
 const INITIAL_CONVERSATIONS: ConversationItem[] = [];
@@ -390,15 +391,18 @@ function ChatsContent() {
     return reqs;
   }, [conversations, chatMessages, currentUsername, requestsState]);
 
-  // Sync Vanish Mode state for actively opened conversation
+  // Sync Vanish Mode state & mark conversation as read when actively opened
   useEffect(() => {
     if (activeConversation && !activeConversation.isGroup) {
       const canonicalId = getCanonicalConvId(activeConversation);
       setIsVanishMode(DataStore.getVanishMode(canonicalId));
+      if (currentUsername) {
+        DataStore.markChatRead(canonicalId, currentUsername);
+      }
     } else {
       setIsVanishMode(false);
     }
-  }, [activeConversation]);
+  }, [activeConversation, currentUsername]);
 
   // Live accelerated polling (400ms) when a conversation is actively open
   useEffect(() => {
@@ -417,11 +421,17 @@ function ChatsContent() {
         }
         const data = await res.json();
         if (data.success && Array.isArray(data.messages) && data.messages.length > 0) {
+          let hasUnreadFromOther = false;
           setChatMessages((prev) => {
             const currentList = prev[rawId] || prev[canonicalId] || [];
             let changed = false;
             const msgMap = new Map(currentList.map((m) => [m.id, m]));
-            for (const sMsg of data.messages) {
+            for (const rawMsg of data.messages) {
+              const sMsg = { ...rawMsg, isDelivered: true };
+              const sender = (sMsg.senderUsername || '').toLowerCase().trim();
+              if (sender && sender !== currentUsername && !sMsg.is_read && !sMsg.isSeen && !sMsg.readAt) {
+                hasUnreadFromOther = true;
+              }
               const local = msgMap.get(sMsg.id);
               if (!local) {
                 msgMap.set(sMsg.id, sMsg);
@@ -429,6 +439,7 @@ function ChatsContent() {
               } else if (
                 Boolean(local.is_read) !== Boolean(sMsg.is_read) ||
                 Boolean(local.isSeen) !== Boolean(sMsg.isSeen) ||
+                Boolean(local.isDelivered) !== Boolean(sMsg.isDelivered) ||
                 local.reaction !== sMsg.reaction
               ) {
                 msgMap.set(sMsg.id, { ...local, ...sMsg });
@@ -445,6 +456,10 @@ function ChatsContent() {
             }
             return prev;
           });
+
+          if (hasUnreadFromOther && currentUsername) {
+            DataStore.markChatRead(canonicalId, currentUsername);
+          }
         }
       } catch {}
     };
@@ -500,6 +515,16 @@ function ChatsContent() {
           ? conversationId.split('__').map((p: string) => p.trim().toLowerCase()).find((p: string) => p !== currentUsername) || incomingSender
           : incomingSender;
 
+        const isCurrentlyViewingThis =
+          activeConversation &&
+          ((activeConversation.username || '').toLowerCase() === otherUser ||
+            activeConversation.id === conversationId ||
+            getCanonicalConvId(activeConversation) === conversationId);
+
+        if (isCurrentlyViewingThis && !isMe && currentUsername) {
+          DataStore.markChatRead(conversationId, currentUsername);
+        }
+
         setConversations((prev) => {
           const existingIdx = prev.findIndex(
             (c) =>
@@ -508,10 +533,6 @@ function ChatsContent() {
               c.id === conversationId
           );
           const previewText = isMe ? `You: ${message.text || 'Photo'}` : (message.text || 'Photo');
-          const isCurrentlyViewingThis =
-            activeConversation &&
-            ((activeConversation.username || '').toLowerCase() === otherUser ||
-              activeConversation.id === conversationId);
 
           if (existingIdx >= 0) {
             const updated = [...prev];
@@ -1307,6 +1328,9 @@ function ChatsContent() {
       sender: 'me',
       senderUsername: currentUsername,
       time: new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date()),
+      isDelivered: false,
+      is_read: false,
+      isSeen: false,
       ...(isVanishMode ? { is_vanish_mode_message: true, isVanishMode: true } : {}),
     };
 
@@ -1352,7 +1376,23 @@ function ChatsContent() {
         senderUsername: currentUsername,
         message: newMsg,
       }),
-    }).catch((err) => console.warn('Failed to sync chat message:', err));
+    })
+      .then((res) => {
+        if (res.ok) {
+          setChatMessages((prev) => {
+            const currentList = prev[rawId] || prev[canonicalId] || [];
+            const updated = currentList.map((m) =>
+              m.id === newMsg.id ? { ...m, isDelivered: true } : m
+            );
+            return {
+              ...prev,
+              [rawId]: updated,
+              [canonicalId]: updated,
+            };
+          });
+        }
+      })
+      .catch((err) => console.warn('Failed to sync chat message:', err));
   };
 
   const REACTION_EMOJIS = ['❤️', '😂', '🔥', '😮', '😢', '👍'];
@@ -1443,6 +1483,9 @@ function ChatsContent() {
       sender: 'me',
       senderUsername: currentUsername,
       time: new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date()),
+      isDelivered: false,
+      is_read: false,
+      isSeen: false,
       ...(isVanishMode ? { is_vanish_mode_message: true, isVanishMode: true } : {}),
     };
 
@@ -1490,7 +1533,23 @@ function ChatsContent() {
         senderUsername: currentUsername,
         message: newMsg,
       }),
-    }).catch((err) => console.warn('Failed to sync chat message:', err));
+    })
+      .then((res) => {
+        if (res.ok) {
+          setChatMessages((prev) => {
+            const currentList = prev[rawId] || prev[canonicalId] || [];
+            const updated = currentList.map((m) =>
+              m.id === newMsg.id ? { ...m, isDelivered: true } : m
+            );
+            return {
+              ...prev,
+              [rawId]: updated,
+              [canonicalId]: updated,
+            };
+          });
+        }
+      })
+      .catch((err) => console.warn('Failed to sync chat message:', err));
   };
 
   const handleImageAttachment = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1524,6 +1583,9 @@ function ChatsContent() {
         sender: 'me',
         senderUsername: currentUsername,
         time: 'Just now',
+        isDelivered: false,
+        is_read: false,
+        isSeen: false,
         ...(isVanishMode ? { is_vanish_mode_message: true, isVanishMode: true } : {}),
         sharedPost: {
           id: `img-${Date.now()}`,
@@ -1567,7 +1629,23 @@ function ChatsContent() {
           senderUsername: currentUsername,
           message: newMsg,
         }),
-      }).catch((err) => console.warn('Failed to sync chat message:', err));
+      })
+        .then((res) => {
+          if (res.ok) {
+            setChatMessages((prev) => {
+              const currentList = prev[rawId] || prev[canonicalId] || [];
+              const updated = currentList.map((m) =>
+                m.id === newMsg.id ? { ...m, isDelivered: true } : m
+              );
+              return {
+                ...prev,
+                [rawId]: updated,
+                [canonicalId]: updated,
+              };
+            });
+          }
+        })
+        .catch((err) => console.warn('Failed to sync chat message:', err));
 
       setTimeout(() => scrollToBottom(true), 80);
     };
@@ -1997,14 +2075,21 @@ function ChatsContent() {
                     {isMe && (
                       <span
                         className="inline-flex items-center shrink-0"
-                        title={msg.is_read || msg.isSeen || msg.readAt ? 'Read' : 'Delivered'}
+                        title={
+                          msg.is_read || msg.isSeen || msg.readAt
+                            ? 'Read'
+                            : msg.isDelivered
+                            ? 'Delivered'
+                            : 'Sent'
+                        }
                       >
-                        <CheckCheck
-                          size={13}
-                          className={`${
-                            msg.is_read || msg.isSeen || msg.readAt ? 'text-[#007AFF]' : 'text-zinc-400'
-                          } shrink-0`}
-                        />
+                        {msg.is_read || msg.isSeen || msg.readAt ? (
+                          <CheckCheck size={13} className="text-[#007AFF] shrink-0" />
+                        ) : msg.isDelivered ? (
+                          <CheckCheck size={13} className="text-zinc-400 shrink-0" />
+                        ) : (
+                          <Check size={13} className="text-zinc-400 shrink-0" />
+                        )}
                       </span>
                     )}
                   </div>

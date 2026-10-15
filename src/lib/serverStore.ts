@@ -547,3 +547,79 @@ export async function recordServerNewUserAlert(profile: Profile): Promise<Server
   const merged = [adminAlert, schoolAlert, welcomeAlert, ...existing].slice(0, 100);
   return await saveServerStore({ notifications: merged });
 }
+
+export async function deleteServerAccount(username: string): Promise<ServerStoreData> {
+  const current = await getServerStore({ forceRefresh: true });
+  const clean = username.toLowerCase().trim();
+
+  // 1. Filter out profile
+  const profiles = (current.profiles || []).filter(
+    (p) => p && p.username && p.username.toLowerCase().trim() !== clean
+  );
+
+  // 2. Filter out posts
+  const posts = (current.posts || []).filter(
+    (p) => p && p.username && p.username.toLowerCase().trim() !== clean
+  );
+
+  // 3. Filter out stories
+  const stories = (current.stories || []).filter(
+    (s) => s && s.username && s.username.toLowerCase().trim() !== clean
+  );
+
+  // 4. Remove comments made by user across all posts
+  const updatedComments: Record<string, any[]> = {};
+  for (const [postId, commentList] of Object.entries(current.comments || {})) {
+    if (Array.isArray(commentList)) {
+      updatedComments[postId] = commentList.filter(
+        (c) => c && c.username && c.username.toLowerCase().trim() !== clean
+      );
+    }
+  }
+
+  // 5. Remove likes made by user across all posts and decrement post likes count
+  const updatedLikes: Record<string, string[]> = {};
+  for (const [postId, likers] of Object.entries(current.likes || {})) {
+    if (Array.isArray(likers)) {
+      updatedLikes[postId] = likers.filter((u) => u && u.toLowerCase().trim() !== clean);
+    }
+  }
+
+  // 6. Remove chats & direct messages involving user
+  const updatedChatMessages: Record<string, any[]> = {};
+  for (const [convId, msgs] of Object.entries(current.chatMessages || {})) {
+    if (convId.includes('__')) {
+      const parts = convId.split('__').map((p) => p.toLowerCase().trim());
+      if (parts.includes(clean)) {
+        continue; // drop entire private DM with deleted user
+      }
+    }
+    if (Array.isArray(msgs)) {
+      // For any remaining group conversations, filter out messages sent by this user
+      updatedChatMessages[convId] = msgs.filter(
+        (m) => (m.senderUsername || '').toLowerCase().trim() !== clean
+      );
+    }
+  }
+
+  // 7. Remove chat notes
+  const chatNotes = (current.chatNotes || []).filter(
+    (n) => n && n.username && n.username.toLowerCase().trim() !== clean
+  );
+
+  // 8. Remove notifications
+  const notifications = (current.notifications || []).filter(
+    (n) => n && n.userId && n.userId.toLowerCase().trim() !== clean
+  );
+
+  return await saveServerStore({
+    profiles,
+    posts,
+    stories,
+    comments: updatedComments,
+    likes: updatedLikes,
+    chatMessages: updatedChatMessages,
+    chatNotes,
+    notifications,
+  });
+}

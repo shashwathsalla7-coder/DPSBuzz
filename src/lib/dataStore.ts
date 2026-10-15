@@ -452,6 +452,7 @@ const STORAGE_KEYS = {
   BLOCKS: 'dpsbuzz_blocked_users_v1',
   ACCEPTED_MESSAGE_REQUESTS: 'dpsbuzz_accepted_message_requests_v1',
   VANISH_CHATS: 'dpsbuzz_vanish_mode_chats_v1',
+  COMMENTS: 'dpsbuzz_comments_v1',
 };
 
 function getStorage<T>(key: string, defaultValue: T): T {
@@ -2273,14 +2274,175 @@ export const DataStore = {
   },
 
   deleteUser(username: string): void {
+    this.deleteAccountPermanently(username);
+  },
+
+  deleteAccountPermanently(username: string): void {
     const clean = username.toLowerCase().trim();
-    const profiles = this.getProfiles().filter((p) => p.username.toLowerCase() !== clean);
-    setStorage(STORAGE_KEYS.PROFILES, profiles);
-    const posts = this.getPosts().filter((p) => p.username.toLowerCase() !== clean);
-    setStorage(STORAGE_KEYS.POSTS, posts);
-    const stories = this.getStories().filter((s) => s.username.toLowerCase() !== clean);
+    if (!clean) return;
+
+    // 1. Remove from Profiles
+    const currentProfiles = this.getProfiles();
+    const targetProfile = currentProfiles.find((p) => p.username.toLowerCase().trim() === clean);
+    const updatedProfiles = currentProfiles.filter((p) => p.username.toLowerCase().trim() !== clean);
+
+    // 2. Remove all posts authored by this user
+    const posts = this.getPosts(true).filter((p) => p.username.toLowerCase().trim() !== clean);
+
+    // 3. Remove all stories authored by this user
+    const stories = this.getStories().filter((s) => s.username.toLowerCase().trim() !== clean);
+
+    // 4. Remove habit streaks
+    const streaks = this.getHabitStreaks().filter((s) => s.username.toLowerCase().trim() !== clean);
+    setStorage(STORAGE_KEYS.HABIT_STREAKS, streaks);
+
+    // 5. Clean Follows (update mutual follower/following counts)
+    const follows = getStorage<Array<{ follower: string; following: string }>>(STORAGE_KEYS.FOLLOWS, []);
+    const remainingFollows: Array<{ follower: string; following: string }> = [];
+    const followerCountAdjustments: Record<string, number> = {};
+    const followingCountAdjustments: Record<string, number> = {};
+
+    for (const f of follows) {
+      const fFollower = (f.follower || '').toLowerCase().trim();
+      const fFollowing = (f.following || '').toLowerCase().trim();
+      if (fFollower === clean) {
+        // User was following someone else -> decrement that target's followerCount
+        followerCountAdjustments[fFollowing] = (followerCountAdjustments[fFollowing] || 0) + 1;
+      } else if (fFollowing === clean) {
+        // Someone was following user -> decrement that follower's followingCount
+        followingCountAdjustments[fFollower] = (followingCountAdjustments[fFollower] || 0) + 1;
+      } else {
+        remainingFollows.push(f);
+      }
+    }
+    setStorage(STORAGE_KEYS.FOLLOWS, remainingFollows);
+
+    // Apply count adjustments to remaining profiles
+    const finalProfiles = updatedProfiles.map((p) => {
+      const u = p.username.toLowerCase().trim();
+      let followerCount = p.followerCount || 0;
+      let followingCount = p.followingCount || 0;
+      if (followerCountAdjustments[u]) {
+        followerCount = Math.max(0, followerCount - followerCountAdjustments[u]);
+      }
+      if (followingCountAdjustments[u]) {
+        followingCount = Math.max(0, followingCount - followingCountAdjustments[u]);
+      }
+      return { ...p, followerCount, followingCount };
+    });
+    setStorage(STORAGE_KEYS.PROFILES, finalProfiles);
+
+    // 6. Clean Follow Requests
+    const followRequests = getStorage<Array<{ requester: string; target: string }>>(STORAGE_KEYS.FOLLOW_REQUESTS, []);
+    const remainingRequests = followRequests.filter(
+      (r) => (r.requester || '').toLowerCase().trim() !== clean && (r.target || '').toLowerCase().trim() !== clean
+    );
+    setStorage(STORAGE_KEYS.FOLLOW_REQUESTS, remainingRequests);
+
+    // 7. Clean Post Likes (remove user from all post liker arrays and update post likes counts)
+    const likesMap = this.getPostLikesMap();
+    let likesChanged = false;
+    for (const [postId, likers] of Object.entries(likesMap)) {
+      if (Array.isArray(likers)) {
+        const nextLikers = likers.filter((u) => u && u.toLowerCase().trim() !== clean);
+        if (nextLikers.length !== likers.length) {
+          likesMap[postId] = nextLikers;
+          likesChanged = true;
+        }
+      }
+    }
+    if (likesChanged) {
+      setStorage(STORAGE_KEYS.POST_LIKES, likesMap);
+    }
+
+    // 8. Clean Comments (remove user comments across all posts)
+    const commentsMap = getStorage<Record<string, any[]>>(STORAGE_KEYS.COMMENTS, {});
+    let commentsChanged = false;
+    for (const [postId, list] of Object.entries(commentsMap)) {
+      if (Array.isArray(list)) {
+        const nextList = list.filter((c) => c && (c.username || '').toLowerCase().trim() !== clean);
+        if (nextList.length !== list.length) {
+          commentsMap[postId] = nextList;
+          commentsChanged = true;
+        }
+      }
+    }
+    if (commentsChanged) {
+      setStorage(STORAGE_KEYS.COMMENTS, commentsMap);
+    }
+
+    // Recalculate post comments & likes counts
+    const finalPosts = posts.map((post) => {
+      const pLikes = Array.isArray(likesMap[post.id]) ? likesMap[post.id].length : post.likes || 0;
+      const pComments = Array.isArray(commentsMap[post.id]) ? commentsMap[post.id].length : post.comments || 0;
+      return { ...post, likes: pLikes, comments: pComments };
+    });
+    setStorage(STORAGE_KEYS.POSTS, finalPosts);
     setStorage(STORAGE_KEYS.STORIES, stories);
+
+    // 9. Clean Notifications
+    const notifs = this.getNotifications().filter(
+      (n) => (n.userId || '').toLowerCase().trim() !== clean
+    );
+    setStorage(STORAGE_KEYS.NOTIFICATIONS, notifs);
+
+    // 10. Unclaim student roster record if present
+    const roster = this.getRoster();
+    let rosterChanged = false;
+    for (const r of roster) {
+      if (
+        (targetProfile?.admissionNumber && r.admissionNumber.toUpperCase() === targetProfile.admissionNumber.toUpperCase()) ||
+        (targetProfile?.fullName && r.name.toLowerCase().trim() === targetProfile.fullName.toLowerCase().trim())
+      ) {
+        r.isClaimed = false;
+        rosterChanged = true;
+      }
+    }
+    if (rosterChanged) {
+      setStorage(STORAGE_KEYS.ROSTER, roster);
+    }
+
+    // 11. Purge Chat Stores & Conversations
     if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem(`dpsbuzz_chat_messages_${clean}_v3`);
+        localStorage.removeItem(`dpsbuzz_chat_conversations_${clean}_v3`);
+
+        // Clean user from all cached conversation keys in localStorage
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && key.startsWith('dpsbuzz_chat_conversations_')) {
+            try {
+              const convs = JSON.parse(localStorage.getItem(key) || '[]');
+              if (Array.isArray(convs)) {
+                const filtered = convs.filter(
+                  (c: any) => (c.username || '').toLowerCase().trim() !== clean
+                );
+                localStorage.setItem(key, JSON.stringify(filtered));
+              }
+            } catch {}
+          }
+        }
+      } catch {}
+
+      // If deleted user is current user, clear session & cookies
+      const cur = this.getCurrentUser();
+      if (cur && cur.username.toLowerCase().trim() === clean) {
+        try {
+          localStorage.removeItem('dpsbuzz_user');
+          localStorage.removeItem('dpsbuzz_shashwath_authenticated');
+          sessionStorage.clear();
+          document.cookie = 'dpsbuzz_user=; path=/; max-age=0; SameSite=Lax';
+        } catch {}
+      }
+
+      // 12. Delete from server store
+      fetch('/api/auth/delete-account', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: clean }),
+      }).catch(() => {});
+
       window.dispatchEvent(
         new CustomEvent('dpsbuzz:content_updated', { detail: { type: 'user_deleted', username: clean } })
       );
@@ -2480,6 +2642,29 @@ export const DataStore = {
   // Notifications (Start completely empty)
   getNotifications(): NotificationItem[] {
     return getStorage<NotificationItem[]>(STORAGE_KEYS.NOTIFICATIONS, []);
+  },
+
+  markAllNotificationsRead(username?: string): void {
+    const raw = this.getNotifications();
+    const cleanUser = (username || this.getCurrentUser()?.username || '').toLowerCase().trim();
+    const updated = raw.map((n) =>
+      !n.userId || n.userId === 'all' || (cleanUser && n.userId.toLowerCase().trim() === cleanUser)
+        ? { ...n, isRead: true }
+        : n
+    );
+    setStorage(STORAGE_KEYS.NOTIFICATIONS, updated);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated', { detail: { type: 'notifications_read' } }));
+    }
+  },
+
+  markNotificationRead(id: string): void {
+    const raw = this.getNotifications();
+    const updated = raw.map((n) => (n.id === id ? { ...n, isRead: true } : n));
+    setStorage(STORAGE_KEYS.NOTIFICATIONS, updated);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated', { detail: { type: 'notification_read', id } }));
+    }
   },
 
   addNotification(data: {
@@ -3304,6 +3489,10 @@ export const DataStore = {
     );
   },
 
+  hasRequestedFollow(requester: string, target: string): boolean {
+    return this.isFollowRequested(requester, target);
+  },
+
   requestFollow(requester: string, target: string): void {
     const cleanReq = requester.toLowerCase().trim();
     const cleanTar = target.toLowerCase().trim();
@@ -3728,6 +3917,10 @@ export const DataStore = {
         }),
       }).catch(() => {});
     }
+  },
+
+  markChatRead(conversationId: string, readerUsername: string): void {
+    return this.markMessagesAsRead(conversationId, readerUsername);
   },
 
   getMutualFollows(myUsername: string, targetUsername: string): string[] {

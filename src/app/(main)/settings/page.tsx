@@ -197,9 +197,13 @@ export default function SettingsPage() {
   };
 
   const handleDeleteAccount = () => {
-    localStorage.removeItem('dpsbuzz_user');
-    localStorage.removeItem('dpsbuzz_shashwath_authenticated');
-    document.cookie = 'dpsbuzz_user=; path=/; max-age=0; SameSite=Lax';
+    if (currentUser?.username) {
+      DataStore.deleteAccountPermanently(currentUser.username);
+    } else {
+      localStorage.removeItem('dpsbuzz_user');
+      localStorage.removeItem('dpsbuzz_shashwath_authenticated');
+      document.cookie = 'dpsbuzz_user=; path=/; max-age=0; SameSite=Lax';
+    }
     setShowDeleteSheet(false);
     router.push('/login');
   };

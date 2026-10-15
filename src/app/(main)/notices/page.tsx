@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Pin, Paperclip, CheckCheck, Calendar as CalendarIcon, Sparkles } from 'lucide-react';
+import { ArrowLeft, Pin, Paperclip, CheckCheck, Calendar as CalendarIcon, Sparkles, ChevronLeft, ChevronRight } from 'lucide-react';
 import { DataStore, type Notice, type CalendarEvent } from '@/lib/dataStore';
 import { colors } from '@/config/tokens';
 
@@ -11,6 +11,8 @@ export default function NoticesPage() {
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
+  const [calendarMonth, setCalendarMonth] = useState<Date>(new Date(2026, 9, 1)); // October 2026
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
 
   const reloadData = () => {
     setNotices(DataStore.getNotices());
@@ -276,105 +278,187 @@ export default function NoticesPage() {
             )}
           </div>
         ) : (
-          /* Calendar View with Apple Rounded Corners */
-          <div
-            className="p-5 rounded-[22px] border space-y-4 shadow-sm"
-            style={{
-              backgroundColor: 'var(--surface)',
-              borderColor: 'var(--line)',
-            }}
-          >
-            <div className="text-xs font-bold text-center uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
-              October 2026 Academic Calendar
-            </div>
-            <div className="grid grid-cols-7 gap-1.5 text-center text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>
-              <div>S</div><div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div>
-            </div>
-            <div className="grid grid-cols-7 gap-1.5 text-center text-xs">
-              {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => {
-                const hasDot = day === 11 || day === 18 || day === 24;
-                return (
-                  <div
-                    key={day}
-                    className="h-10 rounded-[12px] flex flex-col items-center justify-center border transition-all"
-                    style={{
-                      borderColor: 'var(--line)',
-                      backgroundColor: day === 11 ? 'var(--primary-tint)' : 'var(--surface-sunken)',
-                      color: day === 11 ? 'var(--primary)' : 'var(--text)',
-                      fontWeight: day === 11 ? 700 : 500,
+          /* Interactive Academic Calendar with Dynamic Month Navigation & Events */
+          (() => {
+            const year = calendarMonth.getFullYear();
+            const month = calendarMonth.getMonth();
+            const monthName = calendarMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+            const totalDays = new Date(year, month + 1, 0).getDate();
+            const startDayIndex = new Date(year, month, 1).getDay();
+
+            const getEventsForDay = (d: number) => {
+              const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+              return calendarEvents.filter((ev) => ev.date?.startsWith(dateStr));
+            };
+
+            const displayedEvents = selectedDay
+              ? getEventsForDay(selectedDay)
+              : calendarEvents;
+
+            return (
+              <div
+                className="p-5 rounded-[22px] border space-y-4 shadow-sm"
+                style={{
+                  backgroundColor: 'var(--surface)',
+                  borderColor: 'var(--line)',
+                }}
+              >
+                {/* Month Navigator */}
+                <div className="flex items-center justify-between">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCalendarMonth(new Date(year, month - 1, 1));
+                      setSelectedDay(null);
                     }}
+                    className="p-1.5 rounded-full hover:bg-[var(--surface-sunken)] transition-colors cursor-pointer"
+                    aria-label="Previous Month"
                   >
-                    <span className="tabular-nums">{day}</span>
-                    {hasDot && (
-                      <div
-                        className="w-1.5 h-1.5 rounded-full mt-0.5"
-                        style={{ backgroundColor: day === 11 ? 'var(--danger)' : 'var(--primary)' }}
-                      />
-                    )}
+                    <ChevronLeft size={18} />
+                  </button>
+                  <div className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text)' }}>
+                    {monthName}
                   </div>
-                );
-              })}
-            </div>
-            <p className="text-[11px] text-center" style={{ color: 'var(--text-muted)' }}>
-              Coloured dots indicate scheduled unit tests, assemblies and holidays.
-            </p>
-
-            {/* Live Scheduled Events List with Apple Rounded Corners */}
-            <div className="pt-3 border-t border-[var(--line)] space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text)' }}>
-                  Scheduled Events & Timetable
-                </span>
-                <span className="text-[11px] text-[var(--text-muted)]">
-                  {calendarEvents.length} items
-                </span>
-              </div>
-
-              <div className="space-y-2">
-                {calendarEvents.map((ev) => (
-                  <div
-                    key={ev.id}
-                    className="p-3.5 border rounded-[16px] flex items-start justify-between gap-3 shadow-xs"
-                    style={{
-                      backgroundColor: 'var(--surface-sunken)',
-                      borderColor: 'var(--line)',
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCalendarMonth(new Date(year, month + 1, 1));
+                      setSelectedDay(null);
                     }}
+                    className="p-1.5 rounded-full hover:bg-[var(--surface-sunken)] transition-colors cursor-pointer"
+                    aria-label="Next Month"
                   >
-                    <div className="min-w-0 space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className="px-2.5 py-0.5 text-[10px] font-bold uppercase rounded-full"
-                          style={{
-                            backgroundColor:
-                              ev.category === 'Exam'
+                    <ChevronRight size={18} />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-7 gap-1.5 text-center text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>
+                  <div>S</div><div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div>
+                </div>
+
+                <div className="grid grid-cols-7 gap-1.5 text-center text-xs">
+                  {/* Offset empty spaces */}
+                  {Array.from({ length: startDayIndex }).map((_, i) => (
+                    <div key={`offset-${i}`} className="h-10" />
+                  ))}
+
+                  {/* Days of month */}
+                  {Array.from({ length: totalDays }, (_, i) => i + 1).map((day) => {
+                    const dayEvents = getEventsForDay(day);
+                    const hasEvent = dayEvents.length > 0;
+                    const isSelected = selectedDay === day;
+                    const hasExam = dayEvents.some((e) => e.category === 'Exam');
+                    const hasHoliday = dayEvents.some((e) => e.category === 'Holiday');
+
+                    return (
+                      <button
+                        key={day}
+                        type="button"
+                        onClick={() => setSelectedDay(selectedDay === day ? null : day)}
+                        className="h-10 rounded-[12px] flex flex-col items-center justify-center border transition-all cursor-pointer btn-press"
+                        style={{
+                          borderColor: isSelected ? 'var(--primary)' : 'var(--line)',
+                          backgroundColor: isSelected
+                            ? 'var(--primary)'
+                            : hasEvent
+                            ? 'var(--primary-tint)'
+                            : 'var(--surface-sunken)',
+                          color: isSelected
+                            ? '#FFFFFF'
+                            : hasEvent
+                            ? 'var(--primary)'
+                            : 'var(--text)',
+                          fontWeight: isSelected || hasEvent ? 700 : 500,
+                        }}
+                      >
+                        <span className="tabular-nums">{day}</span>
+                        {hasEvent && (
+                          <div
+                            className="w-1.5 h-1.5 rounded-full mt-0.5"
+                            style={{
+                              backgroundColor: isSelected
+                                ? '#FFFFFF'
+                                : hasExam
                                 ? 'var(--danger)'
-                                : ev.category === 'Holiday'
+                                : hasHoliday
                                 ? 'var(--success)'
                                 : 'var(--primary)',
-                            color: '#FFFFFF',
+                            }}
+                          />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <p className="text-[11px] text-center" style={{ color: 'var(--text-muted)' }}>
+                  Tap any day with a dot to view scheduled circulars, exams, and assemblies.
+                </p>
+
+                {/* Live Scheduled Events List */}
+                <div className="pt-3 border-t border-[var(--line)] space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text)' }}>
+                      {selectedDay ? `Events on Day ${selectedDay}` : 'Scheduled Events & Timetable'}
+                    </span>
+                    <span className="text-[11px] text-[var(--text-muted)]">
+                      {displayedEvents.length} {displayedEvents.length === 1 ? 'item' : 'items'}
+                    </span>
+                  </div>
+
+                  {displayedEvents.length === 0 ? (
+                    <div className="p-4 text-center text-xs text-[var(--text-muted)] rounded-xl bg-[var(--surface-sunken)] border border-[var(--line)]">
+                      No scheduled events for this selected day.
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {displayedEvents.map((ev) => (
+                        <div
+                          key={ev.id}
+                          className="p-3.5 border rounded-[16px] flex items-start justify-between gap-3 shadow-xs"
+                          style={{
+                            backgroundColor: 'var(--surface-sunken)',
+                            borderColor: 'var(--line)',
                           }}
                         >
-                          {ev.category}
-                        </span>
-                        <h4 className="text-xs font-bold" style={{ color: 'var(--text)' }}>
-                          {ev.title}
-                        </h4>
-                      </div>
-                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                        {ev.description}
-                      </p>
-                    </div>
+                          <div className="min-w-0 space-y-1">
+                            <div className="flex items-center gap-2">
+                              <span
+                                className="px-2.5 py-0.5 text-[10px] font-bold uppercase rounded-full text-white"
+                                style={{
+                                  backgroundColor:
+                                    ev.category === 'Exam'
+                                      ? 'var(--danger)'
+                                      : ev.category === 'Holiday'
+                                      ? 'var(--success)'
+                                      : 'var(--primary)',
+                                }}
+                              >
+                                {ev.category}
+                              </span>
+                              <h4 className="text-xs font-bold" style={{ color: 'var(--text)' }}>
+                                {ev.title}
+                              </h4>
+                            </div>
+                            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                              {ev.description}
+                            </p>
+                          </div>
 
-                    <div className="text-right shrink-0">
-                      <span className="text-[11px] font-mono font-semibold" style={{ color: 'var(--text-muted)' }}>
-                        {ev.date}
-                      </span>
+                          <div className="text-right shrink-0">
+                            <span className="text-[11px] font-mono font-semibold" style={{ color: 'var(--text-muted)' }}>
+                              {ev.date}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  </div>
-                ))}
+                  )}
+                </div>
               </div>
-            </div>
-          </div>
+            );
+          })()
+
         )}
       </div>
     </div>

@@ -53,12 +53,30 @@ export function SuggestedAccountsList({
     };
   }, [refreshSuggestions]);
 
+  const [requestedMap, setRequestedMap] = useState<Record<string, boolean>>({});
+
   const handleToggle = (targetUsername: string) => {
     if (!currentUsername || !targetUsername) return;
+    const cleanTar = targetUsername.toLowerCase().trim();
+    const isNowFollowing = followingMap[cleanTar];
+    const targetItem = suggestions.find((s) => s.profile.username.toLowerCase() === cleanTar);
+
+    if (!isNowFollowing && targetItem?.profile.isPrivate) {
+      const hasReq = DataStore.hasRequestedFollow(currentUsername, targetUsername);
+      if (hasReq) {
+        DataStore.cancelFollowRequest(currentUsername, targetUsername);
+        setRequestedMap((prev) => ({ ...prev, [cleanTar]: false }));
+      } else {
+        DataStore.requestFollow(currentUsername, targetUsername);
+        setRequestedMap((prev) => ({ ...prev, [cleanTar]: true }));
+      }
+      return;
+    }
+
     const isNow = DataStore.toggleFollow(currentUsername, targetUsername);
     setFollowingMap((prev) => ({
       ...prev,
-      [targetUsername.toLowerCase()]: isNow,
+      [cleanTar]: isNow,
     }));
     if (onFollowToggled) {
       onFollowToggled(targetUsername, isNow);
@@ -171,18 +189,25 @@ export function SuggestedAccountsList({
               </Link>
 
               {/* Follow Button (Instagram Blue Link Text) */}
-              <button
-                type="button"
-                onClick={() => handleToggle(person.username)}
-                className={`text-xs font-semibold px-2 py-1.5 shrink-0 transition-colors cursor-pointer ${
-                  isFollowing
-                    ? 'text-[var(--text-muted)] hover:text-[var(--text)]'
-                    : 'text-[#0095F6] hover:text-[#1877F2] active:opacity-75'
-                }`}
-                aria-label={isFollowing ? `Unfollow ${person.username}` : `Follow ${person.username}`}
-              >
-                {isFollowing ? 'Following' : 'Follow'}
-              </button>
+              {(() => {
+                const isRequested = !isFollowing && (requestedMap[person.username.toLowerCase()] || DataStore.hasRequestedFollow(currentUsername, person.username));
+                return (
+                  <button
+                    type="button"
+                    onClick={() => handleToggle(person.username)}
+                    className={`text-xs font-semibold px-2 py-1.5 shrink-0 transition-colors cursor-pointer ${
+                      isFollowing
+                        ? 'text-[var(--text-muted)] hover:text-[var(--text)]'
+                        : isRequested
+                        ? 'text-amber-500 font-bold'
+                        : 'text-[#0095F6] hover:text-[#1877F2] active:opacity-75'
+                    }`}
+                    aria-label={isFollowing ? `Unfollow ${person.username}` : `Follow ${person.username}`}
+                  >
+                    {isFollowing ? 'Following' : isRequested ? 'Requested 🔒' : 'Follow'}
+                  </button>
+                );
+              })()}
             </div>
           );
         })}

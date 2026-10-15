@@ -122,6 +122,22 @@ function SearchContent() {
       showToast('You cannot follow yourself! 🙅');
       return;
     }
+    const isCurrentlyFollowing = isFollowing(targetUsername);
+    if (!isCurrentlyFollowing) {
+      const targetProf = allProfiles.find((p) => p.username.toLowerCase() === targetUsername.toLowerCase());
+      if (targetProf && targetProf.isPrivate) {
+        const hasReq = DataStore.hasRequestedFollow(currentUser.username, targetUsername);
+        if (hasReq) {
+          DataStore.cancelFollowRequest(currentUser.username, targetUsername);
+          showToast(`Cancelled follow request to @${targetUsername}`);
+        } else {
+          DataStore.requestFollow(currentUser.username, targetUsername);
+          showToast(`Follow request sent to @${targetUsername} 🔒`);
+        }
+        setFollows(DataStore.getFollows());
+        return;
+      }
+    }
     const isNow = DataStore.toggleFollow(currentUser.username, targetUsername);
     setFollows(DataStore.getFollows());
     showToast(isNow ? `Following @${targetUsername}` : `Unfollowed @${targetUsername}`);
@@ -624,12 +640,16 @@ function SearchContent() {
                         onClick={() => handleFollowToggle(person.username)}
                         className="px-4 py-1.5 rounded-full text-xs font-bold shrink-0 cursor-pointer transition-all active:scale-95 shadow-xs"
                         style={{
-                          backgroundColor: following ? 'var(--surface-sunken)' : 'var(--primary)',
-                          color: following ? 'var(--text)' : 'var(--on-primary)',
-                          border: following ? '1px solid var(--line)' : 'none',
+                          backgroundColor: following || (!following && DataStore.hasRequestedFollow(currentUser?.username || '', person.username)) ? 'var(--surface-sunken)' : 'var(--primary)',
+                          color: following || (!following && DataStore.hasRequestedFollow(currentUser?.username || '', person.username)) ? 'var(--text)' : 'var(--on-primary)',
+                          border: following || (!following && DataStore.hasRequestedFollow(currentUser?.username || '', person.username)) ? '1px solid var(--line)' : 'none',
                         }}
                       >
-                        {following ? 'Following' : 'Follow'}
+                        {following
+                          ? 'Following'
+                          : DataStore.hasRequestedFollow(currentUser?.username || '', person.username)
+                          ? 'Requested 🔒'
+                          : 'Follow'}
                       </button>
                     )}
                   </div>

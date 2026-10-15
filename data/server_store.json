@@ -24,7 +24,7 @@
       "id": "post-1791976342088",
       "createdAt": "2026-10-14T11:12:22.088Z",
       "timeAgo": "Just now",
-      "likes": 3,
+      "likes": 4,
       "comments": 0,
       "views": 0,
       "imageUrl": "https://res.cloudinary.com/ogfaxmjw/image/upload/v1791976299/dpsbuzz/posts/vou5x2twzxfsttgbemib.webp",
@@ -34,6 +34,45 @@
   ],
   "stories": [],
   "profiles": [
+    {
+      "id": "student-1792068941483",
+      "username": "ashwith",
+      "fullName": "K. Ashwith",
+      "avatar": null,
+      "bio": "Class 8-G • DPS Student 🐝",
+      "class": "8",
+      "section": "G",
+      "role": "student",
+      "isVerified": true,
+      "isApproved": true,
+      "isPrivate": false,
+      "followerCount": 0,
+      "followingCount": 0,
+      "postCount": 0,
+      "spiritPoints": 50,
+      "referralCount": 0,
+      "createdAt": "2026-10-15T12:55:41.483Z"
+    },
+    {
+      "id": "student-1792066627891",
+      "username": "rohan728",
+      "fullName": "Rohan",
+      "avatar": null,
+      "bio": "Class 8-G • DPS Student 🐝",
+      "class": "8",
+      "section": "G",
+      "role": "student",
+      "isVerified": true,
+      "isApproved": true,
+      "isPrivate": false,
+      "followerCount": 0,
+      "followingCount": 0,
+      "postCount": 0,
+      "spiritPoints": 75,
+      "referredBy": "shashwath71845",
+      "referralCount": 0,
+      "createdAt": "2026-10-15T12:17:07.891Z"
+    },
     {
       "id": "student-1792057599710",
       "username": "hi",
@@ -597,6 +636,62 @@
         "isCallLog": true,
         "conversationId": "hi__viah"
       }
+    ],
+    "rohan728__shashwath71845": [
+      {
+        "id": "msg-1792066679455-hlos",
+        "text": "hi",
+        "sender": "me",
+        "senderUsername": "shashwath71845",
+        "time": "5:47 PM",
+        "conversationId": "rohan728__shashwath71845",
+        "is_read": true,
+        "isSeen": true,
+        "readAt": 1792069624532
+      },
+      {
+        "id": "msg-1792067618381-q8aw",
+        "text": "how is the website you can also download apk",
+        "sender": "me",
+        "senderUsername": "shashwath71845",
+        "time": "6:03 PM",
+        "conversationId": "rohan728__shashwath71845",
+        "is_read": true,
+        "isSeen": true,
+        "readAt": 1792069624532
+      },
+      {
+        "id": "msg-1792069507119-tyk8",
+        "text": "OK",
+        "sender": "me",
+        "senderUsername": "rohan728",
+        "time": "6:35 PM",
+        "conversationId": "rohan728__shashwath71845"
+      },
+      {
+        "id": "msg-1792069628846-gq6a",
+        "text": "Ayo",
+        "sender": "me",
+        "senderUsername": "rohan728",
+        "time": "6:37 PM",
+        "conversationId": "rohan728__shashwath71845"
+      },
+      {
+        "id": "msg-1792069635553-i86y",
+        "text": "Bet",
+        "sender": "me",
+        "senderUsername": "rohan728",
+        "time": "6:37 PM",
+        "conversationId": "rohan728__shashwath71845"
+      },
+      {
+        "id": "msg-1792069896590-q03u",
+        "text": "Bro everything I open the app it's say allow access for photos and saying to pick a photo and if I pick it will do nothing",
+        "sender": "me",
+        "senderUsername": "rohan728",
+        "time": "6:41 PM",
+        "conversationId": "rohan728__shashwath71845"
+      }
     ]
   },
   "comments": {},
@@ -604,7 +699,8 @@
     "post-1791976342088": [
       "shashwath71845",
       "viah",
-      "hi"
+      "hi",
+      "ashwith"
     ]
   },
   "notices": [],
@@ -674,5 +770,5 @@
       "link": "/home"
     }
   ],
-  "lastUpdated": 1792065647264
+  "lastUpdated": 1792069897148
 }

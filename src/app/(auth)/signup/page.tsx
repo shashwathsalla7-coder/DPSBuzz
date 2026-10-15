@@ -2,16 +2,18 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { getClassSections } from '@/config/school';
 import { DataStore, type SongTrack } from '@/lib/dataStore';
 import Logo from '@/components/ui/Logo';
 import { SongPickerModal } from '@/components/music/SongPickerModal';
 import { MusicTrackPill } from '@/components/music/MusicTrackPill';
-import { Music, Gift, Shield, CheckCircle2 } from 'lucide-react';
+import { Music, Gift, Shield, CheckCircle2, Eye, EyeOff } from 'lucide-react';
 
 type Step = 1 | 2 | 3;
 
 export default function SignupPage() {
+  const router = useRouter();
   const [step, setStep] = useState<Step>(1);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -28,6 +30,8 @@ export default function SignupPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [favoriteSong, setFavoriteSong] = useState<SongTrack | null>(null);
   const [showSongPicker, setShowSongPicker] = useState(false);
 
@@ -134,8 +138,8 @@ export default function SignupPage() {
       localStorage.setItem('dpsbuzz_user', JSON.stringify(result.profile));
       document.cookie = `dpsbuzz_user=${encodeURIComponent(JSON.stringify(result.profile))}; path=/; max-age=31536000; SameSite=Lax`;
 
-      // Instant reliable navigation to home feed
-      window.location.replace('/home');
+      // Instant reliable client-side navigation to home feed
+      router.replace('/home');
     } catch (err: any) {
       console.error('Registration exception:', err);
       setError(err?.message || 'Failed to complete registration. Please try again.');
@@ -442,38 +446,58 @@ export default function SignupPage() {
               <label htmlFor="pw" className="block text-xs font-semibold" style={{ color: 'var(--text)' }}>
                 Password
               </label>
-              <input
-                id="pw"
-                type="password"
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full h-12 px-3.5 rounded-xl border text-sm transition outline-none"
-                style={{
-                  backgroundColor: 'var(--surface)',
-                  borderColor: 'var(--line)',
-                  color: 'var(--text)',
-                }}
-              />
+              <div className="relative">
+                <input
+                  id="pw"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full h-12 pl-3.5 pr-11 rounded-xl border text-sm transition outline-none"
+                  style={{
+                    backgroundColor: 'var(--surface)',
+                    borderColor: 'var(--line)',
+                    color: 'var(--text)',
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-200 transition-colors p-1"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
 
             <div className="space-y-1.5">
               <label htmlFor="cpw" className="block text-xs font-semibold" style={{ color: 'var(--text)' }}>
                 Confirm Password
               </label>
-              <input
-                id="cpw"
-                type="password"
-                placeholder="Confirm password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full h-12 px-3.5 rounded-xl border text-sm transition outline-none"
-                style={{
-                  backgroundColor: 'var(--surface)',
-                  borderColor: 'var(--line)',
-                  color: 'var(--text)',
-                }}
-              />
+              <div className="relative">
+                <input
+                  id="cpw"
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  placeholder="Confirm password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full h-12 pl-3.5 pr-11 rounded-xl border text-sm transition outline-none"
+                  style={{
+                    backgroundColor: 'var(--surface)',
+                    borderColor: 'var(--line)',
+                    color: 'var(--text)',
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-200 transition-colors p-1"
+                  aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
 
             {/* Favorite Song / Profile Anthem (Optional) */}

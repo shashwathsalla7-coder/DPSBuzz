@@ -140,27 +140,53 @@ export default function GroupsPage() {
       isUnread: false,
     };
 
+    const welcomeMsg = {
+      id: `msg-group-welcome-${Date.now()}`,
+      text: `🎉 Welcome to "${name}"! Members: You and ${selectedGroupMembers
+        .map((u) => `@${u}`)
+        .join(', ')}`,
+      sender: 'them',
+      senderUsername: 'system',
+      time: 'Just now',
+      status: 'seen',
+    };
+
     if (typeof window !== 'undefined') {
       try {
-        const stored = localStorage.getItem('dpsbuzz_conversations_v1');
-        const existing = stored ? JSON.parse(stored) : [];
-        const updated = [newGroupConv, ...existing];
-        localStorage.setItem('dpsbuzz_conversations_v1', JSON.stringify(updated));
+        const myUser = currentUser?.username?.toLowerCase().trim();
+        const allParticipants = [myUser, ...selectedGroupMembers.map((m) => m.toLowerCase().trim())].filter(Boolean);
 
-        const storedMsgs = localStorage.getItem('dpsbuzz_chat_messages_v1');
-        const existingMsgs = storedMsgs ? JSON.parse(storedMsgs) : {};
-        existingMsgs[groupId] = [
-          {
-            id: `msg-group-welcome-${Date.now()}`,
-            text: `🎉 Welcome to "${name}"! Members: You and ${selectedGroupMembers
-              .map((u) => `@${u}`)
-              .join(', ')}`,
-            sender: 'them',
-            time: 'Just now',
-            status: 'seen',
-          },
-        ];
-        localStorage.setItem('dpsbuzz_chat_messages_v1', JSON.stringify(existingMsgs));
+        for (const u of allParticipants) {
+          const convKey = `dpsbuzz_chat_conversations_${u}_v3`;
+          const stored = localStorage.getItem(convKey);
+          const existing = stored ? JSON.parse(stored) : [];
+          const updated = [newGroupConv, ...existing.filter((c: any) => c.id !== groupId)];
+          localStorage.setItem(convKey, JSON.stringify(updated));
+
+          const msgKey = `dpsbuzz_chat_messages_${u}_v3`;
+          const storedMsgs = localStorage.getItem(msgKey);
+          const existingMsgs = storedMsgs ? JSON.parse(storedMsgs) : {};
+          existingMsgs[groupId] = [welcomeMsg];
+          localStorage.setItem(msgKey, JSON.stringify(existingMsgs));
+        }
+
+        // Keep legacy v1 key populated as backward-compatibility fallback
+        const storedV1 = localStorage.getItem('dpsbuzz_conversations_v1');
+        const existingV1 = storedV1 ? JSON.parse(storedV1) : [];
+        localStorage.setItem('dpsbuzz_conversations_v1', JSON.stringify([newGroupConv, ...existingV1.filter((c: any) => c.id !== groupId)]));
+
+        // Sync with server API
+        fetch('/api/chats', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            conversationId: groupId,
+            senderUsername: myUser || 'student',
+            message: welcomeMsg,
+          }),
+        }).catch(() => {});
+
+        window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated'));
       } catch {}
     }
 

@@ -31,6 +31,8 @@ export default function AdminLoginPage() {
           section: 'Admin',
         };
         localStorage.setItem('dpsbuzz_user', JSON.stringify(adminUser));
+        localStorage.setItem('dpsbuzz_shashwath_authenticated', 'true');
+        document.cookie = `dpsbuzz_user=${encodeURIComponent(JSON.stringify(adminUser))}; path=/; max-age=31536000; SameSite=Lax`;
         router.push('/admin');
       } else {
         setError('Incorrect administrator password. Access restricted to Admin ID: @shashwath71845.');

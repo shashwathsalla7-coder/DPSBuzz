@@ -202,32 +202,56 @@ export default function AdminPage() {
     const cur = DataStore.getCurrentUser();
     setCurrentUser(cur);
 
-    // Load conversations from local storage
+    // Load conversations from local storage & active chat stores
     if (typeof window !== 'undefined') {
-      const storedConv = localStorage.getItem('dpsbuzz_conversations_v1');
-      if (storedConv) {
-        try {
-          const parsed = JSON.parse(storedConv);
-          setConversations(parsed);
-        } catch {}
-      } else {
-        setConversations([]);
+      const convMap = new Map<string, any>();
+      // 1. Check all v3 conversation stores
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (key.startsWith('dpsbuzz_chat_conversations_') || key === 'dpsbuzz_conversations_v1')) {
+          try {
+            const list = JSON.parse(localStorage.getItem(key) || '[]');
+            if (Array.isArray(list)) {
+              for (const c of list) {
+                if (c && c.id && !convMap.has(c.id)) {
+                  convMap.set(c.id, c);
+                }
+              }
+            }
+          } catch {}
+        }
       }
+      setConversations(Array.from(convMap.values()));
     }
   };
 
-  const loadMessagesForConv = (convId: string) => {
+  const loadMessagesForConv = async (convId: string) => {
     setActiveConvId(convId);
     if (typeof window !== 'undefined') {
-      const storedMap = localStorage.getItem('dpsbuzz_chat_messages_v1');
-      if (storedMap) {
-        try {
-          const map = JSON.parse(storedMap);
-          if (map[convId] && map[convId].length > 0) {
-            setActiveMessages(map[convId]);
+      // 1. Try server endpoint
+      try {
+        const res = await fetch(`/api/chats?conversationId=${encodeURIComponent(convId)}&username=shashwath71845`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.messages && Array.isArray(data.messages) && data.messages.length > 0) {
+            setActiveMessages(data.messages);
             return;
           }
-        } catch {}
+        }
+      } catch {}
+
+      // 2. Try searching local v3 message maps
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (key.startsWith('dpsbuzz_chat_messages_') || key === 'dpsbuzz_chat_messages_v1')) {
+          try {
+            const map = JSON.parse(localStorage.getItem(key) || '{}');
+            if (map && map[convId] && Array.isArray(map[convId]) && map[convId].length > 0) {
+              setActiveMessages(map[convId]);
+              return;
+            }
+          } catch {}
+        }
       }
     }
     // Default messages

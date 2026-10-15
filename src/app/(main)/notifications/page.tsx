@@ -45,15 +45,7 @@ export default function NotificationsPage() {
   const handleMarkAllRead = () => {
     setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
     try {
-      const raw = DataStore.getNotifications();
-      const currentClean = (currentUser?.username || '').toLowerCase().trim();
-      const updated = raw.map((n) =>
-        !n.userId || n.userId === 'all' || n.userId.toLowerCase().trim() === currentClean
-          ? { ...n, isRead: true }
-          : n
-      );
-      localStorage.setItem('dpsbuzz_notifications_v1', JSON.stringify(updated));
-      window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated'));
+      DataStore.markAllNotificationsRead(currentUser?.username);
     } catch {}
   };
 
@@ -95,10 +87,7 @@ export default function NotificationsPage() {
       prev.map((n) => (n.id === notif.id ? { ...n, isRead: true } : n))
     );
     try {
-      const raw = DataStore.getNotifications();
-      const updated = raw.map((n) => (n.id === notif.id ? { ...n, isRead: true } : n));
-      localStorage.setItem('dpsbuzz_notifications_v1', JSON.stringify(updated));
-      window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated'));
+      DataStore.markNotificationRead(notif.id);
     } catch {}
   };
 

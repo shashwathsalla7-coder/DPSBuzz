@@ -157,7 +157,16 @@ function NoticeDetailContent({ params }: { params: Promise<{ id: string }> }) {
               <button
                 type="button"
                 onClick={() => {
-                  alert('Downloading circular_march_past_instructions.pdf (142 KB)... 📄');
+                  const pdfHeader = `%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n3 0 obj<</Type/Page/MediaBox[0 0 612 792]/Parent 2 0 R/Resources<<>>/Contents 4 0 R>>endobj\n4 0 obj<</Length 120>>stream\nBT /F1 14 Tf 72 720 Td (DILSUKHNAGAR PUBLIC SCHOOL) Tj ET\nBT /F1 10 Tf 72 690 Td (Official Notice: ${notice.title.replace(/[()]/g, '')}) Tj ET\nendstream\nendobj\nxref\n0 5\n0000000000 65535 f \n0000000009 00000 n \n0000000058 00000 n \n0000000115 00000 n \n0000000215 00000 n \ntrailer<</Size 5/Root 1 0 R>>\nstartxref\n386\n%%EOF`;
+                  const blob = new Blob([pdfHeader], { type: 'application/pdf' });
+                  const url = URL.createObjectURL(blob);
+                  const link = document.createElement('a');
+                  link.href = url;
+                  link.download = `circular_${notice.id || 'official'}.pdf`;
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                  URL.revokeObjectURL(url);
                 }}
                 className="w-8 h-8 border flex items-center justify-center btn-press cursor-pointer"
                 style={{
