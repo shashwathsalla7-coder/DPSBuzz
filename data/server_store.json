@@ -507,7 +507,7 @@
         "conversationId": "sahana_3009__shashwath71845",
         "is_read": true,
         "isSeen": true,
-        "readAt": 1792073485485
+        "readAt": 1792073487669
       },
       {
         "id": "msg-1792073455222-qtqc",
@@ -519,7 +519,306 @@
         "is_read": true,
         "isSeen": true,
         "conversationId": "sahana_3009__shashwath71845",
-        "readAt": 1792073485485
+        "readAt": 1792073487669
+      },
+      {
+        "id": "call-log-1792073498098-yabz",
+        "text": "📹 Video call · 10s",
+        "sender": "me",
+        "senderUsername": "shashwath71845",
+        "time": "7:41 PM",
+        "isCallLog": true,
+        "conversationId": "sahana_3009__shashwath71845",
+        "is_read": true,
+        "isSeen": true,
+        "readAt": 1792073501286
+      },
+      {
+        "id": "call-log-1792073505892-gg5m",
+        "text": "📹 Video call · 18s",
+        "sender": "me",
+        "senderUsername": "sahana_3009",
+        "time": "7:41 PM",
+        "isCallLog": true,
+        "conversationId": "sahana_3009__shashwath71845",
+        "is_read": true,
+        "isSeen": true,
+        "readAt": 1792073513915
+      },
+      {
+        "id": "call-log-1792073506423-7yra",
+        "text": "📹 Video call · 18s",
+        "sender": "me",
+        "senderUsername": "sahana_3009",
+        "time": "7:41 PM",
+        "isCallLog": true,
+        "conversationId": "sahana_3009__shashwath71845",
+        "is_read": true,
+        "isSeen": true,
+        "readAt": 1792073513915
+      },
+      {
+        "id": "call-log-1792073542623-wzbc",
+        "text": "📹 Missed video call",
+        "sender": "me",
+        "senderUsername": "sahana_3009",
+        "time": "7:42 PM",
+        "isCallLog": true,
+        "conversationId": "sahana_3009__shashwath71845",
+        "is_read": true,
+        "isSeen": true,
+        "readAt": 1792073547504
+      },
+      {
+        "id": "call-log-1792073560677-vz09",
+        "text": "📞 Missed voice call",
+        "sender": "me",
+        "senderUsername": "shashwath71845",
+        "time": "7:42 PM",
+        "isCallLog": true,
+        "conversationId": "sahana_3009__shashwath71845",
+        "is_read": true,
+        "isSeen": true,
+        "readAt": 1792073572672
+      },
+      {
+        "id": "msg-1792073573190-fmj0",
+        "text": "Hi shashwath",
+        "sender": "me",
+        "senderUsername": "sahana_3009",
+        "time": "7:42 PM",
+        "isDelivered": false,
+        "is_read": true,
+        "isSeen": true,
+        "conversationId": "sahana_3009__shashwath71845",
+        "readAt": 1792073575920
+      },
+      {
+        "id": "msg-1792073611812-ze8v",
+        "text": "O HI",
+        "sender": "me",
+        "senderUsername": "shashwath71845",
+        "time": "7:43 PM",
+        "isDelivered": false,
+        "is_read": true,
+        "isSeen": true,
+        "conversationId": "sahana_3009__shashwath71845",
+        "readAt": 1792073622928
+      },
+      {
+        "id": "msg-1792073642663-97l5",
+        "text": "akka",
+        "sender": "me",
+        "senderUsername": "shashwath71845",
+        "time": "7:44 PM",
+        "isDelivered": false,
+        "is_read": true,
+        "isSeen": true,
+        "conversationId": "sahana_3009__shashwath71845",
+        "readAt": 1792073648102
+      },
+      {
+        "id": "msg-1792073672036-7ihl",
+        "text": "is this app available on play store",
+        "sender": "me",
+        "senderUsername": "sahana_3009",
+        "time": "7:44 PM",
+        "isDelivered": false,
+        "is_read": true,
+        "isSeen": true,
+        "conversationId": "sahana_3009__shashwath71845",
+        "readAt": 1792073681876
+      },
+      {
+        "id": "msg-1792073690877-yd2a",
+        "text": "noo actually i should pay them to make this app live",
+        "sender": "me",
+        "senderUsername": "shashwath71845",
+        "time": "7:44 PM",
+        "isDelivered": false,
+        "is_read": true,
+        "isSeen": true,
+        "conversationId": "sahana_3009__shashwath71845",
+        "readAt": 1792073701155
+      },
+      {
+        "id": "msg-1792073699855-lqjr",
+        "text": "Ohh",
+        "sender": "me",
+        "senderUsername": "sahana_3009",
+        "time": "7:44 PM",
+        "isDelivered": false,
+        "is_read": true,
+        "isSeen": true,
+        "conversationId": "sahana_3009__shashwath71845",
+        "readAt": 1792073702658
+      },
+      {
+        "id": "msg-1792073715046-f641",
+        "text": "Nope",
+        "sender": "me",
+        "senderUsername": "sahana_3009",
+        "time": "7:45 PM",
+        "isDelivered": false,
+        "is_read": true,
+        "isSeen": true,
+        "conversationId": "sahana_3009__shashwath71845",
+        "readAt": 1792073727919
+      },
+      {
+        "id": "msg-1792073732865-rnit",
+        "text": "But why is it only for school kids",
+        "sender": "me",
+        "senderUsername": "sahana_3009",
+        "time": "7:45 PM",
+        "isDelivered": false,
+        "is_read": true,
+        "isSeen": true,
+        "conversationId": "sahana_3009__shashwath71845",
+        "readAt": 1792073733983
+      },
+      {
+        "id": "msg-1792073743400-ge8f",
+        "text": "Like me",
+        "sender": "me",
+        "senderUsername": "sahana_3009",
+        "time": "7:45 PM",
+        "isDelivered": false,
+        "is_read": true,
+        "isSeen": true,
+        "conversationId": "sahana_3009__shashwath71845",
+        "readAt": 1792073751913
+      },
+      {
+        "id": "msg-1792073770057-e8r2",
+        "text": "idk i just made if this works i will scale it",
+        "sender": "me",
+        "senderUsername": "shashwath71845",
+        "time": "7:46 PM",
+        "isDelivered": false,
+        "is_read": true,
+        "isSeen": true,
+        "conversationId": "sahana_3009__shashwath71845",
+        "readAt": 1792073780978
+      },
+      {
+        "id": "msg-1792073777891-w6ow",
+        "text": "Oh cool",
+        "sender": "me",
+        "senderUsername": "sahana_3009",
+        "time": "7:46 PM",
+        "isDelivered": false,
+        "is_read": true,
+        "isSeen": true,
+        "conversationId": "sahana_3009__shashwath71845",
+        "readAt": 1792073789902
+      },
+      {
+        "id": "msg-1792073851036-7t66",
+        "text": "Is is this app for chatting with schoolmates?",
+        "sender": "me",
+        "senderUsername": "sahana_3009",
+        "time": "7:47 PM",
+        "isDelivered": false,
+        "is_read": true,
+        "isSeen": true,
+        "conversationId": "sahana_3009__shashwath71845",
+        "readAt": 1792073853599
+      },
+      {
+        "id": "msg-1792073856298-e4am",
+        "text": "yeah",
+        "sender": "me",
+        "senderUsername": "shashwath71845",
+        "time": "7:47 PM",
+        "isDelivered": false,
+        "is_read": true,
+        "isSeen": true,
+        "conversationId": "sahana_3009__shashwath71845",
+        "readAt": 1792073859350
+      },
+      {
+        "id": "msg-1792073920902-fbnc",
+        "text": "looks cool",
+        "sender": "me",
+        "senderUsername": "sahana_3009",
+        "time": "7:48 PM",
+        "isDelivered": false,
+        "is_read": true,
+        "isSeen": true,
+        "conversationId": "sahana_3009__shashwath71845",
+        "readAt": 1792073926340
+      },
+      {
+        "id": "msg-1792073930397-51ew",
+        "text": "any mentor or self taught?",
+        "sender": "me",
+        "senderUsername": "sahana_3009",
+        "time": "7:48 PM",
+        "isDelivered": false,
+        "is_read": true,
+        "isSeen": true,
+        "conversationId": "sahana_3009__shashwath71845",
+        "readAt": 1792073932301
+      },
+      {
+        "id": "msg-1792073945071-yzcf",
+        "text": "self taught",
+        "sender": "me",
+        "senderUsername": "shashwath71845",
+        "time": "7:49 PM",
+        "isDelivered": false,
+        "is_read": true,
+        "isSeen": true,
+        "conversationId": "sahana_3009__shashwath71845",
+        "readAt": 1792073949813
+      },
+      {
+        "id": "msg-1792073961344-3exy",
+        "text": "Wow",
+        "sender": "me",
+        "senderUsername": "sahana_3009",
+        "time": "7:49 PM",
+        "isDelivered": false,
+        "is_read": true,
+        "isSeen": true,
+        "conversationId": "sahana_3009__shashwath71845",
+        "readAt": 1792073965537
+      },
+      {
+        "id": "msg-1792073968583-g3oo",
+        "text": "❤️",
+        "sender": "me",
+        "senderUsername": "shashwath71845",
+        "time": "7:49 PM",
+        "isDelivered": false,
+        "is_read": true,
+        "isSeen": true,
+        "conversationId": "sahana_3009__shashwath71845",
+        "readAt": 1792073975389
+      },
+      {
+        "id": "msg-1792074085585-1l3c",
+        "text": "No reels?😂",
+        "sender": "me",
+        "senderUsername": "sahana_3009",
+        "time": "7:51 PM",
+        "isDelivered": false,
+        "is_read": true,
+        "isSeen": true,
+        "conversationId": "sahana_3009__shashwath71845",
+        "readAt": 1792074188046
+      },
+      {
+        "id": "msg-1792074212345-gweh",
+        "text": "actually reels take a lot of storage so that is the reason why i didnot integrate",
+        "sender": "me",
+        "senderUsername": "shashwath71845",
+        "time": "7:53 PM",
+        "isDelivered": false,
+        "is_read": false,
+        "isSeen": false,
+        "conversationId": "sahana_3009__shashwath71845"
       }
     ]
   },
@@ -642,5 +941,6 @@
       "link": "/home"
     }
   ],
-  "lastUpdated": 1792073485527
+  "activeCalls": {},
+  "lastUpdated": 1792074212738
 }

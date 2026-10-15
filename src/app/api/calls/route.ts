@@ -1,46 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
+import type { CallSession } from '@/lib/dataStore';
+import {
+  getServerCall,
+  findUserActiveCall,
+  saveServerCall,
+  updateServerCall,
+  deleteServerCall,
+  getServerActiveCalls,
+} from '@/lib/serverStore';
 
-export interface CallSession {
-  callId: string;
-  callerUsername: string;
-  callerName: string;
-  callerAvatar?: string | null;
-  receiverUsername: string;
-  receiverName?: string;
-  receiverAvatar?: string | null;
-  isVideo: boolean;
-  status: 'ringing' | 'connected' | 'rejected' | 'ended';
-  createdAt: number;
-  connectedAt?: number;
-  endedAt?: number;
-  durationSeconds?: number;
-  sdpOffer?: any;
-  sdpAnswer?: any;
-  iceCandidates?: Array<{ sender: string; candidate: any }>;
-}
+export type { CallSession };
 
-import os from 'os';
-
-const CALLS_FILE_LOCAL = path.join(process.cwd(), 'data', 'active_calls.json');
-const CALLS_FILE_TMP = path.join(os.tmpdir(), 'dpsbuzz_active_calls.json');
-
-function getWritableCallsFile(): string {
-  try {
-    const dataDir = path.join(process.cwd(), 'data');
-    if (fs.existsSync(dataDir)) {
-      // Test if dataDir is writable
-      const testFile = path.join(dataDir, '.test_write');
-      fs.writeFileSync(testFile, '1');
-      fs.unlinkSync(testFile);
-      return CALLS_FILE_LOCAL;
-    }
-  } catch {}
-  return CALLS_FILE_TMP;
-}
-
-// In-memory active calls map + persistent disk fallback
+// In-memory fast cache for instantaneous same-container lookups
 declare global {
   var __dpsbuzz_active_calls: Map<string, CallSession> | undefined;
 }
@@ -49,107 +20,57 @@ if (!globalThis.__dpsbuzz_active_calls) {
   globalThis.__dpsbuzz_active_calls = new Map<string, CallSession>();
 }
 
-const activeCalls = globalThis.__dpsbuzz_active_calls;
-
-// Helper to load calls from disk if map is empty (e.g. across worker processes)
-function loadCallsFromDisk() {
-  const filesToRead = [CALLS_FILE_LOCAL, CALLS_FILE_TMP];
-  for (const file of filesToRead) {
-    try {
-      if (fs.existsSync(/*turbopackIgnore: true*/ file)) {
-        const data = fs.readFileSync(/*turbopackIgnore: true*/ file, 'utf-8');
-        const parsed = JSON.parse(data);
-        if (Array.isArray(parsed)) {
-          for (const call of parsed) {
-            if (call && call.callId && !activeCalls.has(call.callId)) {
-              activeCalls.set(call.callId, call);
-            }
-          }
-        }
-      }
-    } catch {}
-  }
-}
-
-// Helper to save calls to disk
-function saveCallsToDisk() {
-  const callsArray = Array.from(activeCalls.values());
-  const data = JSON.stringify(callsArray);
-  const targetFile = getWritableCallsFile();
-
-  try {
-    fs.writeFileSync(targetFile, data, 'utf-8');
-  } catch {
-    try {
-      fs.writeFileSync(CALLS_FILE_TMP, data, 'utf-8');
-    } catch {}
-  }
-}
-
-// Initial load
-loadCallsFromDisk();
-
-function cleanupOldCalls() {
-  const now = Date.now();
-  let changed = false;
-
-  for (const [id, call] of activeCalls.entries()) {
-    // If call has ended and is older than 20 seconds, purge
-    if (call.status === 'ended' || call.status === 'rejected') {
-      if (now - (call.endedAt || call.createdAt) > 20000) {
-        activeCalls.delete(id);
-        changed = true;
-      }
-    } else if (call.status === 'ringing') {
-      // Ringing timeout after 45 seconds -> auto-end as missed call
-      if (now - call.createdAt > 45000) {
-        call.status = 'ended';
-        call.endedAt = now;
-        call.durationSeconds = 0;
-        changed = true;
-      }
-    }
-  }
-
-  if (changed) {
-    saveCallsToDisk();
-  }
-}
+const localCache = globalThis.__dpsbuzz_active_calls;
 
 export async function GET(req: NextRequest) {
-  loadCallsFromDisk();
-  cleanupOldCalls();
+  try {
+    const { searchParams } = new URL(req.url);
+    const username = searchParams.get('username')?.toLowerCase().trim();
+    const callId = searchParams.get('callId');
 
-  const { searchParams } = new URL(req.url);
-  const username = searchParams.get('username')?.toLowerCase().trim();
-  const callId = searchParams.get('callId');
+    if (callId) {
+      // First check local cache
+      let call = localCache.get(callId) || null;
+      // If not in local cache or status is ringing, check serverStore to get cross-container updates
+      if (!call || call.status === 'ringing') {
+        const serverCall = await getServerCall(callId);
+        if (serverCall) {
+          call = serverCall;
+          localCache.set(callId, serverCall);
+        }
+      }
+      return NextResponse.json({ success: true, call: call || null, activeCall: call || null });
+    }
 
-  if (callId) {
-    const call = activeCalls.get(callId);
-    return NextResponse.json({ success: true, call: call || null, activeCall: call || null });
-  }
+    if (username) {
+      // Check local cache first
+      for (const call of localCache.values()) {
+        if (
+          (call.receiverUsername.toLowerCase() === username ||
+            call.callerUsername.toLowerCase() === username) &&
+          call.status !== 'ended' &&
+          call.status !== 'rejected'
+        ) {
+          return NextResponse.json({ success: true, activeCall: call });
+        }
+      }
 
-  if (username) {
-    // Find active call involving this user
-    for (const call of activeCalls.values()) {
-      if (
-        (call.receiverUsername.toLowerCase() === username ||
-          call.callerUsername.toLowerCase() === username) &&
-        call.status !== 'ended' &&
-        call.status !== 'rejected'
-      ) {
-        return NextResponse.json({ success: true, activeCall: call });
+      // Check serverStore for cross-container calls
+      const serverCall = await findUserActiveCall(username);
+      if (serverCall) {
+        localCache.set(serverCall.callId, serverCall);
+        return NextResponse.json({ success: true, activeCall: serverCall });
       }
     }
-  }
 
-  return NextResponse.json({ success: true, activeCall: null });
+    return NextResponse.json({ success: true, activeCall: null });
+  } catch (err: any) {
+    return NextResponse.json({ success: true, activeCall: null });
+  }
 }
 
 export async function POST(req: NextRequest) {
   try {
-    loadCallsFromDisk();
-    cleanupOldCalls();
     const body = await req.json();
     const {
       action,
@@ -188,71 +109,87 @@ export async function POST(req: NextRequest) {
         iceCandidates: [],
       };
 
-      activeCalls.set(id, newCall);
-      saveCallsToDisk();
+      localCache.set(id, newCall);
+      await saveServerCall(newCall);
       return NextResponse.json({ success: true, call: newCall });
     }
 
     if (action === 'answer') {
-      const call = activeCalls.get(callId);
+      let call = localCache.get(callId) || (await getServerCall(callId));
       if (!call) {
         return NextResponse.json({ success: false, error: 'Call session not found' }, { status: 404 });
       }
-      call.status = 'connected';
-      call.connectedAt = Date.now();
-      if (sdpAnswer) {
-        call.sdpAnswer = sdpAnswer;
+
+      const updates: Partial<CallSession> = {
+        status: 'connected',
+        connectedAt: Date.now(),
+        ...(sdpAnswer ? { sdpAnswer } : {}),
+      };
+
+      const updated = await updateServerCall(callId, updates);
+      if (updated) {
+        localCache.set(callId, updated);
       }
-      saveCallsToDisk();
-      return NextResponse.json({ success: true, call });
+      return NextResponse.json({ success: true, call: updated || call });
     }
 
     if (action === 'reject') {
-      const call = activeCalls.get(callId);
-      if (call) {
-        call.status = 'rejected';
-        call.endedAt = Date.now();
-        call.durationSeconds = 0;
-        saveCallsToDisk();
-      }
+      const updates: Partial<CallSession> = {
+        status: 'rejected',
+        endedAt: Date.now(),
+        durationSeconds: 0,
+      };
+      await updateServerCall(callId, updates);
+      localCache.delete(callId);
       return NextResponse.json({ success: true });
     }
 
     if (action === 'end') {
-      const call = activeCalls.get(callId);
-      if (call) {
-        call.status = 'ended';
-        call.endedAt = Date.now();
-        if (call.connectedAt) {
-          call.durationSeconds = Math.max(1, Math.round((call.endedAt - call.connectedAt) / 1000));
-        } else {
-          call.durationSeconds = 0;
-        }
-        saveCallsToDisk();
+      let call = localCache.get(callId) || (await getServerCall(callId));
+      const endedAt = Date.now();
+      let durationSeconds = 0;
+      if (call?.connectedAt) {
+        durationSeconds = Math.max(1, Math.round((endedAt - call.connectedAt) / 1000));
       }
-      return NextResponse.json({ success: true, durationSeconds: call?.durationSeconds || 0 });
+
+      const updates: Partial<CallSession> = {
+        status: 'ended',
+        endedAt,
+        durationSeconds,
+      };
+      await updateServerCall(callId, updates);
+      localCache.delete(callId);
+      return NextResponse.json({ success: true, durationSeconds });
     }
 
     if (action === 'signal') {
-      const call = activeCalls.get(callId);
+      let call = localCache.get(callId) || (await getServerCall(callId));
       if (!call) {
         return NextResponse.json({ success: false, error: 'Call not found' }, { status: 404 });
       }
 
-      if (sdpOffer) call.sdpOffer = sdpOffer;
-      if (sdpAnswer) call.sdpAnswer = sdpAnswer;
+      const updates: Partial<CallSession> = {};
+      if (sdpOffer) updates.sdpOffer = sdpOffer;
+      if (sdpAnswer) updates.sdpAnswer = sdpAnswer;
+
       if (candidate && sender) {
-        if (!call.iceCandidates) call.iceCandidates = [];
-        // Avoid duplicate candidate pushes
-        const exists = call.iceCandidates.some(
+        const candidates = call.iceCandidates ? [...call.iceCandidates] : [];
+        const exists = candidates.some(
           (c) => c.sender === sender && JSON.stringify(c.candidate) === JSON.stringify(candidate)
         );
         if (!exists) {
-          call.iceCandidates.push({ sender, candidate });
+          candidates.push({ sender, candidate });
+          updates.iceCandidates = candidates;
         }
       }
 
-      saveCallsToDisk();
+      if (Object.keys(updates).length > 0) {
+        const updated = await updateServerCall(callId, updates);
+        if (updated) {
+          localCache.set(callId, updated);
+        }
+      }
+
       return NextResponse.json({ success: true });
     }
 

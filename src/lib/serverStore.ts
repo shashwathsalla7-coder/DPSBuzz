@@ -1,7 +1,7 @@
 import { v2 as cloudinary } from 'cloudinary';
 import fs from 'fs';
 import path from 'path';
-import type { Post, Story, Profile, ChatNote, Notice, NotificationItem } from './dataStore';
+import type { Post, Story, Profile, ChatNote, Notice, NotificationItem, CallSession } from './dataStore';
 
 export interface ServerStoreData {
   posts: Post[];
@@ -15,6 +15,7 @@ export interface ServerStoreData {
   deletedPostIds?: string[]; // IDs of posts deleted permanently
   deletedUsernames?: string[]; // Usernames deleted permanently - NEVER re-add to profiles/posts/leaderboard
   notifications?: NotificationItem[];
+  activeCalls?: Record<string, CallSession>;
   lastUpdated: number;
 }
 
@@ -64,6 +65,7 @@ function createInitialStore(): ServerStoreData {
     deletedPostIds: [],
     deletedUsernames: [],
     notifications: [],
+    activeCalls: {},
     lastUpdated: Date.now(),
   };
 }
@@ -120,6 +122,25 @@ function normalizeStore(parsed: any): ServerStoreData {
     deletedPostIds: Array.isArray(parsed.deletedPostIds) ? parsed.deletedPostIds : [],
     deletedUsernames: Array.isArray(parsed.deletedUsernames) ? parsed.deletedUsernames : [],
     notifications: Array.isArray(parsed.notifications) ? parsed.notifications : [],
+    activeCalls: (() => {
+      const calls: Record<string, CallSession> = {};
+      if (parsed.activeCalls && typeof parsed.activeCalls === 'object') {
+        for (const [id, call] of Object.entries(parsed.activeCalls)) {
+          if (call && typeof call === 'object' && (call as any).callId) {
+            const c = call as CallSession;
+            // Purge calls older than 60s if ended/rejected, or older than 90s if ringing
+            if ((c.status === 'ended' || c.status === 'rejected') && now - (c.endedAt || c.createdAt) > 60000) {
+              continue;
+            }
+            if (c.status === 'ringing' && now - c.createdAt > 90000) {
+              continue;
+            }
+            calls[id] = c;
+          }
+        }
+      }
+      return calls;
+    })(),
     lastUpdated: typeof parsed.lastUpdated === 'number' ? parsed.lastUpdated : Date.now(),
   };
 }
@@ -651,3 +672,72 @@ export async function deleteServerAccount(username: string): Promise<ServerStore
     deletedUsernames,
   });
 }
+
+// ==========================================
+// ACTIVE CALLS & WEBRTC SIGNALING STORE
+// ==========================================
+
+export async function getServerActiveCalls(): Promise<Record<string, CallSession>> {
+  const store = await getServerStore();
+  return store.activeCalls || {};
+}
+
+export async function getServerCall(callId: string): Promise<CallSession | null> {
+  const store = await getServerStore();
+  return store.activeCalls?.[callId] || null;
+}
+
+export async function findUserActiveCall(username: string): Promise<CallSession | null> {
+  const clean = username.toLowerCase().trim();
+  const store = await getServerStore();
+  const calls = Object.values(store.activeCalls || {});
+  for (const call of calls) {
+    if (
+      (call.receiverUsername.toLowerCase().trim() === clean ||
+        call.callerUsername.toLowerCase().trim() === clean) &&
+      call.status !== 'ended' &&
+      call.status !== 'rejected'
+    ) {
+      return call;
+    }
+  }
+  return null;
+}
+
+export async function saveServerCall(call: CallSession): Promise<CallSession> {
+  const current = await getServerStore({ forceRefresh: true });
+  const activeCalls = { ...(current.activeCalls || {}) };
+  activeCalls[call.callId] = call;
+
+  await saveServerStore({ activeCalls });
+  return call;
+}
+
+export async function updateServerCall(
+  callId: string,
+  updates: Partial<CallSession>
+): Promise<CallSession | null> {
+  const current = await getServerStore({ forceRefresh: true });
+  const activeCalls = { ...(current.activeCalls || {}) };
+  const existing = activeCalls[callId];
+  if (!existing) return null;
+
+  const updated: CallSession = {
+    ...existing,
+    ...updates,
+  };
+  activeCalls[callId] = updated;
+
+  await saveServerStore({ activeCalls });
+  return updated;
+}
+
+export async function deleteServerCall(callId: string): Promise<void> {
+  const current = await getServerStore({ forceRefresh: true });
+  const activeCalls = { ...(current.activeCalls || {}) };
+  if (activeCalls[callId]) {
+    delete activeCalls[callId];
+    await saveServerStore({ activeCalls });
+  }
+}
+

@@ -42,17 +42,36 @@ const ICE_SERVERS: RTCConfiguration = {
   iceCandidatePoolSize: 10,
 };
 
-function broadcastCallEvent() {
+function broadcastCallEvent(payload?: any) {
   try {
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('dpsbuzz:call_event_sync'));
+      window.dispatchEvent(new CustomEvent('dpsbuzz:call_event_sync', { detail: payload }));
       if ('BroadcastChannel' in window) {
         const bc = new BroadcastChannel('dpsbuzz_calls_sync');
-        bc.postMessage({ type: 'CALL_STATUS_CHANGED', timestamp: Date.now() });
+        bc.postMessage(payload || { type: 'CALL_STATUS_CHANGED', timestamp: Date.now() });
         bc.close();
       }
     }
   } catch {}
+}
+
+async function waitForIceGathering(pc: RTCPeerConnection, maxTimeoutMs = 1000): Promise<void> {
+  if (pc.iceGatheringState === 'complete') return;
+  return new Promise((resolve) => {
+    let timer: any = null;
+    const checkState = () => {
+      if (pc.iceGatheringState === 'complete') {
+        if (timer) clearTimeout(timer);
+        pc.removeEventListener('icegatheringstatechange', checkState);
+        resolve();
+      }
+    };
+    pc.addEventListener('icegatheringstatechange', checkState);
+    timer = setTimeout(() => {
+      pc.removeEventListener('icegatheringstatechange', checkState);
+      resolve();
+    }, maxTimeoutMs);
+  });
 }
 
 // Synthetic audio track generator for hardware-less environments
@@ -232,7 +251,7 @@ export function GlobalCallProvider() {
             callId: currentCall.callId,
           }),
         });
-        broadcastCallEvent();
+        broadcastCallEvent({ type: 'CALL_ENDED', callId: currentCall.callId });
       } catch {}
     }
 
@@ -259,7 +278,7 @@ export function GlobalCallProvider() {
           callId: incomingCall.callId,
         }),
       });
-      broadcastCallEvent();
+      broadcastCallEvent({ type: 'CALL_REJECTED', callId: incomingCall.callId });
     } catch {}
 
     setIncomingCall(null);
@@ -342,15 +361,20 @@ export function GlobalCallProvider() {
       stream.getTracks().forEach((track) => pc.addTrack(track, stream));
 
       pc.ontrack = (event) => {
-        if (event.streams && event.streams[0]) {
-          setRemoteStream(event.streams[0]);
-        } else if (event.track) {
-          setRemoteStream((prev) => {
-            const nextStream = prev ? new MediaStream(prev.getTracks()) : new MediaStream();
-            nextStream.addTrack(event.track);
-            return nextStream;
-          });
-        }
+        setRemoteStream((prev) => {
+          const tracks: MediaStreamTrack[] = [];
+          if (event.streams && event.streams[0]) {
+            tracks.push(...event.streams[0].getTracks());
+          } else if (event.track) {
+            tracks.push(event.track);
+          }
+          if (prev) {
+            tracks.push(...prev.getTracks());
+          }
+          const trackMap = new Map<string, MediaStreamTrack>();
+          tracks.forEach((t) => trackMap.set(t.id, t));
+          return new MediaStream(Array.from(trackMap.values()));
+        });
       };
 
       pc.onicecandidate = (event) => {
@@ -373,10 +397,11 @@ export function GlobalCallProvider() {
         await pc.setRemoteDescription(new RTCSessionDescription(callToAccept.sdpOffer));
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
-        sdpAnswer = answer;
+        await waitForIceGathering(pc, 1000);
+        sdpAnswer = pc.localDescription || answer;
       }
 
-      await fetch('/api/calls', {
+      const res = await fetch('/api/calls', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -385,14 +410,15 @@ export function GlobalCallProvider() {
           sdpAnswer,
         }),
       });
-      broadcastCallEvent();
 
       const updatedCall: CallSession = {
         ...callToAccept,
         status: 'connected',
         connectedAt: Date.now(),
+        sdpAnswer,
       };
       setActiveCall(updatedCall);
+      broadcastCallEvent({ type: 'CALL_ANSWERED', call: updatedCall });
 
       callTimerRef.current = setInterval(() => {
         setDurationSeconds((prev) => prev + 1);
@@ -442,15 +468,20 @@ export function GlobalCallProvider() {
         stream.getTracks().forEach((track) => pc.addTrack(track, stream));
 
         pc.ontrack = (event) => {
-          if (event.streams && event.streams[0]) {
-            setRemoteStream(event.streams[0]);
-          } else if (event.track) {
-            setRemoteStream((prev) => {
-              const nextStream = prev ? new MediaStream(prev.getTracks()) : new MediaStream();
-              nextStream.addTrack(event.track);
-              return nextStream;
-            });
-          }
+          setRemoteStream((prev) => {
+            const tracks: MediaStreamTrack[] = [];
+            if (event.streams && event.streams[0]) {
+              tracks.push(...event.streams[0].getTracks());
+            } else if (event.track) {
+              tracks.push(event.track);
+            }
+            if (prev) {
+              tracks.push(...prev.getTracks());
+            }
+            const trackMap = new Map<string, MediaStreamTrack>();
+            tracks.forEach((t) => trackMap.set(t.id, t));
+            return new MediaStream(Array.from(trackMap.values()));
+          });
         };
 
         pc.onicecandidate = (event) => {
@@ -473,6 +504,8 @@ export function GlobalCallProvider() {
           offerToReceiveVideo: params.isVideo,
         });
         await pc.setLocalDescription(offer);
+        await waitForIceGathering(pc, 1000);
+        const completeOffer = pc.localDescription || offer;
 
         const res = await fetch('/api/calls', {
           method: 'POST',
@@ -487,7 +520,7 @@ export function GlobalCallProvider() {
             receiverName: params.receiverName,
             receiverAvatar: params.receiverAvatar || null,
             isVideo: params.isVideo,
-            sdpOffer: offer,
+            sdpOffer: completeOffer,
           }),
         });
 
@@ -498,7 +531,7 @@ export function GlobalCallProvider() {
         const data = await res.json();
         if (data.success && data.call) {
           setActiveCall(data.call);
-          broadcastCallEvent();
+          broadcastCallEvent({ type: 'CALL_INITIATED', call: data.call });
         } else {
           throw new Error(data.error || 'Call could not be placed. Please try again.');
         }
@@ -645,17 +678,72 @@ export function GlobalCallProvider() {
     };
 
     // 0ms instant signaling across tabs & windows via BroadcastChannel + CustomEvent
+    const processSignalMessage = (msg: any) => {
+      if (!msg || typeof msg !== 'object') {
+        pollCallStatus();
+        return;
+      }
+
+      if (msg.type === 'CALL_INITIATED' && msg.call) {
+        const serverCall: CallSession = msg.call;
+        if (serverCall.receiverUsername === currentUsername && serverCall.status === 'ringing') {
+          if (!activeCall && (!incomingCall || incomingCall.callId !== serverCall.callId)) {
+            setIncomingCall(serverCall);
+            playIncomingRingtone();
+            showBackgroundNotification(`📞 Incoming ${serverCall.isVideo ? 'Video' : 'Voice'} Call`, {
+              body: `${serverCall.callerName || serverCall.callerUsername} is calling you on DPS Buzz`,
+              icon: serverCall.callerAvatar || '/icons/icon-192.png',
+              tag: `call-${serverCall.callId}`,
+              url: '/chats',
+            });
+            return;
+          }
+        }
+      }
+
+      if (msg.type === 'CALL_ANSWERED' && msg.call) {
+        const serverCall: CallSession = msg.call;
+        if (isCaller && activeCall && activeCall.callId === serverCall.callId) {
+          stopCallAudio();
+          playCallConnectedSound();
+          setActiveCall(serverCall);
+          if (serverCall.sdpAnswer && peerConnRef.current && !peerConnRef.current.currentRemoteDescription) {
+            peerConnRef.current.setRemoteDescription(new RTCSessionDescription(serverCall.sdpAnswer)).catch(() => {});
+          }
+          if (!callTimerRef.current) {
+            callTimerRef.current = setInterval(() => {
+              setDurationSeconds((prev) => prev + 1);
+            }, 1000);
+          }
+          return;
+        }
+      }
+
+      if (msg.type === 'CALL_ENDED' || msg.type === 'CALL_REJECTED') {
+        if (activeCall?.callId === msg.callId || incomingCall?.callId === msg.callId) {
+          stopCallAudio();
+          cleanUpCallResources();
+          setActiveCall(null);
+          setIncomingCall(null);
+          setDurationSeconds(0);
+          return;
+        }
+      }
+
+      pollCallStatus();
+    };
+
     let bc: BroadcastChannel | null = null;
     try {
       if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
         bc = new BroadcastChannel('dpsbuzz_calls_sync');
-        bc.onmessage = () => {
-          pollCallStatus();
+        bc.onmessage = (ev) => {
+          processSignalMessage(ev.data);
         };
       }
     } catch {}
 
-    const handleLocalSync = () => pollCallStatus();
+    const handleLocalSync = (ev: any) => processSignalMessage(ev.detail);
     window.addEventListener('dpsbuzz:call_event_sync', handleLocalSync);
 
     // Initial poll + 1-second fallback interval for cross-device signaling
@@ -667,7 +755,7 @@ export function GlobalCallProvider() {
       window.removeEventListener('dpsbuzz:call_event_sync', handleLocalSync);
       if (bc) bc.close();
     };
-  }, [activeCall, incomingCall, isCaller, handleEndCall]);
+  }, [activeCall, incomingCall, isCaller, handleEndCall, cleanUpCallResources]);
 
   // Audio / Video control toggles
   const handleToggleMute = () => {

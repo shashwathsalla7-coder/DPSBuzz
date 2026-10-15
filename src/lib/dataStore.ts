@@ -247,6 +247,25 @@ export interface CalendarEvent {
   isImportant?: boolean;
 }
 
+export interface CallSession {
+  callId: string;
+  callerUsername: string;
+  callerName: string;
+  callerAvatar?: string | null;
+  receiverUsername: string;
+  receiverName?: string;
+  receiverAvatar?: string | null;
+  isVideo: boolean;
+  status: 'ringing' | 'connected' | 'rejected' | 'ended';
+  createdAt: number;
+  connectedAt?: number;
+  endedAt?: number;
+  durationSeconds?: number;
+  sdpOffer?: any;
+  sdpAnswer?: any;
+  iceCandidates?: Array<{ sender: string; candidate: any }>;
+}
+
 export interface Notice {
   id: string;
   title: string;

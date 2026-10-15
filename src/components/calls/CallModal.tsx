@@ -72,7 +72,16 @@ export function CallModal({
   useEffect(() => {
     if (remoteAudioRef.current && remoteStream) {
       remoteAudioRef.current.srcObject = remoteStream;
-      remoteAudioRef.current.play().catch(() => {});
+      remoteAudioRef.current.play().catch((err) => {
+        console.warn('Audio play autoplay restricted, waiting for user interaction:', err);
+        const resumeAudio = () => {
+          if (remoteAudioRef.current) {
+            remoteAudioRef.current.play().catch(() => {});
+          }
+        };
+        window.addEventListener('click', resumeAudio, { once: true });
+        window.addEventListener('touchstart', resumeAudio, { once: true });
+      });
     }
   }, [remoteStream, isSpeakerMuted]);
 
@@ -82,7 +91,7 @@ export function CallModal({
       localVideoRef.current.srcObject = localStream;
       localVideoRef.current.play().catch(() => {});
     }
-  }, [localStream]);
+  }, [localStream, isPipSwapped]);
 
   // Attach remote media stream to remote video element
   useEffect(() => {
@@ -90,12 +99,12 @@ export function CallModal({
       remoteVideoRef.current.srcObject = remoteStream;
       remoteVideoRef.current.play().catch(() => {});
     }
-  }, [remoteStream]);
+  }, [remoteStream, isPipSwapped]);
 
   const hasRemoteVideo = Boolean(
     remoteStream &&
       remoteStream.getVideoTracks().length > 0 &&
-      remoteStream.getVideoTracks()[0].enabled
+      remoteStream.getVideoTracks().some((t) => t.enabled)
   );
 
   const isConnected = call.status === 'connected';
@@ -112,13 +121,21 @@ export function CallModal({
       aria-modal="true"
       aria-label={`${call.isVideo ? 'Video' : 'Voice'} call with ${otherPersonName}`}
     >
-      {/* Dedicated Hidden Audio Element to ensure incoming voice is ALWAYS heard on voice and video calls */}
+      {/* Dedicated Audio Sink: position offscreen instead of display:none (hidden) to prevent mobile browser throttling */}
       <audio
         ref={remoteAudioRef}
         autoPlay
         playsInline
         muted={isSpeakerMuted}
-        className="hidden"
+        style={{
+          position: 'fixed',
+          top: '-200px',
+          left: '-200px',
+          width: '1px',
+          height: '1px',
+          opacity: 0.001,
+          pointerEvents: 'none',
+        }}
       />
 
       {/* Top Header Bar */}
