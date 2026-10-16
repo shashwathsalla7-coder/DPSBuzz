@@ -146,6 +146,224 @@ const INITIAL_REQUESTS: MessageRequestItem[] = [];
 
 type ChipTab = 'all' | 'groups' | 'requests';
 
+interface ActiveChatHeaderProps {
+  conversation: ConversationItem;
+  targetUser: string;
+  isSelfChat: boolean;
+  isVanishMode: boolean;
+  effectiveActiveAvatar: string | null;
+  colors: { bg: string; text: string };
+  initials: string;
+  onClose: () => void;
+  onOpenGroupInfo: () => void;
+  onViewProfile: (username: string) => void;
+  onAddGroupMembers: () => void;
+  onOpenBgSelector: () => void;
+  onToggleVanishMode: () => void;
+  onOpenOptions: (conv: ConversationItem) => void;
+}
+
+/**
+ * Memoized Active Chat Header Component
+ * Guarantees zero flickering and zero DOM re-mounting when incoming messages stream in.
+ */
+const ActiveChatHeader = React.memo(({
+  conversation,
+  targetUser,
+  isSelfChat,
+  isVanishMode,
+  effectiveActiveAvatar,
+  colors,
+  initials,
+  onClose,
+  onOpenGroupInfo,
+  onViewProfile,
+  onAddGroupMembers,
+  onOpenBgSelector,
+  onToggleVanishMode,
+  onOpenOptions,
+}: ActiveChatHeaderProps) => {
+  const isGroup = Boolean(conversation.isGroup);
+
+  const handleAvatarOrNameClick = () => {
+    if (isGroup) {
+      onOpenGroupInfo();
+    } else if (targetUser) {
+      onViewProfile(targetUser);
+    }
+  };
+
+  const handleStartCall = (isVideo: boolean) => {
+    const now = Date.now();
+    if ((window as any).__dpsbuzz_last_call_click && now - (window as any).__dpsbuzz_last_call_click < 2500) {
+      return;
+    }
+    (window as any).__dpsbuzz_last_call_click = now;
+    window.dispatchEvent(
+      new CustomEvent('dpsbuzz:start_call', {
+        detail: {
+          receiverUsername: targetUser,
+          receiverName: conversation.name || targetUser,
+          receiverAvatar: effectiveActiveAvatar || conversation.avatar || conversation.avatarUrl || null,
+          isVideo,
+        },
+      })
+    );
+  };
+
+  return (
+    <header
+      className="h-14 px-3 flex items-center justify-between border-b shrink-0 sticky top-0 z-30"
+      style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--line)' }}
+    >
+      <div className="flex items-center gap-2.5 min-w-0">
+        <button
+          type="button"
+          onClick={onClose}
+          className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-[var(--surface-sunken)] cursor-pointer"
+          style={{ color: 'var(--text)' }}
+          aria-label="Back to inbox"
+        >
+          <ArrowLeft size={20} />
+        </button>
+
+        {/* Avatar 36px (circle for people, 10px rounded for groups) */}
+        <div
+          onClick={handleAvatarOrNameClick}
+          title={isGroup ? `View group details & members` : `View @${targetUser}'s profile`}
+          className={`w-9 h-9 flex items-center justify-center font-bold text-xs shrink-0 border overflow-hidden cursor-pointer hover:opacity-85 ${
+            isGroup ? 'rounded-[10px]' : 'rounded-full'
+          }`}
+          style={{
+            backgroundColor: isGroup ? 'var(--primary)' : colors.bg,
+            color: isGroup ? 'var(--on-primary)' : colors.text,
+            borderColor: 'var(--line)',
+          }}
+        >
+          {isGroup ? (
+            conversation.groupInitials || '8A'
+          ) : effectiveActiveAvatar ? (
+            <img src={effectiveActiveAvatar} alt={conversation.name} className="w-full h-full object-cover" />
+          ) : (
+            initials
+          )}
+        </div>
+
+        <div
+          onClick={handleAvatarOrNameClick}
+          className="min-w-0 cursor-pointer hover:opacity-85"
+        >
+          <h2 className="text-sm font-semibold truncate leading-tight" style={{ color: 'var(--text)' }}>
+            {conversation.name}
+          </h2>
+          <p className="text-[11px] text-[var(--text-muted)] truncate">
+            {isGroup ? (() => {
+              const activeGroupId = conversation.id.replace(/^conv-/, '');
+              const rawMembers = DataStore.getGroupMembers(activeGroupId);
+              const count = Math.max(1, rawMembers.length || 1);
+              return (
+                <span className="flex items-center gap-1 text-[var(--primary)] font-medium">
+                  <span>{count} member{count !== 1 ? 's' : ''}</span>
+                  <span>·</span>
+                  <span>Tap to view members</span>
+                </span>
+              );
+            })() : (
+              `@${conversation.username} · Class ${conversation.studentClass || '8-A'}`
+            )}
+          </p>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-1">
+        {/* If it's a group: ADD FRIENDS (+) Button right in the chat header! */}
+        {isGroup && (
+          <button
+            type="button"
+            onClick={onAddGroupMembers}
+            className="h-8 px-2.5 rounded-full flex items-center gap-1.5 text-xs font-bold cursor-pointer transition-all bg-[var(--primary)] text-white hover:opacity-90 active:scale-95 shadow-xs"
+            aria-label="Add members to group"
+            title="Add friends to group"
+          >
+            <UserPlus size={14} strokeWidth={2.5} />
+            <span className="text-[11px]">Add</span>
+          </button>
+        )}
+
+        {/* Quick 1-tap Wallpaper / Theme selector button */}
+        <button
+          type="button"
+          onClick={onOpenBgSelector}
+          className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-[var(--surface-sunken)] cursor-pointer text-[var(--text-muted)] hover:text-pink-500 transition-colors"
+          aria-label="Change Chat Background"
+          title="Change Chat Background"
+        >
+          <Palette size={18} />
+        </button>
+
+        {/* Vanish Mode Toggle */}
+        {!isGroup && targetUser && (
+          <button
+            type="button"
+            onClick={onToggleVanishMode}
+            className={`w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer ${
+              isVanishMode
+                ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30'
+                : 'hover:bg-[var(--surface-sunken)] text-[var(--text-muted)] hover:text-purple-400'
+            }`}
+            aria-label="Toggle Vanish Mode"
+            title={isVanishMode ? 'Vanish Mode is ON (tap to turn off)' : 'Turn on Vanish Mode'}
+          >
+            <Ghost size={18} />
+          </button>
+        )}
+
+        {!isGroup && targetUser && !isSelfChat && (
+          <>
+            {/* Button 1: Voice Call */}
+            <button
+              type="button"
+              onClick={() => handleStartCall(false)}
+              className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-[var(--surface-sunken)] cursor-pointer text-[var(--text-muted)] hover:text-[#007AFF] transition-colors relative z-10"
+              aria-label="Voice Call"
+              title="Voice Call"
+            >
+              <Phone size={18} />
+            </button>
+
+            {/* Button 2: Video Call */}
+            <button
+              type="button"
+              onClick={() => handleStartCall(true)}
+              className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-[var(--surface-sunken)] cursor-pointer text-[var(--text-muted)] hover:text-[#007AFF] transition-colors relative z-10"
+              aria-label="Video Call"
+              title="Video Call"
+            >
+              <Video size={19} />
+            </button>
+          </>
+        )}
+
+        {/* Button 3: More Options / Chat Settings */}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onOpenOptions(conversation);
+          }}
+          className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-[var(--surface-sunken)] cursor-pointer text-[var(--text-muted)] hover:text-[var(--text)] transition-colors relative z-10"
+          aria-label="Chat options"
+          title="Chat options & wallpaper"
+        >
+          <MoreHorizontal size={18} />
+        </button>
+      </div>
+    </header>
+  );
+});
+
+ActiveChatHeader.displayName = 'ActiveChatHeader';
+
 function ChatsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -1593,17 +1811,17 @@ function ChatsContent() {
     return { pinnedList: pinned, todayList: today, earlierList: earlier };
   }, [filteredConversations]);
 
-  const handleMuteToggle = (id: string) => {
+  const handleMuteToggle = useCallback((id: string) => {
     setConversations((prev) =>
       prev.map((c) => (c.id === id ? { ...c, isMuted: !c.isMuted } : c))
     );
-  };
+  }, []);
 
-  const handlePinToggle = (id: string) => {
+  const handlePinToggle = useCallback((id: string) => {
     setConversations((prev) =>
       prev.map((c) => (c.id === id ? { ...c, isPinned: !c.isPinned } : c))
     );
-  };
+  }, []);
 
   const handleDeleteConfirm = () => {
     if (!deleteConfirmConv) return;
@@ -1611,7 +1829,7 @@ function ChatsContent() {
     setDeleteConfirmConv(null);
   };
 
-  const openConversation = (conv: ConversationItem) => {
+  const openConversation = useCallback((conv: ConversationItem) => {
     startTransition(() => {
       const target = (conv.username || conv.id.replace(/^conv-/, '')).toLowerCase().trim();
       const isIncomingReq =
@@ -1641,7 +1859,39 @@ function ChatsContent() {
         return updated;
       });
     });
-  };
+  }, [currentUsername]);
+
+  const handleOpenConversation = useCallback((conv?: ConversationItem) => {
+    if (conv) openConversation(conv);
+  }, [openConversation]);
+
+  const handleLongPress = useCallback((c: ConversationItem) => {
+    setLongPressConv(c);
+  }, []);
+
+  const handleRequestDeleteConfirm = useCallback((c: ConversationItem) => {
+    setDeleteConfirmConv(c);
+  }, []);
+
+  const handleOpenGroupInfo = useCallback(() => {
+    setIsGroupInfoOpen(true);
+  }, []);
+
+  const handleViewProfile = useCallback((user: string) => {
+    router.push(`/u/${user}`);
+  }, [router]);
+
+  const handleAddGroupMembers = useCallback(() => {
+    setIsAddGroupMembersOpen(true);
+  }, []);
+
+  const handleOpenBgSelector = useCallback(() => {
+    setIsBgSelectorOpen(true);
+  }, []);
+
+  const handleOpenOptions = useCallback((conv: ConversationItem) => {
+    setLongPressConv(conv);
+  }, []);
 
   const handleStartNewChat = (student: StudentContact) => {
     setIsNewChatOpen(false);
@@ -2860,200 +3110,23 @@ function ChatsContent() {
 
     return (
       <div className="fixed inset-0 z-50 h-dvh h-[100dvh] max-h-[100dvh] md:static md:z-auto md:h-[calc(100dvh-4.5rem)] md:max-h-[calc(100dvh-4.5rem)] flex flex-col overflow-hidden select-none bg-[var(--surface)] text-[var(--text)] font-sf-display font-semibold">
-        {/* Chat Header (56px) */}
-        <header
-          className="h-14 px-3 flex items-center justify-between border-b shrink-0 sticky top-0 z-30"
-          style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--line)' }}
-        >
-          <div className="flex items-center gap-2.5 min-w-0">
-            <button
-              type="button"
-              onClick={handleCloseActiveChat}
-              className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-[var(--surface-sunken)] cursor-pointer"
-              style={{ color: 'var(--text)' }}
-              aria-label="Back to inbox"
-            >
-              <ArrowLeft size={20} />
-            </button>
-
-            {/* Avatar 36px (circle for people, 10px rounded for groups) */}
-            <div
-              onClick={() => {
-                if (activeConversation.isGroup) {
-                  setIsGroupInfoOpen(true);
-                } else if (targetUser) {
-                  router.push(`/u/${targetUser}`);
-                }
-              }}
-              title={activeConversation.isGroup ? `View group details & members` : `View @${targetUser}'s profile`}
-              className={`w-9 h-9 flex items-center justify-center font-bold text-xs shrink-0 border overflow-hidden cursor-pointer hover:opacity-85 ${
-                activeConversation.isGroup ? 'rounded-[10px]' : 'rounded-full'
-              }`}
-              style={{
-                backgroundColor: activeConversation.isGroup ? 'var(--primary)' : colors.bg,
-                color: activeConversation.isGroup ? 'var(--on-primary)' : colors.text,
-                borderColor: 'var(--line)',
-              }}
-            >
-              {activeConversation.isGroup ? (
-                activeConversation.groupInitials || '8A'
-              ) : effectiveActiveAvatar ? (
-                <img src={effectiveActiveAvatar} alt={activeConversation.name} className="w-full h-full object-cover" />
-              ) : (
-                initials
-              )}
-            </div>
-
-            <div
-              onClick={() => {
-                if (activeConversation.isGroup) {
-                  setIsGroupInfoOpen(true);
-                } else if (targetUser) {
-                  router.push(`/u/${targetUser}`);
-                }
-              }}
-              className="min-w-0 cursor-pointer hover:opacity-85"
-            >
-              <h2 className="text-sm font-semibold truncate leading-tight" style={{ color: 'var(--text)' }}>
-                {activeConversation.name}
-              </h2>
-              <p className="text-[11px] text-[var(--text-muted)] truncate">
-                {activeConversation.isGroup ? (() => {
-                  const activeGroupId = activeConversation.id.replace(/^conv-/, '');
-                  const rawMembers = DataStore.getGroupMembers(activeGroupId);
-                  const count = Math.max(1, rawMembers.length || 1);
-                  return (
-                    <span className="flex items-center gap-1 text-[var(--primary)] font-medium">
-                      <span>{count} member{count !== 1 ? 's' : ''}</span>
-                      <span>·</span>
-                      <span>Tap to view members</span>
-                    </span>
-                  );
-                })() : (
-                  `@${activeConversation.username} · Class ${activeConversation.studentClass || '8-A'}`
-                )}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-1">
-            {/* If it's a group: ADD FRIENDS (+) Button right in the chat header! */}
-            {activeConversation.isGroup && (
-              <button
-                type="button"
-                onClick={() => setIsAddGroupMembersOpen(true)}
-                className="h-8 px-2.5 rounded-full flex items-center gap-1.5 text-xs font-bold cursor-pointer transition-all bg-[var(--primary)] text-white hover:opacity-90 active:scale-95 shadow-xs"
-                aria-label="Add members to group"
-                title="Add friends to group"
-              >
-                <UserPlus size={14} strokeWidth={2.5} />
-                <span className="text-[11px]">Add</span>
-              </button>
-            )}
-
-            {/* Quick 1-tap Wallpaper / Theme selector button */}
-            <button
-              type="button"
-              onClick={() => setIsBgSelectorOpen(true)}
-              className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-[var(--surface-sunken)] cursor-pointer text-[var(--text-muted)] hover:text-pink-500 transition-colors"
-              aria-label="Change Chat Background"
-              title="Change Chat Background"
-            >
-              <Palette size={18} />
-            </button>
-
-            {/* Vanish Mode Toggle (Instagram Architecture Section 5) */}
-            {!activeConversation.isGroup && targetUser && (
-              <button
-                type="button"
-                onClick={handleToggleVanishMode}
-                className={`w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer ${
-                  isVanishMode
-                    ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30'
-                    : 'hover:bg-[var(--surface-sunken)] text-[var(--text-muted)] hover:text-purple-400'
-                }`}
-                aria-label="Toggle Vanish Mode"
-                title={isVanishMode ? 'Vanish Mode is ON (tap to turn off)' : 'Turn on Vanish Mode'}
-              >
-                <Ghost size={18} />
-              </button>
-            )}
-
-            {!activeConversation.isGroup && targetUser && !isSelfChat && (
-              <>
-                {/* Button 1: Voice Call */}
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const now = Date.now();
-                    if ((window as any).__dpsbuzz_last_call_click && now - (window as any).__dpsbuzz_last_call_click < 2500) {
-                      return;
-                    }
-                    (window as any).__dpsbuzz_last_call_click = now;
-                    window.dispatchEvent(
-                      new CustomEvent('dpsbuzz:start_call', {
-                        detail: {
-                          receiverUsername: targetUser,
-                          receiverName: activeConversation.name || targetUser,
-                          receiverAvatar: effectiveActiveAvatar || activeConversation.avatar || activeConversation.avatarUrl || null,
-                          isVideo: false,
-                        },
-                      })
-                    );
-                  }}
-                  className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-[var(--surface-sunken)] cursor-pointer text-[var(--text-muted)] hover:text-[#007AFF] transition-colors relative z-10"
-                  aria-label="Voice Call"
-                  title="Voice Call"
-                >
-                  <Phone size={18} />
-                </button>
-
-                {/* Button 2: Video Call */}
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const now = Date.now();
-                    if ((window as any).__dpsbuzz_last_call_click && now - (window as any).__dpsbuzz_last_call_click < 2500) {
-                      return;
-                    }
-                    (window as any).__dpsbuzz_last_call_click = now;
-                    window.dispatchEvent(
-                      new CustomEvent('dpsbuzz:start_call', {
-                        detail: {
-                          receiverUsername: targetUser,
-                          receiverName: activeConversation.name || targetUser,
-                          receiverAvatar: effectiveActiveAvatar || activeConversation.avatar || activeConversation.avatarUrl || null,
-                          isVideo: true,
-                        },
-                      })
-                    );
-                  }}
-                  className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-[var(--surface-sunken)] cursor-pointer text-[var(--text-muted)] hover:text-[#007AFF] transition-colors relative z-10"
-                  aria-label="Video Call"
-                  title="Video Call"
-                >
-                  <Video size={19} />
-                </button>
-              </>
-            )}
-
-            {/* Button 3: More Options / Chat Settings (Fix: Opens ChatActionsSheet directly in active chat view) */}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setLongPressConv(activeConversation);
-              }}
-              className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-[var(--surface-sunken)] cursor-pointer text-[var(--text-muted)] hover:text-[var(--text)] transition-colors relative z-10"
-              aria-label="Chat options"
-              title="Chat options & wallpaper"
-            >
-              <MoreHorizontal size={18} />
-            </button>
-          </div>
-        </header>
+        {/* Memoized Active Chat Header (Zero re-render flickers on streaming messages) */}
+        <ActiveChatHeader
+          conversation={activeConversation}
+          targetUser={targetUser}
+          isSelfChat={isSelfChat}
+          isVanishMode={isVanishMode}
+          effectiveActiveAvatar={effectiveActiveAvatar}
+          colors={colors}
+          initials={initials}
+          onClose={handleCloseActiveChat}
+          onOpenGroupInfo={handleOpenGroupInfo}
+          onViewProfile={handleViewProfile}
+          onAddGroupMembers={handleAddGroupMembers}
+          onOpenBgSelector={handleOpenBgSelector}
+          onToggleVanishMode={handleToggleVanishMode}
+          onOpenOptions={handleOpenOptions}
+        />
 
         {/* Messages Stream with dynamic persistent background */}
         <div
@@ -4391,10 +4464,10 @@ function ChatsContent() {
                     <ConversationRow
                       key={conv.id}
                       conversation={conv}
-                      onClick={() => openConversation(conv)}
-                      onLongPress={(c) => setLongPressConv(c)}
+                      onClick={handleOpenConversation}
+                      onLongPress={handleLongPress}
                       onMuteToggle={handleMuteToggle}
-                      onDeleteRequest={(c) => setDeleteConfirmConv(c)}
+                      onDeleteRequest={handleRequestDeleteConfirm}
                     />
                   ))}
                 </div>
@@ -4414,10 +4487,10 @@ function ChatsContent() {
                       <ConversationRow
                         key={conv.id}
                         conversation={conv}
-                        onClick={() => openConversation(conv)}
-                        onLongPress={(c) => setLongPressConv(c)}
+                        onClick={handleOpenConversation}
+                        onLongPress={handleLongPress}
                         onMuteToggle={handleMuteToggle}
-                        onDeleteRequest={(c) => setDeleteConfirmConv(c)}
+                        onDeleteRequest={handleRequestDeleteConfirm}
                       />
                     ))}
                   </div>
@@ -4438,10 +4511,10 @@ function ChatsContent() {
                       <ConversationRow
                         key={conv.id}
                         conversation={conv}
-                        onClick={() => openConversation(conv)}
-                        onLongPress={(c) => setLongPressConv(c)}
+                        onClick={handleOpenConversation}
+                        onLongPress={handleLongPress}
                         onMuteToggle={handleMuteToggle}
-                        onDeleteRequest={(c) => setDeleteConfirmConv(c)}
+                        onDeleteRequest={handleRequestDeleteConfirm}
                       />
                     ))}
                   </div>

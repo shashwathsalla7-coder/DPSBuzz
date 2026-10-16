@@ -33,7 +33,7 @@ export interface ConversationItem {
 
 export interface ConversationRowProps {
   conversation: ConversationItem;
-  onClick: () => void;
+  onClick: (conv?: any) => void;
   onMuteToggle: (id: string) => void;
   onDelete?: (id: string) => void;
   onDeleteRequest?: (conv: ConversationItem) => void;
@@ -189,7 +189,7 @@ export const ConversationRow: React.FC<ConversationRowProps> = React.memo(({
             return;
           }
           setSwipeOffset(0);
-          onClick();
+          onClick(conversation);
         }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
