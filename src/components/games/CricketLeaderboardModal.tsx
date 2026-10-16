@@ -230,12 +230,14 @@ export function CricketLeaderboardModal({
                     </div>
                   ) : (
                     history.map((record) => {
-                      const dateStr = new Date(record.completedAt).toLocaleDateString([], {
-                        month: 'short',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      });
+                      const dateStr = record.completedAt
+                        ? new Date(record.completedAt).toLocaleDateString([], {
+                            month: 'short',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })
+                        : 'Recent';
 
                       return (
                         <div

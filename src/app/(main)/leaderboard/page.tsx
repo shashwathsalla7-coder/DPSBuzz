@@ -265,7 +265,7 @@ export default function LeaderboardPage() {
       userId: currentUser.id || 'user-me',
       username: currentUser.username,
       fullName: currentUser.fullName,
-      class: currentUser.class ? `Class ${currentUser.class}-${currentUser.section || 'A'}` : 'Class 8-A',
+      class: currentUser.class ? `Class ${currentUser.class}-${currentUser.section || 'A'}` : 'DPS Student',
       avatar: currentUser.avatar || null,
       caption: quickCaption.trim(),
       images: [quickPhoto],

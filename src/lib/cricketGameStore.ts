@@ -111,9 +111,11 @@ export function sanitizeGameSession(
   session: CricketGameSession,
   requestingUsername: string
 ): CricketGameSession {
-  const cleanReq = requestingUsername.toLowerCase().trim();
-  const isPlayer1 = session.player1.username.toLowerCase().trim() === cleanReq;
-  const isPlayer2 = session.player2.username.toLowerCase().trim() === cleanReq;
+  const cleanReq = (requestingUsername || '').toLowerCase().trim();
+  const p1U = (session.player1?.username || '').toLowerCase().trim();
+  const p2U = (session.player2?.username || '').toLowerCase().trim();
+  const isPlayer1 = p1U === cleanReq;
+  const isPlayer2 = p2U === cleanReq;
   const isCompleted = session.status === 'completed';
 
   const sanitized: CricketGameSession = {
@@ -209,7 +211,9 @@ export async function acceptGameInvite(
   if (!session) return null;
 
   const clean = username.toLowerCase().trim();
-  if (session.player2.username !== clean && session.player1.username !== clean) {
+  const p1 = (session.player1?.username || '').toLowerCase().trim();
+  const p2 = (session.player2?.username || '').toLowerCase().trim();
+  if (p2 !== clean && p1 !== clean) {
     return null;
   }
 
@@ -218,7 +222,7 @@ export async function acceptGameInvite(
     id: uuidv4(),
     type: 'system',
     by: clean,
-    byName: clean === session.player2.username ? session.player2.fullName : session.player1.fullName,
+    byName: clean === p2 ? (session.player2?.fullName || p2) : (session.player1?.fullName || p1),
     questionText: `Challenge accepted! Both players are now choosing their secret cricketer 🔒`,
     timestamp: Date.now(),
   });
