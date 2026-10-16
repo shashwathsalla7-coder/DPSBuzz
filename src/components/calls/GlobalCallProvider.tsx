@@ -12,6 +12,7 @@ import {
   playCallConnectedSound,
   playCallEndedSound,
   stopCallAudio,
+  unlockAudioSystem,
 } from '@/lib/callAudio';
 import { showBackgroundNotification } from '@/lib/pushNotifications';
 import { createClient } from '@/lib/supabase/client';
@@ -65,6 +66,12 @@ export function GlobalCallProvider() {
       window.removeEventListener('dpsbuzz:content_updated', handleUpdate);
       window.removeEventListener('storage', handleUpdate);
     };
+  }, []);
+
+  useEffect(() => {
+    // Pre-load ZEGOCLOUD bundle in background so when a call starts or arrives,
+    // ZegoUIKitPrebuilt is already in memory and mounts with zero delay inside user gesture
+    import('@zegocloud/zego-uikit-prebuilt').catch(() => {});
   }, []);
 
   const [activeCall, setActiveCall] = useState<CallSession | null>(null);
@@ -283,86 +290,72 @@ export function GlobalCallProvider() {
   }, [logCallToChat, markCallEnded]);
 
   // Accept incoming call
-  const handleAcceptIncomingCall = useCallback(async () => {
+  const handleAcceptIncomingCall = useCallback(() => {
     const callToAccept = incomingCallRef.current;
     if (!callToAccept || isHandlingIncomingActionRef.current) return;
     isHandlingIncomingActionRef.current = true;
 
-    // Unlock Web Audio immediately within user tap gesture
-    try {
-      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-      if (AudioCtx) {
-        const unlockCtx = new AudioCtx();
-        if (unlockCtx.state === 'suspended') {
-          unlockCtx.resume().catch(() => {});
-        }
-      }
-    } catch {}
-
+    // 1. Force-unlock browser audio engine directly within synchronous user tap gesture
+    unlockAudioSystem();
     stopCallAudio();
     dismissCallNotifications();
-
     cleanUpCallResources();
+    playCallConnectedSound();
+
+    const answeringCall: CallSession = {
+      ...callToAccept,
+      status: 'connected',
+      connectedAt: Date.now(),
+    };
+
+    // 2. Transition immediately to CallRoom without waiting for network latency
+    setActiveCall(answeringCall);
+    setIncomingCall(null);
+    setIsCaller(false);
+    setDurationSeconds(0);
     answeringCallIdRef.current = callToAccept.callId;
 
-    try {
-      playCallConnectedSound();
-
-      const answeringCall: CallSession = {
-        ...callToAccept,
-        status: 'connected',
-        connectedAt: Date.now(),
-      };
-      setActiveCall(answeringCall);
-      setIncomingCall(null);
-      setIsCaller(false);
-      setDurationSeconds(0);
-
-      // Notify server of answer so caller immediately connects
-      const answerRes = await fetch('/api/calls', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'answer',
-          callId: callToAccept.callId,
-          callerUsername: callToAccept.callerUsername,
-          receiverUsername: callToAccept.receiverUsername,
-          callerName: callToAccept.callerName,
-          receiverName: callToAccept.receiverName,
-          isVideo: callToAccept.isVideo,
-          sender: 'receiver',
-        }),
-      });
-
-      if (!answerRes.ok) {
-        throw new Error('Server returned error while answering call');
-      }
-
-      const answerData = await answerRes.json();
-      if (!answerData.success) {
-        stopCallAudio();
-        playCallEndedSound();
-        markCallEnded(callToAccept.callId);
-        setActiveCall(null);
-        alert(answerData.error || 'This call was already ended by the caller.');
-        return;
-      }
-
-      broadcastCallEvent({ type: 'CALL_ANSWERED', call: answeringCall });
-
-      if (!callTimerRef.current) {
-        callTimerRef.current = setInterval(() => {
-          setDurationSeconds((prev) => prev + 1);
-        }, 1000);
-      }
-    } catch (e) {
-      console.error('[Calls] Failed to answer call:', e);
-      handleEndCall();
-    } finally {
-      answeringCallIdRef.current = null;
-      isHandlingIncomingActionRef.current = false;
+    if (!callTimerRef.current) {
+      callTimerRef.current = setInterval(() => {
+        setDurationSeconds((prev) => prev + 1);
+      }, 1000);
     }
-  }, [handleEndCall, cleanUpCallResources, markCallEnded]);
+    broadcastCallEvent({ type: 'CALL_ANSWERED', call: answeringCall });
+
+    // 3. Inform server asynchronously
+    fetch('/api/calls', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'answer',
+        callId: callToAccept.callId,
+        callerUsername: callToAccept.callerUsername,
+        receiverUsername: callToAccept.receiverUsername,
+        callerName: callToAccept.callerName,
+        receiverName: callToAccept.receiverName,
+        isVideo: callToAccept.isVideo,
+        sender: 'receiver',
+      }),
+    })
+      .then(async (res) => {
+        if (!res.ok) return;
+        const answerData = await res.json();
+        if (!answerData.success) {
+          stopCallAudio();
+          playCallEndedSound();
+          markCallEnded(callToAccept.callId);
+          setActiveCall(null);
+          alert(answerData.error || 'This call was already ended by the caller.');
+        }
+      })
+      .catch((err) => {
+        console.warn('[Calls] Answer call sync error:', err);
+      })
+      .finally(() => {
+        answeringCallIdRef.current = null;
+        isHandlingIncomingActionRef.current = false;
+      });
+  }, [cleanUpCallResources, markCallEnded]);
 
   // Initiate outgoing call directly into ZEGOCLOUD Call Room
   const startCall = useCallback(
@@ -394,6 +387,7 @@ export function GlobalCallProvider() {
         return;
       }
 
+      unlockAudioSystem();
       cleanUpCallResources();
       setIsCaller(true);
       setDurationSeconds(0);

@@ -11,6 +11,73 @@ interface ActiveSoundSession {
 const activeAudioSessions: ActiveSoundSession[] = [];
 const activeAudioContexts: Set<AudioContext> = new Set();
 
+// Automatically track and auto-resume all AudioContext instances created across the application
+if (typeof window !== 'undefined' && !(window as any).__dpsbuzz_audiocontext_patched) {
+  (window as any).__dpsbuzz_audiocontext_patched = true;
+  const globalContexts = new Set<AudioContext>();
+  (window as any).__dpsbuzz_all_audio_contexts = globalContexts;
+
+  const OrigAudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+  if (OrigAudioCtx) {
+    const PatchedAudioCtx = function (this: any, options?: AudioContextOptions) {
+      const ctx = new OrigAudioCtx(options);
+      globalContexts.add(ctx);
+
+      const tryResume = () => {
+        if (ctx.state === 'suspended') {
+          ctx.resume().catch(() => {});
+        }
+      };
+
+      tryResume();
+
+      ['click', 'touchstart', 'touchend', 'pointerdown', 'mousedown', 'keydown'].forEach((evt) => {
+        window.addEventListener(evt, tryResume, { passive: true });
+        document.addEventListener(evt, tryResume, { passive: true });
+      });
+
+      return ctx;
+    } as any;
+    PatchedAudioCtx.prototype = OrigAudioCtx.prototype;
+    window.AudioContext = PatchedAudioCtx;
+    (window as any).webkitAudioContext = PatchedAudioCtx;
+  }
+}
+
+/**
+ * Force-unlocks the browser audio subsystem across mobile WebKit, Blink, and Gecko
+ */
+export function unlockAudioSystem(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const OrigAudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+    if (OrigAudioCtx) {
+      const ctx = new OrigAudioCtx();
+      if (ctx.state === 'suspended') {
+        ctx.resume().catch(() => {});
+      }
+      // Play 1-sample silent buffer to unlock iOS and Android hardware audio pipeline
+      const buffer = ctx.createBuffer(1, 1, 22050);
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+      source.connect(ctx.destination);
+      source.start(0);
+    }
+
+    const all = (window as any).__dpsbuzz_all_audio_contexts as Set<AudioContext> | undefined;
+    all?.forEach((ctx) => {
+      if (ctx.state === 'suspended') {
+        ctx.resume().catch(() => {});
+      }
+    });
+
+    // Trigger synthetic mousedown event so Zego's internal handler resumes its audioCtx
+    window.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+  } catch (err) {
+    console.warn('[callAudio] Audio unlock:', err);
+  }
+}
+
 function getAudioContext(): AudioContext | null {
   if (typeof window === 'undefined') return null;
   const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
