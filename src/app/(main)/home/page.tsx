@@ -169,16 +169,26 @@ function HomeContent() {
     // Synchronize with server so posts and stories uploaded on other devices appear immediately
     DataStore.syncWithServer().catch(() => {});
 
-    // Polling sync every 4 seconds to pull fresh posts and stories across devices
+    // Smart polling sync every 25 seconds when visible to pull fresh posts and stories across devices
     const syncInterval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
       DataStore.syncWithServer().catch(() => {});
-    }, 4000);
+    }, 25000);
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        DataStore.syncWithServer().then(() => loadData()).catch(() => {});
+      }
+    };
 
     window.addEventListener('dpsbuzz:content_updated', loadData);
     window.addEventListener('storage', loadData);
+    document.addEventListener('visibilitychange', handleVisibility);
+
     return () => {
       window.removeEventListener('dpsbuzz:content_updated', loadData);
       window.removeEventListener('storage', loadData);
+      document.removeEventListener('visibilitychange', handleVisibility);
       clearInterval(syncInterval);
     };
   }, []);

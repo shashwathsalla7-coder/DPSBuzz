@@ -682,12 +682,17 @@ let activeSyncPromise: Promise<boolean> | null = null;
 
 export const DataStore = {
   // Cross-device synchronization between Web and Android App
-  async syncWithServer(): Promise<boolean> {
+  async syncWithServer(force = false): Promise<boolean> {
     if (typeof window === 'undefined') return false;
     if (activeSyncPromise) {
       return activeSyncPromise;
     }
-    if (Date.now() - lastServerSyncTime < 1200) {
+    // Pause background polling when tab/screen is hidden
+    if (!force && typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+      return true;
+    }
+    // Throttle: don't hammer the server more often than once every 4 seconds unless forced
+    if (!force && Date.now() - lastServerSyncTime < 4000) {
       return true;
     }
 

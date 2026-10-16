@@ -58,12 +58,21 @@ export const StoriesRow: React.FC<StoriesRowProps> = ({ currentUser }) => {
 
     // Background polling fallback to sync stories between Web and App
     const syncInterval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
       DataStore.syncWithServer().then(() => loadStoryGroups());
-    }, 10000);
+    }, 30000);
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        DataStore.syncWithServer().then(() => loadStoryGroups());
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
 
     return () => {
       window.removeEventListener('dpsbuzz:content_updated', handleUpdate);
       window.removeEventListener('dpsbuzz:open_stories', handleOpenStoriesSwipe);
+      document.removeEventListener('visibilitychange', handleVisibility);
       clearInterval(syncInterval);
     };
   }, [loadStoryGroups, user]);

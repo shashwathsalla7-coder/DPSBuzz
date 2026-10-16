@@ -330,18 +330,29 @@ export function GlobalNotificationListener() {
       } catch {}
     };
 
-    // Run immediately and poll every 800ms for continuous sync
+    // Run immediately and poll every 8s when visible (pauses in background to save quotas)
     checkIncoming();
-    const interval = setInterval(checkIncoming, 800);
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+      checkIncoming();
+    }, 8000);
 
-    // Also trigger immediately on internal updates
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        checkIncoming();
+      }
+    };
+
+    // Also trigger immediately on internal updates and tab refocus
     window.addEventListener('dpsbuzz:content_updated', checkIncoming);
     window.addEventListener('storage', checkIncoming);
+    document.addEventListener('visibilitychange', handleVisibility);
 
     return () => {
       clearInterval(interval);
       window.removeEventListener('dpsbuzz:content_updated', checkIncoming);
       window.removeEventListener('storage', checkIncoming);
+      document.removeEventListener('visibilitychange', handleVisibility);
     };
   }, [pathname, playNotificationChime]);
 

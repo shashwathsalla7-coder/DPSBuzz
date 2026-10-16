@@ -507,6 +507,10 @@ export function GlobalCallProvider() {
         if (!isPolling) return;
         const currentActive = activeCallRef.current;
         const currentIncoming = incomingCallRef.current;
+        // Skip polling when tab is hidden unless there is an active/incoming call
+        if (typeof document !== 'undefined' && document.visibilityState === 'hidden' && !currentActive && !currentIncoming) {
+          return;
+        }
         const specificCallId = currentActive?.callId || currentIncoming?.callId;
         const callParam = specificCallId ? `&callId=${encodeURIComponent(specificCallId)}` : '';
         const res = await fetch(`/api/calls?username=${encodeURIComponent(currentUsername)}${callParam}&t=${Date.now()}`);
@@ -765,10 +769,23 @@ export function GlobalCallProvider() {
     } catch {}
 
     pollCallStatus();
-    const interval = setInterval(pollCallStatus, 1500);
+    const interval = setInterval(() => {
+      const hasCall = Boolean(activeCallRef.current || incomingCallRef.current);
+      if (!hasCall && typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+      pollCallStatus();
+    }, 8000);
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        pollCallStatus();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
     return () => {
       isPolling = false;
       clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibility);
       if (bc) bc.close();
       if (channel) {
         channel.unsubscribe().catch(() => {});

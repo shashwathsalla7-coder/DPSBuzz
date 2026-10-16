@@ -52,12 +52,21 @@ export const ChatNotesTray: React.FC<ChatNotesTrayProps> = ({ onReplyToNote }) =
     });
 
     const syncInterval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
       DataStore.syncWithServer().then(() => loadData());
-    }, 10000);
+    }, 30000);
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        DataStore.syncWithServer().then(() => loadData());
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
 
     return () => {
       window.removeEventListener('dpsbuzz:content_updated', loadData);
       window.removeEventListener('storage', loadData);
+      document.removeEventListener('visibilitychange', handleVisibility);
       clearInterval(syncInterval);
       unsub();
     };
