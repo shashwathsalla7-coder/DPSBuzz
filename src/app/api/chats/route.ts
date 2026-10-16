@@ -57,6 +57,23 @@ export async function GET(req: NextRequest) {
           }
           canonicalKey = [username, other].sort().join('__');
         }
+      } else if (conversationId.startsWith('conv-group-') || conversationId.startsWith('group-')) {
+        const groupId = conversationId.replace(/^conv-/, '');
+        const store = await getServerStore();
+        const isAdmin = username === 'shashwath71845';
+        const groupMembers = (store.groupMembers?.[groupId] || []).map((m: string) => m.toLowerCase().trim());
+        const group = (store.groups || []).find((g: any) => g.id === groupId);
+        const membersFromGroup = Array.isArray(group?.members) ? group.members.map((m: string) => m.toLowerCase().trim()) : [];
+        const isMember = groupMembers.includes(username) || membersFromGroup.includes(username);
+        const isInvited = (store.groupJoinRequests || []).some(
+          (r: any) => r.groupId === groupId && r.username.toLowerCase().trim() === username && r.status === 'pending'
+        );
+        if (!isAdmin && !isMember && !isInvited) {
+          return NextResponse.json(
+            { success: false, error: 'Unauthorized: You are not a member of this group' },
+            { status: 403, headers: NO_CACHE_HEADERS }
+          );
+        }
       }
 
       const messages = await getServerChatMessages(canonicalKey);
@@ -70,6 +87,7 @@ export async function GET(req: NextRequest) {
     }
 
     const store = await getServerStore();
+    const isAdmin = username === 'shashwath71845';
     const userMessages: Record<string, any[]> = {};
     for (const [key, msgs] of Object.entries(store.chatMessages || {})) {
       if (key.includes('__')) {
@@ -77,8 +95,19 @@ export async function GET(req: NextRequest) {
         if (participants.includes(username)) {
           userMessages[key] = msgs;
         }
+      } else if (key.startsWith('conv-group-') || key.startsWith('group-')) {
+        const groupId = key.replace(/^conv-/, '');
+        const groupMembers = (store.groupMembers?.[groupId] || []).map((m: string) => m.toLowerCase().trim());
+        const group = (store.groups || []).find((g: any) => g.id === groupId);
+        const membersFromGroup = Array.isArray(group?.members) ? group.members.map((m: string) => m.toLowerCase().trim()) : [];
+        const isMember = groupMembers.includes(username) || membersFromGroup.includes(username);
+        const isInvited = (store.groupJoinRequests || []).some(
+          (r: any) => r.groupId === groupId && r.username.toLowerCase().trim() === username && r.status === 'pending'
+        );
+        if (isAdmin || isMember || isInvited) {
+          userMessages[key] = msgs;
+        }
       } else {
-        // Group conversations or announcements (visible to all members)
         userMessages[key] = msgs;
       }
     }

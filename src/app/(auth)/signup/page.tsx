@@ -136,7 +136,8 @@ export default function SignupPage() {
       }
 
       localStorage.setItem('dpsbuzz_user', JSON.stringify(result.profile));
-      document.cookie = `dpsbuzz_user=${encodeURIComponent(JSON.stringify(result.profile))}; path=/; max-age=31536000; SameSite=Lax`;
+      const signupCookie = encodeURIComponent(JSON.stringify({ id: result.profile.id, username: result.profile.username, role: result.profile.role || 'student' }));
+      document.cookie = `dpsbuzz_user=${signupCookie}; path=/; max-age=31536000; SameSite=Lax`;
 
       // Instant reliable client-side navigation to home feed
       router.replace('/home');

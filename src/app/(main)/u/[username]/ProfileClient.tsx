@@ -625,15 +625,15 @@ export default function ProfileClient({ username }: { username: string }) {
       ...profile,
       fullName: editFullName.trim() || profile.fullName,
       bio: editBio.trim(),
-      class: '8',
-      section: 'G',
+      class: editClass || profile.class || '8',
+      section: editSection || profile.section || 'A',
       avatar: editAvatar !== undefined ? editAvatar : profile.avatar,
     };
     DataStore.updateProfile(profile.username, {
       fullName: updated.fullName,
       bio: updated.bio,
-      class: '8',
-      section: 'G',
+      class: updated.class,
+      section: updated.section,
       avatar: updated.avatar,
     });
     setProfile(updated);
@@ -2711,27 +2711,58 @@ export default function ProfileClient({ username }: { username: string }) {
                 />
               </div>
 
-              {/* Class & Section locked permanently to Class 8-G (dropdown removed) */}
-              <div>
-                <label className="text-[11px] font-bold block mb-1" style={{ color: 'var(--text-muted)' }}>
-                  CLASS & SECTION
-                </label>
-                <div
-                  className="w-full text-xs px-3 py-2.5 border rounded-xl flex items-center justify-between"
-                  style={{
-                    backgroundColor: 'var(--surface-sunken)',
-                    borderColor: 'var(--line)',
-                    color: 'var(--text)',
-                  }}
-                >
-                  <span className="font-bold">Class 8-G (Section G)</span>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 font-bold border border-emerald-500/30">
-                    🔒 Class 8-G
-                  </span>
+              {/* Real Class & Section Selectors */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[11px] font-bold block mb-1" style={{ color: 'var(--text-muted)' }}>
+                    CLASS
+                  </label>
+                  <select
+                    value={editClass}
+                    onChange={(e) => {
+                      const newCls = e.target.value;
+                      setEditClass(newCls);
+                      const validSections = getClassSections(newCls);
+                      if (!validSections.includes(editSection)) {
+                        setEditSection(validSections[0] || 'A');
+                      }
+                    }}
+                    className="w-full text-xs px-3 py-2.5 border rounded-xl focus:outline-none cursor-pointer"
+                    style={{
+                      backgroundColor: 'var(--surface-sunken)',
+                      borderColor: 'var(--line)',
+                      color: 'var(--text)',
+                    }}
+                  >
+                    <option value="6">Class 6</option>
+                    <option value="7">Class 7</option>
+                    <option value="8">Class 8</option>
+                    <option value="9">Class 9</option>
+                    <option value="10">Class 10</option>
+                  </select>
                 </div>
-                <p className="text-[10px] text-[var(--text-muted)] mt-1">
-                  Registered school class is fixed to Class 8-G.
-                </p>
+
+                <div>
+                  <label className="text-[11px] font-bold block mb-1" style={{ color: 'var(--text-muted)' }}>
+                    SECTION
+                  </label>
+                  <select
+                    value={editSection}
+                    onChange={(e) => setEditSection(e.target.value)}
+                    className="w-full text-xs px-3 py-2.5 border rounded-xl focus:outline-none cursor-pointer"
+                    style={{
+                      backgroundColor: 'var(--surface-sunken)',
+                      borderColor: 'var(--line)',
+                      color: 'var(--text)',
+                    }}
+                  >
+                    {getClassSections(editClass).map((sec) => (
+                      <option key={sec} value={sec}>
+                        Section {sec}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </form>
 

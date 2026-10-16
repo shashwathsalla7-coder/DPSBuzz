@@ -68,7 +68,16 @@ export default function GroupsPage() {
     );
     setJoinRequests(relevantReqs);
     setMyInvites(DataStore.getGroupInvitesForUser(user.username));
-    setGroups(DataStore.getGroups());
+
+    const allGroups = DataStore.getGroups();
+    const visibleGroups = allGroups.filter((g) => {
+      if (isAdmin) return true;
+      const isMember = DataStore.isGroupMember(g.id, user.username);
+      const isInvited = Boolean(DataStore.hasPendingGroupInvite(g.id, user.username));
+      const hasReq = DataStore.hasRequestedToJoinGroup(g.id, user.username);
+      return isMember || isInvited || hasReq;
+    });
+    setGroups(visibleGroups);
     setTick((prev) => prev + 1);
   };
 
@@ -253,7 +262,7 @@ export default function GroupsPage() {
                       color: 'var(--text-muted)',
                     }}
                   >
-                    {(Array.isArray(selectedGroup.members) ? selectedGroup.members.length : selectedGroup.members) || selectedGroup.memberCount || 1} Enrolled Members
+                    {DataStore.getGroupMembers(selectedGroup.id).length || selectedGroup.memberCount || 1} Enrolled Members
                   </span>
                 </div>
 

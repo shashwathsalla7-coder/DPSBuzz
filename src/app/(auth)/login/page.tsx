@@ -80,7 +80,8 @@ export default function LoginPage() {
         };
         localStorage.setItem('dpsbuzz_shashwath_authenticated', 'true');
         localStorage.setItem('dpsbuzz_user', JSON.stringify(superAdmin));
-        document.cookie = `dpsbuzz_user=${encodeURIComponent(JSON.stringify(superAdmin))}; path=/; max-age=31536000; SameSite=Lax`;
+        const adminSessionCookie = encodeURIComponent(JSON.stringify({ id: superAdmin.id, username: superAdmin.username, role: superAdmin.role }));
+        document.cookie = `dpsbuzz_user=${adminSessionCookie}; path=/; max-age=31536000; SameSite=Lax`;
 
         try {
           localStorage.removeItem('dpsbuzz_chat_conversations_v2');
@@ -167,7 +168,8 @@ export default function LoginPage() {
     } catch {}
 
     localStorage.setItem('dpsbuzz_user', JSON.stringify(match));
-    document.cookie = `dpsbuzz_user=${encodeURIComponent(JSON.stringify(match))}; path=/; max-age=31536000; SameSite=Lax`;
+    const userSessionCookie = encodeURIComponent(JSON.stringify({ id: match.id, username: match.username, role: match.role || 'student' }));
+    document.cookie = `dpsbuzz_user=${userSessionCookie}; path=/; max-age=31536000; SameSite=Lax`;
     window.location.replace('/home');
   };
 

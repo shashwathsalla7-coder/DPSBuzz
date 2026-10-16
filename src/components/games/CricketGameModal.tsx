@@ -179,7 +179,7 @@ function ConfettiCanvas() {
   );
 }
 
-export function CricketGameModal({
+function CricketGameModalContent({
   isOpen,
   gameId,
   currentUsername,
@@ -213,7 +213,7 @@ export function CricketGameModal({
   const sessionRef = useRef<CricketGameSession | null>(null);
   sessionRef.current = session;
 
-  const cleanUser = currentUsername.toLowerCase().trim();
+  const cleanUser = (currentUsername || '').toLowerCase().trim();
 
   // Polling game session
   const fetchSession = async (silent = false) => {
@@ -277,14 +277,18 @@ export function CricketGameModal({
   if (!isOpen) return null;
 
   // Derive players
-  const isPlayer1 = session?.player1.username.toLowerCase().trim() === cleanUser;
-  const isPlayer2 = session?.player2.username.toLowerCase().trim() === cleanUser;
-  const me = isPlayer1 ? session?.player1 : session?.player2;
+  const p1User = (session?.player1?.username || '').toLowerCase().trim();
+  const p2User = (session?.player2?.username || '').toLowerCase().trim();
+  const isPlayer1 = p1User === cleanUser;
+  const isPlayer2 = p2User === cleanUser;
+  const me = isPlayer1 ? session?.player1 : (isPlayer2 ? session?.player2 : session?.player1);
   const opponent = isPlayer1 ? session?.player2 : session?.player1;
 
-  const isMyTurn = session?.status === 'in_progress' && session?.currentTurn.toLowerCase().trim() === cleanUser;
+  const currentTurnUser = (session?.currentTurn || '').toLowerCase().trim();
+  const isMyTurn = session?.status === 'in_progress' && Boolean(currentTurnUser) && currentTurnUser === cleanUser;
   const isAwaitingAnswer = session?.turnState === 'awaiting_answer';
-  const amITheAnswerer = isAwaitingAnswer && session?.activeQuestion?.askedBy.toLowerCase().trim() !== cleanUser;
+  const askedByUser = (session?.activeQuestion?.askedBy || '').toLowerCase().trim();
+  const amITheAnswerer = isAwaitingAnswer && Boolean(askedByUser) && askedByUser !== cleanUser;
 
   // My chosen cricketer (if selected)
   const mySecretCricketer = me?.selectedCricketerId ? getCricketerById(me.selectedCricketerId) : null;
@@ -889,7 +893,7 @@ export function CricketGameModal({
                     const isSystem = item.type === 'system';
                     const isGuess = item.type === 'guess';
                     const isQuestion = item.type === 'question';
-                    const isFromMe = item.by.toLowerCase().trim() === cleanUser;
+                    const isFromMe = (item.by || '').toLowerCase().trim() === cleanUser;
 
                     if (isSystem) {
                       return (
@@ -1232,7 +1236,7 @@ export function CricketGameModal({
                   </div>
 
                   <h3 className="text-xl sm:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-pink-400 to-purple-400">
-                    {session.winner?.toLowerCase().trim() === cleanUser
+                    {(session.winner || '').toLowerCase().trim() === cleanUser
                       ? 'Congratulations! You Won! 🏅'
                       : `@${session.winner} Won the Match!`}
                   </h3>
@@ -1377,5 +1381,64 @@ export function CricketGameModal({
         )}
       </div>
     </div>
+  );
+}
+
+class CricketGameErrorBoundary extends React.Component<
+  { children: React.ReactNode; onClose: () => void },
+  { hasError: boolean }
+> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error: any) {
+    console.error('[CricketGameModal] Caught error:', error);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="fixed inset-0 z-[80] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="w-full max-w-sm bg-[#0c0914] border border-purple-500/30 rounded-3xl p-6 text-center text-white space-y-4 shadow-2xl">
+            <div className="w-12 h-12 rounded-2xl bg-pink-500/20 border border-pink-400/30 flex items-center justify-center text-2xl mx-auto">
+              🏏
+            </div>
+            <h3 className="text-sm font-bold text-white">Cricket Arena Reconnecting</h3>
+            <p className="text-xs text-purple-200/70">
+              The game session encountered a brief glitch. Click below to reconnect or return to chat.
+            </p>
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => this.setState({ hasError: false })}
+                className="flex-1 py-2 px-3 rounded-xl bg-pink-600 hover:bg-pink-500 text-white text-xs font-bold cursor-pointer transition-all"
+              >
+                Reconnect
+              </button>
+              <button
+                type="button"
+                onClick={this.props.onClose}
+                className="flex-1 py-2 px-3 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-semibold cursor-pointer transition-all"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+export function CricketGameModal(props: CricketGameModalProps) {
+  if (!props.isOpen) return null;
+  return (
+    <CricketGameErrorBoundary onClose={props.onClose}>
+      <CricketGameModalContent {...props} />
+    </CricketGameErrorBoundary>
   );
 }

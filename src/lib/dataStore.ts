@@ -694,13 +694,14 @@ export const DataStore = {
     activeSyncPromise = (async () => {
       try {
         lastServerSyncTime = Date.now();
-        const res = await fetch('/api/sync?t=' + Date.now());
+        const activeUser = this.getCurrentUser();
+        const myUser = (activeUser?.username || '').toLowerCase().trim();
+        const res = await fetch(`/api/sync?username=${encodeURIComponent(myUser)}&t=${Date.now()}`);
         if (!res.ok) return false;
         const data = await res.json();
         if (!data.success) return false;
 
       // Push active user to cloud if not already registered on server
-      const activeUser = this.getCurrentUser();
       if (
         activeUser &&
         activeUser.username &&
@@ -805,8 +806,31 @@ export const DataStore = {
         for (const p of data.profiles) {
           const u = p.username?.toLowerCase()?.trim();
           if (u && !DUMMY_TEST_USERNAMES.has(u) && !deletedUsers.has(u)) {
-            if (!profileMap.has(u)) changed = true;
-            profileMap.set(u, p);
+            const existing = profileMap.get(u);
+            if (!existing) {
+              changed = true;
+              profileMap.set(u, p);
+            } else {
+              const resolvedAvatar = (p.avatar && typeof p.avatar === 'string' && p.avatar.trim())
+                ? p.avatar
+                : (existing.avatar || null);
+              const resolvedClass = (p.class && p.class.trim() && p.class !== '8')
+                ? p.class
+                : (existing.class || p.class || '8');
+              const resolvedSection = (p.section && p.section.trim())
+                ? p.section
+                : (existing.section || p.section || 'A');
+
+              const merged: Profile = {
+                ...existing,
+                ...p,
+                avatar: resolvedAvatar,
+                class: resolvedClass,
+                section: resolvedSection,
+                fullName: p.fullName || existing.fullName,
+              };
+              profileMap.set(u, merged);
+            }
           }
         }
         setStorage(STORAGE_KEYS.PROFILES, Array.from(profileMap.values()));
@@ -1030,6 +1054,51 @@ export const DataStore = {
           setStorage(STORAGE_KEYS.FOLLOW_REQUESTS, localReqs);
           changed = true;
         }
+      }
+
+      // 11. Merge server groups & group requests
+      if (Array.isArray(data.groups) && data.groups.length > 0) {
+        const localGroups = getStorage<Group[]>(STORAGE_KEYS.GROUPS, []);
+        const groupMap = new Map(localGroups.map((g) => [g.id, g]));
+        for (const g of data.groups) {
+          if (g && g.id) {
+            const existing = groupMap.get(g.id);
+            if (!existing) {
+              groupMap.set(g.id, g);
+              changed = true;
+            } else {
+              const mems = Array.from(new Set([...(existing.members || []), ...(g.members || [])]));
+              groupMap.set(g.id, { ...existing, ...g, members: mems, memberCount: Math.max(mems.length, g.memberCount || 1) });
+            }
+          }
+        }
+        setStorage(STORAGE_KEYS.GROUPS, Array.from(groupMap.values()));
+      }
+
+      if (Array.isArray(data.groupJoinRequests)) {
+        const localRequests = getStorage<GroupJoinRequest[]>(STORAGE_KEYS.GROUP_JOIN_REQUESTS, []);
+        const reqMap = new Map(localRequests.map((r) => [r.id, r]));
+        for (const r of data.groupJoinRequests) {
+          if (r && r.id) {
+            if (!reqMap.has(r.id) || reqMap.get(r.id)?.status !== r.status) {
+              changed = true;
+            }
+            reqMap.set(r.id, r);
+          }
+        }
+        setStorage(STORAGE_KEYS.GROUP_JOIN_REQUESTS, Array.from(reqMap.values()));
+      }
+
+      if (data.groupMembers && typeof data.groupMembers === 'object') {
+        const localMembers = getStorage<Record<string, string[]>>(STORAGE_KEYS.GROUP_MEMBERS, {});
+        for (const [gid, mems] of Object.entries(data.groupMembers)) {
+          if (Array.isArray(mems)) {
+            const curr = localMembers[gid] || [];
+            const set = new Set([...curr.map((m) => m.toLowerCase().trim()), ...(mems as string[]).map((m) => m.toLowerCase().trim())]);
+            localMembers[gid] = Array.from(set);
+          }
+        }
+        setStorage(STORAGE_KEYS.GROUP_MEMBERS, localMembers);
       }
 
       if (changed) {
@@ -3404,6 +3473,17 @@ export const DataStore = {
     }
 
     if (typeof window !== 'undefined') {
+      const allInvites = this.getGroupPendingInvites(newGroup.id);
+      fetch('/api/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          groups: [newGroup],
+          groupMembers: { [newGroup.id]: [cleanCreator] },
+          groupJoinRequests: allInvites,
+        }),
+      }).catch(() => {});
+
       window.dispatchEvent(
         new CustomEvent('dpsbuzz:content_updated', {
           detail: { type: 'group_created', group: newGroup },
@@ -3557,11 +3637,31 @@ export const DataStore = {
       setStorage(STORAGE_KEYS.GROUP_MEMBERS, storedMembers);
     }
 
-    // Increment memberCount on group
-    const groups = this.getGroups().map((g) =>
-      g.id === req.groupId ? { ...g, memberCount: (g.memberCount || 1) + 1 } : g
-    );
+    // Increment memberCount on group and add member to g.members
+    const groups = this.getGroups().map((g) => {
+      if (g.id === req.groupId) {
+        const mems = Array.isArray(g.members) ? [...g.members] : [];
+        if (!mems.map((m) => m.toLowerCase()).includes(cleanUser)) {
+          mems.push(cleanUser);
+        }
+        return { ...g, members: mems, memberCount: Math.max(mems.length, (g.memberCount || 1) + 1) };
+      }
+      return g;
+    });
     setStorage(STORAGE_KEYS.GROUPS, groups);
+
+    // Sync membership and acceptance to server
+    if (typeof window !== 'undefined') {
+      fetch('/api/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          groups,
+          groupMembers: storedMembers,
+          groupJoinRequests: [req],
+        }),
+      }).catch(() => {});
+    }
 
     // Register group conversation for accepted member
     if (typeof window !== 'undefined') {
@@ -3646,6 +3746,57 @@ export const DataStore = {
 
     req.status = 'declined';
     setStorage(STORAGE_KEYS.GROUP_JOIN_REQUESTS, list);
+
+    const cleanUser = req.username.toLowerCase().trim();
+
+    // Remove from group members if present
+    const defaultMembersMap: Record<string, string[]> = {};
+    const storedMembers = getStorage<Record<string, string[]>>(STORAGE_KEYS.GROUP_MEMBERS, defaultMembersMap);
+    if (storedMembers[req.groupId]) {
+      storedMembers[req.groupId] = storedMembers[req.groupId].filter((m) => m.toLowerCase() !== cleanUser);
+      setStorage(STORAGE_KEYS.GROUP_MEMBERS, storedMembers);
+    }
+
+    const groups = this.getGroups().map((g) => {
+      if (g.id === req.groupId && Array.isArray(g.members)) {
+        const filtered = g.members.filter((m) => m.toLowerCase() !== cleanUser);
+        return { ...g, members: filtered, memberCount: Math.max(1, filtered.length) };
+      }
+      return g;
+    });
+    setStorage(STORAGE_KEYS.GROUPS, groups);
+
+    // Clean up any group conversation or messages for this declining user
+    if (typeof window !== 'undefined') {
+      try {
+        const convId = `conv-${req.groupId}`;
+        const convKey = `dpsbuzz_chat_conversations_${cleanUser}_v3`;
+        const stored = localStorage.getItem(convKey);
+        if (stored) {
+          const existing = JSON.parse(stored);
+          const filtered = existing.filter((c: any) => c.id !== convId);
+          localStorage.setItem(convKey, JSON.stringify(filtered));
+        }
+
+        const msgKey = `dpsbuzz_chat_messages_${cleanUser}_v3`;
+        const storedMsgs = localStorage.getItem(msgKey);
+        if (storedMsgs) {
+          const existingMsgs = JSON.parse(storedMsgs);
+          delete existingMsgs[convId];
+          localStorage.setItem(msgKey, JSON.stringify(existingMsgs));
+        }
+
+        fetch('/api/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            groupJoinRequests: [req],
+          }),
+        }).catch(() => {});
+      } catch (err) {
+        console.error('Error cleaning up declined group conversation:', err);
+      }
+    }
 
     if (req.invitedBy) {
       const notifications = this.getNotifications();
@@ -4125,7 +4276,8 @@ export const DataStore = {
     // Save as current user
     if (typeof window !== 'undefined') {
       localStorage.setItem('dpsbuzz_user', JSON.stringify(newProfile));
-      document.cookie = `dpsbuzz_user=${encodeURIComponent(JSON.stringify(newProfile))}; path=/; max-age=31536000; SameSite=Lax`;
+      const sessionCookie = encodeURIComponent(JSON.stringify({ id: newProfile.id, username: newProfile.username, role: newProfile.role || 'student' }));
+      document.cookie = `dpsbuzz_user=${sessionCookie}; path=/; max-age=31536000; SameSite=Lax`;
 
       try {
         window.dispatchEvent(

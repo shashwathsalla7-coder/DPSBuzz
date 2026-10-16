@@ -13,6 +13,7 @@ export async function GET(req: NextRequest) {
     const username = searchParams.get('username')?.toLowerCase().trim();
 
     const store = await getServerStore();
+    const isAdmin = username === 'shashwath71845';
 
     // STRICT PRIVACY: Only return chat messages for conversations the requesting user belongs to
     const filteredChatMessages: Record<string, any[]> = {};
@@ -23,11 +24,47 @@ export async function GET(req: NextRequest) {
           if (participants.includes(username)) {
             filteredChatMessages[key] = msgs;
           }
-        } else if (key.startsWith('conv-group-')) {
-          // Group chat
-          filteredChatMessages[key] = msgs;
+        } else if (key.startsWith('conv-group-') || key.startsWith('group-')) {
+          const groupId = key.replace(/^conv-/, '');
+          const groupMembers = (store.groupMembers?.[groupId] || []).map((m: string) => m.toLowerCase().trim());
+          const group = (store.groups || []).find((g: any) => g.id === groupId);
+          const membersFromGroup = Array.isArray(group?.members) ? group.members.map((m: string) => m.toLowerCase().trim()) : [];
+          const isMember = groupMembers.includes(username) || membersFromGroup.includes(username);
+          const isInvited = (store.groupJoinRequests || []).some(
+            (r: any) => r.groupId === groupId && r.username.toLowerCase().trim() === username && r.status === 'pending'
+          );
+          if (isAdmin || isMember || isInvited) {
+            filteredChatMessages[key] = msgs;
+          }
         }
       }
+    }
+
+    // Filter groups strictly: NEVER leak private groups to uninvited non-members!
+    let filteredGroups: any[] = [];
+    let filteredGroupRequests: any[] = [];
+    if (username) {
+      filteredGroups = (store.groups || []).filter((g: any) => {
+        if (isAdmin) return true;
+        const groupMembers = (store.groupMembers?.[g.id] || []).map((m: string) => m.toLowerCase().trim());
+        const membersFromGroup = Array.isArray(g.members) ? g.members.map((m: string) => m.toLowerCase().trim()) : [];
+        const isMember = groupMembers.includes(username) || membersFromGroup.includes(username);
+        const isInvited = (store.groupJoinRequests || []).some(
+          (r: any) => r.groupId === g.id && r.username.toLowerCase().trim() === username && r.status === 'pending'
+        );
+        const hasReq = (store.groupJoinRequests || []).some(
+          (r: any) => r.groupId === g.id && r.username.toLowerCase().trim() === username
+        );
+        return isMember || isInvited || hasReq;
+      });
+
+      filteredGroupRequests = (store.groupJoinRequests || []).filter((r: any) => {
+        if (isAdmin) return true;
+        const reqUser = (r.username || '').toLowerCase().trim();
+        const inviter = (r.invitedBy || '').toLowerCase().trim();
+        const groupMembers = (store.groupMembers?.[r.groupId] || []).map((m: string) => m.toLowerCase().trim());
+        return reqUser === username || inviter === username || groupMembers.includes(username);
+      });
     }
 
     return NextResponse.json({
@@ -39,6 +76,9 @@ export async function GET(req: NextRequest) {
       likes: store.likes,
       chatNotes: store.chatNotes,
       chatMessages: filteredChatMessages, // Never expose all messages globally!
+      groups: filteredGroups,
+      groupMembers: store.groupMembers || {},
+      groupJoinRequests: filteredGroupRequests,
       deletedPostIds: store.deletedPostIds || [],
       deletedUsernames: store.deletedUsernames || [],
       notifications: store.notifications || [],
@@ -175,6 +215,48 @@ export async function POST(req: NextRequest) {
       mergedFollowRequests = mergedFollowRequests.filter((r) => !removeReqSet.has(`${(r.requester || '').toLowerCase().trim()}__${(r.target || '').toLowerCase().trim()}`));
     }
 
+    // Merge groups
+    let mergedGroups = Array.isArray(current.groups) ? [...current.groups] : [];
+    if (Array.isArray(body.groups)) {
+      const groupMap = new Map(mergedGroups.map((g: any) => [g.id, g]));
+      for (const g of body.groups) {
+        if (g && g.id) {
+          const existing = groupMap.get(g.id);
+          if (existing) {
+            const mergedMems = Array.from(new Set([...(existing.members || []), ...(g.members || [])]));
+            groupMap.set(g.id, { ...existing, ...g, members: mergedMems, memberCount: Math.max(mergedMems.length, g.memberCount || 1) });
+          } else {
+            groupMap.set(g.id, g);
+          }
+        }
+      }
+      mergedGroups = Array.from(groupMap.values());
+    }
+
+    // Merge group members
+    const mergedGroupMembers: Record<string, string[]> = { ...(current.groupMembers || {}) };
+    if (body.groupMembers && typeof body.groupMembers === 'object') {
+      for (const [gid, members] of Object.entries(body.groupMembers)) {
+        if (Array.isArray(members)) {
+          const currentMems = mergedGroupMembers[gid] || [];
+          const set = new Set([...currentMems.map((m: string) => m.toLowerCase().trim()), ...members.map((m: string) => m.toLowerCase().trim())]);
+          mergedGroupMembers[gid] = Array.from(set);
+        }
+      }
+    }
+
+    // Merge group join requests / invites
+    let mergedGroupRequests = Array.isArray(current.groupJoinRequests) ? [...current.groupJoinRequests] : [];
+    if (Array.isArray(body.groupJoinRequests)) {
+      const reqMap = new Map(mergedGroupRequests.map((r: any) => [r.id, r]));
+      for (const r of body.groupJoinRequests) {
+        if (r && r.id) {
+          reqMap.set(r.id, { ...(reqMap.get(r.id) || {}), ...r });
+        }
+      }
+      mergedGroupRequests = Array.from(reqMap.values());
+    }
+
     const updated = await saveServerStore({
       posts: mergedPosts,
       stories: mergedStories,
@@ -184,6 +266,9 @@ export async function POST(req: NextRequest) {
       notices: mergedNotices,
       follows: mergedFollows,
       followRequests: mergedFollowRequests,
+      groups: mergedGroups,
+      groupMembers: mergedGroupMembers,
+      groupJoinRequests: mergedGroupRequests,
     });
 
     return NextResponse.json({
@@ -196,6 +281,8 @@ export async function POST(req: NextRequest) {
       notices: updated.notices,
       follows: updated.follows || [],
       followRequests: updated.followRequests || [],
+      groups: updated.groups || [],
+      groupJoinRequests: updated.groupJoinRequests || [],
       deletedUsernames: updated.deletedUsernames || [],
       lastUpdated: updated.lastUpdated,
     }, { headers: NO_CACHE_HEADERS });

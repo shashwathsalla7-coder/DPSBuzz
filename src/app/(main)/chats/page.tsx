@@ -726,7 +726,7 @@ function ChatsContent() {
         : 'Group created',
       timeAgo: 'Just now',
       isUnread: false,
-      studentClass: '8-A',
+      studentClass: currentUser?.class ? `Class ${currentUser.class}-${currentUser.section || 'A'}` : 'Study Group',
     };
 
     setConversations((prev) => [newGroupConv, ...prev.filter((c) => c.id !== convId)]);
@@ -804,7 +804,7 @@ function ChatsContent() {
         lastMessage: `@${currentUsername} joined the group! 🎉`,
         timeAgo: 'Just now',
         isUnread: false,
-        studentClass: '8-A',
+        studentClass: currentUser?.class ? `Class ${currentUser.class}-${currentUser.section || 'A'}` : 'Study Group',
       };
       setConversations((prev) => [newGroupConv, ...prev.filter((c) => c.id !== convId)]);
       openConversation(newGroupConv);
@@ -817,6 +817,16 @@ function ChatsContent() {
       showGroupToast(`Declined invitation to join "${invite.groupName}".`);
       setMyGroupInvites(DataStore.getGroupInvitesForUser(currentUsername));
       setGroupSyncTick((t) => t + 1);
+      const convId = `conv-${invite.groupId}`;
+      setConversations((prev) => prev.filter((c) => c.id !== convId));
+      if (activeConversation?.id === convId) {
+        setActiveConversation(null);
+      }
+      setChatMessages((prev) => {
+        const copy = { ...prev };
+        delete copy[convId];
+        return copy;
+      });
     }
   };
 
@@ -1580,6 +1590,20 @@ function ChatsContent() {
         }
 
         if (isGroupConv) {
+          const groupId = key.replace(/^conv-/, '');
+          if (groupId.startsWith('group-') || key.startsWith('conv-group-')) {
+            const isMember = DataStore.isGroupMember(groupId, currentUsername);
+            const isInvited = Boolean(DataStore.hasPendingGroupInvite(groupId, currentUsername));
+            if (!isAdminUser && !isMember && !isInvited) {
+              const convIdx = updated.findIndex((c) => c.id === key);
+              if (convIdx >= 0) {
+                updated.splice(convIdx, 1);
+                changed = true;
+              }
+              continue;
+            }
+          }
+
           const lastTs = lastMsg.createdAt ? new Date(lastMsg.createdAt).getTime() : (lastMsg.timestamp || 0);
           const convIdx = updated.findIndex((c) => c.id === key);
           if (convIdx >= 0) {
@@ -1598,7 +1622,6 @@ function ChatsContent() {
               changed = true;
             }
           } else {
-            const groupId = key.replace(/^conv-/, '');
             const group = DataStore.getGroups().find((g) => g.id === groupId);
             const groupName = group?.name || (key.includes('8a') ? 'Class 8-A Group' : 'Group Chat');
             const initials = groupName.slice(0, 2).toUpperCase() || 'GP';
@@ -1713,7 +1736,16 @@ function ChatsContent() {
         c.id.includes('house-') ||
         c.id.includes('club-')
       );
-      if (isGroup) return true;
+      if (isGroup) {
+        if (isAdminUser) return true;
+        const groupId = c.id.replace(/^conv-/, '');
+        if (groupId.startsWith('group-') || c.id.startsWith('conv-group-')) {
+          const isMember = DataStore.isGroupMember(groupId, currentUsername);
+          const isInvited = Boolean(DataStore.hasPendingGroupInvite(groupId, currentUsername));
+          return isMember || isInvited;
+        }
+        return true;
+      }
       const target = (c.username || c.id.replace(/^conv-/, '')).toLowerCase().trim();
       if (!target || target === currentUsername) return false;
       if (DataStore.isBlocked(currentUsername, target)) return false;
@@ -4348,9 +4380,10 @@ function ChatsContent() {
                   <button
                     type="button"
                     onClick={() => handleDeclineGroupInvite(inv)}
-                    className="px-2.5 py-1.5 rounded-full text-xs font-semibold text-red-500 hover:bg-red-500/10 active:scale-95 transition-all cursor-pointer border border-red-500/30"
+                    className="px-2.5 py-1.5 rounded-full text-xs font-semibold text-red-500 hover:bg-red-500/10 active:scale-95 transition-all cursor-pointer border border-red-500/30 flex items-center gap-1"
                   >
-                    Decline
+                    <X size={12} strokeWidth={2.5} />
+                    <span>No, Decline</span>
                   </button>
                 </div>
               </div>

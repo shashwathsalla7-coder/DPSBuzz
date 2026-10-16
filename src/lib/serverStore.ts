@@ -29,6 +29,9 @@ export interface ServerStoreData {
   activeCalls?: Record<string, CallSession>;
   follows?: Array<{ follower: string; following: string }>;
   followRequests?: Array<{ requester: string; target: string }>;
+  groups?: any[];
+  groupMembers?: Record<string, string[]>;
+  groupJoinRequests?: any[];
   lastUpdated: number;
 }
 
@@ -82,6 +85,9 @@ function createInitialStore(): ServerStoreData {
     activeCalls: {},
     follows: [],
     followRequests: [],
+    groups: [],
+    groupMembers: {},
+    groupJoinRequests: [],
     lastUpdated: Date.now(),
   };
 }
@@ -160,6 +166,9 @@ function normalizeStore(parsed: any): ServerStoreData {
     })(),
     follows: Array.isArray(parsed.follows) ? parsed.follows : [],
     followRequests: Array.isArray(parsed.followRequests) ? parsed.followRequests : [],
+    groups: Array.isArray(parsed.groups) ? parsed.groups : [],
+    groupMembers: parsed.groupMembers && typeof parsed.groupMembers === 'object' ? parsed.groupMembers : {},
+    groupJoinRequests: Array.isArray(parsed.groupJoinRequests) ? parsed.groupJoinRequests : [],
     lastUpdated: typeof parsed.lastUpdated === 'number' ? parsed.lastUpdated : Date.now(),
   };
 }
@@ -332,15 +341,23 @@ export async function addServerStory(story: Story): Promise<ServerStoreData> {
 export async function upsertServerProfile(profile: Profile): Promise<ServerStoreData> {
   const current = await getServerStore({ forceRefresh: true });
   const clean = profile.username.toLowerCase().trim();
+  const existing = current.profiles.find((p) => p.username.toLowerCase().trim() === clean);
+  const resolvedProfile: Profile = {
+    ...existing,
+    ...profile,
+    avatar: (profile.avatar !== undefined && profile.avatar !== null) ? profile.avatar : (existing?.avatar || profile.avatar || null),
+    class: (profile.class && profile.class.trim() && profile.class !== '8') ? profile.class : (existing?.class || profile.class || '8'),
+    section: (profile.section && profile.section.trim()) ? profile.section : (existing?.section || profile.section || 'A'),
+  };
   const filtered = current.profiles.filter((p) => p.username.toLowerCase().trim() !== clean);
-  filtered.unshift(profile);
+  filtered.unshift(resolvedProfile);
 
   // Propagate updated avatar to posts authored by this student
   let updatedPosts = current.posts;
-  if (profile.avatar !== undefined) {
+  if (resolvedProfile.avatar !== undefined) {
     updatedPosts = current.posts.map((p) => {
       if ((p.username || '').toLowerCase().trim() === clean) {
-        return { ...p, userAvatar: profile.avatar || null };
+        return { ...p, userAvatar: resolvedProfile.avatar || null };
       }
       return p;
     });
@@ -1085,5 +1102,86 @@ export async function deleteServerCall(callId: string): Promise<void> {
     console.warn('[serverStore] Failed to delete call from Supabase:', err);
   }
 }
+
+export async function upsertServerGroup(group: any): Promise<ServerStoreData> {
+  const store = await getServerStore({ forceRefresh: true });
+  const groups = Array.isArray(store.groups) ? [...store.groups] : [];
+  const idx = groups.findIndex((g) => g.id === group.id);
+  if (idx >= 0) {
+    groups[idx] = { ...groups[idx], ...group };
+  } else {
+    groups.unshift(group);
+  }
+  store.groups = groups;
+
+  if (!store.groupMembers) store.groupMembers = {};
+  if (Array.isArray(group.members) && group.members.length > 0) {
+    const existing = store.groupMembers[group.id] || [];
+    const set = new Set([...existing, ...group.members.map((m: string) => m.toLowerCase().trim())]);
+    store.groupMembers[group.id] = Array.from(set);
+  }
+
+  await saveServerStore(store);
+  return store;
+}
+
+export async function addServerGroupMember(groupId: string, username: string): Promise<ServerStoreData> {
+  const store = await getServerStore({ forceRefresh: true });
+  if (!store.groupMembers) store.groupMembers = {};
+  const clean = username.toLowerCase().trim();
+  const existing = store.groupMembers[groupId] || [];
+  if (!existing.map((m) => m.toLowerCase()).includes(clean)) {
+    store.groupMembers[groupId] = [...existing, clean];
+  }
+  if (Array.isArray(store.groups)) {
+    store.groups = store.groups.map((g) => {
+      if (g.id === groupId) {
+        const mems = Array.isArray(g.members) ? [...g.members] : [];
+        if (!mems.map((m) => m.toLowerCase()).includes(clean)) {
+          mems.push(clean);
+        }
+        return { ...g, members: mems, memberCount: mems.length };
+      }
+      return g;
+    });
+  }
+  await saveServerStore(store);
+  return store;
+}
+
+export async function removeServerGroupMember(groupId: string, username: string): Promise<ServerStoreData> {
+  const store = await getServerStore({ forceRefresh: true });
+  if (!store.groupMembers) store.groupMembers = {};
+  const clean = username.toLowerCase().trim();
+  if (store.groupMembers[groupId]) {
+    store.groupMembers[groupId] = store.groupMembers[groupId].filter((m) => m.toLowerCase() !== clean);
+  }
+  if (Array.isArray(store.groups)) {
+    store.groups = store.groups.map((g) => {
+      if (g.id === groupId && Array.isArray(g.members)) {
+        const mems = g.members.filter((m: string) => m.toLowerCase() !== clean);
+        return { ...g, members: mems, memberCount: Math.max(1, mems.length) };
+      }
+      return g;
+    });
+  }
+  await saveServerStore(store);
+  return store;
+}
+
+export async function upsertServerGroupJoinRequest(req: any): Promise<ServerStoreData> {
+  const store = await getServerStore({ forceRefresh: true });
+  const list = Array.isArray(store.groupJoinRequests) ? [...store.groupJoinRequests] : [];
+  const idx = list.findIndex((r) => r.id === req.id);
+  if (idx >= 0) {
+    list[idx] = { ...list[idx], ...req };
+  } else {
+    list.unshift(req);
+  }
+  store.groupJoinRequests = list;
+  await saveServerStore(store);
+  return store;
+}
+
 
 
