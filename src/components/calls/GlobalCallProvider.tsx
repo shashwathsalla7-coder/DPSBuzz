@@ -14,6 +14,7 @@ import {
   stopCallAudio,
 } from '@/lib/callAudio';
 import { showBackgroundNotification } from '@/lib/pushNotifications';
+import { createClient } from '@/lib/supabase/client';
 
 function dismissCallNotifications() {
   try {
@@ -50,6 +51,22 @@ function broadcastCallEvent(payload?: any) {
 }
 
 export function GlobalCallProvider() {
+  const [currentUser, setCurrentUser] = useState<any>(() => DataStore.getCurrentUser());
+  const currentUsername = (currentUser?.username || '').toLowerCase().trim();
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setCurrentUser(DataStore.getCurrentUser());
+    };
+    handleUpdate();
+    window.addEventListener('dpsbuzz:content_updated', handleUpdate);
+    window.addEventListener('storage', handleUpdate);
+    return () => {
+      window.removeEventListener('dpsbuzz:content_updated', handleUpdate);
+      window.removeEventListener('storage', handleUpdate);
+    };
+  }, []);
+
   const [activeCall, setActiveCall] = useState<CallSession | null>(null);
   const [incomingCall, setIncomingCall] = useState<CallSession | null>(null);
   const [isCaller, setIsCaller] = useState(false);
@@ -484,10 +501,8 @@ export function GlobalCallProvider() {
     return () => window.removeEventListener('dpsbuzz:start_call', handleStartCallEvent);
   }, [startCall]);
 
-  // Periodic polling for incoming calls and connection status
+  // Periodic polling & Supabase Realtime for incoming calls and connection status
   useEffect(() => {
-    const user = DataStore.getCurrentUser();
-    const currentUsername = user?.username?.toLowerCase().trim();
     if (!currentUsername || currentUsername === 'guest') return;
 
     let isPolling = true;
@@ -732,14 +747,39 @@ export function GlobalCallProvider() {
         };
       }
     } catch {}
+
+    // Supabase Realtime channel for instantaneous incoming call alerts
+    let channel: any = null;
+    try {
+      const supabase = createClient();
+      channel = supabase
+        .channel(`call_signals_${currentUsername}_${LOCAL_TAB_ID}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'app_settings',
+            filter: `key=eq.call_user_${currentUsername}`,
+          },
+          () => {
+            pollCallStatus();
+          }
+        )
+        .subscribe();
+    } catch {}
+
     pollCallStatus();
-    const interval = setInterval(pollCallStatus, 1000);
+    const interval = setInterval(pollCallStatus, 1500);
     return () => {
       isPolling = false;
       clearInterval(interval);
       if (bc) bc.close();
+      if (channel) {
+        channel.unsubscribe().catch(() => {});
+      }
     };
-  }, [handleEndCall, cleanUpCallResources, markCallEnded]);
+  }, [currentUsername, handleEndCall, cleanUpCallResources, markCallEnded]);
 
   return (
     <>

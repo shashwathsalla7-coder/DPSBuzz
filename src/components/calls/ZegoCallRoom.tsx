@@ -140,19 +140,6 @@ export function ZegoCallRoom({ call, isCaller, onEndCall, onConnected }: ZegoCal
           displayName || cleanUserID
         );
 
-        // Request permissions proactively so browser grants them within user gesture
-        try {
-          if (navigator?.mediaDevices?.getUserMedia) {
-            const tempStream = await navigator.mediaDevices.getUserMedia({
-              audio: true,
-              video: Boolean(call.isVideo),
-            });
-            tempStream.getTracks().forEach((track) => track.stop());
-          }
-        } catch (mediaErr) {
-          console.warn('[ZEGOCLOUD] User media check:', mediaErr);
-        }
-
         // Create clean ZegoUIKit instance
         const zp = ZegoUIKitPrebuilt.create(kitToken);
         (zp as any).autoLeaveRoomWhenOnlySelfInRoom = false;
@@ -187,7 +174,7 @@ export function ZegoCallRoom({ call, isCaller, onEndCall, onConnected }: ZegoCal
           showOnlyAudioUser: true,
           showLeavingView: false,
           showLeaveRoomConfirmDialog: false,
-          videoResolutionDefault: ZegoUIKitPrebuilt.VideoResolution_720P,
+          videoResolutionDefault: ZegoUIKitPrebuilt.VideoResolution_480P || ZegoUIKitPrebuilt.VideoResolution_720P,
           onUserJoin: (users: any[]) => {
             if (!isMounted) return;
             console.log('[ZEGOCLOUD] Remote participant joined room:', users);
