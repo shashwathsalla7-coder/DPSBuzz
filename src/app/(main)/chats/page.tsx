@@ -49,9 +49,13 @@ import {
 import { getAvatarColorPair } from '@/config/tokens';
 import { DataStore, DUMMY_TEST_USERNAMES, ChatNote, type GroupJoinRequest } from '@/lib/dataStore';
 import { showBackgroundNotification } from '@/lib/pushNotifications';
+import { v4 as uuidv4 } from 'uuid';
+import { useChatMessages } from '@/hooks/useChatMessages';
 
 interface ChatMessage {
   id: string;
+  client_id?: string | null;
+  status?: 'sending' | 'sent' | 'error';
   text: string;
   sender: 'me' | 'them';
   senderUsername?: string;
@@ -336,6 +340,12 @@ function ChatsContent() {
   );
 
   const [activeConversation, setActiveConversation] = useState<ConversationItem | null>(null);
+  const activeCanonicalConvId = activeConversation ? getCanonicalConvId(activeConversation) : '';
+  const {
+    messages: realtimeSupabaseMessages,
+    sendMessage: sendSupabaseRealtimeMessage,
+    isLoadingHistory: isRealtimeLoadingHistory,
+  } = useChatMessages(activeCanonicalConvId, currentUsername);
   const [isNewChatOpen, setIsNewChatOpen] = useState(false);
   const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
@@ -1993,9 +2003,12 @@ function ChatsContent() {
     const canonicalId = getCanonicalConvId(activeConversation);
     const targetUser = (activeConversation.username || activeConversation.id.replace(/^conv-/, '')).toLowerCase().trim();
     const sentText = messageInput.trim();
+    const ephemeralTrackingId = uuidv4();
 
     const newMsg: ChatMessage = {
-      id: `msg-${now}-${Math.random().toString(36).substring(2, 6)}`,
+      id: ephemeralTrackingId,
+      client_id: ephemeralTrackingId,
+      status: 'sending',
       text: sentText,
       sender: 'me',
       senderUsername: currentUsername,
@@ -2077,6 +2090,9 @@ function ChatsContent() {
       recipientUsername: activeConversation.username,
     });
 
+    // Dispatch to Supabase Realtime layer with client_id handshake
+    sendSupabaseRealtimeMessage(sentText, ephemeralTrackingId);
+
     // Dispatch to server endpoint for instant cross-device delivery
     fetch('/api/chats', {
       method: 'POST',
@@ -2092,7 +2108,7 @@ function ChatsContent() {
           setChatMessages((prev) => {
             const currentList = getListForConv(prev, canonicalId, rawId);
             const updated = currentList.map((m) =>
-              m.id === newMsg.id ? { ...m, isDelivered: true } : m
+              m.id === newMsg.id ? { ...m, isDelivered: true, status: 'sent' as const } : m
             );
             return {
               ...prev,
@@ -2293,7 +2309,63 @@ function ChatsContent() {
       }
     }
 
-    const messages = getListForConv(chatMessages, canonicalId, activeConversation.id);
+    const localMessages = getListForConv(chatMessages, canonicalId, activeConversation.id);
+
+    // Reconcile and deduplicate with Supabase Realtime channel stream using client_id handshake
+    const messages = (() => {
+      if (!realtimeSupabaseMessages || realtimeSupabaseMessages.length === 0) {
+        return localMessages;
+      }
+      const map = new Map<string, ChatMessage>();
+      // 1. Seed with local state
+      for (const m of localMessages) {
+        const key = m.client_id || m.id;
+        map.set(key, m);
+      }
+      // 2. Reconcile Supabase Realtime updates
+      for (const rm of realtimeSupabaseMessages) {
+        const isMe = rm.sender_id ? rm.sender_id.toLowerCase() === currentUsername : false;
+        const formattedTime = rm.created_at
+          ? new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date(rm.created_at))
+          : 'Now';
+
+        // Match by client_id handshake or database record id
+        const matchKey = (rm.client_id && map.has(rm.client_id))
+          ? rm.client_id
+          : (map.has(rm.id) ? rm.id : null);
+
+        if (matchKey) {
+          const existing = map.get(matchKey)!;
+          map.set(matchKey, {
+            ...existing,
+            id: rm.id,
+            client_id: rm.client_id || existing.client_id,
+            status: rm.status || 'sent',
+            isDelivered: rm.status === 'sent' || existing.isDelivered,
+          });
+        } else {
+          const newMsgFromDb: ChatMessage = {
+            id: rm.id,
+            client_id: rm.client_id,
+            text: rm.text,
+            sender: isMe ? 'me' : 'them',
+            senderUsername: rm.sender_id,
+            time: formattedTime,
+            createdAt: rm.created_at,
+            status: rm.status || 'sent',
+            isDelivered: rm.status === 'sent',
+            is_read: false,
+            isSeen: false,
+          };
+          map.set(rm.client_id || rm.id, newMsgFromDb);
+        }
+      }
+      return Array.from(map.values()).sort((a, b) => {
+        const ta = a.createdAt ? new Date(a.createdAt).getTime() : (a.timestamp || 0);
+        const tb = b.createdAt ? new Date(b.createdAt).getTime() : (b.timestamp || 0);
+        return ta - tb;
+      });
+    })();
     const colors = getAvatarColorPair(activeConversation.username || activeConversation.name);
     const initials = activeConversation.name.slice(0, 2).toUpperCase();
 
@@ -2597,7 +2669,7 @@ function ChatsContent() {
                     className="relative cursor-pointer select-none max-w-[78%]"
                   >
                     <div
-                      className={`px-4 py-2.5 rounded-[22px] text-[15px] leading-[1.4] tracking-[-0.015em] font-semibold chat-bubble-text font-sf-display transition-all ${
+                      className={`px-4 py-2.5 rounded-[var(--r-bubble,14px)] text-[15px] leading-[1.4] tracking-[-0.015em] font-semibold chat-bubble-text font-sf-display transition-all ${
                         isMe
                           ? isVanishMode || msg.is_vanish_mode_message || msg.isVanishMode
                             ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-br-[5px] shadow-xs ring-1 ring-purple-400/30'
@@ -2809,16 +2881,24 @@ function ChatsContent() {
                       <span
                         className="inline-flex items-center shrink-0"
                         title={
-                          msg.is_read || msg.isSeen || msg.readAt
+                          msg.status === 'error'
+                            ? 'Failed to send'
+                            : msg.status === 'sending' || msg.isSending
+                            ? 'Sending...'
+                            : msg.is_read || msg.isSeen || msg.readAt
                             ? 'Read'
-                            : msg.isDelivered
+                            : msg.isDelivered || msg.status === 'sent'
                             ? 'Delivered'
                             : 'Sent'
                         }
                       >
-                        {msg.is_read || msg.isSeen || msg.readAt ? (
+                        {msg.status === 'error' ? (
+                          <AlertCircle size={13} className="text-rose-500 shrink-0" />
+                        ) : msg.status === 'sending' || msg.isSending ? (
+                          <Clock size={12} className="text-zinc-400 shrink-0 animate-pulse" />
+                        ) : msg.is_read || msg.isSeen || msg.readAt ? (
                           <CheckCheck size={13} className="text-[#007AFF] shrink-0" />
-                        ) : msg.isDelivered ? (
+                        ) : msg.isDelivered || msg.status === 'sent' ? (
                           <CheckCheck size={13} className="text-zinc-400 shrink-0" />
                         ) : (
                           <Check size={13} className="text-zinc-400 shrink-0" />

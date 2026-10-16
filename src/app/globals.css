@@ -40,7 +40,7 @@
   --radius-sm: 0px;
   --radius-md: 0px;
   --radius-lg: 0px;
-  --radius-bubble: 6px;
+  --radius-bubble: 14px;
   --radius-sheet: 0px;
   --radius-full: 9999px;
 }
@@ -116,7 +116,7 @@
   --r-tabbar: 24px;
   --r-sheet: 24px;
   --r-group-avatar: 14px;
-  --r-chat-bubble: 18px;
+  --r-chat-bubble: 14px;
   --r-notice: 6px;
   --r-circle: 9999px;
 
@@ -125,7 +125,7 @@
   --r-sm: 9999px;
   --r-md: 14px;
   --r-lg: 20px;
-  --r-bubble: 18px;
+  --r-bubble: 14px;
   --r-full: 9999px;
 
   color-scheme: light;
