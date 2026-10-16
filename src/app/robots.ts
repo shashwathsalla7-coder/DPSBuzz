@@ -1,7 +1,7 @@
 import type { MetadataRoute } from 'next';
 
 export default function robots(): MetadataRoute.Robots {
-  const baseUrl = 'https://dps-buzz.vercel.app';
+  const baseUrl = 'https://dpsbuzz.netlify.app';
 
   return {
     rules: [

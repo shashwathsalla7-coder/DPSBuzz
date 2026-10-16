@@ -108,7 +108,7 @@ export default function SettingsPage() {
 
   const handleCopyReferralLink = () => {
     if (!currentUser) return;
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://dps-buzz.vercel.app';
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://dpsbuzz.netlify.app';
     const isSuperAdmin = currentUser.username.toLowerCase() === 'shashwath71845';
     const link = isSuperAdmin ? `${origin}/signup` : `${origin}/signup?ref=${currentUser.username}`;
     if (navigator.clipboard) {

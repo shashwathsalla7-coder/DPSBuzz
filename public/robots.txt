@@ -14,4 +14,4 @@ Disallow: /settings
 Disallow: /post/*
 Disallow: /chats/*
 
-Sitemap: https://dps-buzz.vercel.app/sitemap.xml
+Sitemap: https://dpsbuzz.netlify.app/sitemap.xml

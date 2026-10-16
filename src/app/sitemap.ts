@@ -1,7 +1,7 @@
 import type { MetadataRoute } from 'next';
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = 'https://dps-buzz.vercel.app';
+  const baseUrl = 'https://dpsbuzz.netlify.app';
   const now = new Date();
 
   return [
