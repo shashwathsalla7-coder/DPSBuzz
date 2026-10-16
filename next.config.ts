@@ -15,6 +15,37 @@ const nextConfig: NextConfig = {
       },
     },
   },
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'upload.wikimedia.org',
+      },
+      {
+        protocol: 'https',
+        hostname: 'commons.wikimedia.org',
+      },
+    ],
+  },
+  async redirects() {
+    return [
+      {
+        source: '/game',
+        destination: '/chats?view=games',
+        permanent: false,
+      },
+      {
+        source: '/games',
+        destination: '/chats?view=games',
+        permanent: false,
+      },
+      {
+        source: '/cricket',
+        destination: '/chats?view=games',
+        permanent: false,
+      },
+    ];
+  },
 };
 
 export default nextConfig;
