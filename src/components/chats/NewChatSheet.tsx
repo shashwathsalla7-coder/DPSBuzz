@@ -144,57 +144,57 @@ export const NewChatSheet: React.FC<NewChatSheetProps> = ({
                 const effectiveAvatar = liveProf?.avatar || student.avatarUrl || null;
                 const isShash = student.username.toLowerCase() === 'shashwath71845';
                 return (
-                  <button
-                    key={student.id}
-                    type="button"
+                  <div
+                    key={`following-${student.username || student.id}`}
                     onClick={() => {
                       onSelectStudent(student);
                       onClose();
                     }}
-                        className={`w-full px-4 py-3 flex items-center gap-3.5 text-left transition-colors cursor-pointer btn-press ${
-                          isShash ? 'bg-amber-500/10 hover:bg-amber-500/20' : 'hover:bg-[var(--surface-sunken)]'
-                        }`}
-                      >
-                        <div
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onClose();
-                            router.push(`/u/${student.username}`);
-                          }}
-                          title={`View ${student.name}'s profile`}
-                          className={`w-11 h-11 rounded-full flex items-center justify-center font-bold text-xs shrink-0 border cursor-pointer hover:opacity-80 transition-opacity overflow-hidden ${
-                            isShash ? 'border-amber-400 text-black text-sm' : ''
-                          }`}
-                          style={{
-                            backgroundColor: isShash ? '#FFD700' : colors.bg,
-                            color: isShash ? '#000000' : colors.text,
-                            borderColor: isShash ? '#F2B705' : 'var(--line)',
-                          }}
-                        >
-                          {effectiveAvatar ? (
-                            <img src={effectiveAvatar} alt={student.name} className="w-full h-full object-cover" />
-                          ) : isShash ? (
-                            '👑'
-                          ) : (
-                            initials
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1.5 truncate">
-                            <span className="text-sm font-semibold truncate flex items-center gap-1" style={{ color: 'var(--text)' }}>
-                              {student.name}
-                              {isShash && <span className="text-xs">🛡️</span>}
-                            </span>
-                            <span className="text-xs font-normal" style={{ color: isShash ? '#F2B705' : 'var(--text-muted)' }}>
-                              · {isShash ? 'School Admin' : student.studentClass}
-                            </span>
-                          </div>
-                          <span className="text-xs truncate block font-mono" style={{ color: 'var(--text-muted)' }}>
-                            @{student.username}
-                          </span>
-                        </div>
-                      </button>
-                    );
+                    className={`w-full px-4 py-3 flex items-center gap-3.5 text-left transition-colors cursor-pointer select-none ${
+                      isShash ? 'bg-amber-500/10 hover:bg-amber-500/20' : 'hover:bg-[var(--surface-sunken)]'
+                    }`}
+                  >
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onClose();
+                        router.push(`/u/${student.username}`);
+                      }}
+                      title={`View ${student.name}'s profile`}
+                      className={`w-11 h-11 rounded-full flex items-center justify-center font-bold text-xs shrink-0 border cursor-pointer hover:opacity-80 transition-opacity overflow-hidden ${
+                        isShash ? 'border-amber-400 text-black text-sm' : ''
+                      }`}
+                      style={{
+                        backgroundColor: isShash ? '#FFD700' : colors.bg,
+                        color: isShash ? '#000000' : colors.text,
+                        borderColor: isShash ? '#F2B705' : 'var(--line)',
+                      }}
+                    >
+                      {effectiveAvatar ? (
+                        <img src={effectiveAvatar} alt={student.name} className="w-full h-full object-cover" />
+                      ) : isShash ? (
+                        '👑'
+                      ) : (
+                        initials
+                      )}
+                    </button>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 truncate">
+                        <span className="text-sm font-semibold truncate flex items-center gap-1" style={{ color: 'var(--text)' }}>
+                          {student.name}
+                          {isShash && <span className="text-xs">🛡️</span>}
+                        </span>
+                        <span className="text-xs font-normal" style={{ color: isShash ? '#F2B705' : 'var(--text-muted)' }}>
+                          · {isShash ? 'School Admin' : student.studentClass}
+                        </span>
+                      </div>
+                      <span className="text-xs truncate block font-mono" style={{ color: 'var(--text-muted)' }}>
+                        @{student.username}
+                      </span>
+                    </div>
+                  </div>
+                );
               })}
             </div>
           )}
@@ -224,16 +224,16 @@ export const NewChatSheet: React.FC<NewChatSheetProps> = ({
                   .toUpperCase();
 
                 return (
-                  <button
-                    key={student.id}
-                    type="button"
+                  <div
+                    key={`other-${student.username || student.id}`}
                     onClick={() => {
                       onSelectStudent(student);
                       onClose();
                     }}
-                    className="w-full px-4 py-3 flex items-center gap-3.5 text-left hover:bg-[var(--surface-sunken)] transition-colors cursor-pointer btn-press"
+                    className="w-full px-4 py-3 flex items-center gap-3.5 text-left hover:bg-[var(--surface-sunken)] transition-colors cursor-pointer select-none"
                   >
-                    <div
+                    <button
+                      type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         onClose();
@@ -252,7 +252,7 @@ export const NewChatSheet: React.FC<NewChatSheetProps> = ({
                       ) : (
                         initials
                       )}
-                    </div>
+                    </button>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 truncate">
                         <span className="text-sm font-semibold truncate" style={{ color: 'var(--text)' }}>
@@ -266,7 +266,7 @@ export const NewChatSheet: React.FC<NewChatSheetProps> = ({
                         @{student.username}
                       </span>
                     </div>
-                  </button>
+                  </div>
                 );
               })}
             </div>

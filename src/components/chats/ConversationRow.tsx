@@ -54,7 +54,15 @@ export const ConversationRow: React.FC<ConversationRowProps> = ({
   const isDraggingRef = useRef(false);
   const pressTimer = useRef<NodeJS.Timeout | null>(null);
 
-  const isGroup = conversation.type === 'group';
+  const isGroup = Boolean(
+    conversation.isGroup ||
+    conversation.type === 'group' ||
+    conversation.id?.startsWith('conv-group-') ||
+    conversation.id?.startsWith('group-') ||
+    conversation.id?.includes('class-') ||
+    conversation.id?.includes('house-') ||
+    conversation.id?.includes('club-')
+  );
   const targetUsername = conversation.username || (!isGroup && conversation.id ? conversation.id.replace(/^conv-/, '') : '');
   const liveProfile = targetUsername ? DataStore.getProfileByUsername(targetUsername) : null;
   const effectiveAvatar = liveProfile?.avatar || conversation.avatar || null;
@@ -268,7 +276,7 @@ export const ConversationRow: React.FC<ConversationRowProps> = ({
                   fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF UI Display", "SF Pro Text", "Helvetica Neue", sans-serif',
                 }}
               >
-                {conversation.username ? `@${conversation.username}` : conversation.name}
+                {isGroup ? conversation.name : (conversation.username ? `@${conversation.username}` : conversation.name)}
               </h3>
               {conversation.inboxTier === 'REQUESTS' && (
                 <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-500/20 text-amber-400 shrink-0">

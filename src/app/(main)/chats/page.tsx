@@ -30,6 +30,7 @@ import {
   Clock,
   Sparkles,
   Gamepad2,
+  MessageCircle,
 } from 'lucide-react';
 import { ChatsHeader } from '@/components/chats/ChatsHeader';
 import { ChatSearch } from '@/components/chats/ChatSearch';
@@ -150,6 +151,8 @@ function ChatsContent() {
   const stateParam = searchParams.get('state');
   const viewParam = searchParams.get('view') || searchParams.get('tab');
   const userParam = searchParams.get('user');
+  const convParam = searchParams.get('conv');
+  const groupParam = searchParams.get('group');
 
   const [currentUser, setCurrentUser] = useState(() => DataStore.getCurrentUser());
   const currentUsername = useMemo(() => {
@@ -159,7 +162,16 @@ function ChatsContent() {
   const [isMaintenanceActive, setIsMaintenanceActive] = useState(() => !isAdminUser && DataStore.isMaintenanceActive());
 
   const getCanonicalConvId = (conv: ConversationItem): string => {
-    if (conv.isGroup || conv.type === 'group' || conv.id.startsWith('conv-group-')) {
+    const isGroup = Boolean(
+      conv.isGroup ||
+      conv.type === 'group' ||
+      conv.id.startsWith('conv-group-') ||
+      conv.id.startsWith('group-') ||
+      conv.id.includes('class-') ||
+      conv.id.includes('house-') ||
+      conv.id.includes('club-')
+    );
+    if (isGroup) {
       return conv.id;
     }
     const target = (conv.username || conv.id.replace(/^conv-/, '')).toLowerCase().trim();
@@ -227,7 +239,7 @@ function ChatsContent() {
             username: s.username,
             studentClass: isShash ? 'School Admin' : `${s.class}-${s.section || 'A'}`,
             avatarUrl: s.avatar,
-            isFollowing: isShashwath || isShash || s.class === current.class,
+            isFollowing: isShashwath || isShash || s.class === current.class || DataStore.isFollowing(current.username, s.username),
           };
         });
 
@@ -239,7 +251,17 @@ function ChatsContent() {
         });
       }
 
-      setLiveStudents(formatted);
+      const seenUsernames = new Set<string>();
+      const deduplicated: StudentContact[] = [];
+      for (const s of formatted) {
+        const clean = s.username.toLowerCase().trim();
+        if (!seenUsernames.has(clean)) {
+          seenUsernames.add(clean);
+          deduplicated.push(s);
+        }
+      }
+
+      setLiveStudents(deduplicated);
     } catch {
       setLiveStudents([]);
     }
@@ -361,6 +383,7 @@ function ChatsContent() {
   const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
   const [selectedGroupMembers, setSelectedGroupMembers] = useState<string[]>([]);
+  const [createGroupSearchQuery, setCreateGroupSearchQuery] = useState('');
   const [groupToast, setGroupToast] = useState<string | null>(null);
   const [longPressConv, setLongPressConv] = useState<ConversationItem | null>(null);
   const [deleteConfirmConv, setDeleteConfirmConv] = useState<ConversationItem | null>(null);
@@ -474,6 +497,7 @@ function ChatsContent() {
       name: newGroupName.trim(),
       username: newGroupName.toLowerCase().replace(/\s+/g, '_'),
       isGroup: true,
+      type: 'group',
       groupInitials: initials,
       lastMessage: selectedGroupMembers.length > 0
         ? `Group created · ${selectedGroupMembers.length} invitation${selectedGroupMembers.length > 1 ? 's' : ''} sent`
@@ -488,6 +512,7 @@ function ChatsContent() {
     setIsCreateGroupOpen(false);
     setNewGroupName('');
     setSelectedGroupMembers([]);
+    setCreateGroupSearchQuery('');
     showGroupToast(`Group "${newGroupConv.name}" created! Invitations sent.`);
   };
 
@@ -552,6 +577,7 @@ function ChatsContent() {
         name: invite.groupName,
         username: invite.groupName.toLowerCase().replace(/\s+/g, '_'),
         isGroup: true,
+        type: 'group',
         groupInitials: initials,
         lastMessage: `@${currentUsername} joined the group! 🎉`,
         timeAgo: 'Just now',
@@ -673,7 +699,8 @@ function ChatsContent() {
 
     const pollMessages = async () => {
       try {
-        const queryUrl = `/api/chats?conversationId=${encodeURIComponent(canonicalId)}&username=${encodeURIComponent(currentUsername)}`;
+        const isGroupConv = activeConversation.isGroup || activeConversation.id.startsWith('conv-group-') || activeConversation.id.includes('group');
+        const queryUrl = `/api/chats?conversationId=${encodeURIComponent(canonicalId)}&username=${encodeURIComponent(currentUsername)}${isGroupConv ? '&isGroup=true' : ''}`;
         const res = await fetch(queryUrl);
         if (res.status === 403 || res.status === 401) {
           // Security Guard: User is not authorized to read this conversation!
@@ -1134,6 +1161,39 @@ function ChatsContent() {
     }
   }, [userParam, currentUsername, conversations]);
 
+  // Automatically open group chat when navigated with ?conv=conv-group-... or ?group=...
+  const handledConvParamRef = useRef<string | null>(null);
+  useEffect(() => {
+    const targetConvId = convParam || (groupParam ? `conv-${groupParam}` : null);
+    if (!targetConvId || handledConvParamRef.current === targetConvId) return;
+    handledConvParamRef.current = targetConvId;
+
+    const existing = conversations.find((c) => c.id === targetConvId);
+    if (existing) {
+      openConversation(existing);
+      return;
+    }
+
+    const groupId = targetConvId.replace(/^conv-/, '');
+    const group = DataStore.getGroups().find((g) => g.id === groupId);
+    if (group) {
+      const initials = group.name.slice(0, 2).toUpperCase() || 'GP';
+      const groupConv: ConversationItem = {
+        id: targetConvId,
+        name: group.name,
+        username: group.name.toLowerCase().replace(/\s+/g, '_'),
+        isGroup: true,
+        groupInitials: initials,
+        lastMessage: 'Group chat',
+        timeAgo: 'Just now',
+        isUnread: false,
+        unreadCount: 0,
+      };
+      setConversations((prev) => [groupConv, ...prev.filter((c) => c.id !== targetConvId)]);
+      openConversation(groupConv);
+    }
+  }, [convParam, groupParam, conversations]);
+
   // Student directory from DataStore for New Chat Sheet
   const [liveStudents, setLiveStudents] = useState<StudentContact[]>([]);
   useEffect(() => {
@@ -1281,7 +1341,13 @@ function ChatsContent() {
           if (parts.includes(currentUsername)) {
             targetUser = parts.find((p) => p !== currentUsername) || '';
           }
-        } else if (key.startsWith('conv-group-')) {
+        } else if (
+          key.startsWith('conv-group-') ||
+          key.startsWith('group-') ||
+          key.includes('class-') ||
+          key.includes('house-') ||
+          key.includes('club-')
+        ) {
           isGroupConv = true;
         }
 
@@ -1297,6 +1363,25 @@ function ChatsContent() {
               };
               changed = true;
             }
+          } else {
+            const groupId = key.replace(/^conv-/, '');
+            const group = DataStore.getGroups().find((g) => g.id === groupId);
+            const groupName = group?.name || (key.includes('8a') ? 'Class 8-A Group' : 'Group Chat');
+            const initials = groupName.slice(0, 2).toUpperCase() || 'GP';
+            updated.unshift({
+              id: key,
+              name: groupName,
+              username: groupName.toLowerCase().replace(/\s+/g, '_'),
+              studentClass: group?.class ? `Class ${group.class}-${group.section || 'A'}` : 'Class Group',
+              isGroup: true,
+              type: 'group',
+              groupInitials: initials,
+              lastMessage: lastMsg.text,
+              timeAgo: lastMsg.time || 'Just now',
+              isUnread: false,
+              unreadCount: 0,
+            });
+            changed = true;
           }
         } else if (targetUser && targetUser !== currentUsername) {
           const isMe = lastMsg.senderUsername
@@ -1350,7 +1435,19 @@ function ChatsContent() {
         }
       }
 
-      return changed ? updated : prev;
+      if (changed) {
+        const seen = new Set<string>();
+        const deduped: ConversationItem[] = [];
+        for (const c of updated) {
+          if (!c || !c.id) continue;
+          if (!seen.has(c.id)) {
+            seen.add(c.id);
+            deduped.push(c);
+          }
+        }
+        return deduped;
+      }
+      return prev;
     });
   }, [chatMessages, currentUsername, activeConversation]);
 
@@ -1365,7 +1462,16 @@ function ChatsContent() {
 
     // Privacy guard: Never include conversations that belong to other users or self
     list = list.filter((c) => {
-      if (c.isGroup || c.type === 'group' || c.id.startsWith('conv-group-')) return true;
+      const isGroup = Boolean(
+        c.isGroup ||
+        c.type === 'group' ||
+        c.id.startsWith('conv-group-') ||
+        c.id.startsWith('group-') ||
+        c.id.includes('class-') ||
+        c.id.includes('house-') ||
+        c.id.includes('club-')
+      );
+      if (isGroup) return true;
       const target = (c.username || c.id.replace(/^conv-/, '')).toLowerCase().trim();
       if (!target || target === currentUsername) return false;
       if (DataStore.isBlocked(currentUsername, target)) return false;
@@ -1389,7 +1495,15 @@ function ChatsContent() {
     });
 
     if (activeChip === 'groups') {
-      list = list.filter((c) => c.isGroup || c.type === 'group');
+      list = list.filter((c) =>
+        c.isGroup ||
+        c.type === 'group' ||
+        c.id.startsWith('conv-group-') ||
+        c.id.startsWith('group-') ||
+        c.id.includes('class-') ||
+        c.id.includes('house-') ||
+        c.id.includes('club-')
+      );
     }
 
     if (searchQuery.trim()) {
@@ -1471,7 +1585,6 @@ function ChatsContent() {
         if (currentUsername && currentUsername !== 'guest') {
           localStorage.setItem(`dpsbuzz_chat_conversations_${currentUsername}_v3`, JSON.stringify(updated));
         }
-        window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated'));
       } catch {}
       return updated;
     });
@@ -1493,7 +1606,7 @@ function ChatsContent() {
         isUnread: false,
         unreadCount: 0,
       };
-      setConversations((prev) => [newConv, ...prev]);
+      setConversations((prev) => [newConv, ...prev.filter((c) => c.id !== newConv.id && c.username?.toLowerCase() !== student.username?.toLowerCase())]);
       openConversation(newConv);
     }
   };
@@ -2116,6 +2229,41 @@ function ChatsContent() {
         }
         localStorage.setItem(targetConvKey, JSON.stringify(recipientConv));
       } catch {}
+    } else if (activeConversation.isGroup) {
+      try {
+        const activeGroupId = activeConversation.id.replace(/^conv-/, '');
+        const members = DataStore.getGroupMembers(activeGroupId);
+        for (const member of members) {
+          const cleanMember = (typeof member === 'string' ? member : (member as any)?.username || '').toLowerCase().trim();
+          if (cleanMember && cleanMember !== currentUsername) {
+            const memberMsgKey = `dpsbuzz_chat_messages_${cleanMember}_v3`;
+            const memberConvKey = `dpsbuzz_chat_conversations_${cleanMember}_v3`;
+            const memberMsgs = JSON.parse(localStorage.getItem(memberMsgKey) || '{}');
+            const memberConvs = JSON.parse(localStorage.getItem(memberConvKey) || '[]');
+            const gList = memberMsgs[canonicalId] || memberMsgs[rawId] || [];
+            const rMsg: ChatMessage = { ...newMsg, sender: 'them' };
+            if (!gList.some((m: any) => m.id === rMsg.id)) {
+              const nextGList = [...gList, rMsg];
+              memberMsgs[canonicalId] = nextGList;
+              memberMsgs[rawId] = nextGList;
+              localStorage.setItem(memberMsgKey, JSON.stringify(memberMsgs));
+            }
+            const cIdx = memberConvs.findIndex((c: any) => c.id === canonicalId || c.id === rawId);
+            if (cIdx >= 0) {
+              memberConvs[cIdx] = {
+                ...memberConvs[cIdx],
+                lastMessage: `${currentUsername}: ${sentText}`,
+                timeAgo: 'Just now',
+                isUnread: true,
+                unreadCount: (memberConvs[cIdx].unreadCount || 0) + 1,
+              };
+              const [item] = memberConvs.splice(cIdx, 1);
+              memberConvs.unshift(item);
+            }
+            localStorage.setItem(memberConvKey, JSON.stringify(memberConvs));
+          }
+        }
+      } catch {}
     }
 
     // Instant 0ms broadcast across all tabs and components
@@ -2488,7 +2636,15 @@ function ChatsContent() {
 
   useEffect(() => {
     if (activeConversation) {
-      const isGroup = activeConversation.isGroup || activeConversation.id.startsWith('conv-group-');
+      const isGroup = Boolean(
+        activeConversation.isGroup ||
+        activeConversation.type === 'group' ||
+        activeConversation.id.startsWith('conv-group-') ||
+        activeConversation.id.startsWith('group-') ||
+        activeConversation.id.includes('class-') ||
+        activeConversation.id.includes('house-') ||
+        activeConversation.id.includes('club-')
+      );
       const canonicalId = getCanonicalConvId(activeConversation);
       if (!isGroup && canonicalId.includes('__') && currentUsername) {
         const participants = canonicalId.split('__').map((p) => p.trim().toLowerCase());
@@ -2502,7 +2658,15 @@ function ChatsContent() {
   // ACTIVE CONVERSATION VIEW (Full screen on mobile, NO active now or last seen status)
   if (activeConversation) {
     const canonicalId = getCanonicalConvId(activeConversation);
-    const isGroup = activeConversation.isGroup || activeConversation.id.startsWith('conv-group-');
+    const isGroup = Boolean(
+      activeConversation.isGroup ||
+      activeConversation.type === 'group' ||
+      activeConversation.id.startsWith('conv-group-') ||
+      activeConversation.id.startsWith('group-') ||
+      activeConversation.id.includes('class-') ||
+      activeConversation.id.includes('house-') ||
+      activeConversation.id.includes('club-')
+    );
 
     // Strict Privacy Guard: If direct chat does not involve currentUsername, show access notice
     if (!isGroup && canonicalId.includes('__') && currentUsername) {
@@ -2655,13 +2819,18 @@ function ChatsContent() {
                 {activeConversation.name}
               </h2>
               <p className="text-[11px] text-[var(--text-muted)] truncate">
-                {activeConversation.isGroup ? (
-                  <span className="flex items-center gap-1 text-[var(--primary)] font-medium">
-                    <span>Class Group</span>
-                    <span>·</span>
-                    <span>View members</span>
-                  </span>
-                ) : (
+                {activeConversation.isGroup ? (() => {
+                  const activeGroupId = activeConversation.id.replace(/^conv-/, '');
+                  const rawMembers = DataStore.getGroupMembers(activeGroupId);
+                  const count = Math.max(1, rawMembers.length || 1);
+                  return (
+                    <span className="flex items-center gap-1 text-[var(--primary)] font-medium">
+                      <span>{count} member{count !== 1 ? 's' : ''}</span>
+                      <span>·</span>
+                      <span>Tap to view members</span>
+                    </span>
+                  );
+                })() : (
                   `@${activeConversation.username} · Class ${activeConversation.studentClass || '8-A'}`
                 )}
               </p>
@@ -2825,7 +2994,16 @@ function ChatsContent() {
               No messages yet. Say hello to your classmate!
             </div>
           ) : (
-            messages.map((msg) => {
+            messages.map((msg, idx) => {
+              if (msg.senderUsername === 'system') {
+                return (
+                  <div key={`${msg.id || 'sys'}-${idx}`} className="w-full flex items-center justify-center my-2 select-none">
+                    <span className="px-3.5 py-1 rounded-full text-[11px] font-medium bg-black/5 dark:bg-white/10 text-[var(--text-muted)] text-center max-w-[85%] leading-relaxed border border-black/5 dark:border-white/5 shadow-xs">
+                      {msg.text}
+                    </span>
+                  </div>
+                );
+              }
               const isMe = msg.senderUsername
                 ? msg.senderUsername.toLowerCase() === currentUsername
                 : msg.sender === 'me';
@@ -2833,7 +3011,7 @@ function ChatsContent() {
 
               return (
                 <div
-                  key={msg.id}
+                  key={`${msg.id || 'msg'}-${idx}`}
                   className={`flex flex-col relative group ${isMe ? 'items-end' : 'items-start'} mb-1.5`}
                 >
                   {/* Floating Emoji Reactions Bar */}
@@ -2909,6 +3087,36 @@ function ChatsContent() {
                         onClick={() => handleMessageClick(msg)}
                         className="relative cursor-pointer select-none max-w-[78%]"
                       >
+                        {activeConversation.isGroup && !isMe && (() => {
+                          const sUser = (msg.senderUsername || '').toLowerCase().trim();
+                          const sProf = sUser ? DataStore.getProfileByUsername(sUser) : null;
+                          const sName = sProf?.fullName || msg.senderName || sUser || 'Classmate';
+                          const sPair = sUser ? getAvatarColorPair(sUser) : { bg: '#e0e7ff', text: '#3730a3' };
+                          const sAvatar = sProf?.avatar || null;
+
+                          return (
+                            <div className="flex items-center gap-1.5 mb-1 ml-1 text-xs">
+                              <div
+                                className="w-4 h-4 rounded-full overflow-hidden flex items-center justify-center font-bold text-[9px] shrink-0"
+                                style={{ backgroundColor: sPair.bg, color: sPair.text }}
+                              >
+                                {sAvatar ? (
+                                  <img src={sAvatar} alt={sName} className="w-full h-full object-cover" />
+                                ) : (
+                                  sName.slice(0, 2).toUpperCase()
+                                )}
+                              </div>
+                              <span className="font-bold text-[11px] text-[var(--primary)] truncate">
+                                {sName}
+                              </span>
+                              {sUser && (
+                                <span className="text-[10px] text-[var(--text-muted)] font-mono">
+                                  @{sUser}
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })()}
                     <div
                       className={`px-4 py-2.5 rounded-[var(--r-bubble,14px)] text-[15px] leading-[1.4] tracking-[-0.015em] font-semibold chat-bubble-text font-sf-display transition-all ${
                         isMe
@@ -3564,8 +3772,33 @@ function ChatsContent() {
         {/* Modal 2: Group Info & Members Sheet */}
         {activeConversation.isGroup && isGroupInfoOpen && (() => {
           const activeGroupId = activeConversation.id.replace(/^conv-/, '');
-          const currentMembers = DataStore.getGroupMembers(activeGroupId);
-          const pendingInvites = DataStore.getGroupPendingInvites(activeGroupId);
+          const rawMembers = DataStore.getGroupMembers(activeGroupId);
+          let currentMembers = Array.from(
+            new Set(
+              (Array.isArray(rawMembers) ? rawMembers : [])
+                .map((m: any) => {
+                  if (!m) return '';
+                  if (typeof m === 'string') return m.toLowerCase().trim();
+                  if (typeof m === 'object' && m.username) return String(m.username).toLowerCase().trim();
+                  return String(m).toLowerCase().trim();
+                })
+                .filter(Boolean)
+            )
+          );
+
+          if (currentMembers.length === 0) {
+            const allProfs = DataStore.getProfiles();
+            const groupObj = DataStore.getGroups().find((g) => g.id === activeGroupId);
+            const targetClass = groupObj?.class || activeConversation.studentClass?.replace(/[^0-9]/g, '') || '8';
+            const classStudents = allProfs
+              .filter((p) => p && p.username && (p.class === targetClass || p.username.toLowerCase() === 'shashwath71845'))
+              .map((p) => p.username.toLowerCase().trim());
+            if (classStudents.length > 0) {
+              currentMembers = Array.from(new Set(classStudents));
+            }
+          }
+
+          const pendingInvites = (DataStore.getGroupPendingInvites(activeGroupId) || []).filter((r: any) => r && r.username);
           const groupObj = DataStore.getGroups().find((g) => g.id === activeGroupId);
 
           return (
@@ -3641,7 +3874,14 @@ function ChatsContent() {
                           key={m}
                           className="p-2.5 rounded-[16px] border flex items-center justify-between bg-[var(--surface-sunken)] border-[var(--line)]"
                         >
-                          <div className="flex items-center gap-2.5 min-w-0 flex-1 mr-2">
+                          <div
+                            onClick={() => {
+                              setIsGroupInfoOpen(false);
+                              if (!isMe) router.push(`/u/${m}`);
+                            }}
+                            className="flex items-center gap-2.5 min-w-0 flex-1 mr-2 cursor-pointer hover:opacity-85 transition-opacity"
+                            title={`View @${m}'s profile`}
+                          >
                             <div
                               className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 overflow-hidden"
                               style={{ backgroundColor: pair.bg, color: pair.text }}
@@ -3661,9 +3901,36 @@ function ChatsContent() {
                               </p>
                             </div>
                           </div>
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/10 text-[var(--text-muted)]">
-                            {isCreator ? 'Admin' : 'Member'}
-                          </span>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/10 text-[var(--text-muted)]">
+                              {isCreator ? 'Admin' : 'Member'}
+                            </span>
+                            {!isMe && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setIsGroupInfoOpen(false);
+                                  const directConv: ConversationItem = {
+                                    id: `conv-${m}`,
+                                    name: fullName,
+                                    username: m,
+                                    studentClass: prof?.class ? `Class ${prof.class}-${prof.section || 'A'}` : 'Student',
+                                    avatar: effectiveAvatar,
+                                    lastMessage: 'Started chat',
+                                    timeAgo: 'Just now',
+                                    isUnread: false,
+                                    unreadCount: 0,
+                                  };
+                                  openConversation(directConv);
+                                }}
+                                className="p-1.5 rounded-full hover:bg-[var(--surface)] text-[var(--text-muted)] hover:text-[var(--primary)] transition-colors cursor-pointer"
+                                title={`Message @${m}`}
+                                aria-label={`Message @${m}`}
+                              >
+                                <MessageCircle size={14} />
+                              </button>
+                            )}
+                          </div>
                         </div>
                       );
                     })}
@@ -4255,9 +4522,46 @@ function ChatsContent() {
                 <span className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">
                   Select Classmates ({selectedGroupMembers.length} selected)
                 </span>
+                {selectedGroupMembers.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedGroupMembers([])}
+                    className="text-[11px] text-[var(--primary)] hover:underline cursor-pointer"
+                  >
+                    Clear all
+                  </button>
+                )}
               </div>
+
+              {/* Classmate Search Input */}
+              <div className="relative">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
+                <input
+                  type="text"
+                  placeholder="Filter classmates by name or @username..."
+                  value={createGroupSearchQuery}
+                  onChange={(e) => setCreateGroupSearchQuery(e.target.value)}
+                  className="w-full h-9 pl-8 pr-3 rounded-full text-xs outline-none border transition-colors focus:border-[var(--primary)]"
+                  style={{
+                    backgroundColor: 'var(--surface-sunken)',
+                    borderColor: 'var(--line)',
+                    color: 'var(--text)',
+                  }}
+                />
+              </div>
+
               <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1">
-                {liveStudents.map((st) => {
+                {liveStudents
+                  .filter((st) => {
+                    if (!createGroupSearchQuery.trim()) return true;
+                    const q = createGroupSearchQuery.toLowerCase();
+                    return (
+                      st.name.toLowerCase().includes(q) ||
+                      st.username.toLowerCase().includes(q) ||
+                      st.studentClass.toLowerCase().includes(q)
+                    );
+                  })
+                  .map((st) => {
                   const isSelected = selectedGroupMembers.includes(st.username);
                   const pair = getAvatarColorPair(st.username);
                   const liveProf = DataStore.getProfileByUsername(st.username);
