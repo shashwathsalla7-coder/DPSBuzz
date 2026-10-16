@@ -983,9 +983,9 @@ export default function ProfileClient({ username }: { username: string }) {
                   borderColor: 'var(--line)',
                 }}
               >
-                {profile.avatar ? (
+                {(profile.avatar || DataStore.getProfileByUsername(profile.username)?.avatar) ? (
                   <img
-                    src={profile.avatar}
+                    src={profile.avatar || DataStore.getProfileByUsername(profile.username)?.avatar || ''}
                     alt={profile.fullName}
                     className="w-full h-full object-cover rounded-full"
                   />
@@ -2029,9 +2029,9 @@ export default function ProfileClient({ username }: { username: string }) {
                     borderColor: 'var(--line)',
                   }}
                 >
-                  {selectedPostDetail.avatar ? (
+                  {(selectedPostDetail.avatar || (selectedPostDetail as any).userAvatar || DataStore.getProfileByUsername(selectedPostDetail.username)?.avatar) ? (
                     <img
-                      src={selectedPostDetail.avatar}
+                      src={selectedPostDetail.avatar || (selectedPostDetail as any).userAvatar || DataStore.getProfileByUsername(selectedPostDetail.username)?.avatar || ''}
                       alt={selectedPostDetail.fullName}
                       className="w-full h-full object-cover rounded-full"
                     />
@@ -2636,9 +2636,9 @@ export default function ProfileClient({ username }: { username: string }) {
                   onClick={() => profilePhotoInputRef.current?.click()}
                   title="Click to select photo from gallery"
                 >
-                  {(editAvatar || profile.avatar) ? (
+                  {(editAvatar || profile.avatar || DataStore.getProfileByUsername(profile.username)?.avatar) ? (
                     <img
-                      src={editAvatar || profile.avatar!}
+                      src={editAvatar || profile.avatar || DataStore.getProfileByUsername(profile.username)?.avatar || ''}
                       alt="Profile preview"
                       className="w-full h-full object-cover rounded-full"
                     />
@@ -3607,8 +3607,8 @@ export default function ProfileClient({ username }: { username: string }) {
               <div className="px-3.5 py-2.5 flex items-center justify-between bg-[var(--surface)] border-b border-[var(--line)]">
                 <div className="flex items-center gap-2.5 min-w-0">
                   <div className="w-8 h-8 rounded-full overflow-hidden bg-[var(--surface-sunken)] flex items-center justify-center shrink-0 border border-[var(--line)]">
-                    {peekPost.avatar ? (
-                      <img src={peekPost.avatar} alt={peekPost.username} className="w-full h-full object-cover" />
+                    {(peekPost.avatar || (peekPost as any).userAvatar || DataStore.getProfileByUsername(peekPost.username)?.avatar) ? (
+                      <img src={peekPost.avatar || (peekPost as any).userAvatar || DataStore.getProfileByUsername(peekPost.username)?.avatar || ''} alt={peekPost.username} className="w-full h-full object-cover" />
                     ) : (
                       <span className="text-xs font-bold text-[var(--primary)]">
                         {peekPost.username.slice(0, 2).toUpperCase()}
@@ -4015,8 +4015,8 @@ export default function ProfileClient({ username }: { username: string }) {
                         className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer group"
                       >
                         <div className="w-10 h-10 rounded-full overflow-hidden bg-[var(--surface-sunken)] border border-[var(--line)] flex items-center justify-center shrink-0">
-                          {student.avatar ? (
-                            <img src={student.avatar} alt={student.username} className="w-full h-full object-cover" />
+                          {(student.avatar || DataStore.getProfileByUsername(student.username)?.avatar) ? (
+                            <img src={student.avatar || DataStore.getProfileByUsername(student.username)?.avatar || ''} alt={student.username} className="w-full h-full object-cover" />
                           ) : (
                             <span className="text-xs font-bold text-blue-500">
                               {student.username.slice(0, 2).toUpperCase()}

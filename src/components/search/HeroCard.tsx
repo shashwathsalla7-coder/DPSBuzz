@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { Trophy, Star } from 'lucide-react';
-import { type Profile } from '@/lib/dataStore';
+import { type Profile, DataStore } from '@/lib/dataStore';
 import { getAvatarColorPair } from '@/config/tokens';
 
 export interface HeroCardProps {
@@ -93,9 +93,9 @@ export const HeroCard: React.FC<HeroCardProps> = ({
                 borderColor: 'var(--surface)',
               }}
             >
-              {profile.avatar ? (
+              {(profile.avatar || DataStore.getProfileByUsername(profile.username)?.avatar) ? (
                 <img
-                  src={profile.avatar}
+                  src={profile.avatar || DataStore.getProfileByUsername(profile.username)?.avatar || ''}
                   alt={profile.fullName}
                   className="w-full h-full object-cover"
                 />

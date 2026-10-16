@@ -316,13 +316,21 @@ export default function LeaderboardPage() {
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
               <div
-                className="w-13 h-13 rounded-full flex items-center justify-center font-bold text-base shrink-0 border border-black/5 dark:border-white/10 shadow-xs"
+                className="w-13 h-13 rounded-full flex items-center justify-center font-bold text-base shrink-0 border border-black/5 dark:border-white/10 shadow-xs overflow-hidden"
                 style={{
                   backgroundColor: getAvatarColorPair(currentUser?.username || 'student').bg,
                   color: getAvatarColorPair(currentUser?.username || 'student').text,
                 }}
               >
-                {(currentUser?.fullName || currentUser?.username || 'ST').slice(0, 2).toUpperCase()}
+                {currentUser?.avatar || (currentUser?.username ? DataStore.getProfileByUsername(currentUser.username)?.avatar : null) ? (
+                  <img
+                    src={currentUser?.avatar || (currentUser?.username ? DataStore.getProfileByUsername(currentUser.username)?.avatar || '' : '')}
+                    alt={currentUser?.fullName || 'User'}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  (currentUser?.fullName || currentUser?.username || 'ST').slice(0, 2).toUpperCase()
+                )}
               </div>
               <div className="min-w-0">
                 <h2 className="text-sm font-bold text-[var(--text)] truncate">
@@ -488,10 +496,18 @@ export default function LeaderboardPage() {
 
                         {/* Avatar */}
                         <div
-                          className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs shrink-0 shadow-xs"
+                          className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs shrink-0 shadow-xs overflow-hidden"
                           style={{ backgroundColor: pair.bg, color: pair.text }}
                         >
-                          {s.fullName.slice(0, 2).toUpperCase()}
+                          {s.avatar || DataStore.getProfileByUsername(s.username)?.avatar ? (
+                            <img
+                              src={s.avatar || DataStore.getProfileByUsername(s.username)?.avatar || ''}
+                              alt={s.fullName}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            s.fullName.slice(0, 2).toUpperCase()
+                          )}
                         </div>
 
                         {/* Name & Habit */}
@@ -567,10 +583,18 @@ export default function LeaderboardPage() {
                         #{u.rank}
                       </div>
                       <div
-                        className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs shrink-0 shadow-xs"
+                        className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs shrink-0 shadow-xs overflow-hidden"
                         style={{ backgroundColor: pair.bg, color: pair.text }}
                       >
-                        {u.name.slice(0, 2).toUpperCase()}
+                        {u.avatar || DataStore.getProfileByUsername(u.username)?.avatar ? (
+                          <img
+                            src={u.avatar || DataStore.getProfileByUsername(u.username)?.avatar || ''}
+                            alt={u.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          u.name.slice(0, 2).toUpperCase()
+                        )}
                       </div>
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5">
@@ -862,13 +886,21 @@ function HabitStreakPodium({
           >
             <div className="relative mb-2">
               <div
-                className="w-14 h-14 rounded-full flex items-center justify-center font-bold text-xs ring-4 ring-slate-300 dark:ring-slate-500 shadow-md group-hover:scale-105 transition-transform"
+                className="w-14 h-14 rounded-full flex items-center justify-center font-bold text-xs ring-4 ring-slate-300 dark:ring-slate-500 shadow-md group-hover:scale-105 transition-transform overflow-hidden"
                 style={{
                   backgroundColor: getAvatarColorPair(second.username).bg,
                   color: getAvatarColorPair(second.username).text,
                 }}
               >
-                {second.fullName.slice(0, 2).toUpperCase()}
+                {(second as any).avatar || DataStore.getProfileByUsername(second.username)?.avatar ? (
+                  <img
+                    src={(second as any).avatar || DataStore.getProfileByUsername(second.username)?.avatar || ''}
+                    alt={second.fullName}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  second.fullName.slice(0, 2).toUpperCase()
+                )}
               </div>
               <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-slate-300 dark:bg-slate-500 text-slate-900 dark:text-slate-100 text-[10px] font-black flex items-center justify-center ring-2 ring-[var(--surface)] shadow-xs">
                 2
@@ -916,13 +948,21 @@ function HabitStreakPodium({
             </div>
             <div className="relative mb-2">
               <div
-                className="w-17 h-17 rounded-full flex items-center justify-center font-black text-base ring-4 ring-amber-400 shadow-xl group-hover:scale-105 transition-transform"
+                className="w-17 h-17 rounded-full flex items-center justify-center font-black text-base ring-4 ring-amber-400 shadow-xl group-hover:scale-105 transition-transform overflow-hidden"
                 style={{
                   backgroundColor: getAvatarColorPair(first.username).bg,
                   color: getAvatarColorPair(first.username).text,
                 }}
               >
-                {first.fullName.slice(0, 2).toUpperCase()}
+                {(first as any).avatar || DataStore.getProfileByUsername(first.username)?.avatar ? (
+                  <img
+                    src={(first as any).avatar || DataStore.getProfileByUsername(first.username)?.avatar || ''}
+                    alt={first.fullName}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  first.fullName.slice(0, 2).toUpperCase()
+                )}
               </div>
               <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-gradient-to-tr from-amber-500 to-yellow-300 text-amber-950 text-xs font-black flex items-center justify-center ring-2 ring-[var(--surface)] shadow-md">
                 1
@@ -970,13 +1010,21 @@ function HabitStreakPodium({
           >
             <div className="relative mb-2">
               <div
-                className="w-13 h-13 rounded-full flex items-center justify-center font-bold text-xs ring-4 ring-orange-600/70 shadow-md group-hover:scale-105 transition-transform"
+                className="w-13 h-13 rounded-full flex items-center justify-center font-bold text-xs ring-4 ring-orange-600/70 shadow-md group-hover:scale-105 transition-transform overflow-hidden"
                 style={{
                   backgroundColor: getAvatarColorPair(third.username).bg,
                   color: getAvatarColorPair(third.username).text,
                 }}
               >
-                {third.fullName.slice(0, 2).toUpperCase()}
+                {(third as any).avatar || DataStore.getProfileByUsername(third.username)?.avatar ? (
+                  <img
+                    src={(third as any).avatar || DataStore.getProfileByUsername(third.username)?.avatar || ''}
+                    alt={third.fullName}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  third.fullName.slice(0, 2).toUpperCase()
+                )}
               </div>
               <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-orange-700 text-white text-[10px] font-black flex items-center justify-center ring-2 ring-[var(--surface)] shadow-xs">
                 3
@@ -1066,13 +1114,21 @@ function StudentLeaderPodium({
           >
             <div className="relative mb-2">
               <div
-                className="w-14 h-14 rounded-full flex items-center justify-center font-bold text-xs ring-4 ring-slate-300 dark:ring-slate-500 shadow-md group-hover:scale-105 transition-transform"
+                className="w-14 h-14 rounded-full flex items-center justify-center font-bold text-xs ring-4 ring-slate-300 dark:ring-slate-500 shadow-md group-hover:scale-105 transition-transform overflow-hidden"
                 style={{
                   backgroundColor: getAvatarColorPair(second.username).bg,
                   color: getAvatarColorPair(second.username).text,
                 }}
               >
-                {second.name.slice(0, 2).toUpperCase()}
+                {second.avatar || DataStore.getProfileByUsername(second.username)?.avatar ? (
+                  <img
+                    src={second.avatar || DataStore.getProfileByUsername(second.username)?.avatar || ''}
+                    alt={second.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  second.name.slice(0, 2).toUpperCase()
+                )}
               </div>
               <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-slate-300 dark:bg-slate-500 text-slate-900 dark:text-slate-100 text-[10px] font-black flex items-center justify-center ring-2 ring-[var(--surface)] shadow-xs">
                 2
@@ -1118,13 +1174,21 @@ function StudentLeaderPodium({
             </div>
             <div className="relative mb-2">
               <div
-                className="w-17 h-17 rounded-full flex items-center justify-center font-black text-base ring-4 ring-amber-400 shadow-xl group-hover:scale-105 transition-transform"
+                className="w-17 h-17 rounded-full flex items-center justify-center font-black text-base ring-4 ring-amber-400 shadow-xl group-hover:scale-105 transition-transform overflow-hidden"
                 style={{
                   backgroundColor: getAvatarColorPair(first.username).bg,
                   color: getAvatarColorPair(first.username).text,
                 }}
               >
-                {first.name.slice(0, 2).toUpperCase()}
+                {first.avatar || DataStore.getProfileByUsername(first.username)?.avatar ? (
+                  <img
+                    src={first.avatar || DataStore.getProfileByUsername(first.username)?.avatar || ''}
+                    alt={first.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  first.name.slice(0, 2).toUpperCase()
+                )}
               </div>
               <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-gradient-to-tr from-amber-500 to-yellow-300 text-amber-950 text-xs font-black flex items-center justify-center ring-2 ring-[var(--surface)] shadow-md">
                 1
@@ -1168,13 +1232,21 @@ function StudentLeaderPodium({
           >
             <div className="relative mb-2">
               <div
-                className="w-13 h-13 rounded-full flex items-center justify-center font-bold text-xs ring-4 ring-orange-600/70 shadow-md group-hover:scale-105 transition-transform"
+                className="w-13 h-13 rounded-full flex items-center justify-center font-bold text-xs ring-4 ring-orange-600/70 shadow-md group-hover:scale-105 transition-transform overflow-hidden"
                 style={{
                   backgroundColor: getAvatarColorPair(third.username).bg,
                   color: getAvatarColorPair(third.username).text,
                 }}
               >
-                {third.name.slice(0, 2).toUpperCase()}
+                {third.avatar || DataStore.getProfileByUsername(third.username)?.avatar ? (
+                  <img
+                    src={third.avatar || DataStore.getProfileByUsername(third.username)?.avatar || ''}
+                    alt={third.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  third.name.slice(0, 2).toUpperCase()
+                )}
               </div>
               <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-orange-700 text-white text-[10px] font-black flex items-center justify-center ring-2 ring-[var(--surface)] shadow-xs">
                 3

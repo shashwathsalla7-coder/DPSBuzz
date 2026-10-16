@@ -40,7 +40,10 @@ export const StoriesRow: React.FC<StoriesRowProps> = ({ currentUser }) => {
       setUser(DataStore.getCurrentUser());
     }
 
-    const handleUpdate = () => loadStoryGroups();
+    const handleUpdate = () => {
+      loadStoryGroups();
+      setUser(DataStore.getCurrentUser());
+    };
     const handleOpenStoriesSwipe = () => {
       const activeUser = currentUser || DataStore.getCurrentUser();
       const groups = DataStore.getUserStoryGroups(activeUser?.username);

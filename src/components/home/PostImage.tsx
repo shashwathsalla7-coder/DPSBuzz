@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { MoreHorizontal, ImageOff, Heart, CheckCircle2, Volume2, VolumeX, Tag } from 'lucide-react';
-import { type Post } from '@/lib/dataStore';
+import { type Post, DataStore } from '@/lib/dataStore';
 import { getAvatarColorPair } from '@/config/tokens';
 import { globalAudio } from '@/lib/audioManager';
 
@@ -50,6 +50,12 @@ export const PostImage: React.FC<PostImageProps> = ({
 
   const avatarColor = getAvatarColorPair(post.username);
   const initials = (post.fullName || post.username || 'ST').slice(0, 2).toUpperCase();
+  const effectiveAvatar =
+    post.avatar ||
+    (post as any).userAvatar ||
+    DataStore.getProfileByUsername(post.username)?.avatar ||
+    null;
+  const [avatarLoadError, setAvatarLoadError] = useState(false);
 
   const handleTap = () => {
     const now = Date.now();
@@ -164,11 +170,12 @@ export const PostImage: React.FC<PostImageProps> = ({
               color: avatarColor.text,
             }}
           >
-            {post.avatar ? (
+            {effectiveAvatar && !avatarLoadError ? (
               <img
-                src={post.avatar}
+                src={effectiveAvatar}
                 alt={post.username}
                 className="w-full h-full object-cover"
+                onError={() => setAvatarLoadError(true)}
               />
             ) : (
               <span>{initials}</span>

@@ -1,7 +1,8 @@
 'use client';
 
-import { type FC } from 'react';
+import { useState, type FC } from 'react';
 import { getAvatarColorPair } from '@/config/tokens';
+import { DataStore } from '@/lib/dataStore';
 
 export type AvatarSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl';
 export type AvatarShape = 'circle' | 'square'; // circle for people, square (10px) for groups
@@ -30,7 +31,7 @@ const sizeMap: Record<AvatarSize, { px: number; textSize: string; ringPad: strin
  * - People are strictly circles
  * - Groups are strictly rounded squares with 10px radius (var(--r-md))
  * - Deterministic color pair from 8 curated pairs based on username/name
- * - No grey silhouettes anywhere
+ * - Prioritizes uploaded profile picture everywhere across the app
  */
 export const Avatar: FC<AvatarProps> = ({
   src,
@@ -41,9 +42,14 @@ export const Avatar: FC<AvatarProps> = ({
   ring = 'none',
   className = '',
 }) => {
+  const [imgError, setImgError] = useState(false);
   const { px, textSize, ringPad } = sizeMap[size];
   const identifier = username || name || 'student';
   const colors = getAvatarColorPair(identifier);
+
+  // If a profile picture exists on the user profile or in DataStore, ALWAYS display it
+  const liveProf = username ? DataStore.getProfileByUsername(username) : null;
+  const effectiveSrc = !imgError ? (src || liveProf?.avatar || null) : null;
 
   const initials = name
     ? name
@@ -58,10 +64,11 @@ export const Avatar: FC<AvatarProps> = ({
   const isSquare = shape === 'square';
   const borderRadius = isSquare ? 'var(--r-md)' : 'var(--r-full)';
 
-  const avatarElement = src ? (
+  const avatarElement = effectiveSrc ? (
     <img
-      src={src}
+      src={effectiveSrc}
       alt={name}
+      onError={() => setImgError(true)}
       style={{
         width: `${px}px`,
         height: `${px}px`,

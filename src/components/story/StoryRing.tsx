@@ -1,7 +1,8 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { getAvatarColorPair } from '@/config/tokens';
+import { DataStore } from '@/lib/dataStore';
 
 export interface StoryRingProps {
   variant: 'unseen' | 'seen' | 'your-story' | 'reward';
@@ -37,9 +38,13 @@ export const StoryRing: React.FC<StoryRingProps> = ({
   onAddStory,
   onClick,
 }) => {
+  const [imgError, setImgError] = useState(false);
   const isLg = size === 'lg';
   const identifier = username || name || 'student';
   const colors = getAvatarColorPair(identifier);
+  const liveProf = username ? DataStore.getProfileByUsername(username) : null;
+  const effectiveAvatar = !imgError ? (avatarUrl || liveProf?.avatar || null) : null;
+
   const initials = (name || username || 'ST')
     .split(' ')
     .filter(Boolean)
@@ -51,10 +56,11 @@ export const StoryRing: React.FC<StoryRingProps> = ({
   // Avatar diameter: 75px for 'lg' (outer 88px Instagram standard), 56px for 'md'
   const avatarClass = isLg ? 'w-[75px] h-[75px] text-base' : 'w-[56px] h-[56px] text-xs';
 
-  const innerAvatar = avatarUrl ? (
+  const innerAvatar = effectiveAvatar ? (
     <img
-      src={avatarUrl}
+      src={effectiveAvatar}
       alt={username}
+      onError={() => setImgError(true)}
       className={`${avatarClass} rounded-full object-cover shrink-0 select-none`}
     />
   ) : (

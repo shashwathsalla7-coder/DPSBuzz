@@ -134,9 +134,9 @@ export function SuggestedAccountsList({
                   className="w-11 h-11 rounded-full shrink-0 overflow-hidden flex items-center justify-center font-bold text-xs border border-black/10 dark:border-white/10 shadow-2xs"
                   style={{ backgroundColor: pair.bg, color: pair.text }}
                 >
-                  {person.avatar ? (
+                  {(person.avatar || DataStore.getProfileByUsername(person.username)?.avatar) ? (
                     <img
-                      src={person.avatar}
+                      src={person.avatar || DataStore.getProfileByUsername(person.username)?.avatar || ''}
                       alt={person.fullName}
                       className="w-full h-full object-cover"
                     />
@@ -165,9 +165,9 @@ export function SuggestedAccountsList({
                               }`}
                               style={{ backgroundColor: mfPair.bg, color: mfPair.text }}
                             >
-                              {mf.avatar ? (
+                              {(mf.avatar || DataStore.getProfileByUsername(mf.username)?.avatar) ? (
                                 <img
-                                  src={mf.avatar}
+                                  src={mf.avatar || DataStore.getProfileByUsername(mf.username)?.avatar || ''}
                                   alt={mf.username}
                                   className="w-full h-full object-cover"
                                 />

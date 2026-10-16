@@ -442,7 +442,18 @@ export async function getServerChatMessages(conversationId: string): Promise<any
   } else if (current.chatMessages[conversationId]) {
     msgs = current.chatMessages[conversationId];
   }
-  return msgs.filter((m) => m && m.id && !unsentSet.has(m.id));
+  const now = Date.now();
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  return msgs.filter((m) => {
+    if (!m || !m.id || unsentSet.has(m.id)) return false;
+    if (m.is_vanish_mode_message || m.isVanishMode) {
+      const timestamp = m.createdAt ? new Date(m.createdAt).getTime() : (m.timestamp || 0);
+      if (timestamp && (now - timestamp > DAY_MS)) {
+        return false;
+      }
+    }
+    return true;
+  });
 }
 
 export async function unsendServerChatMessage(
@@ -488,7 +499,18 @@ export async function purgeVanishServerChatMessages(
   }
 
   const existing = current.chatMessages[targetKey] || current.chatMessages[conversationId] || [];
-  const filtered = existing.filter((m: any) => !m.is_vanish_mode_message && !m.isVanishMode);
+  const now = Date.now();
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  // Vanish mode rule: Messages only disappear after 24 hours
+  const filtered = existing.filter((m: any) => {
+    if (m.is_vanish_mode_message || m.isVanishMode) {
+      const timestamp = m.createdAt ? new Date(m.createdAt).getTime() : (m.timestamp || 0);
+      if (timestamp && (now - timestamp > DAY_MS)) {
+        return false;
+      }
+    }
+    return true;
+  });
 
   const updatedChatMessages = {
     ...current.chatMessages,

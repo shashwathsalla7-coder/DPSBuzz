@@ -165,10 +165,10 @@ export const MobileTabBar: FC = () => {
               isProfileActive ? 'ring-2 ring-[var(--primary)] ring-offset-1 ring-offset-[var(--surface)]' : ''
             }`}
           >
-            {currentUser?.avatar ? (
+            {currentUser?.avatar || (currentUser?.username ? DataStore.getProfileByUsername(currentUser.username)?.avatar : null) ? (
               <img
-                src={currentUser.avatar}
-                alt={currentUser.fullName}
+                src={currentUser?.avatar || (currentUser?.username ? DataStore.getProfileByUsername(currentUser.username)?.avatar || '' : '')}
+                alt={currentUser?.fullName || 'Profile'}
                 className="w-full h-full object-cover"
               />
             ) : (

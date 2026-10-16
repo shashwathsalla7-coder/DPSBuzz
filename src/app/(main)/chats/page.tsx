@@ -166,6 +166,12 @@ function ChatsContent() {
     const hasC = Array.isArray(cList) && cList.length > 0;
     const hasR = Array.isArray(rList) && rList.length > 0;
 
+    const sortFn = (a: ChatMessage, b: ChatMessage) => {
+      const ta = a.createdAt ? new Date(a.createdAt).getTime() : (a.timestamp || 0);
+      const tb = b.createdAt ? new Date(b.createdAt).getTime() : (b.timestamp || 0);
+      return ta - tb;
+    };
+
     if (hasC && hasR) {
       const map = new Map<string, ChatMessage>();
       for (const m of cList!) map.set(m.id, m);
@@ -176,11 +182,11 @@ function ChatsContent() {
           map.set(m.id, { ...map.get(m.id)!, ...m });
         }
       }
-      return Array.from(map.values());
+      return Array.from(map.values()).sort(sortFn);
     }
-    if (hasC) return cList!;
-    if (hasR) return rList!;
-    return (cList || rList || []) as ChatMessage[];
+    if (hasC) return [...cList!].sort(sortFn);
+    if (hasR) return [...rList!].sort(sortFn);
+    return [];
   };
 
   const refreshLiveStudents = () => {
@@ -543,6 +549,7 @@ function ChatsContent() {
   // Automatically persist conversations to localStorage (scoped to current user)
   useEffect(() => {
     if (typeof window === 'undefined' || !currentUsername) return;
+    if (!conversations || conversations.length === 0) return;
     try {
       localStorage.setItem(`dpsbuzz_chat_conversations_${currentUsername}_v3`, JSON.stringify(conversations));
     } catch {}
@@ -551,6 +558,7 @@ function ChatsContent() {
   // Automatically persist messages to localStorage (scoped to current user)
   useEffect(() => {
     if (typeof window === 'undefined' || !currentUsername) return;
+    if (!chatMessages || Object.keys(chatMessages).length === 0) return;
     try {
       localStorage.setItem(`dpsbuzz_chat_messages_${currentUsername}_v3`, JSON.stringify(chatMessages));
     } catch {}
@@ -644,29 +652,48 @@ function ChatsContent() {
           setChatMessages((prev) => {
             const currentList = getListForConv(prev, canonicalId, rawId);
             const serverMsgs = data.messages.filter((m: any) => m && m.id && !tombstonedIds.has(m.id));
-            const serverMsgIds = new Set(serverMsgs.map((m: any) => m.id));
             const now = Date.now();
+            const DAY_MS = 24 * 60 * 60 * 1000;
 
-            // Keep in-flight local messages that were sent in the last 6 seconds and not yet confirmed on server
+            // Non-destructive preservation: keep ALL local messages unless explicitly tombstoned/unsent or expired vanish (>24h)
             const preservedLocal = currentList.filter((m) => {
-              if (tombstonedIds.has(m.id)) return false;
-              if (serverMsgIds.has(m.id)) return false; // Handled by serverMsgs loop
-              const isRecentSending = m.senderUsername === currentUsername && (m.isSending || (m.createdAt && now - new Date(m.createdAt).getTime() < 6000));
-              return isRecentSending;
+              if (!m || !m.id || tombstonedIds.has(m.id)) return false;
+              if (m.is_vanish_mode_message || m.isVanishMode) {
+                const ts = m.createdAt ? new Date(m.createdAt).getTime() : (m.timestamp || 0);
+                if (ts && now - ts > DAY_MS) return false;
+              }
+              return true;
             });
 
-            const msgMap = new Map(preservedLocal.map((m) => [m.id, m]));
+            const msgMap = new Map<string, ChatMessage>();
+            for (const m of preservedLocal) {
+              msgMap.set(m.id, m);
+            }
 
             for (const rawMsg of serverMsgs) {
-              const sMsg = { ...rawMsg, isDelivered: true };
+              if (tombstonedIds.has(rawMsg.id)) continue;
+              if (rawMsg.is_vanish_mode_message || rawMsg.isVanishMode) {
+                const ts = rawMsg.createdAt ? new Date(rawMsg.createdAt).getTime() : (rawMsg.timestamp || 0);
+                if (ts && now - ts > DAY_MS) continue;
+              }
+              const sMsg: ChatMessage = { ...rawMsg, isDelivered: true };
               const sender = (sMsg.senderUsername || '').toLowerCase().trim();
               if (sender && sender !== currentUsername && !sMsg.is_read && !sMsg.isSeen && !sMsg.readAt) {
                 hasUnreadFromOther = true;
               }
-              msgMap.set(sMsg.id, sMsg);
+              const localMsg = msgMap.get(sMsg.id);
+              if (localMsg) {
+                msgMap.set(sMsg.id, { ...localMsg, ...sMsg, isDelivered: true });
+              } else {
+                msgMap.set(sMsg.id, sMsg);
+              }
             }
 
-            const merged = Array.from(msgMap.values());
+            const merged = Array.from(msgMap.values()).sort((a, b) => {
+              const ta = a.createdAt ? new Date(a.createdAt).getTime() : (a.timestamp || 0);
+              const tb = b.createdAt ? new Date(b.createdAt).getTime() : (b.timestamp || 0);
+              return ta - tb;
+            });
             let changed = false;
 
             // Deep check: only trigger re-render if messages actually changed
@@ -866,13 +893,21 @@ function ChatsContent() {
           setIsVanishMode(!!nextVanish);
         }
       } else if (type === 'VANISH_PURGE') {
+        const now = Date.now();
+        const DAY_MS = 24 * 60 * 60 * 1000;
         setChatMessages((prev) => {
           const currentList = getListForConv(prev, conversationId, matchingRawId);
-          const nonVanish = currentList.filter((m) => !m.is_vanish_mode_message && !m.isVanishMode);
+          const remaining = currentList.filter((m) => {
+            if (m.is_vanish_mode_message || m.isVanishMode) {
+              const ts = m.createdAt ? new Date(m.createdAt).getTime() : (m.timestamp || 0);
+              if (ts && now - ts > DAY_MS) return false;
+            }
+            return true;
+          });
           return {
             ...prev,
-            [conversationId]: nonVanish,
-            ...(matchingRawId ? { [matchingRawId]: nonVanish } : {}),
+            [conversationId]: remaining,
+            ...(matchingRawId ? { [matchingRawId]: remaining } : {}),
           };
         });
       } else if (type === 'MESSAGES_READ') {
@@ -1094,22 +1129,30 @@ function ChatsContent() {
                     const rawKey = otherUser ? `conv-${otherUser}` : undefined;
                     const current = getListForConv(merged, key, rawKey);
                     const serverCleanList = (list as any[]).filter((m) => m && m.id && !syncTombstoned.has(m.id));
-                    const serverIds = new Set(serverCleanList.map((m) => m.id));
                     const now = Date.now();
+                    const DAY_MS = 24 * 60 * 60 * 1000;
 
                     const preserved = current.filter((m) => {
-                      if (syncTombstoned.has(m.id)) return false;
-                      if (serverIds.has(m.id)) return false;
-                      return m.senderUsername === currentUsername && (m.isSending || (m.createdAt && now - new Date(m.createdAt).getTime() < 6000));
+                      if (!m || !m.id || syncTombstoned.has(m.id)) return false;
+                      if (m.is_vanish_mode_message || m.isVanishMode) {
+                        const ts = m.createdAt ? new Date(m.createdAt).getTime() : (m.timestamp || 0);
+                        if (ts && now - ts > DAY_MS) return false;
+                      }
+                      return true;
                     });
 
                     const msgMap = new Map<string, ChatMessage>(preserved.map((m: any) => [m.id, m]));
-                    let listChanged = preserved.length !== current.length;
+                    let listChanged = false;
 
                     for (const sMsg of serverCleanList) {
+                      if (syncTombstoned.has(sMsg.id)) continue;
+                      if (sMsg.is_vanish_mode_message || sMsg.isVanishMode) {
+                        const ts = sMsg.createdAt ? new Date(sMsg.createdAt).getTime() : (sMsg.timestamp || 0);
+                        if (ts && now - ts > DAY_MS) continue;
+                      }
                       const local = msgMap.get(sMsg.id);
                       if (!local) {
-                        msgMap.set(sMsg.id, sMsg);
+                        msgMap.set(sMsg.id, { ...sMsg, isDelivered: true });
                         listChanged = true;
                       } else if (
                         Boolean(local.is_read) !== Boolean(sMsg.is_read) ||
@@ -1117,12 +1160,16 @@ function ChatsContent() {
                         Boolean(local.isDelivered) !== Boolean(sMsg.isDelivered) ||
                         local.reaction !== sMsg.reaction
                       ) {
-                        msgMap.set(sMsg.id, { ...local, ...sMsg });
+                        msgMap.set(sMsg.id, { ...local, ...sMsg, isDelivered: true });
                         listChanged = true;
                       }
                     }
-                    if (listChanged) {
-                      const updatedList = Array.from(msgMap.values());
+                    if (listChanged || msgMap.size !== current.length) {
+                      const updatedList = Array.from(msgMap.values()).sort((a, b) => {
+                        const ta = a.createdAt ? new Date(a.createdAt).getTime() : (a.timestamp || 0);
+                        const tb = b.createdAt ? new Date(b.createdAt).getTime() : (b.timestamp || 0);
+                        return ta - tb;
+                      });
                       merged[key] = updatedList;
                       if (rawKey) merged[rawKey] = updatedList;
                       hasNew = true;
@@ -1440,12 +1487,15 @@ function ChatsContent() {
         ? `🎵 Replying to note "${note.text}" (${note.song.title} - ${note.song.artist}): ${trimmedReply}`
         : `💭 Replying to note "${note.text}": ${trimmedReply}`;
 
+      const now = Date.now();
       const newMsg: ChatMessage = {
-        id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        id: `msg-${now}-${Math.random().toString(36).substring(2, 6)}`,
         text: formattedText,
         sender: 'me',
         senderUsername: currentUsername,
-        time: new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date()),
+        time: new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date(now)),
+        createdAt: new Date(now).toISOString(),
+        timestamp: now,
       };
 
       setChatMessages((prev) => {
@@ -1503,34 +1553,6 @@ function ChatsContent() {
     const nextVal = !isVanishMode;
     setIsVanishMode(nextVal);
     DataStore.setVanishMode(canonicalId, nextVal);
-
-    if (!nextVal) {
-      // Disappearance rule: when turning off vanish mode, purge vanish messages immediately!
-      DataStore.purgeVanishMessages(canonicalId, currentUsername);
-      setChatMessages((prev) => {
-        const existing = prev[canonicalId] || [];
-        const nonVanish = existing.filter((m) => !m.is_vanish_mode_message && !m.isVanishMode);
-        return {
-          ...prev,
-          [canonicalId]: nonVanish,
-          [activeConversation.id]: nonVanish,
-        };
-      });
-      setConversations((prev) =>
-        prev.map((c) => {
-          if (c.id === canonicalId || c.id === activeConversation.id) {
-            const existing = chatMessages[canonicalId] || [];
-            const nonVanish = existing.filter((m) => !m.is_vanish_mode_message && !m.isVanishMode);
-            const last = nonVanish[nonVanish.length - 1];
-            return {
-              ...c,
-              lastMessage: last ? (last.text || 'Photo') : 'No messages yet',
-            };
-          }
-          return c;
-        })
-      );
-    }
   };
 
   // Vanish Mode Pull-Up Touch & Drag Handlers (Instagram Style)
@@ -1611,33 +1633,7 @@ function ChatsContent() {
     };
   }, [isVanishPulling, vanishPullDistance]);
 
-  // Window beforeunload purge for vanish messages
-  useEffect(() => {
-    const handleBeforeUnload = () => {
-      if (activeConversation) {
-        const canonicalId = getCanonicalConvId(activeConversation);
-        DataStore.purgeVanishMessages(canonicalId, currentUsername);
-      }
-    };
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [activeConversation, currentUsername]);
-
   const handleCloseActiveChat = () => {
-    if (activeConversation) {
-      const canonicalId = getCanonicalConvId(activeConversation);
-      // Disappearance rule: purge vanish messages from storage & client state
-      DataStore.purgeVanishMessages(canonicalId, currentUsername);
-      setChatMessages((prev) => {
-        const existing = prev[canonicalId] || [];
-        const nonVanish = existing.filter((m) => !m.is_vanish_mode_message && !m.isVanishMode);
-        return {
-          ...prev,
-          [canonicalId]: nonVanish,
-          [activeConversation.id]: nonVanish,
-        };
-      });
-    }
     setActiveConversation(null);
   };
 
@@ -1800,15 +1796,19 @@ function ChatsContent() {
     }
     if (!activeConversation) return;
 
+    const now = Date.now();
     const rawId = activeConversation.id;
     const canonicalId = getCanonicalConvId(activeConversation);
+    const targetUser = (activeConversation.username || activeConversation.id.replace(/^conv-/, '')).toLowerCase().trim();
 
     const newMsg: ChatMessage = {
-      id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      id: `msg-${now}-${Math.random().toString(36).substring(2, 6)}`,
       text: '❤️',
       sender: 'me',
       senderUsername: currentUsername,
-      time: new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date()),
+      time: new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date(now)),
+      createdAt: new Date(now).toISOString(),
+      timestamp: now,
       isDelivered: false,
       is_read: false,
       isSeen: false,
@@ -1838,6 +1838,40 @@ function ChatsContent() {
           : c
       )
     );
+
+    // Update recipient local storage for single-browser multi-account testing
+    if (!activeConversation.isGroup && targetUser) {
+      try {
+        const targetConvKey = `dpsbuzz_chat_conversations_${targetUser}_v3`;
+        const targetMsgKey = `dpsbuzz_chat_messages_${targetUser}_v3`;
+        const recipientConv = JSON.parse(localStorage.getItem(targetConvKey) || '[]');
+        const recipientMsgs = JSON.parse(localStorage.getItem(targetMsgKey) || '{}');
+        const rConvId = `conv-${currentUsername}`;
+        const rList = recipientMsgs[canonicalId] || recipientMsgs[rConvId] || [];
+        const rMsg: ChatMessage = { ...newMsg, sender: 'them' };
+        if (!rList.some((m: any) => m.id === rMsg.id)) {
+          const nextRList = [...rList, rMsg];
+          recipientMsgs[canonicalId] = nextRList;
+          recipientMsgs[rConvId] = nextRList;
+          localStorage.setItem(targetMsgKey, JSON.stringify(recipientMsgs));
+        }
+        const rExistingIdx = recipientConv.findIndex(
+          (c: any) => (c.username || '').toLowerCase() === currentUsername || c.id === rConvId || c.id === canonicalId
+        );
+        if (rExistingIdx >= 0) {
+          recipientConv[rExistingIdx] = {
+            ...recipientConv[rExistingIdx],
+            lastMessage: '❤️',
+            timeAgo: 'Just now',
+            isUnread: true,
+            unreadCount: (recipientConv[rExistingIdx].unreadCount || 0) + 1,
+          };
+          const [item] = recipientConv.splice(rExistingIdx, 1);
+          recipientConv.unshift(item);
+        }
+        localStorage.setItem(targetConvKey, JSON.stringify(recipientConv));
+      } catch {}
+    }
 
     // Instant 0ms broadcast across all tabs and components
     DataStore.broadcastChatEvent({
@@ -1954,16 +1988,20 @@ function ChatsContent() {
     }
     if (!messageInput.trim() || !activeConversation) return;
 
+    const now = Date.now();
     const rawId = activeConversation.id;
     const canonicalId = getCanonicalConvId(activeConversation);
+    const targetUser = (activeConversation.username || activeConversation.id.replace(/^conv-/, '')).toLowerCase().trim();
     const sentText = messageInput.trim();
 
     const newMsg: ChatMessage = {
-      id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      id: `msg-${now}-${Math.random().toString(36).substring(2, 6)}`,
       text: sentText,
       sender: 'me',
       senderUsername: currentUsername,
-      time: new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date()),
+      time: new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date(now)),
+      createdAt: new Date(now).toISOString(),
+      timestamp: now,
       isDelivered: false,
       is_read: false,
       isSeen: false,
@@ -1995,6 +2033,40 @@ function ChatsContent() {
     );
 
     setMessageInput('');
+
+    // Update recipient local storage for single-browser multi-account testing
+    if (!activeConversation.isGroup && targetUser) {
+      try {
+        const targetConvKey = `dpsbuzz_chat_conversations_${targetUser}_v3`;
+        const targetMsgKey = `dpsbuzz_chat_messages_${targetUser}_v3`;
+        const recipientConv = JSON.parse(localStorage.getItem(targetConvKey) || '[]');
+        const recipientMsgs = JSON.parse(localStorage.getItem(targetMsgKey) || '{}');
+        const rConvId = `conv-${currentUsername}`;
+        const rList = recipientMsgs[canonicalId] || recipientMsgs[rConvId] || [];
+        const rMsg: ChatMessage = { ...newMsg, sender: 'them' };
+        if (!rList.some((m: any) => m.id === rMsg.id)) {
+          const nextRList = [...rList, rMsg];
+          recipientMsgs[canonicalId] = nextRList;
+          recipientMsgs[rConvId] = nextRList;
+          localStorage.setItem(targetMsgKey, JSON.stringify(recipientMsgs));
+        }
+        const rExistingIdx = recipientConv.findIndex(
+          (c: any) => (c.username || '').toLowerCase() === currentUsername || c.id === rConvId || c.id === canonicalId
+        );
+        if (rExistingIdx >= 0) {
+          recipientConv[rExistingIdx] = {
+            ...recipientConv[rExistingIdx],
+            lastMessage: sentText,
+            timeAgo: 'Just now',
+            isUnread: true,
+            unreadCount: (recipientConv[rExistingIdx].unreadCount || 0) + 1,
+          };
+          const [item] = recipientConv.splice(rExistingIdx, 1);
+          recipientConv.unshift(item);
+        }
+        localStorage.setItem(targetConvKey, JSON.stringify(recipientConv));
+      } catch {}
+    }
 
     // Instant 0ms broadcast across all tabs and components
     DataStore.broadcastChatEvent({
@@ -2429,23 +2501,6 @@ function ChatsContent() {
           </div>
         </header>
 
-        {/* Vanish Mode Banner */}
-        {isVanishMode && (
-          <div className="px-4 py-2 bg-gradient-to-r from-purple-900/60 to-indigo-900/60 border-b border-purple-500/30 text-white text-xs font-medium flex items-center justify-between shrink-0 animate-fade-in">
-            <div className="flex items-center gap-2">
-              <Ghost size={14} className="text-purple-300 shrink-0" />
-              <span>Vanish Mode is ON • Messages disappear when you close the chat</span>
-            </div>
-            <button
-              type="button"
-              onClick={handleToggleVanishMode}
-              className="text-[11px] underline font-semibold text-purple-200 hover:text-white cursor-pointer ml-2 shrink-0"
-            >
-              Turn Off
-            </button>
-          </div>
-        )}
-
         {/* Messages Stream with dynamic persistent background */}
         <div
           ref={messagesContainerRef}
@@ -2477,19 +2532,6 @@ function ChatsContent() {
           {/* Subtle dark backdrop overlay on photo wallpapers for optimal text readability */}
           {activeChatBg && activeChatBg.type === 'image' && (
             <div className="absolute inset-0 bg-black/35 pointer-events-none" />
-          )}
-
-          {/* Vanish Mode Watermark (Instagram Authentic) */}
-          {isVanishMode && (
-            <div className="flex flex-col items-center justify-center text-center py-6 px-4 animate-fade-in select-none relative z-10">
-              <div className="w-14 h-14 rounded-full bg-purple-900/40 border border-purple-500/30 flex items-center justify-center mb-2 shadow-lg shadow-purple-950/50">
-                <Ghost size={28} className="text-purple-300 animate-pulse" />
-              </div>
-              <p className="text-sm font-bold text-purple-200">Vanish Mode</p>
-              <p className="text-xs text-purple-300/80 max-w-xs mt-0.5 leading-relaxed">
-                Seen messages disappear when you turn off vanish mode or close the chat.
-              </p>
-            </div>
           )}
 
           {messages.length === 0 ? (
@@ -2799,8 +2841,8 @@ function ChatsContent() {
           </div>
         )}
 
-        {/* Instagram Authentic Vanish Mode Pull-Up / Swipe-Up Gesture Bar (Only shown when active or actively pulling) */}
-        {!activeConversation.isGroup && (isVanishMode || (isVanishPulling && vanishPullDistance > 10)) && (
+        {/* Swipe-Up Gesture Bar (Only shown while actively pulling) */}
+        {!activeConversation.isGroup && isVanishPulling && vanishPullDistance > 10 && (
           <div
             onMouseDown={(e) => {
               if (e.button === 0) handleVanishTouchStart(e.clientY);
@@ -2808,48 +2850,26 @@ function ChatsContent() {
             onTouchStart={(e) => handleVanishTouchStart(e.touches[0].clientY)}
             onTouchMove={(e) => handleVanishTouchMove(e.touches[0].clientY)}
             onTouchEnd={handleVanishTouchEnd}
-            className={`w-full flex items-center justify-between select-none transition-all relative z-25 py-2 px-4 ${
-              isVanishMode
-                ? 'bg-[#180f24] border-t border-purple-500/20 text-purple-300'
-                : 'bg-[var(--surface)] border-t border-[var(--line)]/60 text-[var(--text-muted)]'
-            }`}
+            className="w-full flex items-center justify-center select-none transition-all relative z-25 py-2 px-4 bg-black/40 backdrop-blur-md border-t border-purple-500/20 text-purple-300"
             style={{
-              transform: isVanishPulling && vanishPullDistance > 0 ? `translateY(-${Math.min(vanishPullDistance * 0.4, 20)}px)` : 'none',
+              transform: `translateY(-${Math.min(vanishPullDistance * 0.4, 20)}px)`,
               touchAction: 'none',
             }}
           >
-            {/* Gesture Pull Indicator & Circle Gauge */}
-            <div className="flex items-center gap-2">
-              <div className="relative w-6 h-6 flex items-center justify-center shrink-0">
-                <Ghost
-                  size={14}
-                  className={isVanishMode ? 'text-purple-300 animate-pulse' : 'text-purple-500 scale-110'}
-                />
-              </div>
-
-              {/* Status / Instruction Text */}
-              <div className="flex items-center gap-1.5 text-[11.5px] font-medium tracking-tight">
-                {isVanishPulling && vanishPullDistance >= 75 ? (
-                  <span className="font-semibold text-purple-400 animate-pulse">
-                    Release to turn {isVanishMode ? 'off' : 'on'} vanish mode
-                  </span>
-                ) : isVanishPulling ? (
-                  <span>Swipe up to toggle vanish mode</span>
-                ) : (
-                  <span>👻 Vanish mode active — messages disappear when closed</span>
-                )}
-              </div>
+            <div className="flex items-center gap-2 text-xs font-medium">
+              <div
+                className="w-2.5 h-2.5 rounded-full bg-purple-400 transition-transform duration-100"
+                style={{
+                  transform: `scale(${1 + Math.min(vanishPullDistance / 50, 0.6)})`,
+                  opacity: Math.min(vanishPullDistance / 40, 1),
+                }}
+              />
+              <span>
+                {vanishPullDistance >= 45
+                  ? 'Release to toggle'
+                  : 'Swipe up'}
+              </span>
             </div>
-
-            {isVanishMode && (
-              <button
-                type="button"
-                onClick={handleToggleVanishMode}
-                className="px-3 py-1 rounded-full text-xs font-bold text-white bg-purple-600 hover:bg-purple-500 active:scale-95 transition-all cursor-pointer shadow-xs"
-              >
-                Turn Off
-              </button>
-            )}
           </div>
         )}
 
@@ -2955,7 +2975,7 @@ function ChatsContent() {
                 isMaintenanceActive
                   ? 'Chat is disabled during scheduled maintenance 🔒'
                   : isVanishMode
-                  ? 'Vanish mode message... 👻'
+                  ? 'Message (disappears in 24h)...'
                   : 'Message...'
               }
               className={`flex-1 h-11 px-4 rounded-full text-[14.5px] outline-none border focus:ring-1 disabled:opacity-50 transition-all font-semibold font-sf-display ${

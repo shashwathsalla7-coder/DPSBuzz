@@ -689,8 +689,16 @@ function HomeContent() {
             <div className="space-y-3.5 p-4 flex-1 overflow-y-auto no-scrollbar max-h-72">
               {(commentsMap[selectedCommentsPost.id] || []).map((c) => (
                 <div key={c.id} className="text-xs flex gap-2.5 items-start">
-                  <div className="w-7 h-7 rounded-full bg-[var(--surface-sunken)] border border-[var(--line)] flex items-center justify-center font-bold text-[10px] shrink-0 text-[var(--text)]">
-                    {c.username.slice(0, 1).toUpperCase()}
+                  <div className="w-7 h-7 rounded-full bg-[var(--surface-sunken)] border border-[var(--line)] flex items-center justify-center font-bold text-[10px] shrink-0 text-[var(--text)] overflow-hidden">
+                    {c.avatar || DataStore.getProfileByUsername(c.username)?.avatar ? (
+                      <img
+                        src={c.avatar || DataStore.getProfileByUsername(c.username)?.avatar || ''}
+                        alt={c.username}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      c.username.slice(0, 1).toUpperCase()
+                    )}
                   </div>
                   <div className="flex-1">
                     <span className="font-bold text-[var(--text)] mr-1.5">@{c.username}</span>
