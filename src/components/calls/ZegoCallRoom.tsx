@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { ZEGO_CONFIG } from '@/config/zego';
 import { DataStore } from '@/lib/dataStore';
 import { getAvatarColorPair } from '@/config/tokens';
@@ -66,6 +66,15 @@ export function ZegoCallRoom({ call, isCaller, onEndCall, onConnected }: ZegoCal
   const bindRemoteMediaStream = useCallback((ZegoClass?: any) => {
     try {
       const core = (ZegoClass || (window as any).ZegoUIKitPrebuilt)?.core;
+
+      // Ensure local microphone stream track is active
+      const localStream = core?.localStream;
+      if (localStream instanceof MediaStream) {
+        localStream.getAudioTracks().forEach((track) => {
+          track.enabled = true;
+        });
+      }
+
       const streamMap = core?.remoteStreamMap || {};
       for (const [streamID, stream] of Object.entries(streamMap)) {
         if (stream instanceof MediaStream && remoteAudioRef.current) {
@@ -174,6 +183,19 @@ export function ZegoCallRoom({ call, isCaller, onEndCall, onConnected }: ZegoCal
           displayName || cleanUserID
         );
 
+        // Explicitly check/request microphone permissions upfront to guarantee clean WebRTC track generation
+        try {
+          if (typeof navigator !== 'undefined' && navigator.mediaDevices?.getUserMedia) {
+            const probeStream = await navigator.mediaDevices.getUserMedia({
+              audio: true,
+              video: Boolean(call.isVideo),
+            });
+            probeStream.getTracks().forEach((t) => t.stop());
+          }
+        } catch (permErr) {
+          console.warn('[ZEGOCLOUD] Microphone pre-permission probe warning:', permErr);
+        }
+
         // Create clean ZegoUIKit instance
         const zp = ZegoUIKitPrebuilt.create(kitToken);
         (zp as any).autoLeaveRoomWhenOnlySelfInRoom = false;
@@ -184,10 +206,14 @@ export function ZegoCallRoom({ call, isCaller, onEndCall, onConnected }: ZegoCal
           container: containerRef.current,
           scenario: {
             mode: ZegoUIKitPrebuilt.OneONoneCall,
+            config: {
+              role: ZegoUIKitPrebuilt.Host,
+            },
           },
           showPreJoinView: false,
           turnOnMicrophoneWhenJoining: true,
           turnOnCameraWhenJoining: Boolean(call.isVideo),
+          useSpeaker: true,
           useFrontFacingCamera: true,
           facingMode: 'user',
           autoLeaveRoomWhenOnlySelfInRoom: false,

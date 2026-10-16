@@ -28,6 +28,7 @@ export const ChatActionsSheet: React.FC<ChatActionsSheetProps> = ({
   onReport,
   onBlock,
   onChangeBackground,
+  onOpenGames,
 }) => {
   if (!isOpen || !conversation) return null;
 

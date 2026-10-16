@@ -40,7 +40,7 @@ export interface ConversationRowProps {
   onLongPress: (conv: ConversationItem) => void;
 }
 
-export const ConversationRow: React.FC<ConversationRowProps> = ({
+export const ConversationRow: React.FC<ConversationRowProps> = React.memo(({
   conversation,
   onClick,
   onMuteToggle,
@@ -336,6 +336,8 @@ export const ConversationRow: React.FC<ConversationRowProps> = ({
       </div>
     </div>
   );
-};
+});
+
+ConversationRow.displayName = 'ConversationRow';
 
 export default ConversationRow;

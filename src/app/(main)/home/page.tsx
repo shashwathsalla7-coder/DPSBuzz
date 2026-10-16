@@ -74,7 +74,7 @@ function HomeContent() {
   const [followsVersion, setFollowsVersion] = useState(0);
 
   // Comments map with localStorage persistence
-  const [commentsMap, setCommentsMap] = useState<Record<string, Array<{ id: string; username: string; text: string; timeAgo: string; image?: string }>>>(() => {
+  const [commentsMap, setCommentsMap] = useState<Record<string, Array<{ id: string; username: string; text: string; timeAgo: string; image?: string; avatar?: string | null }>>>(() => {
     if (typeof window !== 'undefined') {
       try {
         const saved = localStorage.getItem('dpsbuzz_comments_v1');

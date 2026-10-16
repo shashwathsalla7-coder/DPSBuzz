@@ -14,7 +14,7 @@ export interface ChatsHeaderProps {
  * - Title "Chats" in the display font (800) on the left.
  * - On the right a compose icon (pencil in a square) and a Create Group icon.
  */
-export const ChatsHeader: React.FC<ChatsHeaderProps> = ({
+export const ChatsHeader: React.FC<ChatsHeaderProps> = React.memo(({
   onComposeClick,
   onCreateGroupClick,
   onOpenGames,
@@ -85,6 +85,8 @@ export const ChatsHeader: React.FC<ChatsHeaderProps> = ({
       </div>
     </header>
   );
-};
+});
+
+ChatsHeader.displayName = 'ChatsHeader';
 
 export default ChatsHeader;

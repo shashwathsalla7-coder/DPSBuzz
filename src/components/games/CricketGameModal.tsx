@@ -129,8 +129,15 @@ function ConfettiCanvas() {
       rotationSpeed: (Math.random() - 0.5) * 8,
     }));
 
+    let frameCount = 0;
+    const maxFrames = 260; // ~4.3 seconds at 60fps
+
     const render = () => {
+      frameCount++;
       ctx.clearRect(0, 0, width, height);
+
+      const opacity = frameCount > 200 ? Math.max(0, (maxFrames - frameCount) / 60) : 1;
+      ctx.globalAlpha = opacity;
 
       particles.forEach((p) => {
         p.y += p.speedY;
@@ -144,13 +151,17 @@ function ConfettiCanvas() {
         ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
         ctx.restore();
 
-        if (p.y > height) {
+        if (p.y > height && frameCount < 180) {
           p.y = -20;
           p.x = Math.random() * width;
         }
       });
 
-      animationFrameId = requestAnimationFrame(render);
+      if (frameCount < maxFrames) {
+        animationFrameId = requestAnimationFrame(render);
+      } else {
+        ctx.clearRect(0, 0, width, height);
+      }
     };
 
     render();
@@ -199,6 +210,8 @@ export function CricketGameModal({
   const timelineEndRef = useRef<HTMLDivElement | null>(null);
   const prevTurnRef = useRef<string | null>(null);
   const prevStatusRef = useRef<string | null>(null);
+  const sessionRef = useRef<CricketGameSession | null>(null);
+  sessionRef.current = session;
 
   const cleanUser = currentUsername.toLowerCase().trim();
 
@@ -245,8 +258,11 @@ export function CricketGameModal({
 
     fetchSession(false);
 
-    // Poll every 1.5s for live multiplayer state synchronization
+    // Poll every 1.5s for live multiplayer state synchronization while match is active
     const timer = setInterval(() => {
+      if (sessionRef.current?.status === 'completed' || sessionRef.current?.status === 'abandoned' || sessionRef.current?.status === 'declined') {
+        return;
+      }
       fetchSession(true);
     }, 1500);
 

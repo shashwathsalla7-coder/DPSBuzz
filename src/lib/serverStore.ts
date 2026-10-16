@@ -932,7 +932,7 @@ export async function findUserActiveCall(username: string): Promise<CallSession 
           return call;
         } else {
           // Stale pointer cleanup
-          supabase.from('app_settings').delete().eq('key', `call_user_${clean}`).then(() => {}).catch(() => {});
+          Promise.resolve(supabase.from('app_settings').delete().eq('key', `call_user_${clean}`)).catch(() => {});
         }
       }
     }

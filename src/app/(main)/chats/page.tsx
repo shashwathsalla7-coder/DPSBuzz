@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect, useRef, Suspense } from 'react';
+import React, { useState, useMemo, useEffect, useRef, Suspense, useCallback, startTransition } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import {
@@ -68,6 +68,7 @@ interface ChatMessage {
   text: string;
   sender: 'me' | 'them';
   senderUsername?: string;
+  senderName?: string;
   time: string;
   reaction?: string;
   isCallLog?: boolean;
@@ -1611,32 +1612,34 @@ function ChatsContent() {
   };
 
   const openConversation = (conv: ConversationItem) => {
-    const target = (conv.username || conv.id.replace(/^conv-/, '')).toLowerCase().trim();
-    const isIncomingReq =
-      !conv.isGroup &&
-      target &&
-      DataStore.getInboxTier(currentUsername, target) === 'REQUESTS';
+    startTransition(() => {
+      const target = (conv.username || conv.id.replace(/^conv-/, '')).toLowerCase().trim();
+      const isIncomingReq =
+        !conv.isGroup &&
+        target &&
+        DataStore.getInboxTier(currentUsername, target) === 'REQUESTS';
 
-    // Anonymity (Invisible Reads): Opening/reading a message request never emits seen or clears unread
-    if (isIncomingReq) {
-      setActiveConversation(conv);
-      return;
-    }
+      // Anonymity (Invisible Reads): Opening/reading a message request never emits seen or clears unread
+      if (isIncomingReq) {
+        setActiveConversation(conv);
+        return;
+      }
 
-    const readConv = { ...conv, isUnread: false, unreadCount: 0 };
-    setActiveConversation(readConv);
-    setConversations((prev) => {
-      const updated = prev.map((c) =>
-        c.id === conv.id || (c.username && c.username.toLowerCase() === conv.username?.toLowerCase())
-          ? { ...c, isUnread: false, unreadCount: 0 }
-          : c
-      );
-      try {
-        if (currentUsername && currentUsername !== 'guest') {
-          localStorage.setItem(`dpsbuzz_chat_conversations_${currentUsername}_v3`, JSON.stringify(updated));
-        }
-      } catch {}
-      return updated;
+      const readConv = { ...conv, isUnread: false, unreadCount: 0 };
+      setActiveConversation(readConv);
+      setConversations((prev) => {
+        const updated = prev.map((c) =>
+          c.id === conv.id || (c.username && c.username.toLowerCase() === conv.username?.toLowerCase())
+            ? { ...c, isUnread: false, unreadCount: 0 }
+            : c
+        );
+        try {
+          if (currentUsername && currentUsername !== 'guest') {
+            localStorage.setItem(`dpsbuzz_chat_conversations_${currentUsername}_v3`, JSON.stringify(updated));
+          }
+        } catch {}
+        return updated;
+      });
     });
   };
 
@@ -1842,10 +1845,31 @@ function ChatsContent() {
     };
   }, [isVanishPulling, vanishPullDistance]);
 
-  const handleCloseActiveChat = () => {
-    setActiveConversation(null);
-    setIsGameDrawerOpen(false);
-  };
+  const handleCloseActiveChat = useCallback(() => {
+    startTransition(() => {
+      setActiveConversation(null);
+      setIsGameDrawerOpen(false);
+    });
+  }, []);
+
+  const handleComposeClick = useCallback(() => {
+    setIsNewChatOpen(true);
+  }, []);
+
+  const handleCreateGroupClick = useCallback(() => {
+    setIsCreateGroupOpen(true);
+  }, []);
+
+  const handleOpenGamesClick = useCallback(() => {
+    setLeaderboardDefaultTab('leaderboard');
+    setIsLeaderboardModalOpen(true);
+  }, []);
+
+  const handleSelectChip = useCallback((chip: 'all' | 'groups' | 'requests') => {
+    startTransition(() => {
+      setActiveChip(chip);
+    });
+  }, []);
 
   const handleAcceptRequestFromSandbox = (targetUser: string) => {
     const cleanTarget = targetUser.toLowerCase().trim();
@@ -4115,12 +4139,9 @@ function ChatsContent() {
 
       {/* 1. Header (56px): "Chats" (display 800) on left, compose icon on right */}
       <ChatsHeader
-        onComposeClick={() => setIsNewChatOpen(true)}
-        onCreateGroupClick={() => setIsCreateGroupOpen(true)}
-        onOpenGames={() => {
-          setLeaderboardDefaultTab('leaderboard');
-          setIsLeaderboardModalOpen(true);
-        }}
+        onComposeClick={handleComposeClick}
+        onCreateGroupClick={handleCreateGroupClick}
+        onOpenGames={handleOpenGamesClick}
       />
 
       {/* 2. Search Field (48px sunken, pill radius) */}
@@ -4138,7 +4159,7 @@ function ChatsContent() {
       <div className="px-4 py-2 border-b flex items-center gap-2 overflow-x-auto no-scrollbar" style={{ borderColor: 'var(--line)' }}>
         <button
           type="button"
-          onClick={() => setActiveChip('all')}
+          onClick={() => handleSelectChip('all')}
           className={`h-9 px-4 rounded-full text-xs font-semibold cursor-pointer transition-all active:scale-95 ${
             activeChip === 'all'
               ? 'bg-[var(--primary)] text-[var(--on-primary)] shadow-xs'
@@ -4151,7 +4172,7 @@ function ChatsContent() {
 
         <button
           type="button"
-          onClick={() => setActiveChip('groups')}
+          onClick={() => handleSelectChip('groups')}
           className={`h-9 px-4 rounded-full text-xs font-semibold cursor-pointer transition-all active:scale-95 flex items-center gap-1.5 ${
             activeChip === 'groups'
               ? 'bg-[var(--primary)] text-[var(--on-primary)] shadow-xs'
@@ -4175,7 +4196,7 @@ function ChatsContent() {
 
         <button
           type="button"
-          onClick={() => setActiveChip('requests')}
+          onClick={() => handleSelectChip('requests')}
           className={`h-9 px-4 rounded-full text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 ${
             activeChip === 'requests'
               ? 'bg-[var(--primary)] text-[var(--on-primary)] shadow-xs'
@@ -4732,8 +4753,8 @@ function ChatsContent() {
       <CricketGameDrawer
         isOpen={isGameDrawerOpen}
         onClose={() => setIsGameDrawerOpen(false)}
-        opponentUsername={activeConversation?.username || ''}
-        opponentName={activeConversation?.name || ''}
+        opponentUsername={(activeConversation as ConversationItem | null)?.username || ''}
+        opponentName={(activeConversation as ConversationItem | null)?.name || ''}
         onSendChallenge={handleSendGameChallenge}
         onOpenLeaderboard={(tab) => {
           setLeaderboardDefaultTab(tab || 'leaderboard');
