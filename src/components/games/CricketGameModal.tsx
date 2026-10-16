@@ -19,9 +19,18 @@ import {
   Flame,
   Award,
   ChevronRight,
+  ChevronLeft,
   ShieldAlert,
 } from 'lucide-react';
-import { CRICKETERS, getCricketerById, searchCricketers, SUGGESTED_QUESTIONS, Cricketer } from '@/data/cricketers';
+import {
+  CRICKETERS,
+  getCricketerById,
+  searchCricketers,
+  searchCricketersPaginated,
+  SUGGESTED_QUESTIONS,
+  Cricketer,
+} from '@/data/cricketers';
+import { CricketAvatar } from '@/components/games/CricketAvatar';
 import type {
   CricketGameSession,
   AnswerType,
@@ -173,6 +182,8 @@ export function CricketGameModal({
   // Selection stage states
   const [selectorSearch, setSelectorSearch] = useState('');
   const [selectorRole, setSelectorRole] = useState('All');
+  const [selectorCountry, setSelectorCountry] = useState('All');
+  const [selectorPage, setSelectorPage] = useState(1);
   const [selectedCricketerId, setSelectedCricketerId] = useState<string | null>(null);
   const [isSubmittingSelection, setIsSubmittingSelection] = useState(false);
 
@@ -263,7 +274,9 @@ export function CricketGameModal({
   const mySecretCricketer = me?.selectedCricketerId ? getCricketerById(me.selectedCricketerId) : null;
 
   // Filtered lists for selector
-  const selectorCricketers = searchCricketers(selectorSearch, selectorRole);
+  const paginatedSelector = useMemo(() => {
+    return searchCricketersPaginated(selectorSearch, selectorRole, selectorCountry, selectorPage, 18);
+  }, [selectorSearch, selectorRole, selectorCountry, selectorPage]);
   const guessCricketers = searchCricketers(guessSearch);
 
   // --- ACTIONS ---
@@ -578,12 +591,15 @@ export function CricketGameModal({
                 {/* Sub-strip: My Secret Preview Reminder */}
                 {session.status === 'in_progress' && mySecretCricketer && (
                   <div className="mt-2 pt-2 border-t border-purple-500/10 flex items-center justify-between text-[11px]">
-                    <div className="flex items-center gap-1.5 text-purple-200/90 font-medium">
-                      <Lock size={12} className="text-emerald-400" />
-                      <span>Your Secret:</span>
-                      <strong className="text-emerald-300 font-bold">
-                        {mySecretCricketer.name} ({mySecretCricketer.iplTeam}, #{mySecretCricketer.jerseyNumber})
-                      </strong>
+                    <div className="flex items-center gap-2 text-purple-200/90 font-medium">
+                      <CricketAvatar cricketer={mySecretCricketer} size="xs" />
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <Lock size={12} className="text-emerald-400" />
+                        <span>Your Secret:</span>
+                        <strong className="text-emerald-300 font-bold">
+                          {mySecretCricketer.name} ({mySecretCricketer.iplTeam}, #{mySecretCricketer.jerseyNumber})
+                        </strong>
+                      </div>
                     </div>
 
                     <button
@@ -649,7 +665,7 @@ export function CricketGameModal({
                     </div>
 
                     {/* Filter & Search Bar */}
-                    <div className="space-y-2">
+                    <div className="space-y-2.5">
                       <div className="relative">
                         <Search
                           size={16}
@@ -658,28 +674,45 @@ export function CricketGameModal({
                         <input
                           type="text"
                           value={selectorSearch}
-                          onChange={(e) => setSelectorSearch(e.target.value)}
-                          placeholder="Search 60+ cricketers by name, IPL team, role, jersey #..."
-                          className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-purple-950/30 border border-purple-500/20 text-xs sm:text-sm text-white placeholder-purple-300/40 focus:outline-none focus:border-pink-500"
+                          onChange={(e) => {
+                            setSelectorSearch(e.target.value);
+                            setSelectorPage(1);
+                          }}
+                          placeholder="Search 200+ cricketers by name, country, IPL team, role, jersey #..."
+                          className="w-full pl-10 pr-20 py-2.5 rounded-xl bg-purple-950/30 border border-purple-500/20 text-xs sm:text-sm text-white placeholder-purple-300/40 focus:outline-none focus:border-pink-500"
                         />
-                        {selectorSearch && (
-                          <button
-                            type="button"
-                            onClick={() => setSelectorSearch('')}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 hover:text-white"
-                          >
-                            <X size={14} />
-                          </button>
-                        )}
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+                          {selectorSearch && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectorSearch('');
+                                setSelectorPage(1);
+                              }}
+                              className="text-white/50 hover:text-white p-0.5"
+                            >
+                              <X size={14} />
+                            </button>
+                          )}
+                          <span className="text-[10px] font-semibold text-purple-300/70 bg-purple-900/40 px-2 py-0.5 rounded-md border border-purple-500/20">
+                            {paginatedSelector.total}
+                          </span>
+                        </div>
                       </div>
 
                       {/* Role Pills */}
-                      <div className="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs">
+                      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs">
+                        <span className="text-[10px] text-purple-400 font-bold uppercase tracking-wider shrink-0 mr-0.5">
+                          Role:
+                        </span>
                         {['All', 'Batsman', 'Bowler', 'All-rounder', 'Wicketkeeper'].map((role) => (
                           <button
                             key={role}
                             type="button"
-                            onClick={() => setSelectorRole(role)}
+                            onClick={() => {
+                              setSelectorRole(role);
+                              setSelectorPage(1);
+                            }}
                             className={`px-3 py-1 rounded-lg font-semibold shrink-0 transition-all cursor-pointer ${
                               selectorRole === role
                                 ? 'bg-pink-600 text-white shadow-xs'
@@ -690,43 +723,119 @@ export function CricketGameModal({
                           </button>
                         ))}
                       </div>
-                    </div>
 
-                    {/* Cricketer Grid */}
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-[320px] overflow-y-auto pr-1">
-                      {selectorCricketers.map((c) => {
-                        const isSelected = selectedCricketerId === c.id;
-                        return (
-                          <div
-                            key={c.id}
-                            onClick={() => setSelectedCricketerId(c.id)}
-                            className={`p-3 rounded-2xl border text-left cursor-pointer transition-all ${
-                              isSelected
-                                ? 'bg-gradient-to-br from-pink-900/80 to-purple-900/80 border-pink-400 shadow-md ring-2 ring-pink-500/50'
-                                : 'bg-purple-950/20 hover:bg-purple-950/50 border-purple-500/15'
+                      {/* Country Pills */}
+                      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs">
+                        <span className="text-[10px] text-purple-400 font-bold uppercase tracking-wider shrink-0 mr-0.5">
+                          Country:
+                        </span>
+                        {[
+                          'All',
+                          'India',
+                          'Australia',
+                          'England',
+                          'South Africa',
+                          'West Indies',
+                          'New Zealand',
+                          'Pakistan',
+                          'Sri Lanka',
+                          'Afghanistan',
+                          'Bangladesh',
+                        ].map((country) => (
+                          <button
+                            key={country}
+                            type="button"
+                            onClick={() => {
+                              setSelectorCountry(country);
+                              setSelectorPage(1);
+                            }}
+                            className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold shrink-0 transition-all cursor-pointer ${
+                              selectorCountry === country
+                                ? 'bg-purple-600 text-white shadow-xs'
+                                : 'bg-white/5 hover:bg-white/10 text-purple-200/70'
                             }`}
                           >
-                            <div className="flex items-start justify-between">
-                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-white/10 text-pink-300">
-                                #{c.jerseyNumber}
-                              </span>
-                              <span className="text-[10px] text-purple-300/80 font-medium">
-                                {c.iplTeam}
-                              </span>
-                            </div>
-                            <h4 className="text-xs font-bold text-white mt-1.5 truncate">
-                              {c.name}
-                            </h4>
-                            <p className="text-[10px] text-purple-200/70 truncate">
-                              {c.role} • {c.country}
-                            </p>
-                            <p className="text-[9px] text-purple-300/60 mt-1 line-clamp-1 italic">
-                              {c.hint}
-                            </p>
-                          </div>
-                        );
-                      })}
+                            {country}
+                          </button>
+                        ))}
+                      </div>
                     </div>
+
+                    {/* Cricketer Grid with lazy avatars and attribution */}
+                    {paginatedSelector.items.length === 0 ? (
+                      <div className="p-8 text-center text-xs text-purple-300/60 rounded-2xl bg-purple-950/20 border border-purple-500/10">
+                        No cricketers found matching &ldquo;{selectorSearch}&rdquo;. Try another filter or search term.
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 max-h-[340px] overflow-y-auto pr-1">
+                        {paginatedSelector.items.map((c) => {
+                          const isSelected = selectedCricketerId === c.id;
+                          return (
+                            <div
+                              key={c.id}
+                              onClick={() => setSelectedCricketerId(c.id)}
+                              className={`p-2.5 rounded-2xl border text-left cursor-pointer transition-all flex items-center gap-2.5 ${
+                                isSelected
+                                  ? 'bg-gradient-to-br from-pink-900/80 to-purple-900/80 border-pink-400 shadow-md ring-2 ring-pink-500/50'
+                                  : 'bg-purple-950/20 hover:bg-purple-950/50 border-purple-500/15'
+                              }`}
+                            >
+                              <CricketAvatar cricketer={c} size="md" showAttribution />
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center justify-between gap-1">
+                                  <h4 className="text-xs font-bold text-white truncate">
+                                    {c.name}
+                                  </h4>
+                                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-white/10 text-pink-300 shrink-0">
+                                    #{c.jerseyNumber}
+                                  </span>
+                                </div>
+                                <p className="text-[10px] text-purple-200/80 truncate">
+                                  {c.role} • {c.country}
+                                </p>
+                                <div className="flex items-center gap-1.5 mt-0.5 text-[9px] text-purple-300/70">
+                                  <span className="px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-200 font-semibold truncate max-w-[85px]">
+                                    {c.iplTeam}
+                                  </span>
+                                  <span className="truncate">{c.era}</span>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {/* Pagination Controls */}
+                    {paginatedSelector.totalPages > 1 && (
+                      <div className="flex items-center justify-between pt-1 px-1 text-xs">
+                        <button
+                          type="button"
+                          disabled={paginatedSelector.currentPage <= 1}
+                          onClick={() => setSelectorPage((p) => Math.max(1, p - 1))}
+                          className="px-3 py-1.5 rounded-xl bg-purple-950/40 hover:bg-purple-900/50 disabled:opacity-30 disabled:cursor-not-allowed border border-purple-500/20 text-white font-semibold flex items-center gap-1 transition-all cursor-pointer"
+                        >
+                          <ChevronLeft size={14} />
+                          <span>Prev</span>
+                        </button>
+
+                        <span className="text-[11px] font-medium text-purple-300">
+                          Page <strong className="text-white font-bold">{paginatedSelector.currentPage}</strong> of{' '}
+                          <strong className="text-white font-bold">{paginatedSelector.totalPages}</strong>{' '}
+                          <span className="text-purple-400">({paginatedSelector.total} players)</span>
+                        </span>
+
+                        <button
+                          type="button"
+                          disabled={paginatedSelector.currentPage >= paginatedSelector.totalPages}
+                          onClick={() => setSelectorPage((p) => Math.min(paginatedSelector.totalPages, p + 1))}
+                          className="px-3 py-1.5 rounded-xl bg-purple-950/40 hover:bg-purple-900/50 disabled:opacity-30 disabled:cursor-not-allowed border border-purple-500/20 text-white font-semibold flex items-center gap-1 transition-all cursor-pointer"
+                        >
+                          <span>Next</span>
+                          <ChevronRight size={14} />
+                        </button>
+                      </div>
+                    )}
 
                     {/* Lock in Button Bar */}
                     <div className="pt-2">
@@ -1036,7 +1145,7 @@ export function CricketGameModal({
                             />
                           </div>
 
-                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-24 overflow-y-auto pr-1">
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-32 overflow-y-auto pr-1">
                             {guessCricketers.map((c) => {
                               const isSelected = selectedGuessId === c.id;
                               return (
@@ -1044,16 +1153,19 @@ export function CricketGameModal({
                                   key={c.id}
                                   type="button"
                                   onClick={() => setSelectedGuessId(c.id)}
-                                  className={`p-1.5 rounded-xl border text-left cursor-pointer transition-all ${
+                                  className={`p-1.5 rounded-xl border text-left cursor-pointer transition-all flex items-center gap-2 ${
                                     isSelected
                                       ? 'bg-amber-600/40 border-amber-400 text-white shadow-xs'
                                       : 'bg-purple-950/20 hover:bg-purple-950/40 border-purple-500/15 text-purple-200'
                                   }`}
                                 >
-                                  <p className="text-xs font-bold truncate">{c.name}</p>
-                                  <p className="text-[9px] text-purple-300/70 truncate">
-                                    {c.iplTeam} • #{c.jerseyNumber}
-                                  </p>
+                                  <CricketAvatar cricketer={c} size="xs" />
+                                  <div className="min-w-0 flex-1">
+                                    <p className="text-xs font-bold truncate">{c.name}</p>
+                                    <p className="text-[9px] text-purple-300/70 truncate">
+                                      {c.iplTeam} • #{c.jerseyNumber}
+                                    </p>
+                                  </div>
                                 </button>
                               );
                             })}
@@ -1118,20 +1230,47 @@ export function CricketGameModal({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 text-left">
                   {/* Player 1 Secret */}
                   {session.revealedPlayer1Cricketer && (
-                    <div className="p-3.5 rounded-2xl bg-gradient-to-br from-purple-950/60 to-indigo-950/60 border border-purple-500/30 space-y-1.5">
-                      <span className="text-[10px] text-purple-300 uppercase tracking-wider font-bold">
-                        @{session.player1.username}&apos;s Secret
-                      </span>
-                      <h4 className="text-sm font-extrabold text-white flex items-center gap-1.5">
-                        <span>{session.revealedPlayer1Cricketer.name}</span>
-                        <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-white/10 text-pink-300">
+                    <div className="p-4 rounded-2xl bg-gradient-to-br from-purple-950/70 to-indigo-950/70 border border-purple-500/30 space-y-2.5">
+                      <div className="flex items-center justify-between pb-1 border-b border-white/10">
+                        <span className="text-[10px] text-purple-300 uppercase tracking-wider font-bold">
+                          @{session.player1.username}&apos;s Secret
+                        </span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-white/10 text-pink-300 font-bold">
                           #{session.revealedPlayer1Cricketer.jerseyNumber}
                         </span>
-                      </h4>
-                      <p className="text-xs text-purple-200/80">
-                        {session.revealedPlayer1Cricketer.role} • {session.revealedPlayer1Cricketer.iplTeam}
-                      </p>
-                      <p className="text-[10px] text-purple-300/70 italic">
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <CricketAvatar
+                          cricketer={session.revealedPlayer1Cricketer}
+                          size="xl"
+                          showAttribution
+                          className="shrink-0"
+                        />
+                        <div className="min-w-0 flex-1 space-y-1">
+                          <h4 className="text-sm font-extrabold text-white truncate">
+                            {session.revealedPlayer1Cricketer.name}
+                          </h4>
+                          <p className="text-xs text-purple-200/90 truncate">
+                            {session.revealedPlayer1Cricketer.role} • {session.revealedPlayer1Cricketer.country}
+                          </p>
+                          <div className="flex items-center gap-1.5 flex-wrap text-[10px]">
+                            <span className="px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-200 font-semibold">
+                              {session.revealedPlayer1Cricketer.iplTeam}
+                            </span>
+                            <span className="text-purple-300/80">
+                              {session.revealedPlayer1Cricketer.era}
+                            </span>
+                            {session.revealedPlayer1Cricketer.worldCupWinner && (
+                              <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-semibold border border-amber-500/30">
+                                🏆 WC Winner
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <p className="text-[10px] text-purple-200/80 italic bg-black/20 p-2 rounded-xl border border-white/5">
                         &ldquo;{session.revealedPlayer1Cricketer.hint}&rdquo;
                       </p>
                     </div>
@@ -1139,20 +1278,47 @@ export function CricketGameModal({
 
                   {/* Player 2 Secret */}
                   {session.revealedPlayer2Cricketer && (
-                    <div className="p-3.5 rounded-2xl bg-gradient-to-br from-purple-950/60 to-pink-950/60 border border-pink-500/30 space-y-1.5">
-                      <span className="text-[10px] text-pink-300 uppercase tracking-wider font-bold">
-                        @{session.player2.username}&apos;s Secret
-                      </span>
-                      <h4 className="text-sm font-extrabold text-white flex items-center gap-1.5">
-                        <span>{session.revealedPlayer2Cricketer.name}</span>
-                        <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-white/10 text-pink-300">
+                    <div className="p-4 rounded-2xl bg-gradient-to-br from-purple-950/70 to-pink-950/70 border border-pink-500/30 space-y-2.5">
+                      <div className="flex items-center justify-between pb-1 border-b border-white/10">
+                        <span className="text-[10px] text-pink-300 uppercase tracking-wider font-bold">
+                          @{session.player2.username}&apos;s Secret
+                        </span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-white/10 text-pink-300 font-bold">
                           #{session.revealedPlayer2Cricketer.jerseyNumber}
                         </span>
-                      </h4>
-                      <p className="text-xs text-purple-200/80">
-                        {session.revealedPlayer2Cricketer.role} • {session.revealedPlayer2Cricketer.iplTeam}
-                      </p>
-                      <p className="text-[10px] text-purple-300/70 italic">
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <CricketAvatar
+                          cricketer={session.revealedPlayer2Cricketer}
+                          size="xl"
+                          showAttribution
+                          className="shrink-0"
+                        />
+                        <div className="min-w-0 flex-1 space-y-1">
+                          <h4 className="text-sm font-extrabold text-white truncate">
+                            {session.revealedPlayer2Cricketer.name}
+                          </h4>
+                          <p className="text-xs text-purple-200/90 truncate">
+                            {session.revealedPlayer2Cricketer.role} • {session.revealedPlayer2Cricketer.country}
+                          </p>
+                          <div className="flex items-center gap-1.5 flex-wrap text-[10px]">
+                            <span className="px-1.5 py-0.5 rounded bg-pink-500/20 text-pink-200 font-semibold">
+                              {session.revealedPlayer2Cricketer.iplTeam}
+                            </span>
+                            <span className="text-purple-300/80">
+                              {session.revealedPlayer2Cricketer.era}
+                            </span>
+                            {session.revealedPlayer2Cricketer.worldCupWinner && (
+                              <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-semibold border border-amber-500/30">
+                                🏆 WC Winner
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <p className="text-[10px] text-purple-200/80 italic bg-black/20 p-2 rounded-xl border border-white/5">
                         &ldquo;{session.revealedPlayer2Cricketer.hint}&rdquo;
                       </p>
                     </div>
