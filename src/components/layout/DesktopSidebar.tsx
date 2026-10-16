@@ -32,19 +32,8 @@ export const DesktopSidebar: FC = () => {
     const updateStats = () => {
       const cur = DataStore.getCurrentUser();
       setIsAdmin(cur?.username?.toLowerCase() === 'shashwath71845');
-
-      const notifs = DataStore.getNotifications();
-      setUnreadNotifsCount(notifs.filter((n) => !n.isRead).length);
-
-      try {
-        const u = cur?.username?.toLowerCase().trim();
-        const convKey = u && u !== 'guest' ? `dpsbuzz_chat_conversations_${u}_v3` : null;
-        const convs = convKey ? JSON.parse(localStorage.getItem(convKey) || '[]') : [];
-        const count = convs.filter((c: any) => c.isUnread || (c.unreadCount || 0) > 0).length;
-        setUnreadChatsCount(count);
-      } catch {
-        setUnreadChatsCount(0);
-      }
+      setUnreadNotifsCount(DataStore.getUnreadNotificationCount(cur?.username));
+      setUnreadChatsCount(DataStore.getUnreadChatsCount(cur?.username));
     };
 
     updateStats();

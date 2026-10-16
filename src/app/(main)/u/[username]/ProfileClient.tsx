@@ -1023,7 +1023,7 @@ export default function ProfileClient({ username }: { username: string }) {
           <div className="flex-1 flex items-center justify-around text-center select-none tabular-nums">
             <div className="cursor-pointer" onClick={() => setActiveTab('posts')}>
               <div className="text-base font-bold leading-tight" style={{ color: 'var(--text)' }}>
-                {userPosts.length}
+                {originalPosts.length}
               </div>
               <div className="text-[12px] lowercase font-normal" style={{ color: 'var(--text-muted)' }}>
                 posts

@@ -181,7 +181,7 @@ export default function LeaderboardPage() {
       .map((p) => {
         const u = p.username.toLowerCase().trim();
         const userPosts = posts.filter(
-          (post) => post && post.username && post.username.toLowerCase().trim() === u
+          (post) => post && post.username && post.username.toLowerCase().trim() === u && !post.isRepost
         );
         const realPostCount = userPosts.length;
         const totalViews = userPosts.reduce((acc, post) => acc + (post.views || 0), 0);
