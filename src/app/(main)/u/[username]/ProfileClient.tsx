@@ -43,6 +43,7 @@ import StreakTierLadder from '@/components/mascot/StreakTierLadder';
 import { MusicTrackPill } from '@/components/music/MusicTrackPill';
 import { SongPickerModal } from '@/components/music/SongPickerModal';
 import { getClassSections } from '@/config/school';
+import { SharePostModal } from '@/components/home/SharePostModal';
 
 export default function ProfileClient({ username }: { username: string }) {
   const initialProfile = useMemo(() => {
@@ -142,6 +143,7 @@ export default function ProfileClient({ username }: { username: string }) {
 
   // Post Detail & Repost Modals
   const [selectedPostDetail, setSelectedPostDetail] = useState<Post | null>(null);
+  const [postToShare, setPostToShare] = useState<Post | null>(null);
   const [showDetailRepostSheet, setShowDetailRepostSheet] = useState(false);
   const [showDetailComments, setShowDetailComments] = useState(false);
   const [detailCommentText, setDetailCommentText] = useState('');
@@ -2309,11 +2311,11 @@ export default function ProfileClient({ username }: { username: string }) {
                 <button
                   type="button"
                   onClick={() => {
-                    navigator.clipboard?.writeText(window.location.origin + `/u/${selectedPostDetail.username}`);
-                    showToast('Post link copied! 📋');
+                    setPostToShare(selectedPostDetail);
                   }}
                   className="p-1 text-xs font-semibold hover:text-[var(--primary)] transition-colors cursor-pointer"
                   style={{ color: 'var(--text-muted)' }}
+                  title="Share post to chat"
                 >
                   <Share2 size={18} />
                 </button>
@@ -3865,17 +3867,16 @@ export default function ProfileClient({ username }: { username: string }) {
               <button
                 type="button"
                 onClick={() => {
-                  if (typeof navigator !== 'undefined' && navigator.clipboard) {
-                    navigator.clipboard.writeText(`${window.location.origin}/u/${peekPost.username}?post=${peekPost.id}`);
-                  }
-                  showToast('Post link copied to clipboard! 📋✨');
+                  const target = peekPost;
+                  setPeekPost(null);
+                  setPostToShare(target);
                 }}
                 className="w-full px-4 py-3 flex items-center gap-3 text-left text-xs font-semibold hover:bg-[var(--surface-sunken)] transition-colors cursor-pointer text-[var(--text)] group"
               >
                 <Share2 size={18} className="text-[var(--text-muted)] group-hover:text-emerald-500 transition-colors shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <span>Share</span>
-                  <p className="text-[10px] font-normal text-[var(--text-muted)]">Copy shareable link</p>
+                  <span>Share to Chat</span>
+                  <p className="text-[10px] font-normal text-[var(--text-muted)]">Send directly to a friend in chat</p>
                 </div>
               </button>
 
@@ -4089,6 +4090,13 @@ export default function ProfileClient({ username }: { username: string }) {
           </div>
         </div>
       )}
+
+      {/* Share Post Sheet */}
+      <SharePostModal
+        isOpen={Boolean(postToShare)}
+        onClose={() => setPostToShare(null)}
+        post={postToShare}
+      />
     </div>
   );
 }

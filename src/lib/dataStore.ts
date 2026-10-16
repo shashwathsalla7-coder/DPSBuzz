@@ -5890,8 +5890,8 @@ export const DataStore = {
   },
 
   // Share post to chat with friends
-  sharePostToChat(post: Post, targetUsernames: string[], senderUsername?: string): void {
-    if (!targetUsernames.length || typeof window === 'undefined') return;
+  sharePostToChat(post: Post, targetUsernames: string[], senderUsername?: string, optionalMessage?: string): { success: boolean; count: number } {
+    if (!targetUsernames || !targetUsernames.length || typeof window === 'undefined') return { success: false, count: 0 };
     const cur = (senderUsername || this.getCurrentUser().username).toLowerCase().trim();
 
     try {
@@ -5908,28 +5908,43 @@ export const DataStore = {
           ? post.caption.slice(0, 50) + '...'
           : post.caption
         : 'Photo moment';
-      const previewText = `Shared @${post.username}'s post: "${captionSnippet}" 📸`;
+      const hasCustomMsg = Boolean(optionalMessage && optionalMessage.trim());
+      const customMsg = optionalMessage?.trim() || '';
+      const previewText = customMsg || `Shared a post 📸`;
       const timeNow = 'Just now';
       const timeStr = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date());
 
+      const postImageUrl =
+        post.imageUrl ||
+        (post.images && post.images.length > 0 ? post.images[0] : null) ||
+        (post.postImages && post.postImages.length > 0 ? post.postImages[0].url : null) ||
+        null;
+
       targetUsernames.forEach((tUser) => {
         const cleanT = tUser.toLowerCase().trim();
+        if (!cleanT || cleanT === cur) return;
+
         const convId = `conv-${cleanT}`;
         const canonicalId = [cur, cleanT].sort().join('__');
         const targetProf = profiles.find((p) => (p.username || '').toLowerCase() === cleanT);
         const targetName = targetProf ? targetProf.fullName : tUser;
 
-        const existingIdx = storedConv.findIndex((c: any) => (c.username || '').toLowerCase() === cleanT || c.id === convId || c.id === canonicalId);
+        // 1. Update Sender's Conversations list
+        const existingIdx = storedConv.findIndex(
+          (c: any) => (c.username || '').toLowerCase() === cleanT || c.id === convId || c.id === canonicalId
+        );
+        const senderPreview = customMsg ? `You: ${customMsg}` : `You shared a post 📸`;
         if (existingIdx >= 0) {
-          storedConv[existingIdx].lastMessage = `You: ${previewText}`;
+          storedConv[existingIdx].lastMessage = senderPreview;
           storedConv[existingIdx].timeAgo = timeNow;
         } else {
           storedConv.unshift({
             id: convId,
             name: targetName,
             username: cleanT,
+            avatar: targetProf?.avatar || null,
             studentClass: targetProf?.class ? `${targetProf.class}-${targetProf.section || ''}` : '8-A',
-            lastMessage: `You: ${previewText}`,
+            lastMessage: senderPreview,
             timeAgo: timeNow,
             isUnread: false,
           });
@@ -5937,7 +5952,7 @@ export const DataStore = {
 
         const newMsg = {
           id: `msg-share-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-          text: previewText,
+          text: customMsg || `Shared a post 📸`,
           sender: 'me' as const,
           senderUsername: cur,
           senderName: senderName,
@@ -5946,15 +5961,63 @@ export const DataStore = {
           sharedPost: {
             id: post.id,
             username: post.username,
-            imageUrl: post.imageUrl || (post.images && post.images[0]) || null,
+            imageUrl: postImageUrl,
             caption: post.caption || '',
           },
         };
 
+        // 2. Update Sender's Message history
         storedMsgs[convId] = [...(storedMsgs[convId] || []), newMsg];
         storedMsgs[canonicalId] = [...(storedMsgs[canonicalId] || []), newMsg];
 
-        // Instant 0ms broadcast across all tabs and components
+        // 3. Update Recipient's local conversation & message store (for multi-account login on same browser)
+        try {
+          const targetConvKey = `dpsbuzz_chat_conversations_${cleanT}_v3`;
+          const targetMsgKey = `dpsbuzz_chat_messages_${cleanT}_v3`;
+          const recipientConv = JSON.parse(localStorage.getItem(targetConvKey) || '[]');
+          const recipientMsgs = JSON.parse(localStorage.getItem(targetMsgKey) || '{}');
+
+          const rConvId = `conv-${cur}`;
+          const rExistingIdx = recipientConv.findIndex(
+            (c: any) => (c.username || '').toLowerCase() === cur || c.id === rConvId || c.id === canonicalId
+          );
+          const incomingTier = this.getInboxTier(cleanT, cur);
+          const recipientPreview = customMsg ? `${senderName}: ${customMsg}` : `${senderName} shared a post 📸`;
+
+          if (rExistingIdx >= 0) {
+            recipientConv[rExistingIdx].lastMessage = recipientPreview;
+            recipientConv[rExistingIdx].timeAgo = timeNow;
+            recipientConv[rExistingIdx].isUnread = true;
+            recipientConv[rExistingIdx].unreadCount = (recipientConv[rExistingIdx].unreadCount || 0) + 1;
+            recipientConv[rExistingIdx].inboxTier = incomingTier;
+          } else {
+            recipientConv.unshift({
+              id: rConvId,
+              name: senderName,
+              username: cur,
+              avatar: curProfile?.avatar || null,
+              studentClass: curProfile?.class ? `${curProfile.class}-${curProfile.section || ''}` : 'Student',
+              lastMessage: recipientPreview,
+              timeAgo: timeNow,
+              inboxTier: incomingTier,
+              isUnread: true,
+              unreadCount: 1,
+            });
+          }
+
+          const recipientMsg = {
+            ...newMsg,
+            sender: 'other' as const,
+          };
+
+          recipientMsgs[rConvId] = [...(recipientMsgs[rConvId] || []), recipientMsg];
+          recipientMsgs[canonicalId] = [...(recipientMsgs[canonicalId] || []), recipientMsg];
+
+          localStorage.setItem(targetConvKey, JSON.stringify(recipientConv));
+          localStorage.setItem(targetMsgKey, JSON.stringify(recipientMsgs));
+        } catch {}
+
+        // 4. Instant 0ms broadcast across all tabs and components
         this.broadcastChatEvent({
           type: 'MESSAGE_SENT',
           conversationId: canonicalId,
@@ -5963,7 +6026,7 @@ export const DataStore = {
           recipientUsername: cleanT,
         });
 
-        // Sync to cloud chat store so recipient gets it over the cloud!
+        // 5. Sync to cloud chat store so recipient gets it over the cloud!
         fetch('/api/chats', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -5975,7 +6038,7 @@ export const DataStore = {
           }),
         }).catch((err) => console.warn('Failed to post shared post to cloud chat:', err));
 
-        // Create notification for target user
+        // 6. Create in-app notification for target user
         this.addNotification({
           userId: cleanT,
           type: 'chat',
@@ -5993,8 +6056,11 @@ export const DataStore = {
       window.dispatchEvent(
         new CustomEvent('dpsbuzz:content_updated', { detail: { type: 'post_shared_to_chat' } })
       );
+
+      return { success: true, count: targetUsernames.length };
     } catch (e) {
       console.error('Error sharing post to chat:', e);
+      return { success: false, count: 0 };
     }
   },
 
