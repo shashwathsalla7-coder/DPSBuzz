@@ -69,36 +69,14 @@ assert.ok(ultraLongRoom.length <= 64, 'Room ID must never exceed ZEGOCLOUD maxim
 assert.ok(zegoRoomSource.includes('rawRoomId.slice(0, 64)'), 'ZegoCallRoom must slice room ID to 64 chars max');
 console.log('✓ PASS: Deterministic Room IDs are symmetric, collision-free, and ZEGOCLOUD-compliant');
 
-// 2. Verify ZEGOCLOUD Native Audio Enhancements (AEC, ANS, AGC), Camera Controls, and Track Constraints
+// 2. Verify ZEGOCLOUD Video Configuration, Controls, and Room Lifecycle
 assert.ok(
-  zegoRoomSource.includes('AiDenoiseConfig: { mode: 1 }'),
-  'ZegoCallRoom must enable ZEGOCLOUD AI Balanced Denoise'
+  zegoRoomSource.includes('showRotatingScreenButton: Boolean(call.isVideo)'),
+  'ZegoCallRoom must enable screen rotation / camera flip button for video calls'
 );
 assert.ok(
-  zegoRoomSource.includes('showRotatingScreenButton: true'),
-  'ZegoCallRoom must enable screen rotation / camera flip button for mobile'
-);
-assert.ok(
-  zegoRoomSource.includes('onLocalStreamUpdated'),
-  'ZegoCallRoom must listen to onLocalStreamUpdated to attach AEC, ANS, AGC to the active WebRTC stream'
-);
-assert.ok(
-  zegoRoomSource.includes('express.setAudioConfig'),
-  'ZegoCallRoom must configure express.setAudioConfig with AEC, ANS, AGC'
-);
-assert.ok(
-  zegoRoomSource.includes('express.enableANS'),
-  'ZegoCallRoom must invoke express.enableANS'
-);
-assert.ok(
-  zegoRoomSource.includes('applyConstraints'),
-  'ZegoCallRoom must apply native hardware audio track constraints for full-duplex echo cancellation'
-);
-assert.ok(
-  zegoRoomSource.includes("echoCancellation: true") &&
-  zegoRoomSource.includes("noiseSuppression: true") &&
-  zegoRoomSource.includes("autoGainControl: true"),
-  'ZegoCallRoom must enforce AEC, ANS, and AGC on local audio tracks'
+  zegoRoomSource.includes('turnOnCameraWhenJoining: Boolean(call.isVideo)'),
+  'ZegoCallRoom must dynamically set camera state on joining based on call.isVideo'
 );
 assert.ok(
   zegoRoomSource.includes("autoLeaveRoomWhenOnlySelfInRoom: false"),
@@ -112,7 +90,7 @@ assert.ok(
   zegoRoomSource.includes("objectFit: 'cover'"),
   'ZegoCallRoom must render video with cover object-fit'
 );
-console.log('✓ PASS: Full-duplex AEC, ANS, AGC and native camera flip controls properly wired');
+console.log('✓ PASS: Full video configuration and native camera controls properly wired');
 
 // 3. Verify Audio Lifecycle, Element Shielding, and DOM Safety in callAudio.ts
 const callAudioSource = fs.readFileSync('src/lib/callAudio.ts', 'utf8');

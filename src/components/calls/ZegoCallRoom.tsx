@@ -113,6 +113,9 @@ export function ZegoCallRoom({ call, isCaller, onEndCall, onConnected }: ZegoCal
           container: containerRef.current,
           scenario: {
             mode: ZegoUIKitPrebuilt.OneONoneCall,
+            config: {
+              role: ZegoUIKitPrebuilt.Host,
+            },
           },
           showPreJoinView: false,
           turnOnMicrophoneWhenJoining: true,
@@ -127,11 +130,12 @@ export function ZegoCallRoom({ call, isCaller, onEndCall, onConnected }: ZegoCal
           showRotatingScreenButton: Boolean(call.isVideo),
           videoScreenConfig: {
             objectFit: 'cover',
+            localMirror: true,
+            pullStreamMirror: false,
           },
           showScreenSharingButton: false,
           showTextChat: false,
           showUserList: false,
-          maxUsers: 2,
           layout: 'Auto',
           showLayoutButton: false,
           showNonVideoUser: true,
@@ -280,7 +284,7 @@ export function ZegoCallRoom({ call, isCaller, onEndCall, onConnected }: ZegoCal
         onTouchStart={handleContainerInteraction}
         onClick={handleContainerInteraction}
         style={{ width: '100%', height: '100%', position: 'relative' }}
-        className="w-full h-full z-0 zego-uikit-prebuilt [&_.zego-uikit-prebuilt]:!h-full [&_.zego-uikit-prebuilt]:!w-full"
+        className="w-full h-full relative overflow-hidden z-0 zego-uikit-prebuilt"
       />
     </div>
   );

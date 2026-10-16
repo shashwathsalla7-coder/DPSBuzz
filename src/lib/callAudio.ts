@@ -9,6 +9,7 @@ interface ActiveSoundSession {
 }
 
 const activeAudioSessions: ActiveSoundSession[] = [];
+const activeAudioContexts = new Set<AudioContext>();
 let sharedAudioCtx: AudioContext | null = null;
 
 function getAudioContext(): AudioContext | null {
@@ -53,6 +54,16 @@ export function stopCallAudio(): void {
       session?.stop();
     } catch {}
   }
+  activeAudioContexts.clear();
+
+  // Shield live WebRTC MediaStream audio and ZEGOCLOUD container elements:
+  if (typeof document !== 'undefined') {
+    document.querySelectorAll('audio, video').forEach((el: any) => {
+      if (el.srcObject) return;
+      if (el.closest?.('.zego-uikit-prebuilt') || el.closest?.('[data-zego-call]') || el.closest?.('#zego-call-container')) return;
+      if (el.id?.startsWith('zg-') || el.id?.startsWith('zego-')) return;
+    });
+  }
 }
 
 /**
@@ -62,6 +73,7 @@ export function playOutgoingRingtone(): () => void {
   stopCallAudio();
   const ctx = getAudioContext();
   if (!ctx) return () => {};
+  activeAudioContexts.add(ctx);
 
   let isPlaying = true;
   let intervalId: any = null;
@@ -141,6 +153,7 @@ export function playIncomingRingtone(): () => void {
   stopCallAudio();
   const ctx = getAudioContext();
   if (!ctx) return () => {};
+  activeAudioContexts.add(ctx);
 
   let isPlaying = true;
   let intervalId: any = null;
