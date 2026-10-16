@@ -154,12 +154,13 @@ function ChatsContent() {
   const convParam = searchParams.get('conv');
   const groupParam = searchParams.get('group');
 
-  const [currentUser, setCurrentUser] = useState(() => DataStore.getCurrentUser());
+  const [isMounted, setIsMounted] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any | null>(null);
   const currentUsername = useMemo(() => {
     return (currentUser?.username || '').toLowerCase().trim();
   }, [currentUser]);
   const isAdminUser = currentUser?.role === 'admin' || currentUsername === 'shashwath71845';
-  const [isMaintenanceActive, setIsMaintenanceActive] = useState(() => !isAdminUser && DataStore.isMaintenanceActive());
+  const [isMaintenanceActive, setIsMaintenanceActive] = useState(false);
 
   const getCanonicalConvId = (conv: ConversationItem): string => {
     const isGroup = Boolean(
@@ -336,23 +337,38 @@ function ChatsContent() {
     viewParam === 'requests' ? 'requests' : viewParam === 'groups' ? 'groups' : 'all'
   );
   const [searchQuery, setSearchQuery] = useState('');
-  const [conversations, setConversations] = useState<ConversationItem[]>(() => {
-    if (typeof window !== 'undefined') {
+  const [conversations, setConversations] = useState<ConversationItem[]>(INITIAL_CONVERSATIONS);
+
+  // Hydrate client state from localStorage / DataStore once mounted (prevents SSR hydration mismatch)
+  useEffect(() => {
+    setIsMounted(true);
+    const u = DataStore.getCurrentUser();
+    setCurrentUser(u);
+    const uname = (u?.username || '').toLowerCase().trim();
+    const isAdmin = u?.role === 'admin' || uname === 'shashwath71845';
+    setIsMaintenanceActive(!isAdmin && DataStore.isMaintenanceActive());
+
+    if (uname && uname !== 'guest') {
       try {
-        const u = DataStore.getCurrentUser();
-        const uname = (u?.username || '').toLowerCase().trim();
-        if (uname && uname !== 'guest') {
-          const userConvKey = `dpsbuzz_chat_conversations_${uname}_v3`;
-          const saved = localStorage.getItem(userConvKey);
-          if (saved) {
-            const parsed: ConversationItem[] = JSON.parse(saved);
-            return parsed.filter((c) => !c.username || !DUMMY_TEST_USERNAMES.has(c.username.toLowerCase()));
-          }
+        const userConvKey = `dpsbuzz_chat_conversations_${uname}_v3`;
+        const savedConv = localStorage.getItem(userConvKey);
+        if (savedConv) {
+          const parsed: ConversationItem[] = JSON.parse(savedConv);
+          setConversations(parsed.filter((c) => !c.username || !DUMMY_TEST_USERNAMES.has(c.username.toLowerCase())));
+        }
+        const userMsgKey = `dpsbuzz_chat_messages_${uname}_v3`;
+        const savedMsg = localStorage.getItem(userMsgKey);
+        if (savedMsg) {
+          setChatMessages(JSON.parse(savedMsg));
+        }
+        const bgKey = `dpsbuzz_chat_backgrounds_${uname}_v2`;
+        const savedBg = localStorage.getItem(bgKey);
+        if (savedBg) {
+          setChatBackgrounds(JSON.parse(savedBg));
         }
       } catch {}
     }
-    return INITIAL_CONVERSATIONS;
-  });
+  }, []);
   const [requestsState, setRequestsState] = useState<MessageRequestItem[]>(INITIAL_REQUESTS);
   const [isVanishMode, setIsVanishMode] = useState(false);
   // Vanish Mode Pull-Up / Swipe-Up Gesture State (Instagram Style)
@@ -402,20 +418,7 @@ function ChatsContent() {
   // Chat Wallpaper / Background & Emoji Drawer State
   const [isBgSelectorOpen, setIsBgSelectorOpen] = useState(false);
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
-  const [chatBackgrounds, setChatBackgrounds] = useState<Record<string, ChatBackgroundOption>>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const u = DataStore.getCurrentUser();
-        const uname = (u?.username || '').toLowerCase().trim();
-        if (uname && uname !== 'guest') {
-          const bgKey = `dpsbuzz_chat_backgrounds_${uname}_v2`;
-          const saved = localStorage.getItem(bgKey);
-          if (saved) return JSON.parse(saved);
-        }
-      } catch {}
-    }
-    return {};
-  });
+  const [chatBackgrounds, setChatBackgrounds] = useState<Record<string, ChatBackgroundOption>>({});
   const chatMediaInputRef = useRef<HTMLInputElement | null>(null);
 
   // Guess the Cricketer Game State
@@ -598,20 +601,7 @@ function ChatsContent() {
     }
   };
 
-  const [chatMessages, setChatMessages] = useState<Record<string, ChatMessage[]>>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const u = DataStore.getCurrentUser();
-        const uname = (u?.username || '').toLowerCase().trim();
-        if (uname && uname !== 'guest') {
-          const userMsgKey = `dpsbuzz_chat_messages_${uname}_v3`;
-          const saved = localStorage.getItem(userMsgKey);
-          if (saved) return JSON.parse(saved);
-        }
-      } catch {}
-    }
-    return {};
-  });
+  const [chatMessages, setChatMessages] = useState<Record<string, ChatMessage[]>>({});
 
   // Automatically persist conversations to localStorage (scoped to current user)
   useEffect(() => {
@@ -1920,6 +1910,7 @@ function ChatsContent() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const prevMsgCountRef = useRef<number>(0);
+  const prevLastMsgIdRef = useRef<string>('');
 
   const isNearBottom = () => {
     const el = messagesContainerRef.current;
@@ -1933,31 +1924,55 @@ function ChatsContent() {
     }
   };
 
+  // 1. Initial scroll when opening or switching active conversation: scroll instantly without animation
+  const activeConvId = activeConversation?.id || null;
   useEffect(() => {
-    if (activeConversation) {
-      const timer = setTimeout(() => scrollToBottom(false), 50);
-      return () => clearTimeout(timer);
-    }
-  }, [activeConversation?.id]);
+    if (activeConvId) {
+      const rawId = activeConvId;
+      const canonicalId = activeConversation ? getCanonicalConvId(activeConversation) : activeConvId;
+      const initialMsgs = chatMessages[rawId] || chatMessages[canonicalId] || [];
+      prevMsgCountRef.current = initialMsgs.length;
+      prevLastMsgIdRef.current = initialMsgs[initialMsgs.length - 1]?.id || '';
 
-  useEffect(() => {
-    if (!activeConversation) return;
+      const timer = setTimeout(() => scrollToBottom(false), 40);
+      return () => clearTimeout(timer);
+    } else {
+      prevMsgCountRef.current = 0;
+      prevLastMsgIdRef.current = '';
+    }
+  }, [activeConvId]);
+
+  // 2. Auto-scroll ONLY when message count in current active conversation increases or a new message arrives
+  const currentActiveConvMsgs = useMemo(() => {
+    if (!activeConversation) return [];
     const rawId = activeConversation.id;
     const canonicalId = getCanonicalConvId(activeConversation);
-    const msgs = chatMessages[rawId] || chatMessages[canonicalId] || [];
-    const count = msgs.length;
+    return chatMessages[rawId] || chatMessages[canonicalId] || [];
+  }, [chatMessages, activeConversation]);
 
-    if (count > prevMsgCountRef.current) {
-      const lastMsg = msgs[msgs.length - 1];
+  const activeMsgCount = currentActiveConvMsgs.length;
+  const lastActiveMsg = currentActiveConvMsgs[activeMsgCount - 1];
+  const lastActiveMsgId = lastActiveMsg?.id || '';
+  const lastActiveMsgSender = lastActiveMsg?.sender;
+  const lastActiveMsgSenderUsername = lastActiveMsg?.senderUsername;
+
+  useEffect(() => {
+    if (!activeConvId || activeMsgCount === 0) return;
+
+    // Check if a genuinely new message arrived
+    if (activeMsgCount > prevMsgCountRef.current || (lastActiveMsgId && lastActiveMsgId !== prevLastMsgIdRef.current)) {
       const isSentByMe =
-        lastMsg?.sender === 'me' ||
-        (lastMsg?.senderUsername && lastMsg.senderUsername.toLowerCase() === currentUsername);
+        lastActiveMsgSender === 'me' ||
+        (lastActiveMsgSenderUsername && lastActiveMsgSenderUsername.toLowerCase() === currentUsername);
+
       if (isSentByMe || isNearBottom()) {
         scrollToBottom(true);
       }
     }
-    prevMsgCountRef.current = count;
-  }, [chatMessages, activeConversation, currentUsername]);
+
+    prevMsgCountRef.current = activeMsgCount;
+    prevLastMsgIdRef.current = lastActiveMsgId;
+  }, [activeMsgCount, lastActiveMsgId, activeConvId, currentUsername]);
 
   const handleSendHeart = () => {
     if (isMaintenanceActive) {
@@ -2770,7 +2785,7 @@ function ChatsContent() {
     const effectiveActiveAvatar = activeUserProf?.avatar || activeConversation.avatar || null;
 
     return (
-      <div className="fixed inset-0 z-50 md:static md:z-auto md:min-h-[85vh] flex flex-col select-none bg-[var(--surface)] text-[var(--text)] font-sf-display font-semibold">
+      <div className="fixed inset-0 z-50 h-dvh h-[100dvh] max-h-[100dvh] md:static md:z-auto md:h-[calc(100dvh-4.5rem)] md:max-h-[calc(100dvh-4.5rem)] flex flex-col overflow-hidden select-none bg-[var(--surface)] text-[var(--text)] font-sf-display font-semibold">
         {/* Chat Header (56px) */}
         <header
           className="h-14 px-3 flex items-center justify-between border-b shrink-0 sticky top-0 z-30"
@@ -2972,7 +2987,7 @@ function ChatsContent() {
           onTouchStart={handleMessagesTouchStart}
           onTouchMove={handleMessagesTouchMove}
           onTouchEnd={handleVanishTouchEnd}
-          className="flex-1 p-4 space-y-3 overflow-y-auto relative transition-all font-sf-display"
+          className="flex-1 min-h-0 p-4 space-y-3 overflow-y-auto relative transition-all font-sf-display overscroll-contain"
           style={
             isVanishMode
               ? {
@@ -3454,7 +3469,7 @@ function ChatsContent() {
           /* Input Bar */
           <form
             onSubmit={handleSendMessage}
-            className={`p-3 border-t flex items-center gap-2 relative z-20 transition-colors ${
+            className={`p-3 border-t flex items-center gap-2 shrink-0 relative z-20 transition-colors ${
               isVanishMode ? 'bg-[#100918] border-purple-500/30' : 'bg-[var(--surface)] border-[var(--line)]'
             }`}
             style={{
@@ -4234,7 +4249,7 @@ function ChatsContent() {
         </div>
       ) : (
         /* Conversation Rows & States */
-        <div className="flex-1 divide-y" style={{ borderColor: 'var(--line)' }}>
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain divide-y" style={{ borderColor: 'var(--line)' }}>
           {/* Prominent Instagram-Style Message Request Alert Strip */}
           {activeChip === 'all' && computedRequests.length > 0 && (
             <div
@@ -4262,7 +4277,7 @@ function ChatsContent() {
             </div>
           )}
 
-          {demoState === 'loading' ? (
+          {!isMounted || demoState === 'loading' ? (
             <ChatsSkeleton count={6} />
           ) : demoState === 'error' ? (
             <div className="p-8 text-center space-y-3">
