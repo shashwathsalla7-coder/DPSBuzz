@@ -1266,7 +1266,7 @@ export default function ProfileClient({ username }: { username: string }) {
                   if (updated) setProfile(updated);
                   showToast(isFollowedBy ? `You and @${profile.username} are now friends! 🤝` : `Following @${profile.username}`);
                 }}
-                className={`${isFollowing ? 'flex-1' : 'w-full'} h-9 rounded-full text-xs font-semibold btn-press flex items-center justify-center cursor-pointer shadow-xs`}
+                className="flex-1 h-9 rounded-full text-xs font-semibold btn-press flex items-center justify-center cursor-pointer shadow-xs"
                 style={{
                   backgroundColor: (isFollowing || isRequested) && !hasIncomingRequest ? 'var(--surface-sunken)' : 'var(--accent-cta)',
                   color: (isFollowing || isRequested) && !hasIncomingRequest ? 'var(--text)' : 'var(--on-accent-cta)',
@@ -1279,19 +1279,19 @@ export default function ProfileClient({ username }: { username: string }) {
                   ? 'Follow Back'
                   : isFollowing ? 'Following' : isRequested ? 'Requested' : 'Follow'}
               </button>
+              <Link
+                href={`/chats?user=${profile.username}`}
+                className="flex-1 h-9 rounded-full text-xs font-semibold border flex items-center justify-center btn-press cursor-pointer"
+                style={{
+                  backgroundColor: 'var(--surface-sunken)',
+                  borderColor: 'var(--line)',
+                  color: 'var(--text)',
+                }}
+              >
+                Message
+              </Link>
               {isFollowing && (
                 <>
-                  <Link
-                    href={`/chats?user=${profile.username}`}
-                    className="flex-1 h-9 rounded-full text-xs font-semibold border flex items-center justify-center btn-press"
-                    style={{
-                      backgroundColor: 'var(--surface-sunken)',
-                      borderColor: 'var(--line)',
-                      color: 'var(--text)',
-                    }}
-                  >
-                    Message
-                  </Link>
                   <button
                     type="button"
                     onClick={() => {

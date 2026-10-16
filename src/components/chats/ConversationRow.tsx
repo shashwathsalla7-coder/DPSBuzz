@@ -50,6 +50,8 @@ export const ConversationRow: React.FC<ConversationRowProps> = ({
   const router = useRouter();
   const [swipeOffset, setSwipeOffset] = useState(0);
   const touchStartX = useRef(0);
+  const touchStartY = useRef(0);
+  const isDraggingRef = useRef(false);
   const pressTimer = useRef<NodeJS.Timeout | null>(null);
 
   const isGroup = conversation.type === 'group';
@@ -67,19 +69,35 @@ export const ConversationRow: React.FC<ConversationRowProps> = ({
   // Swipe handling
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+    isDraggingRef.current = false;
     pressTimer.current = setTimeout(() => {
       onLongPress(conversation);
     }, 550);
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    const diff = touchStartX.current - e.touches[0].clientX;
-    if (Math.abs(diff) > 10 && pressTimer.current) {
+    const diffX = touchStartX.current - e.touches[0].clientX;
+    const diffY = touchStartY.current - e.touches[0].clientY;
+
+    // Directional lock: If vertical scrolling is dominant, allow normal page scroll
+    if (Math.abs(diffY) > Math.abs(diffX)) {
+      if (Math.abs(diffY) > 8 && pressTimer.current) {
+        clearTimeout(pressTimer.current);
+        pressTimer.current = null;
+      }
+      return;
+    }
+
+    if (Math.abs(diffX) > 10 && pressTimer.current) {
       clearTimeout(pressTimer.current);
       pressTimer.current = null;
     }
-    if (diff > 0 && diff < 120) {
-      setSwipeOffset(diff);
+
+    // Require deliberate horizontal swipe left (at least 20px)
+    if (diffX > 20 && Math.abs(diffX) > Math.abs(diffY) * 1.5) {
+      isDraggingRef.current = true;
+      setSwipeOffset(Math.min(diffX, 120));
     }
   };
 
@@ -88,11 +106,15 @@ export const ConversationRow: React.FC<ConversationRowProps> = ({
       clearTimeout(pressTimer.current);
       pressTimer.current = null;
     }
-    if (swipeOffset > 60) {
+    if (swipeOffset >= 60) {
       setSwipeOffset(110);
     } else {
       setSwipeOffset(0);
     }
+    // Allow click event to process if not a deliberate drag
+    setTimeout(() => {
+      isDraggingRef.current = false;
+    }, 120);
   };
 
   const handleContextMenu = (e: React.MouseEvent) => {
@@ -139,11 +161,15 @@ export const ConversationRow: React.FC<ConversationRowProps> = ({
       {/* Main 68px Row Container */}
       <div
         onClick={() => {
-          if (swipeOffset > 0) {
+          if (swipeOffset >= 60) {
             setSwipeOffset(0);
-          } else {
-            onClick();
+            return;
           }
+          if (isDraggingRef.current) {
+            return;
+          }
+          setSwipeOffset(0);
+          onClick();
         }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
