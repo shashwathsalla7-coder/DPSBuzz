@@ -146,12 +146,24 @@ export function CricketLeaderboardModal({
               {/* TAB 1: LEADERBOARD */}
               {activeTab === 'leaderboard' && (
                 <div className="space-y-2.5">
-                  <div className="text-[11px] font-semibold text-purple-300/70 px-1 uppercase tracking-wider flex items-center justify-between">
-                    <span>Rank & Player</span>
-                    <span>Wins • Win Rate • Points</span>
-                  </div>
+                  {leaderboard.length === 0 ? (
+                    <div className="py-12 flex flex-col items-center justify-center text-center space-y-2.5">
+                      <div className="w-12 h-12 rounded-2xl bg-purple-950/60 border border-purple-500/20 flex items-center justify-center text-2xl">
+                        🏏
+                      </div>
+                      <h4 className="text-sm font-bold text-white">No matches played yet!</h4>
+                      <p className="text-xs text-purple-300/70 max-w-xs leading-relaxed">
+                        Challenge a classmate in chat to take the #1 spot on the DPSBuzz Cricket Leaderboard.
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="text-[11px] font-semibold text-purple-300/70 px-1 uppercase tracking-wider flex items-center justify-between">
+                        <span>Rank & Player</span>
+                        <span>Wins • Win Rate • Points</span>
+                      </div>
 
-                  {leaderboard.map((entry, index) => {
+                      {leaderboard.map((entry, index) => {
                     const isTop1 = index === 0;
                     const isTop2 = index === 1;
                     const isTop3 = index === 2;
@@ -202,6 +214,8 @@ export function CricketLeaderboardModal({
                       </div>
                     );
                   })}
+                    </>
+                  )}
                 </div>
               )}
 
