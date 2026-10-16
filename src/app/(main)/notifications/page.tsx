@@ -111,12 +111,20 @@ export default function NotificationsPage() {
       >
         <div className="flex items-center gap-3 min-w-0">
           <div
-            className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs shrink-0 relative"
+            className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs shrink-0 relative overflow-hidden"
             style={{ backgroundColor: pair.bg, color: pair.text }}
           >
-            {notif.userId.slice(0, 2).toUpperCase()}
+            {DataStore.getProfileByUsername(notif.userId)?.avatar ? (
+              <img
+                src={DataStore.getProfileByUsername(notif.userId)?.avatar || ''}
+                alt={notif.userId}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              notif.userId.slice(0, 2).toUpperCase()
+            )}
             {notif.type === 'chat' && (
-              <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-pink-500 text-white flex items-center justify-center text-[9px] shadow-xs">
+              <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-pink-500 text-white flex items-center justify-center text-[9px] shadow-xs z-10">
                 💬
               </span>
             )}
@@ -220,10 +228,18 @@ export default function NotificationsPage() {
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       <div
-                        className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs shrink-0"
+                        className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs shrink-0 overflow-hidden"
                         style={{ backgroundColor: pair.bg, color: pair.text }}
                       >
-                        {freq.requester.slice(0, 2).toUpperCase()}
+                        {DataStore.getProfileByUsername(freq.requester)?.avatar ? (
+                          <img
+                            src={DataStore.getProfileByUsername(freq.requester)?.avatar || ''}
+                            alt={freq.requester}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          freq.requester.slice(0, 2).toUpperCase()
+                        )}
                       </div>
                       <div className="min-w-0">
                         <p className="text-xs font-bold truncate" style={{ color: 'var(--text)' }}>
@@ -266,9 +282,9 @@ export default function NotificationsPage() {
                     className="p-3.5 flex items-center justify-between gap-3 hover:bg-[var(--surface-sunken)] transition-colors"
                   >
                     <div className="flex items-center gap-3 min-w-0">
-                      {greq.avatar ? (
+                      {greq.avatar || DataStore.getProfileByUsername(greq.username)?.avatar ? (
                         <img
-                          src={greq.avatar}
+                          src={greq.avatar || DataStore.getProfileByUsername(greq.username)?.avatar || ''}
                           alt={greq.fullName}
                           className="w-10 h-10 rounded-full object-cover shrink-0 border border-[var(--line)]"
                         />

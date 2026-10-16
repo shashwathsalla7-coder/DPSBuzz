@@ -677,8 +677,8 @@ function SearchContent() {
                         className="w-11 h-11 rounded-full flex items-center justify-center font-bold text-xs shrink-0 overflow-hidden border border-[var(--line)]"
                         style={{ backgroundColor: isShashwath ? '#FF5A1F' : pair.bg, color: '#fff' }}
                       >
-                        {person.avatar ? (
-                          <img src={person.avatar} alt={person.fullName} className="w-full h-full object-cover" />
+                        {(person.avatar || DataStore.getProfileByUsername(person.username)?.avatar) ? (
+                          <img src={person.avatar || DataStore.getProfileByUsername(person.username)?.avatar || ''} alt={person.fullName} className="w-full h-full object-cover" />
                         ) : (
                           person.fullName.slice(0, 2).toUpperCase()
                         )}

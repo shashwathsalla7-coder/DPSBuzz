@@ -1085,8 +1085,17 @@ export const DataStore = {
           const activeUser = JSON.parse(stored);
           const activeUsername = (activeUser?.username || '').toLowerCase().trim();
           if (activeUser && activeUsername && !DUMMY_TEST_USERNAMES.has(activeUsername) && !deletedUsers.has(activeUsername)) {
-            if (!result.some((p) => p.username.toLowerCase() === activeUsername)) {
+            const idx = result.findIndex((p) => p.username.toLowerCase() === activeUsername);
+            if (idx === -1) {
               result.push(activeUser);
+            } else {
+              // Bidirectional avatar synchronization: never drop an uploaded avatar!
+              if (activeUser.avatar && !result[idx].avatar) {
+                result[idx] = { ...result[idx], avatar: activeUser.avatar };
+              } else if (result[idx].avatar && !activeUser.avatar) {
+                activeUser.avatar = result[idx].avatar;
+                localStorage.setItem('dpsbuzz_user', JSON.stringify(activeUser));
+              }
             }
           }
         }
@@ -1174,6 +1183,13 @@ export const DataStore = {
               }
               localStorage.setItem('dpsbuzz_user', JSON.stringify(parsed));
             }
+            // Always resolve live profile avatar if user added/changed their picture
+            const savedProfiles = getStorage<Profile[]>(STORAGE_KEYS.PROFILES, []);
+            const match = savedProfiles.find((p) => p.username.toLowerCase().trim() === parsed.username.toLowerCase().trim());
+            if (match?.avatar && parsed.avatar !== match.avatar) {
+              parsed.avatar = match.avatar;
+              localStorage.setItem('dpsbuzz_user', JSON.stringify(parsed));
+            }
             return parsed;
           }
         } catch {}
@@ -1186,7 +1202,21 @@ export const DataStore = {
     const clean = (username || '').toLowerCase().trim();
     if (!clean || this.getDeletedUsernames().has(clean) || DUMMY_TEST_USERNAMES.has(clean)) return null;
     const profiles = this.getProfiles();
-    return profiles.find((p) => p.username.toLowerCase().trim() === clean) || null;
+    let prof = profiles.find((p) => p.username.toLowerCase().trim() === clean) || null;
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('dpsbuzz_user');
+        if (stored) {
+          const activeUser = JSON.parse(stored);
+          if (activeUser && (activeUser.username || '').toLowerCase().trim() === clean) {
+            if (activeUser.avatar) {
+              prof = prof ? { ...prof, ...activeUser, avatar: activeUser.avatar } : activeUser;
+            }
+          }
+        }
+      } catch {}
+    }
+    return prof;
   },
 
   updateProfile(username: string, updates: Partial<Profile>): Profile | null {
@@ -1221,11 +1251,22 @@ export const DataStore = {
             const posts = getStorage<Post[]>(STORAGE_KEYS.POSTS, []);
             let postsChanged = false;
             const updatedPosts = posts.map((p) => {
+              let changed = false;
+              let nextP = { ...p };
               if ((p.username || '').toLowerCase().trim() === clean) {
-                postsChanged = true;
-                return { ...p, userAvatar: newAvatar || undefined };
+                nextP.avatar = newAvatar || null;
+                nextP.userAvatar = newAvatar || undefined;
+                changed = true;
               }
-              return p;
+              if (p.repostedFrom && (p.repostedFrom.username || '').toLowerCase().trim() === clean) {
+                nextP.repostedFrom = {
+                  ...p.repostedFrom,
+                  avatar: newAvatar || null,
+                };
+                changed = true;
+              }
+              if (changed) postsChanged = true;
+              return nextP;
             });
             if (postsChanged) {
               setStorage(STORAGE_KEYS.POSTS, updatedPosts);
@@ -1237,7 +1278,7 @@ export const DataStore = {
             const updatedStories = stories.map((s) => {
               if ((s.username || '').toLowerCase().trim() === clean) {
                 storiesChanged = true;
-                return { ...s, avatar: newAvatar };
+                return { ...s, avatar: newAvatar || null };
               }
               return s;
             });
@@ -1251,7 +1292,7 @@ export const DataStore = {
             const updatedNotes = notes.map((n) => {
               if ((n.username || '').toLowerCase().trim() === clean) {
                 notesChanged = true;
-                return { ...n, avatar: newAvatar };
+                return { ...n, avatar: newAvatar || null };
               }
               return n;
             });
@@ -1272,13 +1313,62 @@ export const DataStore = {
                       const nextConvs = parsedConvs.map((c: any) => {
                         if (c.username && c.username.toLowerCase().trim() === clean) {
                           convsChanged = true;
-                          return { ...c, avatar: newAvatar };
+                          return { ...c, avatar: newAvatar || null, avatarUrl: newAvatar || null };
                         }
                         return c;
                       });
                       if (convsChanged) {
                         localStorage.setItem(key, JSON.stringify(nextConvs));
                       }
+                    }
+                  }
+                } catch {}
+              }
+            }
+
+            // 5. Update comments across all posts so comment author avatars show new photo
+            const commentsMap = getStorage<Record<string, any[]>>(STORAGE_KEYS.COMMENTS, {});
+            let commentsChanged = false;
+            for (const [pId, list] of Object.entries(commentsMap)) {
+              if (Array.isArray(list)) {
+                const nextList = list.map((c) => {
+                  if (c && (c.username || '').toLowerCase().trim() === clean) {
+                    commentsChanged = true;
+                    return { ...c, userAvatar: newAvatar || null, avatar: newAvatar || null };
+                  }
+                  return c;
+                });
+                commentsMap[pId] = nextList;
+              }
+            }
+            if (commentsChanged) {
+              setStorage(STORAGE_KEYS.COMMENTS, commentsMap);
+              try {
+                localStorage.setItem('dpsbuzz_comments_v1', JSON.stringify(commentsMap));
+              } catch {}
+            }
+
+            // 6. Update user's sent chat messages so message bubbles display new avatar
+            for (let i = 0; i < localStorage.length; i++) {
+              const key = localStorage.key(i);
+              if (key && key.startsWith('dpsbuzz_chat_messages_')) {
+                try {
+                  const val = localStorage.getItem(key);
+                  if (val) {
+                    const parsedMsgs = JSON.parse(val);
+                    let msgsChanged = false;
+                    for (const [cId, list] of Object.entries(parsedMsgs)) {
+                      if (Array.isArray(list)) {
+                        for (const m of list as any[]) {
+                          if (m && (m.senderUsername || '').toLowerCase().trim() === clean) {
+                            m.senderAvatar = newAvatar || null;
+                            msgsChanged = true;
+                          }
+                        }
+                      }
+                    }
+                    if (msgsChanged) {
+                      localStorage.setItem(key, JSON.stringify(parsedMsgs));
                     }
                   }
                 } catch {}
@@ -1291,6 +1381,7 @@ export const DataStore = {
             detail: { type: 'profile_updated', username: clean, updates },
           })
         );
+        window.dispatchEvent(new CustomEvent('storage'));
         fetch('/api/auth/profile', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1333,12 +1424,27 @@ export const DataStore = {
       }
     }
 
-    return filtered.map((p) => ({
-      ...p,
-      likes: Array.isArray(likesMap[p.id]) ? likesMap[p.id].length : (p.likes || 0),
-      comments: Array.isArray(commentsMap[p.id]) ? commentsMap[p.id].length : (p.comments || 0),
-      repostCount: repostCounts[p.id] !== undefined ? repostCounts[p.id] : (p.isRepost ? 0 : (p.repostCount || 0)),
-    }));
+    return filtered.map((p) => {
+      const authorProf = this.getProfileByUsername(p.username);
+      const effectiveAvatar = authorProf?.avatar || p.avatar || (p as any).userAvatar || null;
+      let repostedFrom = p.repostedFrom;
+      if (repostedFrom) {
+        const origProf = this.getProfileByUsername(repostedFrom.username);
+        repostedFrom = {
+          ...repostedFrom,
+          avatar: origProf?.avatar || repostedFrom.avatar || null,
+        };
+      }
+      return {
+        ...p,
+        avatar: effectiveAvatar,
+        userAvatar: effectiveAvatar || undefined,
+        repostedFrom,
+        likes: Array.isArray(likesMap[p.id]) ? likesMap[p.id].length : (p.likes || 0),
+        comments: Array.isArray(commentsMap[p.id]) ? commentsMap[p.id].length : (p.comments || 0),
+        repostCount: repostCounts[p.id] !== undefined ? repostCounts[p.id] : (p.isRepost ? 0 : (p.repostCount || 0)),
+      };
+    });
   },
 
   addPost(post: Omit<Post, 'id' | 'createdAt' | 'timeAgo' | 'likes' | 'comments'>): Post {
@@ -1902,16 +2008,25 @@ export const DataStore = {
     const banned = this.getBannedUsers();
     const deletedUsers = this.getDeletedUsernames();
     const now = Date.now();
-    return stored.filter((s) => {
-      if (!s || !s.username) return false;
-      const clean = s.username.toLowerCase().trim();
-      if (DUMMY_TEST_USERNAMES.has(clean) || deletedUsers.has(clean)) return false;
-      if (!includeBanned && banned.includes(clean)) return false;
-      // Filter out expired stories (24-hour lifetime)
-      if (s.expiresAt && new Date(s.expiresAt).getTime() <= now) return false;
-      if (s.createdAt && now - new Date(s.createdAt).getTime() > 24 * 60 * 60 * 1000) return false;
-      return true;
-    });
+    return stored
+      .filter((s) => {
+        if (!s || !s.username) return false;
+        const clean = s.username.toLowerCase().trim();
+        if (DUMMY_TEST_USERNAMES.has(clean) || deletedUsers.has(clean)) return false;
+        if (!includeBanned && banned.includes(clean)) return false;
+        // Filter out expired stories (24-hour lifetime)
+        if (s.expiresAt && new Date(s.expiresAt).getTime() <= now) return false;
+        if (s.createdAt && now - new Date(s.createdAt).getTime() > 24 * 60 * 60 * 1000) return false;
+        return true;
+      })
+      .map((s) => {
+        const liveProf = this.getProfileByUsername(s.username);
+        return {
+          ...s,
+          avatar: liveProf?.avatar || s.avatar || null,
+          fullName: liveProf?.fullName || s.fullName || s.username,
+        };
+      });
   },
 
   addStory(newStory: Omit<Story, 'id' | 'createdAt' | 'expiresAt' | 'hasStory'>): Story {
@@ -4930,9 +5045,20 @@ export const DataStore = {
     const userMsgKey = `dpsbuzz_chat_messages_${cur}_v3`;
     const stored = getStorage<Record<string, any[]>>(userMsgKey, {});
     const list = stored[canonicalId] || stored[conversationId] || [];
-    const nonVanish = list.filter((m) => !m.is_vanish_mode_message && !m.isVanishMode);
-    stored[canonicalId] = nonVanish;
-    if (canonicalId !== conversationId) stored[conversationId] = nonVanish;
+    const now = Date.now();
+    const DAY_MS = 24 * 60 * 60 * 1000;
+    // Vanish mode rule: Messages only disappear after 24 hours
+    const remaining = list.filter((m) => {
+      if (m.is_vanish_mode_message || m.isVanishMode) {
+        const timestamp = m.createdAt ? new Date(m.createdAt).getTime() : (m.timestamp || 0);
+        if (timestamp && (now - timestamp > DAY_MS)) {
+          return false; // Expired after 24h
+        }
+      }
+      return true;
+    });
+    stored[canonicalId] = remaining;
+    if (canonicalId !== conversationId) stored[conversationId] = remaining;
     setStorage(userMsgKey, stored);
 
     // Update conversation last message preview if it contained a vanished message
@@ -4940,7 +5066,7 @@ export const DataStore = {
       const convKey = `dpsbuzz_chat_conversations_${cur}_v3`;
       const storedConvs = getStorage<any[]>(convKey, []);
       if (Array.isArray(storedConvs)) {
-        const lastMsg = nonVanish[nonVanish.length - 1];
+        const lastMsg = remaining[remaining.length - 1];
         const updatedConvs = storedConvs.map((c) => {
           if (c.id === canonicalId || c.id === conversationId || (c.username && canonicalId.includes(c.username.toLowerCase()))) {
             return {

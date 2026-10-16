@@ -28,6 +28,7 @@ export const StarBoardTeaser: React.FC<StarBoardTeaserProps> = ({
       fullName: string;
       points: number;
       className: string;
+      avatar?: string | null;
     }>
   >(initialTopStudents || []);
 
@@ -59,6 +60,7 @@ export const StarBoardTeaser: React.FC<StarBoardTeaserProps> = ({
           rank: idx + 1,
           username: p.username,
           fullName: p.fullName,
+          avatar: p.avatar || null,
           points: (p.followerCount || 0) * 15 + (p.postCount || 0) * 10,
           className: p.class ? `Class ${p.class}` : 'Student',
         }));
@@ -213,13 +215,21 @@ export const StarBoardTeaser: React.FC<StarBoardTeaserProps> = ({
                 >
                   <div className="relative mb-1">
                     <div
-                      className="w-11 h-11 rounded-full flex items-center justify-center font-bold text-xs ring-2 ring-slate-400 shadow-xs"
+                      className="w-11 h-11 rounded-full flex items-center justify-center font-bold text-xs ring-2 ring-slate-400 shadow-xs overflow-hidden"
                       style={{
                         backgroundColor: getAvatarColorPair(secondStudent.username).bg,
                         color: getAvatarColorPair(secondStudent.username).text,
                       }}
                     >
-                      {secondStudent.fullName.slice(0, 2).toUpperCase()}
+                      {secondStudent.avatar || DataStore.getProfileByUsername(secondStudent.username)?.avatar ? (
+                        <img
+                          src={secondStudent.avatar || DataStore.getProfileByUsername(secondStudent.username)?.avatar || ''}
+                          alt={secondStudent.fullName}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        secondStudent.fullName.slice(0, 2).toUpperCase()
+                      )}
                     </div>
                     <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full text-[9px] font-black flex items-center justify-center text-slate-900 bg-slate-300 ring-1 ring-[var(--surface)] shadow-xs">
                       2
@@ -257,13 +267,21 @@ export const StarBoardTeaser: React.FC<StarBoardTeaserProps> = ({
                   <Crown size={14} className="text-amber-500 mb-0.5 animate-bounce" />
                   <div className="relative mb-1">
                     <div
-                      className="w-13 h-13 rounded-full flex items-center justify-center font-black text-sm ring-3 ring-amber-400 shadow-md"
+                      className="w-13 h-13 rounded-full flex items-center justify-center font-black text-sm ring-3 ring-amber-400 shadow-md overflow-hidden"
                       style={{
                         backgroundColor: getAvatarColorPair(firstStudent.username).bg,
                         color: getAvatarColorPair(firstStudent.username).text,
                       }}
                     >
-                      {firstStudent.fullName.slice(0, 2).toUpperCase()}
+                      {firstStudent.avatar || DataStore.getProfileByUsername(firstStudent.username)?.avatar ? (
+                        <img
+                          src={firstStudent.avatar || DataStore.getProfileByUsername(firstStudent.username)?.avatar || ''}
+                          alt={firstStudent.fullName}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        firstStudent.fullName.slice(0, 2).toUpperCase()
+                      )}
                     </div>
                     <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full text-[10px] font-black flex items-center justify-center text-amber-950 bg-gradient-to-tr from-amber-400 to-yellow-300 ring-1 ring-[var(--surface)] shadow-xs">
                       1
@@ -290,13 +308,21 @@ export const StarBoardTeaser: React.FC<StarBoardTeaserProps> = ({
                 >
                   <div className="relative mb-1">
                     <div
-                      className="w-11 h-11 rounded-full flex items-center justify-center font-bold text-xs ring-2 ring-orange-600 shadow-xs"
+                      className="w-11 h-11 rounded-full flex items-center justify-center font-bold text-xs ring-2 ring-orange-600 shadow-xs overflow-hidden"
                       style={{
                         backgroundColor: getAvatarColorPair(thirdStudent.username).bg,
                         color: getAvatarColorPair(thirdStudent.username).text,
                       }}
                     >
-                      {thirdStudent.fullName.slice(0, 2).toUpperCase()}
+                      {thirdStudent.avatar || DataStore.getProfileByUsername(thirdStudent.username)?.avatar ? (
+                        <img
+                          src={thirdStudent.avatar || DataStore.getProfileByUsername(thirdStudent.username)?.avatar || ''}
+                          alt={thirdStudent.fullName}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        thirdStudent.fullName.slice(0, 2).toUpperCase()
+                      )}
                     </div>
                     <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full text-[9px] font-black flex items-center justify-center text-white bg-orange-700 ring-1 ring-[var(--surface)] shadow-xs">
                       3
@@ -353,13 +379,21 @@ export const StarBoardTeaser: React.FC<StarBoardTeaserProps> = ({
                 >
                   <div className="relative mb-1">
                     <div
-                      className="w-11 h-11 rounded-full flex items-center justify-center font-bold text-xs ring-2 ring-slate-400 shadow-xs"
+                      className="w-11 h-11 rounded-full flex items-center justify-center font-bold text-xs ring-2 ring-slate-400 shadow-xs overflow-hidden"
                       style={{
                         backgroundColor: getAvatarColorPair(secondStreak.username).bg,
                         color: getAvatarColorPair(secondStreak.username).text,
                       }}
                     >
-                      {secondStreak.fullName.slice(0, 2).toUpperCase()}
+                      {DataStore.getProfileByUsername(secondStreak.username)?.avatar || secondStreak.avatar ? (
+                        <img
+                          src={DataStore.getProfileByUsername(secondStreak.username)?.avatar || secondStreak.avatar || ''}
+                          alt={secondStreak.fullName}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        secondStreak.fullName.slice(0, 2).toUpperCase()
+                      )}
                     </div>
                     <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full text-[9px] font-black flex items-center justify-center text-slate-900 bg-slate-300 ring-1 ring-[var(--surface)] shadow-xs">
                       2
@@ -394,13 +428,21 @@ export const StarBoardTeaser: React.FC<StarBoardTeaserProps> = ({
                   <Crown size={14} className="text-amber-500 mb-0.5 animate-bounce" />
                   <div className="relative mb-1">
                     <div
-                      className="w-13 h-13 rounded-full flex items-center justify-center font-black text-sm ring-3 ring-amber-400 shadow-md"
+                      className="w-13 h-13 rounded-full flex items-center justify-center font-black text-sm ring-3 ring-amber-400 shadow-md overflow-hidden"
                       style={{
                         backgroundColor: getAvatarColorPair(firstStreak.username).bg,
                         color: getAvatarColorPair(firstStreak.username).text,
                       }}
                     >
-                      {firstStreak.fullName.slice(0, 2).toUpperCase()}
+                      {DataStore.getProfileByUsername(firstStreak.username)?.avatar || firstStreak.avatar ? (
+                        <img
+                          src={DataStore.getProfileByUsername(firstStreak.username)?.avatar || firstStreak.avatar || ''}
+                          alt={firstStreak.fullName}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        firstStreak.fullName.slice(0, 2).toUpperCase()
+                      )}
                     </div>
                     <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full text-[10px] font-black flex items-center justify-center text-amber-950 bg-gradient-to-tr from-amber-400 to-yellow-300 ring-1 ring-[var(--surface)] shadow-xs">
                       1
@@ -424,13 +466,21 @@ export const StarBoardTeaser: React.FC<StarBoardTeaserProps> = ({
                 >
                   <div className="relative mb-1">
                     <div
-                      className="w-11 h-11 rounded-full flex items-center justify-center font-bold text-xs ring-2 ring-orange-600 shadow-xs"
+                      className="w-11 h-11 rounded-full flex items-center justify-center font-bold text-xs ring-2 ring-orange-600 shadow-xs overflow-hidden"
                       style={{
                         backgroundColor: getAvatarColorPair(thirdStreak.username).bg,
                         color: getAvatarColorPair(thirdStreak.username).text,
                       }}
                     >
-                      {thirdStreak.fullName.slice(0, 2).toUpperCase()}
+                      {DataStore.getProfileByUsername(thirdStreak.username)?.avatar || thirdStreak.avatar ? (
+                        <img
+                          src={DataStore.getProfileByUsername(thirdStreak.username)?.avatar || thirdStreak.avatar || ''}
+                          alt={thirdStreak.fullName}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        thirdStreak.fullName.slice(0, 2).toUpperCase()
+                      )}
                     </div>
                     <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full text-[9px] font-black flex items-center justify-center text-white bg-orange-700 ring-1 ring-[var(--surface)] shadow-xs">
                       3

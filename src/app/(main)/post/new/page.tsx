@@ -1004,8 +1004,8 @@ export default function NewPostPage() {
                         className="w-4 h-4 rounded-full overflow-hidden shrink-0 flex items-center justify-center text-[8px] font-bold text-white shadow-2xs"
                         style={{ backgroundColor: pair.bg, color: pair.text }}
                       >
-                        {person.avatar ? (
-                          <img src={person.avatar} alt={person.fullName} className="w-full h-full object-cover" />
+                        {(person.avatar || DataStore.getProfileByUsername(person.username)?.avatar) ? (
+                          <img src={person.avatar || DataStore.getProfileByUsername(person.username)?.avatar || ''} alt={person.fullName} className="w-full h-full object-cover" />
                         ) : (
                           initials
                         )}
@@ -1156,9 +1156,9 @@ export default function NewPostPage() {
                         className="w-6 h-6 rounded-full shrink-0 overflow-hidden flex items-center justify-center text-[10px] font-bold text-white shadow-xs"
                         style={{ backgroundColor: pair.bg, color: pair.text }}
                       >
-                        {prof.avatar ? (
+                        {(prof.avatar || DataStore.getProfileByUsername(prof.username)?.avatar) ? (
                           <img
-                            src={prof.avatar}
+                            src={prof.avatar || DataStore.getProfileByUsername(prof.username)?.avatar || ''}
                             alt={prof.fullName}
                             className="w-full h-full object-cover"
                           />

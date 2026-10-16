@@ -685,19 +685,34 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
           </div>
 
           {/* User profile header & Close button */}
-          <div className="flex items-center justify-between text-white">
-            <div className="flex items-center gap-2.5">
-              <div
-                className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs ring-2 ring-white/60 shrink-0"
-                style={{ backgroundColor: pair.bg, color: pair.text }}
-              >
-                {currentGroup.username.slice(0, 2).toUpperCase()}
-              </div>
-              <div className="flex flex-col text-left">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-white font-bold text-xs sm:text-sm tracking-tight leading-tight drop-shadow-sm">
-                    {currentGroup.username}
-                  </span>
+          {(() => {
+            const effectiveStoryAvatar =
+              currentStory.avatar ||
+              currentGroup.avatar ||
+              DataStore.getProfileByUsername(currentGroup.username)?.avatar ||
+              null;
+            return (
+              <div className="flex items-center justify-between text-white">
+                <div className="flex items-center gap-2.5">
+                  <div
+                    className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs ring-2 ring-white/60 shrink-0 overflow-hidden"
+                    style={{ backgroundColor: pair.bg, color: pair.text }}
+                  >
+                    {effectiveStoryAvatar ? (
+                      <img
+                        src={effectiveStoryAvatar}
+                        alt={currentGroup.fullName || currentGroup.username}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      currentGroup.username.slice(0, 2).toUpperCase()
+                    )}
+                  </div>
+                  <div className="flex flex-col text-left">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-white font-bold text-xs sm:text-sm tracking-tight leading-tight drop-shadow-sm">
+                        {currentGroup.username}
+                      </span>
                   {/* Indicator showing which story of this user */}
                   {currentStories.length > 1 && (
                     <span className="text-[10px] px-1.5 py-0.5 bg-white/20 text-white font-mono rounded-full">
@@ -750,6 +765,8 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
               </button>
             </div>
           </div>
+            );
+          })()}
 
           {/* Song Badge Pill if Story has Music Attached */}
           {currentStory.song && (
@@ -1158,8 +1175,8 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
                               className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs ring-1 ring-white/20 overflow-hidden shrink-0"
                               style={{ backgroundColor: viewerPair.bg, color: viewerPair.text }}
                             >
-                              {prof?.avatar ? (
-                                <img src={prof.avatar} alt={viewerUser} className="w-full h-full object-cover" />
+                              {(prof?.avatar || DataStore.getProfileByUsername(viewerUser)?.avatar) ? (
+                                <img src={prof?.avatar || DataStore.getProfileByUsername(viewerUser)?.avatar || ''} alt={viewerUser} className="w-full h-full object-cover" />
                               ) : (
                                 viewerUser.slice(0, 2).toUpperCase()
                               )}
@@ -1208,8 +1225,8 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
                               className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs ring-1 ring-white/20 overflow-hidden shrink-0"
                               style={{ backgroundColor: likerPair.bg, color: likerPair.text }}
                             >
-                              {prof?.avatar ? (
-                                <img src={prof.avatar} alt={likerUser} className="w-full h-full object-cover" />
+                              {(prof?.avatar || DataStore.getProfileByUsername(likerUser)?.avatar) ? (
+                                <img src={prof?.avatar || DataStore.getProfileByUsername(likerUser)?.avatar || ''} alt={likerUser} className="w-full h-full object-cover" />
                               ) : (
                                 likerUser.slice(0, 2).toUpperCase()
                               )}

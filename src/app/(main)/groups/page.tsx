@@ -794,9 +794,9 @@ export default function GroupsPage() {
                       >
                         <div className="flex items-start justify-between gap-2.5">
                           <div className="flex items-center gap-2.5 min-w-0">
-                            {req.avatar ? (
+                            {(req.avatar || DataStore.getProfileByUsername(req.username)?.avatar) ? (
                               <img
-                                src={req.avatar}
+                                src={req.avatar || DataStore.getProfileByUsername(req.username)?.avatar || ''}
                                 alt={req.fullName}
                                 className="w-9 h-9 rounded-full object-cover shrink-0 border"
                                 style={{ borderColor: 'var(--line)' }}
@@ -1155,9 +1155,9 @@ export default function GroupsPage() {
                             className="rounded accent-[var(--primary)] cursor-pointer w-4 h-4"
                             aria-label={`Select ${student.name}`}
                           />
-                          {student.avatarUrl ? (
+                          {(student.avatarUrl || (student as any).avatar || DataStore.getProfileByUsername(student.username)?.avatar) ? (
                             <img
-                              src={student.avatarUrl}
+                              src={student.avatarUrl || (student as any).avatar || DataStore.getProfileByUsername(student.username)?.avatar || ''}
                               alt={student.name}
                               className="w-8 h-8 rounded-full object-cover shrink-0"
                             />
