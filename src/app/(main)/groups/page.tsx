@@ -345,7 +345,19 @@ export default function GroupsPage() {
               )}
 
               {activeTab === 'members' && (() => {
-                const members = DataStore.getGroupMembers(selectedGroup.id);
+                const rawMembers = DataStore.getGroupMembers(selectedGroup.id);
+                const members = Array.from(
+                  new Set(
+                    (Array.isArray(rawMembers) ? rawMembers : [])
+                      .map((m: any) => {
+                        if (!m) return '';
+                        if (typeof m === 'string') return m.toLowerCase().trim();
+                        if (typeof m === 'object' && m.username) return String(m.username).toLowerCase().trim();
+                        return String(m).toLowerCase().trim();
+                      })
+                      .filter(Boolean)
+                  )
+                );
                 const pendingInvites = DataStore.getGroupPendingInvites(selectedGroup.id);
 
                 return (

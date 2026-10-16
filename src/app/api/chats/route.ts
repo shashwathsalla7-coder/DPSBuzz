@@ -19,6 +19,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const conversationId = searchParams.get('conversationId');
     const username = searchParams.get('username')?.toLowerCase().trim();
+    const isGroupParam = searchParams.get('isGroup') === 'true';
 
     // Specific conversation messages request
     if (conversationId) {
@@ -30,21 +31,32 @@ export async function GET(req: NextRequest) {
       }
 
       let canonicalKey = conversationId;
-      if (conversationId.includes('__')) {
-        const participants = conversationId.split('__').map((p) => p.trim().toLowerCase());
-        if (!participants.includes(username)) {
-          return NextResponse.json(
-            { success: false, error: 'Unauthorized: You are not a participant in this conversation' },
-            { status: 403, headers: NO_CACHE_HEADERS }
-          );
+      const isGroup =
+        isGroupParam ||
+        conversationId.startsWith('conv-group-') ||
+        conversationId.startsWith('group-') ||
+        conversationId.includes('group') ||
+        conversationId.includes('class-') ||
+        conversationId.includes('house-') ||
+        conversationId.includes('club-');
+
+      if (!isGroup) {
+        if (conversationId.includes('__')) {
+          const participants = conversationId.split('__').map((p) => p.trim().toLowerCase());
+          if (!participants.includes(username)) {
+            return NextResponse.json(
+              { success: false, error: 'Unauthorized: You are not a participant in this conversation' },
+              { status: 403, headers: NO_CACHE_HEADERS }
+            );
+          }
+          canonicalKey = participants.sort().join('__');
+        } else if (conversationId.startsWith('conv-')) {
+          const other = conversationId.replace(/^conv-/, '').toLowerCase().trim();
+          if (!other || other === username) {
+            return NextResponse.json({ success: true, messages: [] }, { headers: NO_CACHE_HEADERS });
+          }
+          canonicalKey = [username, other].sort().join('__');
         }
-        canonicalKey = participants.sort().join('__');
-      } else if (conversationId.startsWith('conv-') && !conversationId.startsWith('conv-group-')) {
-        const other = conversationId.replace(/^conv-/, '').toLowerCase().trim();
-        if (!other || other === username) {
-          return NextResponse.json({ success: true, messages: [] }, { headers: NO_CACHE_HEADERS });
-        }
-        canonicalKey = [username, other].sort().join('__');
       }
 
       const messages = await getServerChatMessages(canonicalKey);
@@ -65,7 +77,8 @@ export async function GET(req: NextRequest) {
         if (participants.includes(username)) {
           userMessages[key] = msgs;
         }
-      } else if (key.startsWith('conv-group-')) {
+      } else {
+        // Group conversations or announcements (visible to all members)
         userMessages[key] = msgs;
       }
     }
