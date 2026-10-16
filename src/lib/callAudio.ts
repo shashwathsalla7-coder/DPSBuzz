@@ -45,34 +45,6 @@ export function stopCallAudio(): void {
     } catch {}
   });
   activeAudioContexts.clear();
-
-  if (typeof document !== 'undefined') {
-    try {
-      const audioEls = document.querySelectorAll('audio');
-      audioEls.forEach((el) => {
-        try {
-          // Never silence or nullify live WebRTC streams or ZEGOCLOUD call audio
-          if (el.srcObject) return;
-          if (
-            el.closest?.('.zego-uikit-prebuilt') ||
-            el.closest?.('[data-zego-call]') ||
-            el.closest?.('#zego-call-container') ||
-            el.id?.startsWith('zg-') ||
-            el.id?.startsWith('zego-') ||
-            el.dataset?.zegoCall ||
-            el.dataset?.zego ||
-            el.hasAttribute?.('data-music-player')
-          ) {
-            return;
-          }
-          el.pause();
-          el.currentTime = 0;
-          el.muted = true;
-          el.src = '';
-        } catch {}
-      });
-    } catch {}
-  }
 }
 
 /**

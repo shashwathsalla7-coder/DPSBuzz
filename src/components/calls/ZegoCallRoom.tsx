@@ -58,10 +58,46 @@ export function ZegoCallRoom({ call, isCaller, onEndCall, onConnected }: ZegoCal
     }
   }, [call.status]);
 
+  const [isAudioBlocked, setIsAudioBlocked] = useState(false);
+
+  // Monitor for any browser autoplay restrictions on audio elements
+  useEffect(() => {
+    const checkAudioPlayback = () => {
+      try {
+        const mediaEls = document.querySelectorAll('audio');
+        let blocked = false;
+        mediaEls.forEach((el) => {
+          if (el.paused && !el.ended && (el.srcObject || el.src)) {
+            blocked = true;
+          }
+        });
+        setIsAudioBlocked(blocked);
+      } catch {}
+    };
+    const interval = setInterval(checkAudioPlayback, 1500);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleUnmuteAll = () => {
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (AudioCtx) {
+        const ctx = new AudioCtx();
+        ctx.resume().catch(() => {});
+      }
+      const mediaEls = document.querySelectorAll('audio, video');
+      mediaEls.forEach((el) => {
+        if (el instanceof HTMLMediaElement) {
+          el.muted = false;
+          el.play().catch(() => {});
+        }
+      });
+      setIsAudioBlocked(false);
+    } catch {}
+  };
+
   useEffect(() => {
     let isMounted = true;
-    let timer1: any = null;
-    let timer2: any = null;
 
     async function initZego() {
       if (!containerRef.current) return;
@@ -104,62 +140,29 @@ export function ZegoCallRoom({ call, isCaller, onEndCall, onConnected }: ZegoCal
           displayName || cleanUserID
         );
 
-        // Create ZegoUIKit instance with AI Denoise (noise suppression / echo control) enabled
-        const zp = ZegoUIKitPrebuilt.create(kitToken, {
-          AiDenoiseConfig: { mode: 1 }, // AIBalanced
-        });
+        // Request permissions proactively so browser grants them within user gesture
+        try {
+          if (navigator?.mediaDevices?.getUserMedia) {
+            const tempStream = await navigator.mediaDevices.getUserMedia({
+              audio: true,
+              video: Boolean(call.isVideo),
+            });
+            tempStream.getTracks().forEach((track) => track.stop());
+          }
+        } catch (mediaErr) {
+          console.warn('[ZEGOCLOUD] User media check:', mediaErr);
+        }
+
+        // Create clean ZegoUIKit instance
+        const zp = ZegoUIKitPrebuilt.create(kitToken);
         (zp as any).autoLeaveRoomWhenOnlySelfInRoom = false;
         zpRef.current = zp;
-
-        // Helper to apply full-duplex AEC, ANS, AGC to audio streams
-        const applyAudioEnhancements = (stream?: any) => {
-          try {
-            const express =
-              (zp as any).express ||
-              (ZegoUIKitPrebuilt as any).core?.express ||
-              (ZegoUIKitPrebuilt as any)._zg;
-            if (express) {
-              if (typeof express.enableANS === 'function') {
-                express.enableANS(true, 1);
-              }
-              const targetStream = stream || (zp as any).localStream;
-              if (targetStream && typeof express.setAudioConfig === 'function') {
-                express.setAudioConfig(targetStream, {
-                  AEC: true,
-                  ANS: true,
-                  AGC: true,
-                }).catch?.(() => {});
-              }
-            }
-
-            // Apply native hardware constraints directly to audio tracks for full-duplex echo cancellation
-            const targetStream = stream || (zp as any).localStream;
-            if (targetStream && typeof targetStream.getAudioTracks === 'function') {
-              targetStream.getAudioTracks().forEach((track: any) => {
-                try {
-                  track.applyConstraints?.({
-                    echoCancellation: true,
-                    noiseSuppression: true,
-                    autoGainControl: true,
-                  }).catch?.(() => {});
-                } catch {}
-              });
-            }
-          } catch (e) {
-            console.warn('[ZEGOCLOUD] Audio enhancements setup:', e);
-          }
-        };
-
-        applyAudioEnhancements();
 
         // Connect directly to 1-on-1 Call Room interface
         zp.joinRoom({
           container: containerRef.current,
           scenario: {
             mode: ZegoUIKitPrebuilt.OneONoneCall,
-            config: {
-              role: ZegoUIKitPrebuilt.Host,
-            },
           },
           showPreJoinView: false,
           turnOnMicrophoneWhenJoining: true,
@@ -185,9 +188,6 @@ export function ZegoCallRoom({ call, isCaller, onEndCall, onConnected }: ZegoCal
           showLeavingView: false,
           showLeaveRoomConfirmDialog: false,
           videoResolutionDefault: ZegoUIKitPrebuilt.VideoResolution_720P,
-          onLocalStreamUpdated: (_state: string, _streamId: string, stream: any) => {
-            applyAudioEnhancements(stream);
-          },
           onUserJoin: (users: any[]) => {
             if (!isMounted) return;
             console.log('[ZEGOCLOUD] Remote participant joined room:', users);
@@ -195,6 +195,17 @@ export function ZegoCallRoom({ call, isCaller, onEndCall, onConnected }: ZegoCal
             playCallConnectedSound();
             setIsRemoteConnected(true);
             onConnectedRef.current?.();
+
+            // Guarantee remote voice is unmuted across all browser engines
+            try {
+              const mediaEls = document.querySelectorAll('audio, video');
+              mediaEls.forEach((el) => {
+                if (el instanceof HTMLMediaElement) {
+                  el.muted = false;
+                  if (el.paused) el.play().catch(() => {});
+                }
+              });
+            } catch {}
           },
           onUserLeave: () => {
             if (!isMounted) return;
@@ -209,14 +220,6 @@ export function ZegoCallRoom({ call, isCaller, onEndCall, onConnected }: ZegoCal
             onEndCallRef.current();
           },
         });
-
-        // Periodic safety checks to ensure AEC/ANS/AGC are active once localStream is established
-        timer1 = setTimeout(() => {
-          if (isMounted) applyAudioEnhancements();
-        }, 600);
-        timer2 = setTimeout(() => {
-          if (isMounted) applyAudioEnhancements();
-        }, 1800);
 
         if (isMounted) {
           setIsInitializing(false);
@@ -234,8 +237,6 @@ export function ZegoCallRoom({ call, isCaller, onEndCall, onConnected }: ZegoCal
 
     return () => {
       isMounted = false;
-      if (timer1) clearTimeout(timer1);
-      if (timer2) clearTimeout(timer2);
       stopCallAudio();
       if (zpRef.current) {
         try {
@@ -337,6 +338,19 @@ export function ZegoCallRoom({ call, isCaller, onEndCall, onConnected }: ZegoCal
         style={{ width: '100%', height: '100%', position: 'relative' }}
         className="w-full h-full z-0 zego-uikit-prebuilt [&_.zego-uikit-prebuilt]:!h-full [&_.zego-uikit-prebuilt]:!w-full"
       />
+
+      {/* 5. Browser Autoplay Unmute Helper Pill */}
+      {isAudioBlocked && isRemoteConnected && (
+        <button
+          type="button"
+          onClick={handleUnmuteAll}
+          className="absolute bottom-24 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 px-5 py-2.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-2xl animate-bounce cursor-pointer border border-white/20"
+          aria-label="Unmute audio"
+        >
+          <span>🔊</span>
+          <span>Voice muted by browser — Tap to Unmute</span>
+        </button>
+      )}
     </div>
   );
 }

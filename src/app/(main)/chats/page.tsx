@@ -656,7 +656,6 @@ function ChatsContent() {
             });
 
             const msgMap = new Map(preservedLocal.map((m) => [m.id, m]));
-            let changed = preservedLocal.length !== currentList.length;
 
             for (const rawMsg of serverMsgs) {
               const sMsg = { ...rawMsg, isDelivered: true };
@@ -664,22 +663,35 @@ function ChatsContent() {
               if (sender && sender !== currentUsername && !sMsg.is_read && !sMsg.isSeen && !sMsg.readAt) {
                 hasUnreadFromOther = true;
               }
-              const local = msgMap.get(sMsg.id);
-              if (!local) {
-                msgMap.set(sMsg.id, sMsg);
-                changed = true;
-              } else if (
-                Boolean(local.is_read) !== Boolean(sMsg.is_read) ||
-                Boolean(local.isSeen) !== Boolean(sMsg.isSeen) ||
-                Boolean(local.isDelivered) !== Boolean(sMsg.isDelivered) ||
-                local.reaction !== sMsg.reaction
-              ) {
-                msgMap.set(sMsg.id, { ...local, ...sMsg });
-                changed = true;
+              msgMap.set(sMsg.id, sMsg);
+            }
+
+            const merged = Array.from(msgMap.values());
+            let changed = false;
+
+            // Deep check: only trigger re-render if messages actually changed
+            if (merged.length !== currentList.length) {
+              changed = true;
+            } else {
+              for (let i = 0; i < merged.length; i++) {
+                const m1 = merged[i];
+                const m2 = currentList[i];
+                if (
+                  m1.id !== m2.id ||
+                  m1.text !== m2.text ||
+                  m1.reaction !== m2.reaction ||
+                  Boolean(m1.is_read) !== Boolean(m2.is_read) ||
+                  Boolean(m1.isSeen) !== Boolean(m2.isSeen) ||
+                  Boolean(m1.isDelivered) !== Boolean(m2.isDelivered) ||
+                  m1.sharedPost?.imageUrl !== m2.sharedPost?.imageUrl
+                ) {
+                  changed = true;
+                  break;
+                }
               }
             }
+
             if (changed) {
-              const merged = Array.from(msgMap.values());
               const nextMap = {
                 ...prev,
                 [rawId]: merged,
@@ -2031,9 +2043,9 @@ function ChatsContent() {
 
     const targetUser = (activeConversation.username || activeConversation.id.replace(/^conv-/, '')).toLowerCase().trim();
     if (!activeConversation.isGroup && targetUser) {
-      const check = DataStore.canChatAndShare(currentUsername, targetUser);
-      if (!check.allowMedia) {
-        alert('Photos and rich media are restricted until the recipient accepts your message request.');
+      const isBlocked = DataStore.isBlocked(targetUser, currentUsername);
+      if (isBlocked) {
+        alert('Unable to message this user.');
         if (chatMediaInputRef.current) chatMediaInputRef.current.value = '';
         return;
       }
@@ -2047,6 +2059,26 @@ function ChatsContent() {
       return;
     }
 
+    // Attempt clean upload to server storage
+    let finalImageUrl = compressedDataUrl;
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('folder', 'chats');
+      const uploadRes = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      if (uploadRes.ok) {
+        const uploadData = await uploadRes.json();
+        if (uploadData.success && uploadData.url) {
+          finalImageUrl = uploadData.url;
+        }
+      }
+    } catch {
+      // Gracefully continue with client compressed data URL
+    }
+
     const now = Date.now();
     const rawId = activeConversation.id;
     const canonicalId = getCanonicalConvId(activeConversation);
@@ -2055,7 +2087,7 @@ function ChatsContent() {
       text: '📸 Photo',
       sender: 'me',
       senderUsername: currentUsername,
-      time: 'Just now',
+      time: new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date(now)),
       createdAt: new Date(now).toISOString(),
       timestamp: now,
       isDelivered: false,
@@ -2067,65 +2099,112 @@ function ChatsContent() {
       sharedPost: {
         id: `chat-photo-${now}`,
         username: currentUsername,
-        imageUrl: compressedDataUrl,
+        imageUrl: finalImageUrl,
         caption: 'Chat photo',
       },
     };
 
-      setChatMessages((prev) => {
-        const existing = getListForConv(prev, canonicalId, rawId);
-        const next = [...existing, newMsg];
-        const nextMap = {
-          ...prev,
-          [rawId]: next,
-          [canonicalId]: next,
-        };
-        try {
-          if (currentUsername) {
-            localStorage.setItem(`dpsbuzz_chat_messages_${currentUsername}_v3`, JSON.stringify(nextMap));
-          }
-          window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated'));
-        } catch {}
-        return nextMap;
-      });
+    setChatMessages((prev) => {
+      const existing = getListForConv(prev, canonicalId, rawId);
+      const next = [...existing, newMsg];
+      const nextMap = {
+        ...prev,
+        [rawId]: next,
+        [canonicalId]: next,
+      };
+      try {
+        if (currentUsername) {
+          localStorage.setItem(`dpsbuzz_chat_messages_${currentUsername}_v3`, JSON.stringify(nextMap));
+        }
+        window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated'));
+      } catch {}
+      return nextMap;
+    });
 
-      // Instant 0ms broadcast across all tabs and components
-      DataStore.broadcastChatEvent({
-        type: 'MESSAGE_SENT',
+    setConversations((prev) =>
+      prev.map((c) =>
+        c.id === rawId || c.id === canonicalId
+          ? { ...c, lastMessage: `You: 📸 Photo`, timeAgo: 'Just now' }
+          : c
+      )
+    );
+
+    // Update recipient local storage for single-browser multi-account testing
+    if (!activeConversation.isGroup && targetUser) {
+      try {
+        const targetConvKey = `dpsbuzz_chat_conversations_${targetUser}_v3`;
+        const targetMsgKey = `dpsbuzz_chat_messages_${targetUser}_v3`;
+        const recipientConv = JSON.parse(localStorage.getItem(targetConvKey) || '[]');
+        const recipientMsgs = JSON.parse(localStorage.getItem(targetMsgKey) || '{}');
+        const rConvId = `conv-${currentUsername}`;
+        const rExistingIdx = recipientConv.findIndex(
+          (c: any) => (c.username || '').toLowerCase() === currentUsername || c.id === rConvId || c.id === canonicalId
+        );
+        const meProfile = DataStore.getProfileByUsername(currentUsername);
+        const senderName = meProfile ? meProfile.fullName : currentUsername;
+        if (rExistingIdx >= 0) {
+          recipientConv[rExistingIdx].lastMessage = `${senderName}: 📸 Photo`;
+          recipientConv[rExistingIdx].timeAgo = 'Just now';
+          recipientConv[rExistingIdx].isUnread = true;
+          recipientConv[rExistingIdx].unreadCount = (recipientConv[rExistingIdx].unreadCount || 0) + 1;
+        } else {
+          recipientConv.unshift({
+            id: rConvId,
+            name: senderName,
+            username: currentUsername,
+            avatar: meProfile?.avatar || null,
+            studentClass: meProfile?.class ? `${meProfile.class}-${meProfile.section || ''}` : 'Student',
+            lastMessage: `${senderName}: 📸 Photo`,
+            timeAgo: 'Just now',
+            isUnread: true,
+            unreadCount: 1,
+          });
+        }
+        const recipientMsg = { ...newMsg, sender: 'other' as const };
+        recipientMsgs[rConvId] = [...(recipientMsgs[rConvId] || []), recipientMsg];
+        recipientMsgs[canonicalId] = [...(recipientMsgs[canonicalId] || []), recipientMsg];
+        localStorage.setItem(targetConvKey, JSON.stringify(recipientConv));
+        localStorage.setItem(targetMsgKey, JSON.stringify(recipientMsgs));
+      } catch {}
+    }
+
+    // Instant 0ms broadcast across all tabs and components
+    DataStore.broadcastChatEvent({
+      type: 'MESSAGE_SENT',
+      conversationId: canonicalId,
+      message: newMsg,
+      senderUsername: currentUsername,
+      recipientUsername: activeConversation.username,
+    });
+
+    fetch('/api/chats', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
         conversationId: canonicalId,
-        message: newMsg,
         senderUsername: currentUsername,
-        recipientUsername: activeConversation.username,
-      });
-
-      fetch('/api/chats', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          conversationId: canonicalId,
-          senderUsername: currentUsername,
-          message: newMsg,
-        }),
+        message: newMsg,
+      }),
+    })
+      .then((res) => {
+        if (res.ok) {
+          setChatMessages((prev) => {
+            const currentList = getListForConv(prev, canonicalId, rawId);
+            const updated = currentList.map((m) =>
+              m.id === newMsg.id ? { ...m, isDelivered: true } : m
+            );
+            return {
+              ...prev,
+              [rawId]: updated,
+              [canonicalId]: updated,
+            };
+          });
+        }
       })
-        .then((res) => {
-          if (res.ok) {
-            setChatMessages((prev) => {
-              const currentList = getListForConv(prev, canonicalId, rawId);
-              const updated = currentList.map((m) =>
-                m.id === newMsg.id ? { ...m, isDelivered: true } : m
-              );
-              return {
-                ...prev,
-                [rawId]: updated,
-                [canonicalId]: updated,
-              };
-            });
-          }
-        })
-        .catch((err) => console.warn('Failed to sync chat message:', err));
+      .catch((err) => console.warn('Failed to sync chat photo:', err));
 
-      setTimeout(() => scrollToBottom(true), 80);
-      if (chatMediaInputRef.current) chatMediaInputRef.current.value = '';
+    setTimeout(() => scrollToBottom(true), 80);
+    if (chatMediaInputRef.current) chatMediaInputRef.current.value = '';
   };
 
   // ACTIVE CONVERSATION VIEW (Full screen on mobile, NO active now or last seen status)
@@ -2720,8 +2799,8 @@ function ChatsContent() {
           </div>
         )}
 
-        {/* Instagram Authentic Vanish Mode Pull-Up / Swipe-Up Gesture Bar (The Space/Bar Directly Above Message Composer) */}
-        {!activeConversation.isGroup && (
+        {/* Instagram Authentic Vanish Mode Pull-Up / Swipe-Up Gesture Bar (Only shown when active or actively pulling) */}
+        {!activeConversation.isGroup && (isVanishMode || (isVanishPulling && vanishPullDistance > 10)) && (
           <div
             onMouseDown={(e) => {
               if (e.button === 0) handleVanishTouchStart(e.clientY);
@@ -2729,103 +2808,48 @@ function ChatsContent() {
             onTouchStart={(e) => handleVanishTouchStart(e.touches[0].clientY)}
             onTouchMove={(e) => handleVanishTouchMove(e.touches[0].clientY)}
             onTouchEnd={handleVanishTouchEnd}
-            onClick={() => {
-              if (vanishPullDistance < 8) {
-                handleToggleVanishMode();
-              }
-            }}
-            className={`w-full flex flex-col items-center justify-center select-none cursor-pointer transition-all relative z-25 py-2 px-3 ${
+            className={`w-full flex items-center justify-between select-none transition-all relative z-25 py-2 px-4 ${
               isVanishMode
-                ? 'bg-[#180f24] border-t border-purple-500/20 text-purple-300 hover:text-purple-100'
-                : 'bg-[var(--surface)] border-t border-[var(--line)]/60 text-[var(--text-muted)] hover:text-[var(--text)]'
+                ? 'bg-[#180f24] border-t border-purple-500/20 text-purple-300'
+                : 'bg-[var(--surface)] border-t border-[var(--line)]/60 text-[var(--text-muted)]'
             }`}
             style={{
               transform: isVanishPulling && vanishPullDistance > 0 ? `translateY(-${Math.min(vanishPullDistance * 0.4, 20)}px)` : 'none',
               touchAction: 'none',
             }}
-            title={isVanishMode ? 'Swipe up or click to turn off vanish mode' : 'Swipe up or click to turn on vanish mode'}
           >
             {/* Gesture Pull Indicator & Circle Gauge */}
             <div className="flex items-center gap-2">
               <div className="relative w-6 h-6 flex items-center justify-center shrink-0">
-                {/* Background track circle */}
-                <svg className="w-6 h-6 -rotate-90" viewBox="0 0 24 24">
-                  <circle
-                    cx="12"
-                    cy="12"
-                    r="9"
-                    className={isVanishMode ? 'stroke-purple-900/50' : 'stroke-zinc-300 dark:stroke-zinc-700'}
-                    strokeWidth="2.5"
-                    fill="none"
-                  />
-                  {/* Progress fill circle */}
-                  <circle
-                    cx="12"
-                    cy="12"
-                    r="9"
-                    className={
-                      isVanishMode
-                        ? 'stroke-purple-400'
-                        : vanishPullDistance >= 45
-                        ? 'stroke-purple-500'
-                        : 'stroke-zinc-500 dark:stroke-zinc-400'
-                    }
-                    strokeWidth="2.5"
-                    strokeDasharray={56.5}
-                    strokeDashoffset={
-                      isVanishPulling
-                        ? Math.max(0, 56.5 - (56.5 * Math.min(vanishPullDistance, 45)) / 45)
-                        : isVanishMode
-                        ? 0
-                        : 56.5
-                    }
-                    strokeLinecap="round"
-                    fill="none"
-                    style={{ transition: isVanishPulling ? 'none' : 'stroke-dashoffset 0.25s ease' }}
-                  />
-                </svg>
-                {/* Center Ghost Icon */}
                 <Ghost
-                  size={12}
-                  className={`absolute transition-transform ${
-                    isVanishMode
-                      ? 'text-purple-300 animate-pulse'
-                      : vanishPullDistance >= 45
-                      ? 'text-purple-500 scale-125'
-                      : 'text-[var(--text-muted)]'
-                  }`}
+                  size={14}
+                  className={isVanishMode ? 'text-purple-300 animate-pulse' : 'text-purple-500 scale-110'}
                 />
               </div>
 
               {/* Status / Instruction Text */}
               <div className="flex items-center gap-1.5 text-[11.5px] font-medium tracking-tight">
-                {isVanishPulling && vanishPullDistance >= 45 ? (
+                {isVanishPulling && vanishPullDistance >= 75 ? (
                   <span className="font-semibold text-purple-400 animate-pulse">
                     Release to turn {isVanishMode ? 'off' : 'on'} vanish mode
                   </span>
                 ) : isVanishPulling ? (
-                  <span>Swipe up to turn {isVanishMode ? 'off' : 'on'} vanish mode</span>
-                ) : isVanishMode ? (
-                  <span className="flex items-center gap-1">
-                    <span>Swipe up or tap to turn off vanish mode</span>
-                    <span className="text-[10px] opacity-75">• 👻 Active</span>
-                  </span>
+                  <span>Swipe up to toggle vanish mode</span>
                 ) : (
-                  <span>Swipe up or tap to turn on vanish mode 👻</span>
+                  <span>👻 Vanish mode active — messages disappear when closed</span>
                 )}
               </div>
             </div>
 
-            {/* Subtle drag handle bar */}
-            <div
-              className={`w-10 h-1 rounded-full mt-1 transition-colors ${
-                isVanishMode
-                  ? 'bg-purple-500/40'
-                  : vanishPullDistance >= 45
-                  ? 'bg-purple-500'
-                  : 'bg-zinc-300 dark:bg-zinc-700'
-              }`}
-            />
+            {isVanishMode && (
+              <button
+                type="button"
+                onClick={handleToggleVanishMode}
+                className="px-3 py-1 rounded-full text-xs font-bold text-white bg-purple-600 hover:bg-purple-500 active:scale-95 transition-all cursor-pointer shadow-xs"
+              >
+                Turn Off
+              </button>
+            )}
           </div>
         )}
 
@@ -2890,9 +2914,9 @@ function ChatsContent() {
               type="button"
               onClick={() => {
                 if (!activeConversation.isGroup && targetUser) {
-                  const check = DataStore.canChatAndShare(currentUsername, targetUser);
-                  if (!check.allowMedia) {
-                    alert('Photos and rich media are restricted until the recipient accepts your message request.');
+                  const isBlocked = DataStore.isBlocked(targetUser, currentUsername);
+                  if (isBlocked) {
+                    alert('Unable to message this user.');
                     return;
                   }
                 }

@@ -111,15 +111,19 @@ assert.ok(
 );
 console.log('✓ PASS: Server route deadCalls consistency verified');
 
-// 5. Verify ZEGOCLOUD Audio Enhancements & Auto-leave Settings
+// 5. Verify ZEGOCLOUD Audio & Auto-leave Settings
 assert.ok(
   zegoCode.includes('(zp as any).autoLeaveRoomWhenOnlySelfInRoom = false;'),
   'ZegoCallRoom must set autoLeaveRoomWhenOnlySelfInRoom directly on zp'
 );
 assert.ok(
-  zegoCode.includes('track.applyConstraints?.({\n                    echoCancellation: true,\n                    noiseSuppression: true,\n                    autoGainControl: true,\n                  })'),
-  'ZegoCallRoom must enforce full-duplex hardware echo cancellation constraints'
+  zegoCode.includes('turnOnMicrophoneWhenJoining: true'),
+  'ZegoCallRoom must enable microphone automatically upon joining without muted state'
 );
-console.log('✓ PASS: ZEGOCLOUD hardware audio constraints and instance flags verified');
+assert.ok(
+  !callAudioCode.includes("el.muted = true;"),
+  'callAudio.ts must not mute DOM audio elements to protect live WebRTC streams'
+);
+console.log('✓ PASS: ZEGOCLOUD clean audio configuration and instance flags verified');
 
 console.log('\n🎉 ALL INTEGRATION AND ADVERSARIAL AUDIT SCENARIOS PASSED WITH ZERO ERRORS! 🚀✨\n');

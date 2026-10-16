@@ -254,19 +254,47 @@ function SearchContent() {
       const classSec = `${c}${s}`;
       const classDashSec = `${c}-${s}`;
 
-      const matchKeyword =
-        u.includes(q) ||
-        n.includes(q) ||
-        c === q ||
-        c.includes(q) ||
-        fullClass.includes(q) ||
-        classSec.includes(q) ||
-        classDashSec.includes(q) ||
-        s === q ||
-        bio.includes(q);
+      // Check if user specifically entered a class/section search like "7", "7th", "class 7", "7-b", "8 g"
+      const classQueryMatch =
+        q.match(/^(?:class|grade)?\s*(\d{1,2})(?:th)?(?:\s*class)?\s*[-_\s/]?\s*([a-gA-G])?$/i) ||
+        (q.match(/^(\d{1,2})$/) ? [q, q, undefined] : null);
 
-      const matchClass = selectedClass === 'All' || p.class === selectedClass;
-      const matchSection = selectedSection === 'All' || (p.section || 'A') === selectedSection;
+      let matchKeyword = false;
+      if (classQueryMatch) {
+        const queryClassNum = classQueryMatch[1];
+        const querySection = classQueryMatch[2]?.toLowerCase();
+        const cleanClass = c.replace(/[^0-9]/g, '');
+        if (cleanClass === queryClassNum) {
+          if (!querySection || s === querySection) {
+            matchKeyword = true;
+          }
+        }
+      }
+
+      // If not a pure class query or didn't match class query, search name, username, bio
+      if (!matchKeyword) {
+        // Prevent single digit substring match in username (e.g. typing "7" should NEVER match shashwath71845)
+        const isNumericOnly = /^\d+$/.test(q);
+        const matchUser = !isNumericOnly && (u === q || u.includes(q));
+        const matchName = !isNumericOnly && n.includes(q);
+        const matchBio = !isNumericOnly && bio.includes(q);
+        const matchClassSec =
+          c === q ||
+          fullClass === q ||
+          classSec === q ||
+          classDashSec === q ||
+          `class ${classSec}` === q ||
+          `class ${classDashSec}` === q;
+
+        matchKeyword = matchUser || matchName || matchBio || matchClassSec;
+      }
+
+      const matchClass =
+        selectedClass === 'All' ||
+        c === selectedClass.toLowerCase() ||
+        c.replace(/[^0-9]/g, '') === selectedClass;
+      const matchSection =
+        selectedSection === 'All' || (p.section || 'A').toUpperCase() === selectedSection.toUpperCase();
 
       return matchKeyword && matchClass && matchSection;
     });
@@ -284,31 +312,50 @@ function SearchContent() {
           return false; // Private posts only showed to their followers
         }
       }
+
+      const postAuthorClass = (p.class || '').toLowerCase();
+      const cleanPostClass = postAuthorClass.replace(/[^0-9]/g, '');
+
       if (!q) {
         if (selectedClass === 'All') return true;
-        return (p.class || '').toLowerCase().includes(selectedClass.toLowerCase());
+        return cleanPostClass === selectedClass;
       }
 
       const caption = (p.caption || '').toLowerCase();
       const authorUser = (p.username || '').toLowerCase();
       const authorName = (p.fullName || '').toLowerCase();
-      const authorClass = (p.class || '').toLowerCase();
       const habit = (p.habitTag || p.habitCategory || '').toLowerCase();
       const songTitle = (p.song?.title || '').toLowerCase();
       const songArtist = (p.song?.artist || '').toLowerCase();
 
-      const matchKeyword =
-        caption.includes(q) ||
-        authorUser.includes(q) ||
-        authorName.includes(q) ||
-        authorClass === q ||
-        authorClass.includes(q) ||
-        `class ${authorClass}`.includes(q) ||
-        habit.includes(q) ||
-        songTitle.includes(q) ||
-        songArtist.includes(q);
+      const classQueryMatch =
+        q.match(/^(?:class|grade)?\s*(\d{1,2})(?:th)?(?:\s*class)?$/i) ||
+        (q.match(/^(\d{1,2})$/) ? [q, q] : null);
 
-      const matchClass = selectedClass === 'All' || (p.class || '').toLowerCase().includes(selectedClass.toLowerCase());
+      let matchKeyword = false;
+      if (classQueryMatch) {
+        const queryClassNum = classQueryMatch[1];
+        if (cleanPostClass === queryClassNum) {
+          matchKeyword = true;
+        }
+      }
+
+      if (!matchKeyword) {
+        const isNumericOnly = /^\d+$/.test(q);
+        matchKeyword =
+          caption.includes(q) ||
+          (!isNumericOnly && authorUser.includes(q)) ||
+          (!isNumericOnly && authorName.includes(q)) ||
+          cleanPostClass === q ||
+          `class ${cleanPostClass}` === q ||
+          habit.includes(q) ||
+          songTitle.includes(q) ||
+          songArtist.includes(q);
+      }
+
+      const matchClass =
+        selectedClass === 'All' || cleanPostClass === selectedClass;
+
       return matchKeyword && matchClass;
     });
 
@@ -409,19 +456,13 @@ function SearchContent() {
       <div className="px-4 py-2 flex items-center gap-1.5 overflow-x-auto no-scrollbar border-b border-[var(--line)]/50 bg-[var(--surface)]">
         <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase shrink-0 mr-1">Class:</span>
         {['All', '6', '7', '8', '9', '10'].map((cls) => {
-          const isActive = cls === 'All' ? (!query && selectedClass === 'All') : (query === cls || selectedClass === cls);
+          const isActive = selectedClass === cls;
           return (
             <button
               key={cls}
               type="button"
               onClick={() => {
-                if (cls === 'All') {
-                  setSelectedClass('All');
-                  setQuery('');
-                } else {
-                  setQuery(cls);
-                  setSelectedClass('All');
-                }
+                setSelectedClass(cls);
               }}
               className={`h-7 px-3 rounded-full text-[11px] font-bold shrink-0 transition-all cursor-pointer ${
                 isActive

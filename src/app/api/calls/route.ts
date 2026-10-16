@@ -285,7 +285,6 @@ export async function POST(req: NextRequest) {
         localCache.set(callId, { ...existing, ...updates });
       }
       await updateServerCall(callId, updates);
-      await deleteServerCall(callId);
       return NextResponse.json({ success: true });
     }
 
@@ -300,7 +299,6 @@ export async function POST(req: NextRequest) {
         localCache.set(callId, { ...existing, ...updates });
       }
       await updateServerCall(callId, updates);
-      await deleteServerCall(callId);
       return NextResponse.json({ success: true });
     }
 
