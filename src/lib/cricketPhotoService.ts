@@ -139,7 +139,7 @@ export async function searchWikimediaCricketerPhoto(
       const res = await fetch(apiUrl, {
         signal: controller.signal,
         headers: {
-          'User-Agent': 'DPSBuzz/1.0 (DPS School Social Platform - Educational Project; https://dps-buzz.vercel.app)',
+          'User-Agent': 'DPSBuzz/1.0 (DPS School Social Platform - Educational Project; https://dpsbuzz.netlify.app)',
         },
       });
       clearTimeout(timeoutId);

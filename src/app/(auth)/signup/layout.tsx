@@ -5,12 +5,12 @@ export const metadata: Metadata = {
   description:
     'Create your official student account on DPS Buzz with school code DPS71845. Connect with classmates, share school moments, and join class groups.',
   alternates: {
-    canonical: 'https://dps-buzz.vercel.app/signup',
+    canonical: 'https://dpsbuzz.netlify.app/signup',
   },
   openGraph: {
     title: 'Join DPS Buzz | Student Registration',
     description: 'Register with school code DPS71845 and join the Dilsukhnagar Public School student social network.',
-    url: 'https://dps-buzz.vercel.app/signup',
+    url: 'https://dpsbuzz.netlify.app/signup',
   },
 };
 

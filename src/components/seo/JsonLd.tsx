@@ -6,18 +6,18 @@ export function JsonLd() {
     '@type': 'WebSite',
     name: 'DPS Buzz',
     alternateName: ['DPS Buzz App', 'Dilsukhnagar Public School Buzz', 'DPS Social'],
-    url: 'https://dps-buzz.vercel.app',
+    url: 'https://dpsbuzz.netlify.app',
     description:
       'The private and vibrant student social network for Dilsukhnagar Public School (DPS). Connect with classmates, share school moments, track notices, and download the official Android APK.',
     publisher: {
       '@type': 'EducationalOrganization',
       name: 'Dilsukhnagar Public School',
-      url: 'https://dps-buzz.vercel.app',
-      logo: 'https://dps-buzz.vercel.app/icons/icon-512.png',
+      url: 'https://dpsbuzz.netlify.app',
+      logo: 'https://dpsbuzz.netlify.app/icons/icon-512.png',
     },
     potentialAction: {
       '@type': 'SearchAction',
-      target: 'https://dps-buzz.vercel.app/search?q={search_term_string}',
+      target: 'https://dpsbuzz.netlify.app/search?q={search_term_string}',
       'query-input': 'required name=search_term_string',
     },
   };
@@ -27,8 +27,8 @@ export function JsonLd() {
     '@type': 'EducationalOrganization',
     name: 'Dilsukhnagar Public School',
     alternateName: 'DPS Dilsukhnagar',
-    url: 'https://dps-buzz.vercel.app',
-    logo: 'https://dps-buzz.vercel.app/icons/icon-512.png',
+    url: 'https://dpsbuzz.netlify.app',
+    logo: 'https://dpsbuzz.netlify.app/icons/icon-512.png',
     address: {
       '@type': 'PostalAddress',
       addressLocality: 'Hyderabad',
@@ -44,7 +44,7 @@ export function JsonLd() {
     name: 'DPS Buzz',
     operatingSystem: 'Android',
     applicationCategory: 'SocialNetworkingApplication',
-    downloadUrl: 'https://dps-buzz.vercel.app/download',
+    downloadUrl: 'https://dpsbuzz.netlify.app/download',
     fileFormat: 'application/vnd.android.package-archive',
     fileSize: '12.3MB',
     softwareVersion: '1.4',

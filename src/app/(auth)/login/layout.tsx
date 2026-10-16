@@ -5,12 +5,12 @@ export const metadata: Metadata = {
   description:
     'Log in to DPS Buzz to see what your friends and classmates are up to at Dilsukhnagar Public School.',
   alternates: {
-    canonical: 'https://dps-buzz.vercel.app/login',
+    canonical: 'https://dpsbuzz.netlify.app/login',
   },
   openGraph: {
     title: 'Log In to DPS Buzz | Dilsukhnagar Public School',
     description: 'Log in to connect with classmates, see school moments, and participate in DPS Buzz.',
-    url: 'https://dps-buzz.vercel.app/login',
+    url: 'https://dpsbuzz.netlify.app/login',
   },
 };
 

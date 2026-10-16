@@ -5,13 +5,13 @@ export const metadata: Metadata = {
   description:
     'Install or download the official DPS Buzz app for Laptop/PC (Windows, Mac), Android (APK v1.4 & PWA), and iPhone.',
   alternates: {
-    canonical: 'https://dps-buzz.vercel.app/download',
+    canonical: 'https://dpsbuzz.netlify.app/download',
   },
   openGraph: {
     title: 'Install DPS Buzz — Laptop, Android APK (v1.4) & iPhone App',
     description:
       'Official school social app for Dilsukhnagar Public School. Standalone desktop app, Android APK v1.4, and iOS Safari app.',
-    url: 'https://dps-buzz.vercel.app/download',
+    url: 'https://dpsbuzz.netlify.app/download',
     images: [
       {
         url: '/icons/icon-512.png',

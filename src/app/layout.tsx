@@ -10,7 +10,7 @@ import {
 import JsonLd from '@/components/seo/JsonLd';
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://dps-buzz.vercel.app'),
+  metadataBase: new URL('https://dpsbuzz.netlify.app'),
   title: {
     default: 'DPS Buzz — Official Student Social Network | Dilsukhnagar Public School',
     template: '%s | DPS Buzz',
@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   description:
     'DPS Buzz is the official student social network for Dilsukhnagar Public School (DPS). Connect with classmates, share school moments, access official school circulars & Star Board, and download the official Android APK v1.4.',
   applicationName: 'DPS Buzz',
-  authors: [{ name: 'DPS Buzz Community', url: 'https://dps-buzz.vercel.app' }],
+  authors: [{ name: 'DPS Buzz Community', url: 'https://dpsbuzz.netlify.app' }],
   generator: 'Next.js',
   keywords: [
     'DPS Buzz',
@@ -40,7 +40,7 @@ export const metadata: Metadata = {
     telephone: false,
   },
   alternates: {
-    canonical: 'https://dps-buzz.vercel.app',
+    canonical: 'https://dpsbuzz.netlify.app',
   },
   robots: {
     index: true,
@@ -56,7 +56,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'en_IN',
-    url: 'https://dps-buzz.vercel.app',
+    url: 'https://dpsbuzz.netlify.app',
     siteName: 'DPS Buzz',
     title: 'DPS Buzz — Official Student Social Network | Dilsukhnagar Public School',
     description:
