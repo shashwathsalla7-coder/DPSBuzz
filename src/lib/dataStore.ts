@@ -1115,11 +1115,21 @@ export const DataStore = {
       ? posts.filter((post) => post && post.username && !DUMMY_TEST_USERNAMES.has(post.username.toLowerCase()))
       : [];
 
+    const seenPairs = new Set<string>();
+    const uniqueValidFollows: Follow[] = [];
+    for (const f of validFollows) {
+      const key = `${f.follower.toLowerCase().trim()}->${f.following.toLowerCase().trim()}`;
+      if (!seenPairs.has(key)) {
+        seenPairs.add(key);
+        uniqueValidFollows.push(f);
+      }
+    }
+
     return result.map((p) => {
       const u = p.username.toLowerCase().trim();
-      const realFollowers = validFollows.filter((f) => f.following.toLowerCase().trim() === u).length;
-      const realFollowing = validFollows.filter((f) => f.follower.toLowerCase().trim() === u).length;
-      const realPosts = validPosts.filter((post) => post.username.toLowerCase().trim() === u).length;
+      const realFollowers = uniqueValidFollows.filter((f) => f.following.toLowerCase().trim() === u).length;
+      const realFollowing = uniqueValidFollows.filter((f) => f.follower.toLowerCase().trim() === u).length;
+      const realPosts = validPosts.filter((post) => post.username.toLowerCase().trim() === u && !post.isRepost).length;
       return {
         ...p,
         followerCount: realFollowers,
@@ -1314,10 +1324,20 @@ export const DataStore = {
     const likesMap = this.getPostLikesMap();
     const commentsMap = this.getAllCommentsMap();
 
+    // Dynamically calculate repost counts based on actual reposted posts in system
+    const repostCounts: Record<string, number> = {};
+    for (const p of filtered) {
+      if (p.isRepost && p.repostedFrom?.postId) {
+        const origId = p.repostedFrom.postId;
+        repostCounts[origId] = (repostCounts[origId] || 0) + 1;
+      }
+    }
+
     return filtered.map((p) => ({
       ...p,
       likes: Array.isArray(likesMap[p.id]) ? likesMap[p.id].length : (p.likes || 0),
       comments: Array.isArray(commentsMap[p.id]) ? commentsMap[p.id].length : (p.comments || 0),
+      repostCount: repostCounts[p.id] !== undefined ? repostCounts[p.id] : (p.isRepost ? 0 : (p.repostCount || 0)),
     }));
   },
 
@@ -3075,6 +3095,41 @@ export const DataStore = {
     return getStorage<NotificationItem[]>(STORAGE_KEYS.NOTIFICATIONS, []);
   },
 
+  getUnreadNotificationCount(username?: string): number {
+    const cleanUser = (username || this.getCurrentUser()?.username || '').toLowerCase().trim();
+    if (!cleanUser || cleanUser === 'guest') return 0;
+
+    const notifs = this.getNotifications();
+    return notifs.filter(
+      (n) => !n.isRead && (!n.userId || n.userId === 'all' || n.userId.toLowerCase().trim() === cleanUser)
+    ).length;
+  },
+
+  getUnreadChatsCount(username?: string): number {
+    if (typeof window === 'undefined') return 0;
+    const cleanUser = (username || this.getCurrentUser()?.username || '').toLowerCase().trim();
+    if (!cleanUser || cleanUser === 'guest') return 0;
+
+    try {
+      const convKey = `dpsbuzz_chat_conversations_${cleanUser}_v3`;
+      const raw = localStorage.getItem(convKey);
+      if (!raw) return 0;
+      const convs = JSON.parse(raw);
+      if (!Array.isArray(convs)) return 0;
+      const deletedUsers = this.getDeletedUsernames();
+      return convs.filter((c: any) => {
+        if (!c) return false;
+        const otherUser = (c.username || '').toLowerCase().trim();
+        if (otherUser && (deletedUsers.has(otherUser) || DUMMY_TEST_USERNAMES.has(otherUser))) {
+          return false;
+        }
+        return Boolean(c.isUnread || (c.unreadCount || 0) > 0);
+      }).length;
+    } catch {
+      return 0;
+    }
+  },
+
   markAllNotificationsRead(username?: string): void {
     const raw = this.getNotifications();
     const cleanUser = (username || this.getCurrentUser()?.username || '').toLowerCase().trim();
@@ -3129,7 +3184,15 @@ export const DataStore = {
   // Groups (Strictly real student and school groups created in the app)
   getGroups(): Group[] {
     const list = getStorage<Group[]>(STORAGE_KEYS.GROUPS, []);
-    return list.filter((g) => g && g.id && !FAKE_GROUP_IDS.has(g.id));
+    const valid = list.filter((g) => g && g.id && !FAKE_GROUP_IDS.has(g.id));
+    const groupMembersMap = getStorage<Record<string, string[]>>(STORAGE_KEYS.GROUP_MEMBERS, {});
+    return valid.map((g) => {
+      const activeMembers = groupMembersMap[g.id] || (Array.isArray(g.members) ? g.members : []);
+      return {
+        ...g,
+        memberCount: activeMembers.length > 0 ? activeMembers.length : (g.memberCount || 1),
+      };
+    });
   },
 
   createGroup(data: {

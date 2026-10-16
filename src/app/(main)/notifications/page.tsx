@@ -21,8 +21,15 @@ export default function NotificationsPage() {
       (n) => !n.userId || n.userId === 'all' || n.userId.toLowerCase().trim() === currentClean
     );
     setNotifications(list || []);
-
-    setGroupRequests(DataStore.getGroupJoinRequests().filter((r) => r.status === 'pending'));
+    const myGroups = DataStore.getGroups().filter((g) => {
+      if (currentClean === 'shashwath71845' || currentClean === 'admin') return true;
+      const members = DataStore.getGroupMembers(g.id).map((m) => m.toLowerCase().trim());
+      return members.includes(currentClean);
+    });
+    const myGroupIds = new Set(myGroups.map((g) => g.id));
+    setGroupRequests(
+      DataStore.getGroupJoinRequests().filter((r) => r.status === 'pending' && myGroupIds.has(r.groupId))
+    );
     setFollowRequests(
       DataStore.getFollowRequests().filter(
         (f) => f.target.toLowerCase() === currentUser.username.toLowerCase()
