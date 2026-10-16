@@ -19,6 +19,7 @@ export interface ConversationItem {
   groupInitials?: string;
   lastMessage?: string;
   timeAgo?: string;
+  lastMessageTimestamp?: number;
   isUnread?: boolean;
   unreadCount?: number;
   hasUnseenStory?: boolean;
@@ -52,6 +53,8 @@ export const ConversationRow: React.FC<ConversationRowProps> = ({
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
   const isDraggingRef = useRef(false);
+  const isScrollingVertically = useRef(false);
+  const isSwipingHorizontally = useRef(false);
   const pressTimer = useRef<NodeJS.Timeout | null>(null);
 
   const isGroup = Boolean(
@@ -74,38 +77,44 @@ export const ConversationRow: React.FC<ConversationRowProps> = ({
   const pair = getAvatarColorPair(conversation.name || 'chat');
   const initials = (conversation.name || 'CH').slice(0, 2).toUpperCase();
 
-  // Swipe handling
+  // Swipe handling with strict directional lock
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
     touchStartY.current = e.touches[0].clientY;
     isDraggingRef.current = false;
+    isScrollingVertically.current = false;
+    isSwipingHorizontally.current = false;
     pressTimer.current = setTimeout(() => {
       onLongPress(conversation);
     }, 550);
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    const diffX = touchStartX.current - e.touches[0].clientX;
-    const diffY = touchStartY.current - e.touches[0].clientY;
-
-    // Directional lock: If vertical scrolling is dominant, allow normal page scroll
-    if (Math.abs(diffY) > Math.abs(diffX)) {
-      if (Math.abs(diffY) > 8 && pressTimer.current) {
-        clearTimeout(pressTimer.current);
-        pressTimer.current = null;
-      }
+    // If already detected as a vertical list scroll, NEVER initiate horizontal swipe
+    if (isScrollingVertically.current) {
       return;
     }
 
-    if (Math.abs(diffX) > 10 && pressTimer.current) {
+    const diffX = touchStartX.current - e.touches[0].clientX;
+    const diffY = touchStartY.current - e.touches[0].clientY;
+
+    // Any small touch movement cancels the long-press timer
+    if ((Math.abs(diffX) > 8 || Math.abs(diffY) > 8) && pressTimer.current) {
       clearTimeout(pressTimer.current);
       pressTimer.current = null;
     }
 
-    // Require deliberate horizontal swipe left (at least 20px)
-    if (diffX > 20 && Math.abs(diffX) > Math.abs(diffY) * 1.5) {
+    // Directional lock: If vertical movement exceeds 5px before a clear horizontal swipe, lock out swipe
+    if (Math.abs(diffY) > 5 && !isSwipingHorizontally.current) {
+      isScrollingVertically.current = true;
+      return;
+    }
+
+    // Require deliberate, dominant horizontal swipe left (at least 45px, 3.5x vertical)
+    if (diffX > 45 && Math.abs(diffX) > Math.abs(diffY) * 3.5) {
+      isSwipingHorizontally.current = true;
       isDraggingRef.current = true;
-      setSwipeOffset(Math.min(diffX, 120));
+      setSwipeOffset(Math.min(diffX, 110));
     }
   };
 
@@ -114,6 +123,9 @@ export const ConversationRow: React.FC<ConversationRowProps> = ({
       clearTimeout(pressTimer.current);
       pressTimer.current = null;
     }
+    isScrollingVertically.current = false;
+    isSwipingHorizontally.current = false;
+
     if (swipeOffset >= 60) {
       setSwipeOffset(110);
     } else {
@@ -183,9 +195,10 @@ export const ConversationRow: React.FC<ConversationRowProps> = ({
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         onContextMenu={handleContextMenu}
-        className="h-[68px] px-4 flex items-center justify-between border-b cursor-pointer transition-transform relative z-10 hover:bg-[var(--surface-sunken)]/60"
+        className="h-[68px] px-4 flex items-center justify-between border-b cursor-pointer relative z-10 hover:bg-[var(--surface-sunken)]/60"
         style={{
-          transform: `translateX(-${swipeOffset}px)`,
+          transform: swipeOffset > 0 ? `translateX(-${swipeOffset}px)` : undefined,
+          transition: isDraggingRef.current ? 'none' : 'transform 0.22s cubic-bezier(0.16, 1, 0.3, 1)',
           borderColor: 'var(--line)',
           backgroundColor: 'var(--surface)',
         }}

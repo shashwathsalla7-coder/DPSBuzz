@@ -1126,73 +1126,82 @@ function ChatsContent() {
     const displayName = prof ? prof.fullName : targetUser;
     const displayClass = prof ? `Class ${prof.class}-${prof.section || 'G'}` : 'Student';
 
-    const existing = conversations.find((c) => c.username?.toLowerCase() === targetUser);
-    if (existing) {
-      const readConv = { ...existing, isUnread: false, unreadCount: 0 };
-      setActiveConversation(readConv);
-      const updated = conversations.map((c) => (c.id === existing.id ? readConv : c));
-      setConversations(updated);
-      try {
-        if (currentUsername) {
-          localStorage.setItem(`dpsbuzz_chat_conversations_${currentUsername}_v3`, JSON.stringify(updated));
-        }
-        window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated'));
-      } catch {}
-    } else {
-      const newConv: ConversationItem = {
-        id: `conv-${targetUser}`,
-        name: displayName,
-        username: targetUser,
-        studentClass: displayClass,
-        lastMessage: 'Started new conversation',
-        timeAgo: 'Just now',
-        isUnread: false,
-        unreadCount: 0,
-      };
-      setActiveConversation(newConv);
-      const updated = [newConv, ...conversations];
-      setConversations(updated);
-      try {
-        if (currentUsername) {
-          localStorage.setItem(`dpsbuzz_chat_conversations_${currentUsername}_v3`, JSON.stringify(updated));
-        }
-        window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated'));
-      } catch {}
-    }
-  }, [userParam, currentUsername, conversations]);
+    setConversations((prev) => {
+      const existing = prev.find((c) => c.username?.toLowerCase() === targetUser);
+      if (existing) {
+        const readConv = { ...existing, isUnread: false, unreadCount: 0 };
+        setActiveConversation(readConv);
+        const updated = prev.map((c) => (c.id === existing.id ? readConv : c));
+        try {
+          if (currentUsername) {
+            localStorage.setItem(`dpsbuzz_chat_conversations_${currentUsername}_v3`, JSON.stringify(updated));
+          }
+        } catch {}
+        return updated;
+      } else {
+        const newConv: ConversationItem = {
+          id: `conv-${targetUser}`,
+          name: displayName,
+          username: targetUser,
+          studentClass: displayClass,
+          lastMessage: 'Started new conversation',
+          timeAgo: 'Just now',
+          lastMessageTimestamp: Date.now(),
+          isUnread: false,
+          unreadCount: 0,
+        };
+        setActiveConversation(newConv);
+        const updated = [newConv, ...prev];
+        try {
+          if (currentUsername) {
+            localStorage.setItem(`dpsbuzz_chat_conversations_${currentUsername}_v3`, JSON.stringify(updated));
+          }
+        } catch {}
+        return updated;
+      }
+    });
+  }, [userParam, currentUsername]);
 
   // Automatically open group chat when navigated with ?conv=conv-group-... or ?group=...
   const handledConvParamRef = useRef<string | null>(null);
   useEffect(() => {
     const targetConvId = convParam || (groupParam ? `conv-${groupParam}` : null);
-    if (!targetConvId || handledConvParamRef.current === targetConvId) return;
-    handledConvParamRef.current = targetConvId;
-
-    const existing = conversations.find((c) => c.id === targetConvId);
-    if (existing) {
-      openConversation(existing);
+    if (!targetConvId) {
+      handledConvParamRef.current = null;
       return;
     }
+    if (handledConvParamRef.current === targetConvId) return;
+    handledConvParamRef.current = targetConvId;
 
     const groupId = targetConvId.replace(/^conv-/, '');
     const group = DataStore.getGroups().find((g) => g.id === groupId);
-    if (group) {
-      const initials = group.name.slice(0, 2).toUpperCase() || 'GP';
-      const groupConv: ConversationItem = {
-        id: targetConvId,
-        name: group.name,
-        username: group.name.toLowerCase().replace(/\s+/g, '_'),
-        isGroup: true,
-        groupInitials: initials,
-        lastMessage: 'Group chat',
-        timeAgo: 'Just now',
-        isUnread: false,
-        unreadCount: 0,
-      };
-      setConversations((prev) => [groupConv, ...prev.filter((c) => c.id !== targetConvId)]);
-      openConversation(groupConv);
-    }
-  }, [convParam, groupParam, conversations]);
+
+    setConversations((prev) => {
+      const existing = prev.find((c) => c.id === targetConvId);
+      if (existing) {
+        openConversation(existing);
+        return prev;
+      }
+      if (group) {
+        const initials = group.name.slice(0, 2).toUpperCase() || 'GP';
+        const groupConv: ConversationItem = {
+          id: targetConvId,
+          name: group.name,
+          username: group.name.toLowerCase().replace(/\s+/g, '_'),
+          isGroup: true,
+          groupInitials: initials,
+          lastMessage: 'Group chat',
+          timeAgo: 'Just now',
+          lastMessageTimestamp: Date.now(),
+          isUnread: false,
+          unreadCount: 0,
+        };
+        openConversation(groupConv);
+        return [groupConv, ...prev.filter((c) => c.id !== targetConvId)];
+      }
+      return prev;
+    });
+  }, [convParam, groupParam]);
 
   // Student directory from DataStore for New Chat Sheet
   const [liveStudents, setLiveStudents] = useState<StudentContact[]>([]);
@@ -1352,14 +1361,20 @@ function ChatsContent() {
         }
 
         if (isGroupConv) {
+          const lastTs = lastMsg.createdAt ? new Date(lastMsg.createdAt).getTime() : (lastMsg.timestamp || 0);
           const convIdx = updated.findIndex((c) => c.id === key);
           if (convIdx >= 0) {
             const existing = updated[convIdx];
-            if (existing.lastMessage !== lastMsg.text || existing.timeAgo !== (lastMsg.time || 'Just now')) {
+            if (
+              existing.lastMessage !== lastMsg.text ||
+              existing.timeAgo !== (lastMsg.time || 'Just now') ||
+              existing.lastMessageTimestamp !== lastTs
+            ) {
               updated[convIdx] = {
                 ...existing,
                 lastMessage: lastMsg.text,
                 timeAgo: lastMsg.time || 'Just now',
+                lastMessageTimestamp: lastTs,
               };
               changed = true;
             }
@@ -1368,7 +1383,7 @@ function ChatsContent() {
             const group = DataStore.getGroups().find((g) => g.id === groupId);
             const groupName = group?.name || (key.includes('8a') ? 'Class 8-A Group' : 'Group Chat');
             const initials = groupName.slice(0, 2).toUpperCase() || 'GP';
-            updated.unshift({
+            updated.push({
               id: key,
               name: groupName,
               username: groupName.toLowerCase().replace(/\s+/g, '_'),
@@ -1378,6 +1393,7 @@ function ChatsContent() {
               groupInitials: initials,
               lastMessage: lastMsg.text,
               timeAgo: lastMsg.time || 'Just now',
+              lastMessageTimestamp: lastTs,
               isUnread: false,
               unreadCount: 0,
             });
@@ -1405,22 +1421,28 @@ function ChatsContent() {
               : `Replied to your story: "${rawContent}" 💬`;
           }
 
+          const lastTs = lastMsg.createdAt ? new Date(lastMsg.createdAt).getTime() : (lastMsg.timestamp || 0);
           const convIdx = updated.findIndex((c) => (c.username || '').toLowerCase() === targetUser);
 
           if (convIdx >= 0) {
             const existing = updated[convIdx];
-            if (existing.lastMessage !== msgPreview || existing.timeAgo !== (lastMsg.time || 'Just now')) {
+            if (
+              existing.lastMessage !== msgPreview ||
+              existing.timeAgo !== (lastMsg.time || 'Just now') ||
+              existing.lastMessageTimestamp !== lastTs
+            ) {
               updated[convIdx] = {
                 ...existing,
                 lastMessage: msgPreview,
                 timeAgo: lastMsg.time || 'Just now',
+                lastMessageTimestamp: lastTs,
                 isUnread: activeConversation?.username?.toLowerCase() === targetUser ? false : (!isMe || existing.isUnread),
               };
               changed = true;
             }
           } else {
             const prof = allProfiles.find((p) => (p.username || '').toLowerCase() === targetUser);
-            updated.unshift({
+            updated.push({
               id: `conv-${targetUser}`,
               name: prof ? prof.fullName : targetUser,
               username: targetUser,
@@ -1428,6 +1450,7 @@ function ChatsContent() {
               avatar: prof?.avatar || null,
               lastMessage: msgPreview,
               timeAgo: lastMsg.time || 'Just now',
+              lastMessageTimestamp: lastTs,
               isUnread: !isMe,
             });
             changed = true;
@@ -1517,6 +1540,22 @@ function ChatsContent() {
       );
     }
 
+    // Deterministic stable sorting:
+    // 1. Pinned conversations always first
+    // 2. Newest message timestamp first
+    // 3. Stable alphabetical fallback by conversation id
+    list.sort((a, b) => {
+      if (Boolean(a.isPinned) !== Boolean(b.isPinned)) {
+        return a.isPinned ? -1 : 1;
+      }
+      const timeA = a.lastMessageTimestamp || 0;
+      const timeB = b.lastMessageTimestamp || 0;
+      if (timeA !== timeB) {
+        return timeB - timeA;
+      }
+      return a.id.localeCompare(b.id);
+    });
+
     return list;
   }, [conversations, chatMessages, activeChip, searchQuery, demoState, currentUsername]);
 
@@ -1525,16 +1564,27 @@ function ChatsContent() {
     const pinned: ConversationItem[] = [];
     const today: ConversationItem[] = [];
     const earlier: ConversationItem[] = [];
+    const now = Date.now();
+    const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
     filteredConversations.forEach((conv) => {
       if (conv.isPinned) {
         pinned.push(conv);
       } else {
-        const time = conv.timeAgo?.toLowerCase() || '';
-        if (time.includes('m') || time.includes('h') || time.includes('now') || time.includes('just')) {
-          today.push(conv);
+        const ts = conv.lastMessageTimestamp || 0;
+        if (ts > 0) {
+          if (now - ts < ONE_DAY_MS) {
+            today.push(conv);
+          } else {
+            earlier.push(conv);
+          }
         } else {
-          earlier.push(conv);
+          const time = conv.timeAgo?.toLowerCase() || '';
+          if (time.includes('m') || time.includes('h') || time.includes('now') || time.includes('just')) {
+            today.push(conv);
+          } else {
+            earlier.push(conv);
+          }
         }
       }
     });
@@ -2984,10 +3034,7 @@ function ChatsContent() {
         {/* Messages Stream with dynamic persistent background */}
         <div
           ref={messagesContainerRef}
-          onTouchStart={handleMessagesTouchStart}
-          onTouchMove={handleMessagesTouchMove}
-          onTouchEnd={handleVanishTouchEnd}
-          className="flex-1 min-h-0 p-4 space-y-3 overflow-y-auto relative transition-all font-sf-display overscroll-contain"
+          className="flex-1 min-h-0 p-4 space-y-3 overflow-y-auto relative font-sf-display overscroll-contain"
           style={
             isVanishMode
               ? {
@@ -3143,7 +3190,7 @@ function ChatsContent() {
                           );
                         })()}
                     <div
-                      className={`px-4 py-2.5 rounded-[var(--r-bubble,14px)] text-[15px] leading-[1.4] tracking-[-0.015em] font-semibold chat-bubble-text font-sf-display transition-all ${
+                      className={`px-4 py-2.5 rounded-[var(--r-bubble,14px)] text-[15px] leading-[1.4] tracking-[-0.015em] font-semibold chat-bubble-text font-sf-display ${
                         isMe
                           ? isVanishMode || msg.is_vanish_mode_message || msg.isVanishMode
                             ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-br-[5px] shadow-xs ring-1 ring-purple-400/30'
@@ -4249,7 +4296,7 @@ function ChatsContent() {
         </div>
       ) : (
         /* Conversation Rows & States */
-        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain divide-y" style={{ borderColor: 'var(--line)' }}>
+        <div className="divide-y" style={{ borderColor: 'var(--line)' }}>
           {/* Prominent Instagram-Style Message Request Alert Strip */}
           {activeChip === 'all' && computedRequests.length > 0 && (
             <div
