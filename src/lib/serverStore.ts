@@ -919,8 +919,9 @@ export async function updateServerCall(
   };
 
   if (updatedCall.status === 'ended' || updatedCall.status === 'rejected') {
-    delete callsCache[callId];
-    delete local[callId];
+    updatedCall.endedAt = updatedCall.endedAt || Date.now();
+    callsCache[callId] = updatedCall;
+    local[callId] = updatedCall;
     writeLocalCalls(local);
   } else {
     callsCache[callId] = updatedCall;
@@ -932,11 +933,23 @@ export async function updateServerCall(
 }
 
 export async function deleteServerCall(callId: string): Promise<void> {
-  delete callsCache[callId];
   const local = readLocalCalls() || {};
-  if (local[callId]) {
-    delete local[callId];
+  const existing = callsCache[callId] || local[callId];
+  if (existing) {
+    const tombstone: CallSession = {
+      ...existing,
+      status: 'ended',
+      endedAt: Date.now(),
+    };
+    callsCache[callId] = tombstone;
+    local[callId] = tombstone;
     writeLocalCalls(local);
+  } else {
+    delete callsCache[callId];
+    if (local[callId]) {
+      delete local[callId];
+      writeLocalCalls(local);
+    }
   }
 }
 

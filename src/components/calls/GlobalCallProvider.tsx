@@ -33,15 +33,18 @@ function dismissCallNotifications() {
   } catch {}
 }
 
+const LOCAL_TAB_ID =
+  typeof window !== 'undefined'
+    ? (window as any).__dpsbuzz_tab_id ||
+      ((window as any).__dpsbuzz_tab_id = Math.random().toString(36).substring(2, 9))
+    : 'server';
+
 function broadcastCallEvent(payload?: any) {
   try {
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('dpsbuzz:call_event_sync', { detail: payload }));
-      if ('BroadcastChannel' in window) {
-        const bc = new BroadcastChannel('dpsbuzz_calls_sync');
-        bc.postMessage(payload || { type: 'CALL_STATUS_CHANGED', timestamp: Date.now() });
-        bc.close();
-      }
+    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+      const bc = new BroadcastChannel('dpsbuzz_calls_sync');
+      bc.postMessage({ ...(payload || {}), senderTabId: LOCAL_TAB_ID });
+      bc.close();
     }
   } catch {}
 }
@@ -426,6 +429,25 @@ export function GlobalCallProvider() {
         }
 
         const activeSession = initData.call || initialCall;
+        if (
+          endedCallIdsRef.current.has(callId) ||
+          !activeCallRef.current ||
+          activeCallRef.current.callId !== callId
+        ) {
+          console.log('[Calls] Call was ended/cancelled before initiate response arrived.');
+          fetch('/api/calls', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'end',
+              callId,
+              callerUsername,
+              receiverUsername: params.receiverUsername,
+            }),
+          }).catch(() => {});
+          return;
+        }
+
         setActiveCall(activeSession);
         broadcastCallEvent({ type: 'CALL_INITIATED', call: activeSession });
       } catch (err: any) {
@@ -601,12 +623,19 @@ export function GlobalCallProvider() {
                 return;
               }
             } else if (isCallerRef.current && currentActive.status === 'ringing') {
+              consecutiveMissedPollsRef.current += 1;
               const callAge = Date.now() - (currentActive.createdAt || Date.now());
-              if (callAge > 45000) {
+              if (consecutiveMissedPollsRef.current >= 3 || callAge > 45000) {
+                console.log('[Calls] Ringing call ended or missing from server. Terminating caller.');
+                markCallEnded(currentActive.callId);
                 stopCallAudio();
                 playCallEndedSound();
-                alert(`No answer from @${currentActive.receiverUsername}. They are currently unavailable.`);
-                handleEndCall();
+                cleanUpCallResources();
+                setActiveCall(null);
+                setDurationSeconds(0);
+                if (callAge > 45000) {
+                  alert(`No answer from @${currentActive.receiverUsername}. They are currently unavailable.`);
+                }
                 return;
               }
             }
@@ -615,10 +644,15 @@ export function GlobalCallProvider() {
       } catch {}
     };
 
-    // Instant signaling across tabs & windows via BroadcastChannel + CustomEvent
+    // Instant signaling across tabs & windows via BroadcastChannel
     const processSignalMessage = (msg: any) => {
       if (!msg || typeof msg !== 'object') {
         pollCallStatus();
+        return;
+      }
+
+      if (msg.senderTabId && msg.senderTabId === LOCAL_TAB_ID) {
+        // Disregard messages originating from this exact local tab
         return;
       }
 
@@ -698,16 +732,11 @@ export function GlobalCallProvider() {
         };
       }
     } catch {}
-
-    const handleLocalSync = (ev: any) => processSignalMessage(ev.detail);
-    window.addEventListener('dpsbuzz:call_event_sync', handleLocalSync);
-
     pollCallStatus();
     const interval = setInterval(pollCallStatus, 1000);
     return () => {
       isPolling = false;
       clearInterval(interval);
-      window.removeEventListener('dpsbuzz:call_event_sync', handleLocalSync);
       if (bc) bc.close();
     };
   }, [handleEndCall, cleanUpCallResources, markCallEnded]);
