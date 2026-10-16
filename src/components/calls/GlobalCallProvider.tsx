@@ -440,10 +440,11 @@ export function GlobalCallProvider() {
         }
 
         const activeSession = initData.call || initialCall;
+        const currentActive = activeCallRef.current as CallSession | null;
         if (
           endedCallIdsRef.current.has(callId) ||
-          !activeCallRef.current ||
-          activeCallRef.current.callId !== callId
+          !currentActive ||
+          currentActive.callId !== callId
         ) {
           console.log('[Calls] Call was ended/cancelled before initiate response arrived.');
           fetch('/api/calls', {

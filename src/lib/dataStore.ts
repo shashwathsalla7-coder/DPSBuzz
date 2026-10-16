@@ -55,6 +55,7 @@ export interface PostImageItem {
   dominantColor: string;
   fileSizeBytes?: number;
   signedUrl?: string;
+  url?: string;
 }
 
 export interface Post {
@@ -64,6 +65,7 @@ export interface Post {
   fullName: string;
   class: string;
   avatar: string | null;
+  userAvatar?: string | null;
   caption: string;
   images: string[];
   imageUrl?: string; // Real high-res photo URL for Instagram-style explore grid
@@ -142,6 +144,7 @@ export interface HabitStreak {
   id: string;
   username: string;
   fullName: string;
+  avatar?: string | null;
   class: string;
   streakDays: number;
   habitPoints: number;
@@ -1125,7 +1128,7 @@ export const DataStore = {
       : [];
 
     const seenPairs = new Set<string>();
-    const uniqueValidFollows: Follow[] = [];
+    const uniqueValidFollows: Array<{ follower: string; following: string }> = [];
     for (const f of validFollows) {
       const key = `${f.follower.toLowerCase().trim()}->${f.following.toLowerCase().trim()}`;
       if (!seenPairs.has(key)) {

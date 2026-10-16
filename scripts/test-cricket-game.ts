@@ -10,8 +10,8 @@ import {
   requestRematch,
   getCricketLeaderboard,
   getCricketMatchHistory,
-} from '../src/lib/cricketGameStore.ts';
-import { getCricketerById } from '../src/data/cricketers.ts';
+} from '../src/lib/cricketGameStore';
+import { getCricketerById } from '../src/data/cricketers';
 
 async function runCricketGameTests() {
   console.log('🏏 [TEST SUITE] Starting DPSBuzz Guess the Cricketer Engine Verification...\n');
@@ -19,7 +19,7 @@ async function runCricketGameTests() {
   let passed = 0;
   let failed = 0;
 
-  function assert(condition, message) {
+  function assert(condition: any, message: string) {
     if (condition) {
       console.log(`  ✅ PASS: ${message}`);
       passed++;

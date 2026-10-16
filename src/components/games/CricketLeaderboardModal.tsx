@@ -8,12 +8,14 @@ interface CricketLeaderboardModalProps {
   isOpen: boolean;
   onClose: () => void;
   initialTab?: 'leaderboard' | 'history' | 'rules';
+  currentUsername?: string;
 }
 
 export function CricketLeaderboardModal({
   isOpen,
   onClose,
   initialTab = 'leaderboard',
+  currentUsername,
 }: CricketLeaderboardModalProps) {
   const [activeTab, setActiveTab] = useState<'leaderboard' | 'history' | 'rules'>(initialTab);
   const [leaderboard, setLeaderboard] = useState<CricketLeaderboardEntry[]>([]);
