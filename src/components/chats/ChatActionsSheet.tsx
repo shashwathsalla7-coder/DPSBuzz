@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Bell, BellOff, Pin, Flag, ShieldAlert, Trash2, X, Palette } from 'lucide-react';
+import { Bell, BellOff, Pin, Flag, ShieldAlert, Trash2, X, Palette, Gamepad2 } from 'lucide-react';
 import { ConversationItem } from './ConversationRow';
 import { DataStore } from '@/lib/dataStore';
 
@@ -15,6 +15,7 @@ export interface ChatActionsSheetProps {
   onReport: (conv: ConversationItem) => void;
   onBlock: (conv: ConversationItem) => void;
   onChangeBackground?: () => void;
+  onOpenGames?: () => void;
 }
 
 export const ChatActionsSheet: React.FC<ChatActionsSheetProps> = ({
@@ -98,6 +99,22 @@ export const ChatActionsSheet: React.FC<ChatActionsSheetProps> = ({
             <Pin size={18} className="transform rotate-45" />
             <span>{conversation.isPinned ? 'Unpin from top' : 'Pin to top'}</span>
           </button>
+
+          {/* Play Games */}
+          {!conversation.isGroup && onOpenGames && (
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                onOpenGames();
+              }}
+              className="w-full px-3 py-2.5 rounded-[10px] flex items-center gap-3 text-left hover:bg-[var(--surface-sunken)] transition-colors cursor-pointer"
+              style={{ color: 'var(--text)' }}
+            >
+              <Gamepad2 size={18} className="text-pink-500" />
+              <span>Play Games (Guess the Cricketer 🏏)</span>
+            </button>
+          )}
 
           {/* Change Chat Wallpaper */}
           {onChangeBackground && (
