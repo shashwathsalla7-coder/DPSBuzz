@@ -864,7 +864,7 @@ export async function findUserActiveCall(username: string): Promise<CallSession 
       call.status !== 'ended' &&
       call.status !== 'rejected'
     ) {
-      if (call.status === 'ringing' && now - (call.createdAt || now) > 40000) {
+      if (call.status === 'ringing' && now - (call.createdAt || now) > 45000) {
         continue;
       }
       if (call.status === 'connected' && now - (call.connectedAt || call.createdAt || now) > 30 * 60 * 1000) {
