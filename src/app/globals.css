@@ -802,3 +802,34 @@ body[data-theme="dark"] .logo-light-img,
 [data-theme="dark"] .logo-light-img {
   display: none !important;
 }
+
+/* ==========================================================================
+   ZEGOCLOUD 1-on-1 Video Call Layout & Mobile PiP Responsiveness
+   ========================================================================== */
+#zego-call-container {
+  width: 100% !important;
+  height: 100% !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+/* Ensure the full-screen remote video stretches cleanly without letterboxing */
+#zego-call-container video {
+  object-fit: cover !important;
+}
+
+@media (max-width: 640px) {
+  /* On mobile portrait, prevent the local user's floating PiP preview from
+     taking up 80% of the screen width and obscuring the remote caller */
+  #zego-call-container [class*="smallVideo"],
+  #zego-call-container div[style*="282px"] {
+    width: 108px !important;
+    height: 148px !important;
+    top: 16px !important;
+    right: 16px !important;
+    border-radius: 12px !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.7) !important;
+    z-index: 30 !important;
+  }
+}
+
