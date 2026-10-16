@@ -488,7 +488,7 @@ function ChatsContent() {
   };
 
   useEffect(() => {
-    const handleUpdate = () => {
+    const handleUpdate = (event: Event) => {
       const freshUser = DataStore.getCurrentUser();
       setCurrentUser(freshUser);
       setIsMaintenanceActive(!isAdminUser && DataStore.isMaintenanceActive());
@@ -534,10 +534,14 @@ function ChatsContent() {
             }
 
             const userConvKey = `dpsbuzz_chat_conversations_${currentUsername}_v3`;
-            const savedConvs = localStorage.getItem(userConvKey);
-            if (savedConvs) {
-              const parsed = JSON.parse(savedConvs);
-              setConversations(parsed.filter((c: ConversationItem) => !c.username || !DUMMY_TEST_USERNAMES.has(c.username.toLowerCase())));
+            if (event.type === 'storage' && (event as StorageEvent).key === userConvKey) {
+              const savedConvs = localStorage.getItem(userConvKey);
+              if (savedConvs) {
+                const parsed = JSON.parse(savedConvs);
+                if (Array.isArray(parsed)) {
+                  setConversations(parsed.filter((c: ConversationItem) => !c.username || !DUMMY_TEST_USERNAMES.has(c.username.toLowerCase())));
+                }
+              }
             }
           }
           refreshLiveStudents();
