@@ -1681,6 +1681,7 @@ function ChatsContent() {
 
   const handleCloseActiveChat = () => {
     setActiveConversation(null);
+    setIsGameDrawerOpen(false);
   };
 
   const handleAcceptRequestFromSandbox = (targetUser: string) => {
@@ -3699,6 +3700,39 @@ function ChatsContent() {
             </div>
           );
         })()}
+
+        {/* Guess the Cricketer: Game Challenge Drawer (inside active chat view) */}
+        <CricketGameDrawer
+          isOpen={isGameDrawerOpen}
+          onClose={() => setIsGameDrawerOpen(false)}
+          opponentUsername={activeConversation.username || activeConversation.id.replace(/^conv-/, '')}
+          opponentName={activeConversation.name || activeConversation.username || ''}
+          onSendChallenge={handleSendGameChallenge}
+          onOpenLeaderboard={(tab) => {
+            setLeaderboardDefaultTab(tab || 'leaderboard');
+            setIsLeaderboardModalOpen(true);
+          }}
+        />
+
+        {/* Guess the Cricketer: Match Arena Modal (inside active chat view) */}
+        <CricketGameModal
+          isOpen={isGameModalOpen}
+          gameId={activeGameId}
+          currentUsername={currentUsername}
+          onClose={() => setIsGameModalOpen(false)}
+          onOpenLeaderboard={(tab) => {
+            setLeaderboardDefaultTab(tab || 'leaderboard');
+            setIsLeaderboardModalOpen(true);
+          }}
+        />
+
+        {/* Guess the Cricketer: Leaderboard, Match History & Rules Modal (inside active chat view) */}
+        <CricketLeaderboardModal
+          isOpen={isLeaderboardModalOpen}
+          onClose={() => setIsLeaderboardModalOpen(false)}
+          initialTab={leaderboardDefaultTab}
+          currentUsername={currentUsername}
+        />
       </div>
     );
   }
@@ -3744,6 +3778,10 @@ function ChatsContent() {
       <ChatsHeader
         onComposeClick={() => setIsNewChatOpen(true)}
         onCreateGroupClick={() => setIsCreateGroupOpen(true)}
+        onOpenGames={() => {
+          setLeaderboardDefaultTab('leaderboard');
+          setIsLeaderboardModalOpen(true);
+        }}
       />
 
       {/* 2. Search Field (48px sunken, pill radius) */}

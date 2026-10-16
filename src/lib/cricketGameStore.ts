@@ -35,53 +35,8 @@ if (!globalThis.__dpsbuzz_cricket_active) {
 const gamesCache = globalThis.__dpsbuzz_cricket_games;
 const activePointers = globalThis.__dpsbuzz_cricket_active;
 
-// Initial default leaderboard entries for DPSBuzz students
-const DEFAULT_LEADERBOARD: CricketLeaderboardEntry[] = [
-  {
-    username: 'rohan728',
-    fullName: 'Rohan Sharma',
-    avatar: null,
-    points: 380,
-    wins: 6,
-    matches: 8,
-    correctGuesses: 6,
-    incorrectGuesses: 3,
-    winRate: 75,
-  },
-  {
-    username: 'shashwath71845',
-    fullName: 'Shashwath Salla',
-    avatar: null,
-    points: 420,
-    wins: 7,
-    matches: 9,
-    correctGuesses: 7,
-    incorrectGuesses: 2,
-    winRate: 78,
-  },
-  {
-    username: 'arjun_8a',
-    fullName: 'Arjun Reddy',
-    avatar: null,
-    points: 290,
-    wins: 4,
-    matches: 7,
-    correctGuesses: 4,
-    incorrectGuesses: 5,
-    winRate: 57,
-  },
-  {
-    username: 'priya_7b',
-    fullName: 'Priya Sharma',
-    avatar: null,
-    points: 250,
-    wins: 3,
-    matches: 5,
-    correctGuesses: 3,
-    incorrectGuesses: 2,
-    winRate: 60,
-  },
-];
+// Initial default leaderboard (empty, populated strictly by real student matches)
+const DEFAULT_LEADERBOARD: CricketLeaderboardEntry[] = [];
 
 /**
  * Persists raw game session to Supabase app_settings
@@ -643,9 +598,10 @@ async function recordMatchCompleted(session: CricketGameSession): Promise<void> 
       .eq('key', 'cricket_leaderboard')
       .maybeSingle();
 
+    const TEST_DUMMIES = new Set(['rohan728', 'p1_deduction_test', 'p2_deduction_test', 'testuser1', 'testuser2']);
     const leaderboard: CricketLeaderboardEntry[] = lbData?.value
-      ? JSON.parse(lbData.value)
-      : [...DEFAULT_LEADERBOARD];
+      ? JSON.parse(lbData.value).filter((e: CricketLeaderboardEntry) => !TEST_DUMMIES.has(e.username.toLowerCase()))
+      : [];
 
     // Helper to update player stats
     const updatePlayerStats = (player: typeof session.player1, isWinner: boolean) => {
@@ -705,11 +661,13 @@ export async function getCricketLeaderboard(): Promise<CricketLeaderboardEntry[]
       .maybeSingle();
 
     if (data?.value) {
-      return JSON.parse(data.value);
+      const parsed: CricketLeaderboardEntry[] = JSON.parse(data.value);
+      const TEST_DUMMIES = new Set(['rohan728', 'p1_deduction_test', 'p2_deduction_test', 'testuser1', 'testuser2']);
+      return parsed.filter((e) => !TEST_DUMMIES.has(e.username.toLowerCase()));
     }
   } catch {}
 
-  return DEFAULT_LEADERBOARD;
+  return [];
 }
 
 /**
@@ -726,13 +684,19 @@ export async function getCricketMatchHistory(username?: string): Promise<Cricket
 
     if (data?.value) {
       const records: CricketMatchRecord[] = JSON.parse(data.value);
+      const TEST_DUMMIES = new Set(['rohan728', 'p1_deduction_test', 'p2_deduction_test', 'testuser1', 'testuser2']);
+      const filtered = records.filter(
+        (r) =>
+          !TEST_DUMMIES.has(r.player1Username.toLowerCase()) &&
+          !TEST_DUMMIES.has(r.player2Username.toLowerCase())
+      );
       if (username) {
         const clean = username.toLowerCase().trim();
-        return records.filter(
-          (r) => r.player1Username === clean || r.player2Username === clean
+        return filtered.filter(
+          (r) => r.player1Username.toLowerCase() === clean || r.player2Username.toLowerCase() === clean
         );
       }
-      return records;
+      return filtered;
     }
   } catch {}
 

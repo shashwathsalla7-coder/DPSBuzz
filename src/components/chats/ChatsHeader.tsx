@@ -1,11 +1,12 @@
 'use client';
 
 import React from 'react';
-import { SquarePen, Users } from 'lucide-react';
+import { SquarePen, Users, Gamepad2 } from 'lucide-react';
 
 export interface ChatsHeaderProps {
   onComposeClick: () => void;
   onCreateGroupClick?: () => void;
+  onOpenGames?: () => void;
 }
 
 /**
@@ -13,7 +14,11 @@ export interface ChatsHeaderProps {
  * - Title "Chats" in the display font (800) on the left.
  * - On the right a compose icon (pencil in a square) and a Create Group icon.
  */
-export const ChatsHeader: React.FC<ChatsHeaderProps> = ({ onComposeClick, onCreateGroupClick }) => {
+export const ChatsHeader: React.FC<ChatsHeaderProps> = ({
+  onComposeClick,
+  onCreateGroupClick,
+  onOpenGames,
+}) => {
   return (
     <header
       className="px-4 flex items-center justify-between border-b shrink-0 sticky top-0 z-30 transition-all"
@@ -35,7 +40,18 @@ export const ChatsHeader: React.FC<ChatsHeaderProps> = ({ onComposeClick, onCrea
         Chats
       </h1>
 
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1.5">
+        {onOpenGames && (
+          <button
+            type="button"
+            onClick={onOpenGames}
+            className="w-9 h-9 rounded-[10px] flex items-center justify-center transition-colors btn-press hover:bg-[var(--surface-sunken)] active:scale-95 cursor-pointer text-pink-500"
+            aria-label="Guess the Cricketer & Games"
+            title="Guess the Cricketer & Games 🏏"
+          >
+            <Gamepad2 size={20} strokeWidth={2.2} />
+          </button>
+        )}
         {onCreateGroupClick && (
           <button
             type="button"
