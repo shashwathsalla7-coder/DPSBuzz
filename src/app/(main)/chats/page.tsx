@@ -1107,7 +1107,17 @@ function ChatsContent() {
 
     if (viewParam === 'requests') setActiveChip('requests');
     else if (viewParam === 'groups') setActiveChip('groups');
-  }, [stateParam, viewParam]);
+    else if (viewParam === 'games' || viewParam === 'cricket' || searchParams.get('game')) {
+      setLeaderboardDefaultTab('leaderboard');
+      setIsLeaderboardModalOpen(true);
+    }
+
+    const activeGid = searchParams.get('gameId');
+    if (activeGid) {
+      setActiveGameId(activeGid);
+      setIsGameModalOpen(true);
+    }
+  }, [stateParam, viewParam, searchParams]);
 
   // Automatically open direct chat when navigated from a user's profile with ?user=...
   const handledUserParamRef = useRef<string | null>(null);

@@ -64,6 +64,9 @@ export function middleware(request: NextRequest) {
     pathname.startsWith('/settings') ||
     pathname.startsWith('/notifications') ||
     pathname.startsWith('/chats') ||
+    pathname.startsWith('/game') ||
+    pathname.startsWith('/games') ||
+    pathname.startsWith('/cricket') ||
     pathname.startsWith('/post') ||
     pathname.startsWith('/profile') ||
     pathname.startsWith('/groups') ||
