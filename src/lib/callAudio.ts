@@ -9,87 +9,37 @@ interface ActiveSoundSession {
 }
 
 const activeAudioSessions: ActiveSoundSession[] = [];
-const activeAudioContexts: Set<AudioContext> = new Set();
-
-// Automatically track and auto-resume all AudioContext instances created across the application
-if (typeof window !== 'undefined' && !(window as any).__dpsbuzz_audiocontext_patched) {
-  (window as any).__dpsbuzz_audiocontext_patched = true;
-  const globalContexts = new Set<AudioContext>();
-  (window as any).__dpsbuzz_all_audio_contexts = globalContexts;
-
-  const OrigAudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-  if (OrigAudioCtx) {
-    const PatchedAudioCtx = function (this: any, options?: AudioContextOptions) {
-      const ctx = new OrigAudioCtx(options);
-      globalContexts.add(ctx);
-
-      const tryResume = () => {
-        if (ctx.state === 'suspended') {
-          ctx.resume().catch(() => {});
-        }
-      };
-
-      tryResume();
-
-      ['click', 'touchstart', 'touchend', 'pointerdown', 'mousedown', 'keydown'].forEach((evt) => {
-        window.addEventListener(evt, tryResume, { passive: true });
-        document.addEventListener(evt, tryResume, { passive: true });
-      });
-
-      return ctx;
-    } as any;
-    PatchedAudioCtx.prototype = OrigAudioCtx.prototype;
-    window.AudioContext = PatchedAudioCtx;
-    (window as any).webkitAudioContext = PatchedAudioCtx;
-  }
-}
-
-/**
- * Force-unlocks the browser audio subsystem across mobile WebKit, Blink, and Gecko
- */
-export function unlockAudioSystem(): void {
-  if (typeof window === 'undefined') return;
-  try {
-    const OrigAudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-    if (OrigAudioCtx) {
-      const ctx = new OrigAudioCtx();
-      if (ctx.state === 'suspended') {
-        ctx.resume().catch(() => {});
-      }
-      // Play 1-sample silent buffer to unlock iOS and Android hardware audio pipeline
-      const buffer = ctx.createBuffer(1, 1, 22050);
-      const source = ctx.createBufferSource();
-      source.buffer = buffer;
-      source.connect(ctx.destination);
-      source.start(0);
-    }
-
-    const all = (window as any).__dpsbuzz_all_audio_contexts as Set<AudioContext> | undefined;
-    all?.forEach((ctx) => {
-      if (ctx.state === 'suspended') {
-        ctx.resume().catch(() => {});
-      }
-    });
-
-    // Trigger synthetic mousedown event so Zego's internal handler resumes its audioCtx
-    window.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
-  } catch (err) {
-    console.warn('[callAudio] Audio unlock:', err);
-  }
-}
+let sharedAudioCtx: AudioContext | null = null;
 
 function getAudioContext(): AudioContext | null {
   if (typeof window === 'undefined') return null;
   const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
   if (!AudioCtx) return null;
   try {
-    const ctx = new AudioCtx();
-    if (ctx.state === 'suspended') {
-      ctx.resume().catch(() => {});
+    if (!sharedAudioCtx || sharedAudioCtx.state === 'closed') {
+      sharedAudioCtx = new AudioCtx();
     }
-    return ctx;
+    if (sharedAudioCtx.state === 'suspended') {
+      sharedAudioCtx.resume().catch(() => {});
+    }
+    return sharedAudioCtx;
   } catch {
     return null;
+  }
+}
+
+/**
+ * Force-unlocks the browser audio subsystem safely without leaking AudioContext instances
+ */
+export function unlockAudioSystem(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const ctx = getAudioContext();
+    if (ctx && ctx.state === 'suspended') {
+      ctx.resume().catch(() => {});
+    }
+  } catch (err) {
+    console.warn('[callAudio] Audio unlock:', err);
   }
 }
 
@@ -103,15 +53,6 @@ export function stopCallAudio(): void {
       session?.stop();
     } catch {}
   }
-
-  activeAudioContexts.forEach((ctx) => {
-    try {
-      if (ctx.state !== 'closed') {
-        ctx.close().catch(() => {});
-      }
-    } catch {}
-  });
-  activeAudioContexts.clear();
 }
 
 /**
@@ -121,7 +62,6 @@ export function playOutgoingRingtone(): () => void {
   stopCallAudio();
   const ctx = getAudioContext();
   if (!ctx) return () => {};
-  activeAudioContexts.add(ctx);
 
   let isPlaying = true;
   let intervalId: any = null;
@@ -187,12 +127,6 @@ export function playOutgoingRingtone(): () => void {
         osc?.disconnect();
       } catch {}
     }
-    try {
-      if (ctx.state !== 'closed') {
-        ctx.close().catch(() => {});
-      }
-    } catch {}
-    activeAudioContexts.delete(ctx);
   };
 
   const session: ActiveSoundSession = { stop };
@@ -207,7 +141,6 @@ export function playIncomingRingtone(): () => void {
   stopCallAudio();
   const ctx = getAudioContext();
   if (!ctx) return () => {};
-  activeAudioContexts.add(ctx);
 
   let isPlaying = true;
   let intervalId: any = null;
@@ -268,12 +201,6 @@ export function playIncomingRingtone(): () => void {
         osc?.disconnect();
       } catch {}
     }
-    try {
-      if (ctx.state !== 'closed') {
-        ctx.close().catch(() => {});
-      }
-    } catch {}
-    activeAudioContexts.delete(ctx);
   };
 
   const session: ActiveSoundSession = { stop };
@@ -309,12 +236,6 @@ export function playCallConnectedSound(): void {
       osc.start(startTime);
       osc.stop(startTime + 0.26);
     });
-
-    setTimeout(() => {
-      try {
-        if (ctx.state !== 'closed') ctx.close().catch(() => {});
-      } catch {}
-    }, 450);
   } catch {}
 }
 
@@ -346,11 +267,5 @@ export function playCallEndedSound(): void {
       osc.start(startTime);
       osc.stop(startTime + 0.13);
     });
-
-    setTimeout(() => {
-      try {
-        if (ctx.state !== 'closed') ctx.close().catch(() => {});
-      } catch {}
-    }, 450);
   } catch {}
 }
