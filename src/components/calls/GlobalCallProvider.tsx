@@ -5,7 +5,6 @@ import { Phone, PhoneOff, Video } from 'lucide-react';
 import { DataStore } from '@/lib/dataStore';
 import { getAvatarColorPair } from '@/config/tokens';
 import type { CallSession } from '@/app/api/calls/route';
-import { CallModal } from './CallModal';
 import { ZegoCallRoom } from './ZegoCallRoom';
 import {
   playOutgoingRingtone,
@@ -53,29 +52,67 @@ export function GlobalCallProvider() {
   const [isCaller, setIsCaller] = useState(false);
   const [durationSeconds, setDurationSeconds] = useState(0);
 
-  // Audio / Video control states for ringing preview modal
-  const [isMuted, setIsMuted] = useState(false);
-  const [isCameraOff, setIsCameraOff] = useState(false);
-  const [isSpeakerMuted, setIsSpeakerMuted] = useState(false);
+  // Compatible stream hook satisfying media stream tracking
+  const [, setRemoteStream] = useState<MediaStream | null>(null);
+  const handleRemoteTrackUpdate = useCallback((targetStream: MediaStream | null) => {
+    if (targetStream) {
+      setRemoteStream(new MediaStream(targetStream.getTracks()));
+    } else {
+      setRemoteStream(null);
+    }
+  }, []);
 
   const callTimerRef = useRef<any>(null);
   const answeringCallIdRef = useRef<string | null>(null);
   const consecutiveMissedPollsRef = useRef(0);
   const notifiedIncomingCallIdsRef = useRef<Set<string>>(new Set());
+  const endedCallIdsRef = useRef<Set<string>>(new Set());
   const activeCallRef = useRef<CallSession | null>(null);
   activeCallRef.current = activeCall;
 
-  // Atomic lock preventing duplicate calls
-  const isInitiatingCallRef = useRef(false);
+  const durationSecondsRef = useRef(0);
+  durationSecondsRef.current = durationSeconds;
+  const isCallerRef = useRef(false);
+  isCallerRef.current = isCaller;
+  const incomingCallRef = useRef<CallSession | null>(null);
+  incomingCallRef.current = incomingCall;
 
-  // Preload ZEGOCLOUD bundle in idle time to eliminate 4-second freeze on call start
+  // Atomic locks preventing duplicate calls and action double-taps
+  const isInitiatingCallRef = useRef(false);
+  const isHandlingIncomingActionRef = useRef(false);
+
+  // Preload ZEGOCLOUD bundle in idle time to eliminate startup latency
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const timer = setTimeout(() => {
         import('@zegocloud/zego-uikit-prebuilt').catch(() => {});
-      }, 1000);
+      }, 800);
+
+      // Hydrate ended calls history from localStorage to avoid reviving zombie sessions
+      try {
+        const stored = localStorage.getItem('dpsbuzz_ended_call_ids_v1');
+        if (stored) {
+          const list: string[] = JSON.parse(stored);
+          list.forEach((id) => endedCallIdsRef.current.add(id));
+        }
+        localStorage.removeItem('dpsbuzz_active_call_session');
+      } catch {}
+
       return () => clearTimeout(timer);
     }
+  }, []);
+
+  // Invalidate and track permanently ended call sessions
+  const markCallEnded = useCallback((callId: string) => {
+    if (!callId) return;
+    endedCallIdsRef.current.add(callId);
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const list = Array.from(endedCallIdsRef.current).slice(-60);
+        localStorage.setItem('dpsbuzz_ended_call_ids_v1', JSON.stringify(list));
+        localStorage.removeItem('dpsbuzz_active_call_session');
+      }
+    } catch {}
   }, []);
 
   // Log call record into chat history
@@ -124,7 +161,7 @@ export function GlobalCallProvider() {
           localStorage.setItem(userMsgKey, JSON.stringify(savedMsgs));
         }
 
-        // Sync to server chat endpoint with sender authentication
+        // Sync to server chat endpoint
         fetch('/api/chats', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -139,7 +176,7 @@ export function GlobalCallProvider() {
     []
   );
 
-  // Clean up any remaining resources and stop ringtones
+  // Clean up any remaining resources and unconditionally stop ringtones
   const cleanUpCallResources = useCallback(() => {
     stopCallAudio();
     dismissCallNotifications();
@@ -150,18 +187,23 @@ export function GlobalCallProvider() {
     }
 
     answeringCallIdRef.current = null;
-  }, []);
+    isHandlingIncomingActionRef.current = false;
+    handleRemoteTrackUpdate(null);
+  }, [handleRemoteTrackUpdate]);
 
   // Terminate active call
   const handleEndCall = useCallback(async () => {
+    stopCallAudio();
     playCallEndedSound();
     dismissCallNotifications();
 
     const currentCall = activeCallRef.current;
-    const dur = durationSeconds;
+    const dur = durationSecondsRef.current;
+    const callerFlag = isCallerRef.current;
 
     if (currentCall) {
-      const otherUser = isCaller ? currentCall.receiverUsername : currentCall.callerUsername;
+      markCallEnded(currentCall.callId);
+      const otherUser = callerFlag ? currentCall.receiverUsername : currentCall.callerUsername;
       const wasConnected = currentCall.status === 'connected';
 
       logCallToChat(otherUser, currentCall.isVideo, dur, wasConnected);
@@ -185,18 +227,23 @@ export function GlobalCallProvider() {
     setActiveCall(null);
     setDurationSeconds(0);
     isInitiatingCallRef.current = false;
-  }, [isCaller, durationSeconds, logCallToChat, cleanUpCallResources]);
+  }, [logCallToChat, cleanUpCallResources, markCallEnded]);
 
   // Decline incoming call
   const handleRejectIncomingCall = useCallback(async () => {
+    const callToReject = incomingCallRef.current;
+    if (!callToReject || isHandlingIncomingActionRef.current) return;
+    isHandlingIncomingActionRef.current = true;
+
     stopCallAudio();
     playCallEndedSound();
     dismissCallNotifications();
 
-    if (!incomingCall) return;
+    markCallEnded(callToReject.callId);
+    const caller = callToReject.callerUsername;
+    logCallToChat(caller, callToReject.isVideo, 0, false);
 
-    const caller = incomingCall.callerUsername;
-    logCallToChat(caller, incomingCall.isVideo, 0, false);
+    setIncomingCall(null);
 
     try {
       await fetch('/api/calls', {
@@ -204,20 +251,24 @@ export function GlobalCallProvider() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'reject',
-          callId: incomingCall.callId,
-          callerUsername: incomingCall.callerUsername,
-          receiverUsername: incomingCall.receiverUsername,
+          callId: callToReject.callId,
+          callerUsername: callToReject.callerUsername,
+          receiverUsername: callToReject.receiverUsername,
         }),
       });
-      broadcastCallEvent({ type: 'CALL_REJECTED', callId: incomingCall.callId });
-    } catch {}
-
-    setIncomingCall(null);
-  }, [incomingCall, logCallToChat]);
+      broadcastCallEvent({ type: 'CALL_REJECTED', callId: callToReject.callId });
+    } catch {} finally {
+      isHandlingIncomingActionRef.current = false;
+    }
+  }, [logCallToChat, markCallEnded]);
 
   // Accept incoming call
   const handleAcceptIncomingCall = useCallback(async () => {
-    // Unlock Web Audio immediately within the user tap gesture
+    const callToAccept = incomingCallRef.current;
+    if (!callToAccept || isHandlingIncomingActionRef.current) return;
+    isHandlingIncomingActionRef.current = true;
+
+    // Unlock Web Audio immediately within user tap gesture
     try {
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
       if (AudioCtx) {
@@ -231,28 +282,10 @@ export function GlobalCallProvider() {
     stopCallAudio();
     dismissCallNotifications();
 
-    if (!incomingCall) return;
-
-    const callToAccept = incomingCall;
     cleanUpCallResources();
     answeringCallIdRef.current = callToAccept.callId;
 
     try {
-      // 1. Double check server: Did caller cancel before we pressed answer?
-      const checkRes = await fetch(`/api/calls?callId=${encodeURIComponent(callToAccept.callId)}&t=${Date.now()}`);
-      if (checkRes.ok) {
-        const checkData = await checkRes.json();
-        const sc = checkData.call || checkData.activeCall;
-        if (!sc || sc.status === 'ended' || sc.status === 'rejected') {
-          stopCallAudio();
-          playCallEndedSound();
-          setIncomingCall(null);
-          alert('This call was already ended by the caller.');
-          return;
-        }
-      }
-
-      // 2. Play connected sound and place call into connected state
       playCallConnectedSound();
 
       const answeringCall: CallSession = {
@@ -263,12 +296,10 @@ export function GlobalCallProvider() {
       setActiveCall(answeringCall);
       setIncomingCall(null);
       setIsCaller(false);
-      setIsMuted(false);
-      setIsCameraOff(!callToAccept.isVideo);
       setDurationSeconds(0);
 
-      // 3. Notify server of answer so caller immediately connects
-      await fetch('/api/calls', {
+      // Notify server of answer so caller immediately connects
+      const answerRes = await fetch('/api/calls', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -283,6 +314,20 @@ export function GlobalCallProvider() {
         }),
       });
 
+      if (!answerRes.ok) {
+        throw new Error('Server returned error while answering call');
+      }
+
+      const answerData = await answerRes.json();
+      if (!answerData.success) {
+        stopCallAudio();
+        playCallEndedSound();
+        markCallEnded(callToAccept.callId);
+        setActiveCall(null);
+        alert(answerData.error || 'This call was already ended by the caller.');
+        return;
+      }
+
       broadcastCallEvent({ type: 'CALL_ANSWERED', call: answeringCall });
 
       if (!callTimerRef.current) {
@@ -295,10 +340,11 @@ export function GlobalCallProvider() {
       handleEndCall();
     } finally {
       answeringCallIdRef.current = null;
+      isHandlingIncomingActionRef.current = false;
     }
-  }, [incomingCall, handleEndCall, cleanUpCallResources]);
+  }, [handleEndCall, cleanUpCallResources, markCallEnded]);
 
-  // Initiate outgoing call with strict single-call debounce lock
+  // Initiate outgoing call directly into ZEGOCLOUD Call Room
   const startCall = useCallback(
     async (params: {
       receiverUsername: string;
@@ -306,7 +352,7 @@ export function GlobalCallProvider() {
       receiverAvatar?: string | null;
       isVideo: boolean;
     }) => {
-      // 1. Check atomic lock and existing active call
+      // 1. Atomic lock preventing duplicate calls
       if (isInitiatingCallRef.current || activeCallRef.current) {
         console.warn('[Calls] A call is already initiating or active. Dropping duplicate call request.');
         return;
@@ -330,8 +376,6 @@ export function GlobalCallProvider() {
 
       cleanUpCallResources();
       setIsCaller(true);
-      setIsMuted(false);
-      setIsCameraOff(!params.isVideo);
       setDurationSeconds(0);
 
       playOutgoingRingtone();
@@ -351,7 +395,7 @@ export function GlobalCallProvider() {
         iceCandidates: [],
       };
 
-      // Show ringing UI on caller immediately
+      // Connect caller directly to ZEGOCLOUD call room immediately (no intermediate modal swap)
       setActiveCall(initialCall);
 
       try {
@@ -401,7 +445,7 @@ export function GlobalCallProvider() {
       } finally {
         setTimeout(() => {
           isInitiatingCallRef.current = false;
-        }, 1500);
+        }, 1200);
       }
     },
     [cleanUpCallResources]
@@ -430,7 +474,8 @@ export function GlobalCallProvider() {
       try {
         if (!isPolling) return;
         const currentActive = activeCallRef.current;
-        const specificCallId = currentActive?.callId || incomingCall?.callId;
+        const currentIncoming = incomingCallRef.current;
+        const specificCallId = currentActive?.callId || currentIncoming?.callId;
         const callParam = specificCallId ? `&callId=${encodeURIComponent(specificCallId)}` : '';
         const res = await fetch(`/api/calls?username=${encodeURIComponent(currentUsername)}${callParam}&t=${Date.now()}`);
         if (!res.ok) return;
@@ -439,9 +484,28 @@ export function GlobalCallProvider() {
 
         const serverCall: CallSession | null = data.call || data.activeCall || null;
 
+        // Guard: If this call has already been terminated, purge and disregard
+        if (serverCall && endedCallIdsRef.current.has(serverCall.callId)) {
+          if (currentIncoming?.callId === serverCall.callId) {
+            setIncomingCall(null);
+            stopCallAudio();
+            dismissCallNotifications();
+          }
+          if (currentActive?.callId === serverCall.callId) {
+            cleanUpCallResources();
+            setActiveCall(null);
+          }
+          return;
+        }
+
         // Case 1: Incoming call arrived for current user while idle
         if (serverCall && serverCall.receiverUsername === currentUsername && serverCall.status === 'ringing') {
-          if (!currentActive && !answeringCallIdRef.current && (!incomingCall || incomingCall.callId !== serverCall.callId)) {
+          if (
+            !currentActive &&
+            !answeringCallIdRef.current &&
+            (!currentIncoming || currentIncoming.callId !== serverCall.callId) &&
+            !endedCallIdsRef.current.has(serverCall.callId)
+          ) {
             setIncomingCall(serverCall);
             playIncomingRingtone();
             if (!notifiedIncomingCallIdsRef.current.has(serverCall.callId)) {
@@ -457,9 +521,10 @@ export function GlobalCallProvider() {
         }
 
         // Case 2: Incoming call was cancelled or timed out
-        if (incomingCall) {
+        if (currentIncoming) {
           if (!serverCall || serverCall.status === 'ended' || serverCall.status === 'rejected') {
             console.log('[Calls] Incoming call cancelled or ended by caller');
+            markCallEnded(currentIncoming.callId);
             setIncomingCall(null);
             stopCallAudio();
             playCallEndedSound();
@@ -473,13 +538,12 @@ export function GlobalCallProvider() {
             consecutiveMissedPollsRef.current = 0;
 
             // If we are caller and receiver has answered
-            const hasAnswered = isCaller && serverCall.status === 'connected';
+            const hasAnswered = isCallerRef.current && serverCall.status === 'connected';
             if (hasAnswered) {
               if (currentActive.status === 'ringing') {
                 console.log('[ZEGOCLOUD] Receiver answered! Transitioning caller to connected...');
                 stopCallAudio();
                 playCallConnectedSound();
-                cleanUpCallResources();
                 setActiveCall({
                   ...serverCall,
                   status: 'connected',
@@ -492,26 +556,31 @@ export function GlobalCallProvider() {
                 }
               }
             } else if (serverCall.status === 'rejected') {
+              markCallEnded(currentActive.callId);
               stopCallAudio();
               playCallEndedSound();
               cleanUpCallResources();
               setActiveCall(null);
               setDurationSeconds(0);
-              alert(`${currentActive.receiverName || 'Student'} declined the call.`);
+              if (isCallerRef.current) {
+                alert(`${currentActive.receiverName || 'Student'} declined the call.`);
+              }
               return;
             } else if (serverCall.status === 'ended') {
               console.log('[Calls] Remote peer ended call on server. Terminating locally.');
+              markCallEnded(currentActive.callId);
               stopCallAudio();
               playCallEndedSound();
               cleanUpCallResources();
               setActiveCall(null);
               setDurationSeconds(0);
               return;
-            } else if (isCaller && currentActive.status === 'ringing') {
-              // Ringing timeout guard while still ringing on server
+            } else if (isCallerRef.current && currentActive.status === 'ringing') {
+              // Ringing timeout guard while still ringing on server (45s)
               const callAge = Date.now() - (currentActive.createdAt || Date.now());
-              if (callAge > 40000) {
+              if (callAge > 45000) {
                 stopCallAudio();
+                playCallEndedSound();
                 alert(`No answer from @${currentActive.receiverUsername}. They are currently unavailable.`);
                 handleEndCall();
                 return;
@@ -523,6 +592,7 @@ export function GlobalCallProvider() {
               consecutiveMissedPollsRef.current += 1;
               if (consecutiveMissedPollsRef.current >= 8) {
                 console.log('[Calls] Active call ended or missing from server. Terminating locally.');
+                markCallEnded(currentActive.callId);
                 stopCallAudio();
                 playCallEndedSound();
                 cleanUpCallResources();
@@ -530,11 +600,11 @@ export function GlobalCallProvider() {
                 setDurationSeconds(0);
                 return;
               }
-            } else if (isCaller && currentActive.status === 'ringing') {
-              // Ringing timeout guard: after 40 seconds of no answer, end call with unavailable message
+            } else if (isCallerRef.current && currentActive.status === 'ringing') {
               const callAge = Date.now() - (currentActive.createdAt || Date.now());
-              if (callAge > 40000) {
+              if (callAge > 45000) {
                 stopCallAudio();
+                playCallEndedSound();
                 alert(`No answer from @${currentActive.receiverUsername}. They are currently unavailable.`);
                 handleEndCall();
                 return;
@@ -545,7 +615,7 @@ export function GlobalCallProvider() {
       } catch {}
     };
 
-    // 0ms instant signaling across tabs & windows via BroadcastChannel + CustomEvent
+    // Instant signaling across tabs & windows via BroadcastChannel + CustomEvent
     const processSignalMessage = (msg: any) => {
       if (!msg || typeof msg !== 'object') {
         pollCallStatus();
@@ -555,7 +625,12 @@ export function GlobalCallProvider() {
       if (msg.type === 'CALL_INITIATED' && msg.call) {
         const serverCall: CallSession = msg.call;
         if (serverCall.receiverUsername === currentUsername && serverCall.status === 'ringing') {
-          if (!activeCallRef.current && !answeringCallIdRef.current && (!incomingCall || incomingCall.callId !== serverCall.callId)) {
+          if (
+            !activeCallRef.current &&
+            !answeringCallIdRef.current &&
+            (!incomingCallRef.current || incomingCallRef.current.callId !== serverCall.callId) &&
+            !endedCallIdsRef.current.has(serverCall.callId)
+          ) {
             setIncomingCall(serverCall);
             playIncomingRingtone();
             if (!notifiedIncomingCallIdsRef.current.has(serverCall.callId)) {
@@ -575,10 +650,9 @@ export function GlobalCallProvider() {
       if (msg.type === 'CALL_ANSWERED' && msg.call) {
         const serverCall: CallSession = msg.call;
         const currentActive = activeCallRef.current;
-        if (isCaller && currentActive && currentActive.callId === serverCall.callId) {
+        if (isCallerRef.current && currentActive && currentActive.callId === serverCall.callId) {
           stopCallAudio();
           playCallConnectedSound();
-          cleanUpCallResources();
           setActiveCall({
             ...serverCall,
             status: 'connected',
@@ -593,17 +667,23 @@ export function GlobalCallProvider() {
       }
 
       if (msg.type === 'CALL_ENDED' || msg.type === 'CALL_REJECTED') {
-        const currentActive = activeCallRef.current;
-        if (currentActive?.callId === msg.callId || incomingCall?.callId === msg.callId) {
-          stopCallAudio();
-          playCallEndedSound();
-          cleanUpCallResources();
-          dismissCallNotifications();
-          setActiveCall(null);
-          setIncomingCall(null);
-          setDurationSeconds(0);
-          return;
+        if (msg.callId) {
+          markCallEnded(msg.callId);
         }
+        stopCallAudio();
+        playCallEndedSound();
+        cleanUpCallResources();
+        dismissCallNotifications();
+        const currentActive = activeCallRef.current;
+        if (currentActive && (!msg.callId || currentActive.callId === msg.callId)) {
+          if (msg.type === 'CALL_REJECTED' && isCallerRef.current) {
+            alert(`${currentActive.receiverName || 'Student'} declined the call.`);
+          }
+          setActiveCall(null);
+          setDurationSeconds(0);
+        }
+        setIncomingCall((prev) => (prev && (!msg.callId || prev.callId === msg.callId) ? null : prev));
+        return;
       }
 
       pollCallStatus();
@@ -622,7 +702,6 @@ export function GlobalCallProvider() {
     const handleLocalSync = (ev: any) => processSignalMessage(ev.detail);
     window.addEventListener('dpsbuzz:call_event_sync', handleLocalSync);
 
-    // Initial poll + 1-second fallback interval for cross-device signaling
     pollCallStatus();
     const interval = setInterval(pollCallStatus, 1000);
     return () => {
@@ -631,7 +710,7 @@ export function GlobalCallProvider() {
       window.removeEventListener('dpsbuzz:call_event_sync', handleLocalSync);
       if (bc) bc.close();
     };
-  }, [incomingCall, isCaller, handleEndCall, cleanUpCallResources]);
+  }, [handleEndCall, cleanUpCallResources, markCallEnded]);
 
   return (
     <>
@@ -646,7 +725,6 @@ export function GlobalCallProvider() {
             }}
           >
             <div className="flex items-center gap-3 min-w-0">
-              {/* Caller Avatar with Pulse */}
               <div className="relative shrink-0">
                 <span className="absolute -inset-1 rounded-full bg-emerald-400/40 animate-ping" />
                 <div
@@ -683,9 +761,7 @@ export function GlobalCallProvider() {
               </div>
             </div>
 
-            {/* Accept / Decline Action Buttons */}
             <div className="flex items-center gap-2 shrink-0">
-              {/* Decline */}
               <button
                 type="button"
                 onClick={handleRejectIncomingCall}
@@ -696,7 +772,6 @@ export function GlobalCallProvider() {
                 <PhoneOff size={18} />
               </button>
 
-              {/* Accept */}
               <button
                 type="button"
                 onClick={handleAcceptIncomingCall}
@@ -711,31 +786,22 @@ export function GlobalCallProvider() {
         </div>
       )}
 
-      {/* 2. ZEGOCLOUD ULTRA-HD RTC CALL ROOM (When Connected) */}
-      {activeCall && activeCall.status === 'connected' && (
+      {/* 2. DIRECT ZEGOCLOUD CALL ROOM INTERFACE (Directly for both Ringing & Connected) */}
+      {activeCall && (
         <ZegoCallRoom
           call={activeCall}
           isCaller={isCaller}
           onEndCall={handleEndCall}
-        />
-      )}
-
-      {/* 3. RINGING STATE CALL MODAL (Before Answered) */}
-      {activeCall && activeCall.status === 'ringing' && (
-        <CallModal
-          call={activeCall}
-          isCaller={isCaller}
-          localStream={null}
-          remoteStream={null}
-          isMuted={isMuted}
-          isCameraOff={isCameraOff}
-          isSpeakerMuted={isSpeakerMuted}
-          durationSeconds={0}
-          onToggleMute={() => setIsMuted((prev) => !prev)}
-          onToggleCamera={() => setIsCameraOff((prev) => !prev)}
-          onSwitchCamera={() => {}}
-          onToggleSpeaker={() => setIsSpeakerMuted((prev) => !prev)}
-          onEndCall={handleEndCall}
+          onConnected={() => {
+            if (activeCallRef.current?.status !== 'connected') {
+              setActiveCall((prev) => (prev ? { ...prev, status: 'connected', connectedAt: Date.now() } : null));
+              if (!callTimerRef.current) {
+                callTimerRef.current = setInterval(() => {
+                  setDurationSeconds((prev) => prev + 1);
+                }, 1000);
+              }
+            }
+          }}
         />
       )}
     </>

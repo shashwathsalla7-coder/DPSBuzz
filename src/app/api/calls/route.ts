@@ -17,16 +17,18 @@ const NO_CACHE_HEADERS = {
 };
 
 // In-memory fast cache for instantaneous same-container lookups
+type DeadCallEntry = { ts: number; status: 'ended' | 'rejected' };
+
 declare global {
   var __dpsbuzz_active_calls: Map<string, CallSession> | undefined;
-  var __dpsbuzz_dead_calls: Map<string, number> | undefined;
+  var __dpsbuzz_dead_calls: Map<string, DeadCallEntry | number> | undefined;
 }
 
 if (!globalThis.__dpsbuzz_active_calls) {
   globalThis.__dpsbuzz_active_calls = new Map<string, CallSession>();
 }
 if (!globalThis.__dpsbuzz_dead_calls) {
-  globalThis.__dpsbuzz_dead_calls = new Map<string, number>();
+  globalThis.__dpsbuzz_dead_calls = new Map<string, DeadCallEntry | number>();
 }
 
 const localCache = globalThis.__dpsbuzz_active_calls;
@@ -67,7 +69,8 @@ export async function GET(req: NextRequest) {
     const now = Date.now();
 
     // 1. Prune dead calls older than 60s
-    for (const [id, ts] of deadCalls.entries()) {
+    for (const [id, val] of deadCalls.entries()) {
+      const ts = typeof val === 'number' ? val : val.ts;
       if (now - ts > 60000) {
         deadCalls.delete(id);
       }
@@ -80,17 +83,17 @@ export async function GET(req: NextRequest) {
         continue;
       }
       if ((c.status === 'ended' || c.status === 'rejected') && now - (c.endedAt || c.createdAt) > 10000) {
-        deadCalls.set(id, now);
+        deadCalls.set(id, { ts: now, status: c.status });
         localCache.delete(id);
         continue;
       }
-      if (c.status === 'ringing' && now - c.createdAt > 40000) {
-        deadCalls.set(id, now);
+      if (c.status === 'ringing' && now - c.createdAt > 45000) {
+        deadCalls.set(id, { ts: now, status: 'ended' });
         localCache.delete(id);
         continue;
       }
       if (c.status === 'connected' && now - (c.connectedAt || c.createdAt) > 7200000) {
-        deadCalls.set(id, now);
+        deadCalls.set(id, { ts: now, status: 'ended' });
         localCache.delete(id);
         continue;
       }
@@ -99,7 +102,9 @@ export async function GET(req: NextRequest) {
     // 3. Resolve specific callId if requested
     let callForId: CallSession | null = null;
     if (callId) {
-      if (deadCalls.has(callId)) {
+      const deadInfo = deadCalls.get(callId);
+      if (deadInfo) {
+        const deadStatus = typeof deadInfo === 'object' && deadInfo.status ? deadInfo.status : 'ended';
         callForId = {
           callId,
           callerUsername: '',
@@ -107,7 +112,7 @@ export async function GET(req: NextRequest) {
           receiverUsername: '',
           receiverName: '',
           isVideo: false,
-          status: 'ended',
+          status: deadStatus,
           createdAt: now - 5000,
           endedAt: now,
         };
@@ -117,10 +122,10 @@ export async function GET(req: NextRequest) {
         callForId = mergeCallSessions(cached, serverCall);
         if (callForId) {
           if (callForId.status === 'ended' || callForId.status === 'rejected') {
-            deadCalls.set(callId, now);
+            deadCalls.set(callId, { ts: now, status: callForId.status });
             localCache.delete(callId);
-          } else if (callForId.status === 'ringing' && now - callForId.createdAt > 40000) {
-            deadCalls.set(callId, now);
+          } else if (callForId.status === 'ringing' && now - callForId.createdAt > 45000) {
+            deadCalls.set(callId, { ts: now, status: 'ended' });
             localCache.delete(callId);
             callForId = null;
           } else {
@@ -142,8 +147,8 @@ export async function GET(req: NextRequest) {
           call.status !== 'ended' &&
           call.status !== 'rejected'
         ) {
-          if (call.status === 'ringing' && now - call.createdAt > 40000) {
-            deadCalls.set(call.callId, now);
+          if (call.status === 'ringing' && now - call.createdAt > 45000) {
+            deadCalls.set(call.callId, { ts: now, status: 'ended' });
             localCache.delete(call.callId);
             continue;
           }
@@ -156,7 +161,7 @@ export async function GET(req: NextRequest) {
       if (!userActiveCall) {
         const serverCall = await findUserActiveCall(username);
         if (serverCall && !deadCalls.has(serverCall.callId)) {
-          if (!(serverCall.status === 'ringing' && now - serverCall.createdAt > 40000)) {
+          if (!(serverCall.status === 'ringing' && now - serverCall.createdAt > 45000)) {
             userActiveCall = serverCall;
             localCache.set(serverCall.callId, serverCall);
           }
@@ -252,32 +257,49 @@ export async function POST(req: NextRequest) {
       }
 
       if (!call || call.status === 'ended' || call.status === 'rejected') {
-        deadCalls.set(callId, now);
+        deadCalls.set(callId, { ts: now, status: (call?.status as any) || 'ended' });
         localCache.delete(callId);
         return NextResponse.json({ success: false, error: 'Call session not active' }, { status: 200 });
       }
 
-      const updated: CallSession = {
+      const updates: CallSession = {
         ...call,
         status: 'connected',
         connectedAt: now,
       };
 
-      localCache.set(callId, updated);
-      await updateServerCall(callId, updated);
-      return NextResponse.json({ success: true, call: updated });
+      localCache.set(callId, updates);
+      await updateServerCall(callId, updates);
+      return NextResponse.json({ success: true, call: updates });
     }
 
     if (action === 'reject') {
-      deadCalls.set(callId, now);
-      localCache.delete(callId);
+      deadCalls.set(callId, { ts: now, status: 'rejected' });
+      const updates: Partial<CallSession> = {
+        status: 'rejected',
+        endedAt: now,
+        durationSeconds: 0,
+      };
+      const existing = localCache.get(callId);
+      if (existing) {
+        localCache.set(callId, { ...existing, ...updates });
+      }
+      await updateServerCall(callId, updates);
       await deleteServerCall(callId);
       return NextResponse.json({ success: true });
     }
 
     if (action === 'end') {
-      deadCalls.set(callId, now);
-      localCache.delete(callId);
+      deadCalls.set(callId, { ts: now, status: 'ended' });
+      const updates: Partial<CallSession> = {
+        status: 'ended',
+        endedAt: now,
+      };
+      const existing = localCache.get(callId);
+      if (existing) {
+        localCache.set(callId, { ...existing, ...updates });
+      }
+      await updateServerCall(callId, updates);
       await deleteServerCall(callId);
       return NextResponse.json({ success: true });
     }

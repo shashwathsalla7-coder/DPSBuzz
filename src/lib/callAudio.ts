@@ -9,6 +9,7 @@ interface ActiveSoundSession {
 }
 
 const activeAudioSessions: ActiveSoundSession[] = [];
+const activeAudioContexts: Set<AudioContext> = new Set();
 
 function getAudioContext(): AudioContext | null {
   if (typeof window === 'undefined') return null;
@@ -35,6 +36,43 @@ export function stopCallAudio(): void {
       session?.stop();
     } catch {}
   }
+
+  activeAudioContexts.forEach((ctx) => {
+    try {
+      if (ctx.state !== 'closed') {
+        ctx.close().catch(() => {});
+      }
+    } catch {}
+  });
+  activeAudioContexts.clear();
+
+  if (typeof document !== 'undefined') {
+    try {
+      const audioEls = document.querySelectorAll('audio');
+      audioEls.forEach((el) => {
+        try {
+          // Never silence or nullify live WebRTC streams or ZEGOCLOUD call audio
+          if (el.srcObject) return;
+          if (
+            el.closest?.('.zego-uikit-prebuilt') ||
+            el.closest?.('[data-zego-call]') ||
+            el.closest?.('#zego-call-container') ||
+            el.id?.startsWith('zg-') ||
+            el.id?.startsWith('zego-') ||
+            el.dataset?.zegoCall ||
+            el.dataset?.zego ||
+            el.hasAttribute?.('data-music-player')
+          ) {
+            return;
+          }
+          el.pause();
+          el.currentTime = 0;
+          el.muted = true;
+          el.src = '';
+        } catch {}
+      });
+    } catch {}
+  }
 }
 
 /**
@@ -44,6 +82,7 @@ export function playOutgoingRingtone(): () => void {
   stopCallAudio();
   const ctx = getAudioContext();
   if (!ctx) return () => {};
+  activeAudioContexts.add(ctx);
 
   let isPlaying = true;
   let intervalId: any = null;
@@ -110,8 +149,11 @@ export function playOutgoingRingtone(): () => void {
       } catch {}
     }
     try {
-      ctx.close();
+      if (ctx.state !== 'closed') {
+        ctx.close().catch(() => {});
+      }
     } catch {}
+    activeAudioContexts.delete(ctx);
   };
 
   const session: ActiveSoundSession = { stop };
@@ -126,6 +168,7 @@ export function playIncomingRingtone(): () => void {
   stopCallAudio();
   const ctx = getAudioContext();
   if (!ctx) return () => {};
+  activeAudioContexts.add(ctx);
 
   let isPlaying = true;
   let intervalId: any = null;
@@ -187,8 +230,11 @@ export function playIncomingRingtone(): () => void {
       } catch {}
     }
     try {
-      ctx.close();
+      if (ctx.state !== 'closed') {
+        ctx.close().catch(() => {});
+      }
     } catch {}
+    activeAudioContexts.delete(ctx);
   };
 
   const session: ActiveSoundSession = { stop };
@@ -224,6 +270,12 @@ export function playCallConnectedSound(): void {
       osc.start(startTime);
       osc.stop(startTime + 0.26);
     });
+
+    setTimeout(() => {
+      try {
+        if (ctx.state !== 'closed') ctx.close().catch(() => {});
+      } catch {}
+    }, 450);
   } catch {}
 }
 
@@ -255,5 +307,11 @@ export function playCallEndedSound(): void {
       osc.start(startTime);
       osc.stop(startTime + 0.13);
     });
+
+    setTimeout(() => {
+      try {
+        if (ctx.state !== 'closed') ctx.close().catch(() => {});
+      } catch {}
+    }, 450);
   } catch {}
 }
