@@ -131,7 +131,7 @@ export const radii = {
   tabbar: '24px',          // floating tab bar 24
   sheet: '24px',           // bottom sheets 24 (top only)
   groupAvatar: '14px',     // group avatars 14
-  chatBubble: '18px',      // chat bubbles 18
+  chatBubble: '14px',      // chat bubbles 14
   notice: '6px',           // notice cards 6
   circle: '9999px',        // people avatars and story rings full circle
   // Compatibility aliases
@@ -139,7 +139,7 @@ export const radii = {
   sm: '9999px',
   md: '14px',
   lg: '20px',
-  bubble: '18px',
+  bubble: '14px',
   full: '9999px',
 } as const;
 
