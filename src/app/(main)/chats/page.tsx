@@ -1033,8 +1033,22 @@ function ChatsContent() {
     };
 
     pollMessages();
-    const interval = setInterval(pollMessages, 1500);
-    return () => clearInterval(interval);
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+      pollMessages();
+    }, 3500);
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        pollMessages();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
   }, [activeConversation, currentUsername]);
 
   // Real-Time 0ms Instant Message Receiver (BroadcastChannel + CustomEvent)
@@ -1558,8 +1572,22 @@ function ChatsContent() {
     };
 
     fetchLatestSync();
-    const interval = setInterval(fetchLatestSync, 2500);
-    return () => clearInterval(interval);
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+      fetchLatestSync();
+    }, 10000);
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        fetchLatestSync();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
   }, [currentUsername]);
 
   // Auto-sync inbox conversations list from chatMessages strictly scoped to current user

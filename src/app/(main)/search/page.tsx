@@ -89,16 +89,27 @@ function SearchContent() {
 
     // Pull accounts and content from persistent cloud store on mount and periodically
     DataStore.syncWithServer().then(() => loadData()).catch(() => {});
+    // Smart periodic sync every 30s when visible
     const syncInterval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
       DataStore.syncWithServer().then(() => loadData()).catch(() => {});
-    }, 10000);
+    }, 30000);
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        DataStore.syncWithServer().then(() => loadData()).catch(() => {});
+      }
+    };
 
     window.addEventListener('dpsbuzz:content_updated', loadData);
     window.addEventListener('storage', loadData);
+    document.addEventListener('visibilitychange', handleVisibility);
+
     return () => {
       clearInterval(syncInterval);
       window.removeEventListener('dpsbuzz:content_updated', loadData);
       window.removeEventListener('storage', loadData);
+      document.removeEventListener('visibilitychange', handleVisibility);
     };
   }, []);
 
