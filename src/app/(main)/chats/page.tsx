@@ -29,6 +29,7 @@ import {
   Search,
   Clock,
   Sparkles,
+  Gamepad2,
 } from 'lucide-react';
 import { ChatsHeader } from '@/components/chats/ChatsHeader';
 import { ChatSearch } from '@/components/chats/ChatSearch';
@@ -46,6 +47,13 @@ import {
   GRADIENT_BACKGROUNDS,
   GALLERY_BACKGROUNDS,
 } from '@/components/chats/ChatBackgroundSelector';
+import {
+  CricketGameModal,
+  CricketGameDrawer,
+  CricketGameInviteCard,
+  CricketLeaderboardModal,
+  type CricketGameInviteData,
+} from '@/components/games';
 import { getAvatarColorPair } from '@/config/tokens';
 import { DataStore, DUMMY_TEST_USERNAMES, ChatNote, type GroupJoinRequest } from '@/lib/dataStore';
 import { showBackgroundNotification } from '@/lib/pushNotifications';
@@ -62,6 +70,7 @@ interface ChatMessage {
   time: string;
   reaction?: string;
   isCallLog?: boolean;
+  gameInvite?: CricketGameInviteData;
   sharedPost?: {
     id: string;
     username: string;
@@ -385,6 +394,26 @@ function ChatsContent() {
     return {};
   });
   const chatMediaInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Guess the Cricketer Game State
+  const [isGameDrawerOpen, setIsGameDrawerOpen] = useState(false);
+  const [activeGameId, setActiveGameId] = useState<string | null>(null);
+  const [isGameModalOpen, setIsGameModalOpen] = useState(false);
+  const [isLeaderboardModalOpen, setIsLeaderboardModalOpen] = useState(false);
+  const [leaderboardDefaultTab, setLeaderboardDefaultTab] = useState<'leaderboard' | 'history' | 'rules'>('leaderboard');
+
+  // Auto-reconnect to any active game session for current user on mount/refresh
+  useEffect(() => {
+    if (!currentUsername || currentUsername === 'guest') return;
+    fetch(`/api/games/cricket?action=active&username=${encodeURIComponent(currentUsername)}`, { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.session?.gameId) {
+          setActiveGameId(data.session.gameId);
+        }
+      })
+      .catch(() => {});
+  }, [currentUsername]);
 
   // Load persisted chat backgrounds from localStorage & Prune 10-day expired chat photos
   useEffect(() => {
@@ -2128,6 +2157,160 @@ function ChatsContent() {
       .catch((err) => console.warn('Failed to sync chat message:', err));
   };
 
+  const handleSendGameChallenge = async () => {
+    if (!activeConversation || activeConversation.isGroup) {
+      alert('Guess the Cricketer is a 1-on-1 multiplayer duel. Please open a direct chat with a classmate.');
+      return;
+    }
+
+    const targetUsername = (activeConversation.username || activeConversation.id.replace(/^conv-/, '')).toLowerCase().trim();
+    if (!targetUsername) return;
+
+    try {
+      const res = await fetch('/api/games/cricket', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'invite',
+          inviter: {
+            username: currentUsername,
+            fullName: currentUser?.fullName || currentUsername,
+            avatar: currentUser?.avatar || null,
+          },
+          opponent: {
+            username: targetUsername,
+            fullName: activeConversation.name || targetUsername,
+            avatar: activeConversation.avatar || null,
+          },
+          chatId: activeConversation.id,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success && data.session) {
+        const gameId = data.session.gameId;
+        const invitePayload: CricketGameInviteData = {
+          gameId,
+          gameType: 'cricket',
+          inviterUsername: currentUsername,
+          inviterName: currentUser?.fullName || currentUsername,
+          opponentUsername: targetUsername,
+          opponentName: activeConversation.name || targetUsername,
+          status: 'waiting_invite',
+        };
+
+        const inviteText = `🎮 [CRICKET_GAME]:${JSON.stringify(invitePayload)}`;
+        const now = Date.now();
+        const rawId = activeConversation.id;
+        const canonicalId = getCanonicalConvId(activeConversation);
+        const ephemeralTrackingId = uuidv4();
+
+        const newMsg: ChatMessage = {
+          id: ephemeralTrackingId,
+          client_id: ephemeralTrackingId,
+          status: 'sending',
+          text: inviteText,
+          sender: 'me',
+          senderUsername: currentUsername,
+          gameInvite: invitePayload,
+          time: new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date(now)),
+          createdAt: new Date(now).toISOString(),
+          timestamp: now,
+          isDelivered: false,
+          is_read: false,
+          isSeen: false,
+        };
+
+        setChatMessages((prev) => {
+          const currentList = getListForConv(prev, canonicalId, rawId);
+          const updated = [...currentList, newMsg];
+          const nextMap = { ...prev, [rawId]: updated, [canonicalId]: updated };
+          try {
+            if (currentUsername) {
+              localStorage.setItem(`dpsbuzz_chat_messages_${currentUsername}_v3`, JSON.stringify(nextMap));
+            }
+          } catch {}
+          return nextMap;
+        });
+
+        setConversations((prev) =>
+          prev.map((c) =>
+            c.id === rawId || c.id === canonicalId
+              ? { ...c, lastMessage: `You challenged @${targetUsername} to Guess the Cricketer! 🏏`, timeAgo: 'Just now' }
+              : c
+          )
+        );
+
+        // Instant broadcast
+        DataStore.broadcastChatEvent({
+          type: 'MESSAGE_SENT',
+          conversationId: canonicalId,
+          message: newMsg,
+          senderUsername: currentUsername,
+          recipientUsername: targetUsername,
+        });
+
+        // Supabase Realtime dispatch
+        sendSupabaseRealtimeMessage(inviteText, ephemeralTrackingId);
+
+        // Server API dispatch
+        fetch('/api/chats', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            conversationId: canonicalId,
+            senderUsername: currentUsername,
+            message: newMsg,
+          }),
+        }).catch(() => {});
+
+        setActiveGameId(gameId);
+        setIsGameModalOpen(true);
+      } else {
+        alert(data.error || 'Failed to send challenge');
+      }
+    } catch {
+      alert('Error initiating cricket challenge');
+    }
+  };
+
+  const handleAcceptGame = async (gameId: string) => {
+    try {
+      const res = await fetch('/api/games/cricket', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'accept',
+          gameId,
+          username: currentUsername,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setActiveGameId(gameId);
+        setIsGameModalOpen(true);
+      } else {
+        alert(data.error || 'Failed to accept game');
+      }
+    } catch {
+      alert('Error accepting cricket match');
+    }
+  };
+
+  const handleDeclineGame = async (gameId: string) => {
+    try {
+      await fetch('/api/games/cricket', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'decline',
+          gameId,
+          username: currentUsername,
+        }),
+      });
+    } catch {}
+  };
+
   const handleImageAttachment = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !activeConversation) return;
@@ -2693,11 +2876,38 @@ function ChatsContent() {
                     </div>
                   )}
 
-                  {/* Message Bubble Container with Double-tap to heart & click to toggle reactions */}
-                  <div
-                    onClick={() => handleMessageClick(msg)}
-                    className="relative cursor-pointer select-none max-w-[78%]"
-                  >
+                  {/* Guess the Cricketer Game Invite Card or Standard Message Bubble */}
+                  {(() => {
+                    let inviteData: CricketGameInviteData | null = msg.gameInvite || null;
+                    if (!inviteData && msg.text?.startsWith('🎮 [CRICKET_GAME]:')) {
+                      try {
+                        inviteData = JSON.parse(msg.text.replace('🎮 [CRICKET_GAME]:', ''));
+                      } catch {
+                        inviteData = null;
+                      }
+                    }
+
+                    if (inviteData) {
+                      return (
+                        <CricketGameInviteCard
+                          invite={inviteData}
+                          isMe={isMe}
+                          currentUsername={currentUsername}
+                          onAccept={handleAcceptGame}
+                          onDecline={handleDeclineGame}
+                          onOpenGame={(gid) => {
+                            setActiveGameId(gid);
+                            setIsGameModalOpen(true);
+                          }}
+                        />
+                      );
+                    }
+
+                    return (
+                      <div
+                        onClick={() => handleMessageClick(msg)}
+                        className="relative cursor-pointer select-none max-w-[78%]"
+                      >
                     <div
                       className={`px-4 py-2.5 rounded-[var(--r-bubble,14px)] text-[15px] leading-[1.4] tracking-[-0.015em] font-semibold chat-bubble-text font-sf-display transition-all ${
                         isMe
@@ -2896,6 +3106,8 @@ function ChatsContent() {
                       </button>
                     )}
                   </div>
+                );
+              })()}
 
                   {/* Message Time, Vanish Indicator, and Delivery Checkmarks */}
                   <div className="flex items-center gap-1 px-1 mt-1">
@@ -3076,6 +3288,22 @@ function ChatsContent() {
               <Smile size={20} />
             </button>
 
+            {/* Guess the Cricketer Games button */}
+            {!activeConversation.isGroup && (
+              <button
+                type="button"
+                onClick={() => setIsGameDrawerOpen(true)}
+                disabled={isMaintenanceActive}
+                className={`w-10 h-10 rounded-full flex items-center justify-center hover:bg-[var(--surface-sunken)] cursor-pointer transition-colors shrink-0 disabled:opacity-40 ${
+                  isVanishMode ? 'text-purple-400 hover:text-purple-200' : 'text-[var(--text-muted)] hover:text-pink-500'
+                }`}
+                aria-label="Play Games"
+                title="Guess the Cricketer & Games 🎮"
+              >
+                <Gamepad2 size={20} />
+              </button>
+            )}
+
             <input
               type="text"
               value={messageInput}
@@ -3136,6 +3364,10 @@ function ChatsContent() {
           onChangeBackground={() => {
             setLongPressConv(null);
             setIsBgSelectorOpen(true);
+          }}
+          onOpenGames={() => {
+            setLongPressConv(null);
+            setIsGameDrawerOpen(true);
           }}
           onDeleteRequest={(c) => {
             setLongPressConv(null);
@@ -3845,6 +4077,13 @@ function ChatsContent() {
             setLongPressConv(null);
           }
         }}
+        onOpenGames={() => {
+          if (longPressConv) {
+            setActiveConversation(longPressConv);
+            setLongPressConv(null);
+            setIsGameDrawerOpen(true);
+          }
+        }}
         onDeleteRequest={(c) => {
           setLongPressConv(null);
           setDeleteConfirmConv(c);
@@ -4074,6 +4313,39 @@ function ChatsContent() {
           {groupToast}
         </div>
       )}
+
+      {/* Guess the Cricketer: Game Challenge Drawer */}
+      <CricketGameDrawer
+        isOpen={isGameDrawerOpen}
+        onClose={() => setIsGameDrawerOpen(false)}
+        opponentUsername={activeConversation?.username || ''}
+        opponentName={activeConversation?.name || ''}
+        onSendChallenge={handleSendGameChallenge}
+        onOpenLeaderboard={(tab) => {
+          setLeaderboardDefaultTab(tab || 'leaderboard');
+          setIsLeaderboardModalOpen(true);
+        }}
+      />
+
+      {/* Guess the Cricketer: Match Arena Modal */}
+      <CricketGameModal
+        isOpen={isGameModalOpen}
+        gameId={activeGameId}
+        currentUsername={currentUsername}
+        onClose={() => setIsGameModalOpen(false)}
+        onOpenLeaderboard={(tab) => {
+          setLeaderboardDefaultTab(tab || 'leaderboard');
+          setIsLeaderboardModalOpen(true);
+        }}
+      />
+
+      {/* Guess the Cricketer: Leaderboard, Match History & Rules Modal */}
+      <CricketLeaderboardModal
+        isOpen={isLeaderboardModalOpen}
+        onClose={() => setIsLeaderboardModalOpen(false)}
+        initialTab={leaderboardDefaultTab}
+        currentUsername={currentUsername}
+      />
     </div>
   );
 }
