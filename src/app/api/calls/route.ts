@@ -138,32 +138,32 @@ export async function GET(req: NextRequest) {
     // 4. Resolve active call for username (polling for incoming or active calls)
     let userActiveCall: CallSession | null = null;
     if (username) {
-      // Check local cache first for valid ringing or connected call
-      for (const call of localCache.values()) {
-        if (deadCalls.has(call.callId)) continue;
-        if (
-          (call.receiverUsername.toLowerCase().trim() === username ||
-            call.callerUsername.toLowerCase().trim() === username) &&
-          call.status !== 'ended' &&
-          call.status !== 'rejected'
-        ) {
-          if (call.status === 'ringing' && now - call.createdAt > 45000) {
-            deadCalls.set(call.callId, { ts: now, status: 'ended' });
-            localCache.delete(call.callId);
-            continue;
-          }
-          userActiveCall = call;
-          break;
+      // 1. Check persistent Supabase store first (shared across all Vercel lambdas)
+      const serverCall = await findUserActiveCall(username);
+      if (serverCall && !deadCalls.has(serverCall.callId)) {
+        if (!(serverCall.status === 'ringing' && now - serverCall.createdAt > 45000)) {
+          userActiveCall = serverCall;
+          localCache.set(serverCall.callId, serverCall);
         }
       }
 
-      // Fallback check from persistent store if not in memory
+      // 2. Local cache fallback if persistent lookup didn't return
       if (!userActiveCall) {
-        const serverCall = await findUserActiveCall(username);
-        if (serverCall && !deadCalls.has(serverCall.callId)) {
-          if (!(serverCall.status === 'ringing' && now - serverCall.createdAt > 45000)) {
-            userActiveCall = serverCall;
-            localCache.set(serverCall.callId, serverCall);
+        for (const call of localCache.values()) {
+          if (deadCalls.has(call.callId)) continue;
+          if (
+            (call.receiverUsername.toLowerCase().trim() === username ||
+              call.callerUsername.toLowerCase().trim() === username) &&
+            call.status !== 'ended' &&
+            call.status !== 'rejected'
+          ) {
+            if (call.status === 'ringing' && now - call.createdAt > 45000) {
+              deadCalls.set(call.callId, { ts: now, status: 'ended' });
+              localCache.delete(call.callId);
+              continue;
+            }
+            userActiveCall = call;
+            break;
           }
         }
       }

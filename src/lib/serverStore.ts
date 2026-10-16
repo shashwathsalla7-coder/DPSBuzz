@@ -1,7 +1,17 @@
 import { v2 as cloudinary } from 'cloudinary';
 import fs from 'fs';
 import path from 'path';
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import type { Post, Story, Profile, ChatNote, Notice, NotificationItem, CallSession } from './dataStore';
+
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://xdvoeddebquguuqgyscl.supabase.co';
+const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhkdm9lZGRlYnF1Z3V1cWd5c2NsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIxNDE4NjQsImV4cCI6MjEwNzcxNzg2NH0.w7HbWCGQmyK-tayzXR8l06rLzCsPQtIrnGhJQjhzUbg';
+
+function getSupabase() {
+  return createSupabaseClient(SUPABASE_URL, SUPABASE_KEY, {
+    auth: { persistSession: false },
+  });
+}
 
 export interface ServerStoreData {
   posts: Post[];
@@ -870,15 +880,69 @@ export async function getServerActiveCalls(force = false): Promise<Record<string
 }
 
 export async function getServerCall(callId: string): Promise<CallSession | null> {
+  // 1. Check in-memory cache
+  if (callsCache[callId]) {
+    return callsCache[callId];
+  }
+
+  // 2. Fetch from Supabase app_settings
+  try {
+    const supabase = getSupabase();
+    const { data } = await supabase
+      .from('app_settings')
+      .select('value')
+      .eq('key', `call_${callId}`)
+      .maybeSingle();
+
+    if (data?.value) {
+      const parsed = JSON.parse(data.value);
+      callsCache[callId] = parsed;
+      return parsed;
+    }
+  } catch (err) {
+    console.warn('[serverStore] Failed to fetch call from Supabase:', err);
+  }
+
+  // 3. Fallback to local file
   const local = readLocalCalls() || {};
-  return callsCache[callId] || local[callId] || null;
+  return local[callId] || null;
 }
 
 export async function findUserActiveCall(username: string): Promise<CallSession | null> {
   const clean = username.toLowerCase().trim();
+  const now = Date.now();
+
+  // 1. Check Supabase active call pointer for this user
+  try {
+    const supabase = getSupabase();
+    const { data: ptrData } = await supabase
+      .from('app_settings')
+      .select('value')
+      .eq('key', `call_user_${clean}`)
+      .maybeSingle();
+
+    if (ptrData?.value) {
+      const activeCallId = ptrData.value;
+      const call = await getServerCall(activeCallId);
+      if (call && call.status !== 'ended' && call.status !== 'rejected') {
+        const isFreshRinging = call.status === 'ringing' && now - (call.createdAt || now) <= 45000;
+        const isFreshConnected = call.status === 'connected' && now - (call.connectedAt || call.createdAt || now) <= 7200000;
+        if (isFreshRinging || isFreshConnected) {
+          callsCache[call.callId] = call;
+          return call;
+        } else {
+          // Stale pointer cleanup
+          supabase.from('app_settings').delete().eq('key', `call_user_${clean}`).then(() => {}).catch(() => {});
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[serverStore] Failed to find user active call in Supabase:', err);
+  }
+
+  // 2. Fallback to in-memory cache and local file
   const local = readLocalCalls() || {};
   const calls = { ...local, ...callsCache };
-  const now = Date.now();
   for (const call of Object.values(calls)) {
     if (
       (call.receiverUsername.toLowerCase().trim() === clean ||
@@ -901,6 +965,28 @@ export async function findUserActiveCall(username: string): Promise<CallSession 
 export async function saveServerCall(call: CallSession): Promise<CallSession> {
   callsCache[call.callId] = call;
   writeLocalCalls(callsCache);
+
+  try {
+    const supabase = getSupabase();
+    const cleanReceiver = (call.receiverUsername || '').toLowerCase().trim();
+    const cleanCaller = (call.callerUsername || '').toLowerCase().trim();
+    const nowIso = new Date().toISOString();
+
+    const rows = [
+      { key: `call_${call.callId}`, value: JSON.stringify(call), updated_at: nowIso },
+    ];
+    if (cleanReceiver) {
+      rows.push({ key: `call_user_${cleanReceiver}`, value: call.callId, updated_at: nowIso });
+    }
+    if (cleanCaller) {
+      rows.push({ key: `call_user_${cleanCaller}`, value: call.callId, updated_at: nowIso });
+    }
+
+    await supabase.from('app_settings').upsert(rows);
+  } catch (err) {
+    console.warn('[serverStore] Failed to save call to Supabase:', err);
+  }
+
   return call;
 }
 
@@ -908,11 +994,10 @@ export async function updateServerCall(
   callId: string,
   updates: Partial<CallSession>
 ): Promise<CallSession | null> {
-  const local = readLocalCalls() || {};
-  const existing = callsCache[callId] || local[callId];
+  const existing = await getServerCall(callId);
 
-  const callerUsername = updates.callerUsername || existing?.callerUsername || '';
-  const receiverUsername = updates.receiverUsername || existing?.receiverUsername || '';
+  const callerUsername = (updates.callerUsername || existing?.callerUsername || '').toLowerCase().trim();
+  const receiverUsername = (updates.receiverUsername || existing?.receiverUsername || '').toLowerCase().trim();
 
   if (!callerUsername && !receiverUsername && !existing) {
     return null;
@@ -942,36 +1027,62 @@ export async function updateServerCall(
 
   if (updatedCall.status === 'ended' || updatedCall.status === 'rejected') {
     updatedCall.endedAt = updatedCall.endedAt || Date.now();
-    callsCache[callId] = updatedCall;
-    local[callId] = updatedCall;
-    writeLocalCalls(local);
-  } else {
-    callsCache[callId] = updatedCall;
-    local[callId] = updatedCall;
-    writeLocalCalls(local);
+  }
+
+  callsCache[callId] = updatedCall;
+  const local = readLocalCalls() || {};
+  local[callId] = updatedCall;
+  writeLocalCalls(local);
+
+  try {
+    const supabase = getSupabase();
+    const nowIso = new Date().toISOString();
+
+    if (updatedCall.status === 'ended' || updatedCall.status === 'rejected') {
+      await supabase.from('app_settings').upsert({
+        key: `call_${callId}`,
+        value: JSON.stringify(updatedCall),
+        updated_at: nowIso,
+      });
+
+      const keysToDelete: string[] = [];
+      if (callerUsername) keysToDelete.push(`call_user_${callerUsername}`);
+      if (receiverUsername) keysToDelete.push(`call_user_${receiverUsername}`);
+      if (keysToDelete.length > 0) {
+        await supabase.from('app_settings').delete().in('key', keysToDelete);
+      }
+    } else {
+      await supabase.from('app_settings').upsert({
+        key: `call_${callId}`,
+        value: JSON.stringify(updatedCall),
+        updated_at: nowIso,
+      });
+    }
+  } catch (err) {
+    console.warn('[serverStore] Failed to update call in Supabase:', err);
   }
 
   return updatedCall;
 }
 
 export async function deleteServerCall(callId: string): Promise<void> {
+  const existing = await getServerCall(callId);
+  const callerUsername = (existing?.callerUsername || '').toLowerCase().trim();
+  const receiverUsername = (existing?.receiverUsername || '').toLowerCase().trim();
+
+  delete callsCache[callId];
   const local = readLocalCalls() || {};
-  const existing = callsCache[callId] || local[callId];
-  if (existing) {
-    const tombstone: CallSession = {
-      ...existing,
-      status: 'ended',
-      endedAt: Date.now(),
-    };
-    callsCache[callId] = tombstone;
-    local[callId] = tombstone;
-    writeLocalCalls(local);
-  } else {
-    delete callsCache[callId];
-    if (local[callId]) {
-      delete local[callId];
-      writeLocalCalls(local);
-    }
+  delete local[callId];
+  writeLocalCalls(local);
+
+  try {
+    const supabase = getSupabase();
+    const keysToDelete = [`call_${callId}`];
+    if (callerUsername) keysToDelete.push(`call_user_${callerUsername}`);
+    if (receiverUsername) keysToDelete.push(`call_user_${receiverUsername}`);
+    await supabase.from('app_settings').delete().in('key', keysToDelete);
+  } catch (err) {
+    console.warn('[serverStore] Failed to delete call from Supabase:', err);
   }
 }
 
