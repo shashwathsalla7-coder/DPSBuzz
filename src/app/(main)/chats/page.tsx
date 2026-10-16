@@ -142,7 +142,7 @@ function ChatsContent() {
   const viewParam = searchParams.get('view') || searchParams.get('tab');
   const userParam = searchParams.get('user');
 
-  const currentUser = useMemo(() => DataStore.getCurrentUser(), []);
+  const [currentUser, setCurrentUser] = useState(() => DataStore.getCurrentUser());
   const currentUsername = useMemo(() => {
     return (currentUser?.username || '').toLowerCase().trim();
   }, [currentUser]);
@@ -238,6 +238,8 @@ function ChatsContent() {
 
   useEffect(() => {
     const handleUpdate = () => {
+      const freshUser = DataStore.getCurrentUser();
+      setCurrentUser(freshUser);
       setIsMaintenanceActive(!isAdminUser && DataStore.isMaintenanceActive());
       if (typeof window !== 'undefined') {
         try {
@@ -1052,30 +1054,35 @@ function ChatsContent() {
   }, [stateParam, viewParam]);
 
   // Automatically open direct chat when navigated from a user's profile with ?user=...
+  const handledUserParamRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!userParam) return;
+    if (!userParam) {
+      handledUserParamRef.current = null;
+      return;
+    }
     const targetUser = userParam.toLowerCase().trim();
     if (!targetUser || (currentUsername && targetUser === currentUsername)) return;
+    if (handledUserParamRef.current === targetUser) return;
+    handledUserParamRef.current = targetUser;
 
     const all = DataStore.getProfiles();
     const prof = all.find((p) => p.username?.toLowerCase() === targetUser);
     const displayName = prof ? prof.fullName : targetUser;
     const displayClass = prof ? `Class ${prof.class}-${prof.section || 'G'}` : 'Student';
 
-    setConversations((prev) => {
-      const existing = prev.find((c) => c.username?.toLowerCase() === targetUser);
-      if (existing) {
-        const readConv = { ...existing, isUnread: false, unreadCount: 0 };
-        setActiveConversation(readConv);
-        const updated = prev.map((c) => (c.id === existing.id ? readConv : c));
-        try {
-          if (currentUsername) {
-            localStorage.setItem(`dpsbuzz_chat_conversations_${currentUsername}_v3`, JSON.stringify(updated));
-          }
-          window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated'));
-        } catch {}
-        return updated;
-      }
+    const existing = conversations.find((c) => c.username?.toLowerCase() === targetUser);
+    if (existing) {
+      const readConv = { ...existing, isUnread: false, unreadCount: 0 };
+      setActiveConversation(readConv);
+      const updated = conversations.map((c) => (c.id === existing.id ? readConv : c));
+      setConversations(updated);
+      try {
+        if (currentUsername) {
+          localStorage.setItem(`dpsbuzz_chat_conversations_${currentUsername}_v3`, JSON.stringify(updated));
+        }
+        window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated'));
+      } catch {}
+    } else {
       const newConv: ConversationItem = {
         id: `conv-${targetUser}`,
         name: displayName,
@@ -1087,16 +1094,16 @@ function ChatsContent() {
         unreadCount: 0,
       };
       setActiveConversation(newConv);
-      const updated = [newConv, ...prev];
+      const updated = [newConv, ...conversations];
+      setConversations(updated);
       try {
         if (currentUsername) {
           localStorage.setItem(`dpsbuzz_chat_conversations_${currentUsername}_v3`, JSON.stringify(updated));
         }
         window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated'));
       } catch {}
-      return updated;
-    });
-  }, [userParam, currentUsername]);
+    }
+  }, [userParam, currentUsername, conversations]);
 
   // Student directory from DataStore for New Chat Sheet
   const [liveStudents, setLiveStudents] = useState<StudentContact[]>([]);
@@ -1443,7 +1450,7 @@ function ChatsContent() {
 
   const handleStartNewChat = (student: StudentContact) => {
     setIsNewChatOpen(false);
-    const existing = conversations.find((c) => c.username === student.username);
+    const existing = conversations.find((c) => c.username?.toLowerCase() === student.username?.toLowerCase());
     if (existing) {
       openConversation(existing);
     } else {
@@ -2295,17 +2302,40 @@ function ChatsContent() {
     if (chatMediaInputRef.current) chatMediaInputRef.current.value = '';
   };
 
+  useEffect(() => {
+    if (activeConversation) {
+      const isGroup = activeConversation.isGroup || activeConversation.id.startsWith('conv-group-');
+      const canonicalId = getCanonicalConvId(activeConversation);
+      if (!isGroup && canonicalId.includes('__') && currentUsername) {
+        const participants = canonicalId.split('__').map((p) => p.trim().toLowerCase());
+        if (!participants.includes(currentUsername)) {
+          setActiveConversation(null);
+        }
+      }
+    }
+  }, [activeConversation, currentUsername]);
+
   // ACTIVE CONVERSATION VIEW (Full screen on mobile, NO active now or last seen status)
   if (activeConversation) {
     const canonicalId = getCanonicalConvId(activeConversation);
     const isGroup = activeConversation.isGroup || activeConversation.id.startsWith('conv-group-');
 
-    // Strict Privacy Guard: If direct chat does not involve currentUsername, block viewing!
-    if (!isGroup && canonicalId.includes('__')) {
+    // Strict Privacy Guard: If direct chat does not involve currentUsername, show access notice
+    if (!isGroup && canonicalId.includes('__') && currentUsername) {
       const participants = canonicalId.split('__').map((p) => p.trim().toLowerCase());
       if (!participants.includes(currentUsername)) {
-        setActiveConversation(null);
-        return null;
+        return (
+          <div className="flex flex-col items-center justify-center min-h-[50vh] p-6 text-center select-none bg-[var(--surface)]">
+            <p className="text-sm text-[var(--text-muted)]">You do not have access to this conversation.</p>
+            <button
+              type="button"
+              onClick={() => setActiveConversation(null)}
+              className="mt-4 px-4 py-2 rounded-xl bg-[var(--surface-sunken)] text-sm font-semibold cursor-pointer text-[var(--text)]"
+            >
+              Back to Chats
+            </button>
+          </div>
+        );
       }
     }
 
@@ -3479,7 +3509,10 @@ function ChatsContent() {
       )}
 
       {/* 1. Header (56px): "Chats" (display 800) on left, compose icon on right */}
-      <ChatsHeader onComposeClick={() => setIsNewChatOpen(true)} />
+      <ChatsHeader
+        onComposeClick={() => setIsNewChatOpen(true)}
+        onCreateGroupClick={() => setIsCreateGroupOpen(true)}
+      />
 
       {/* 2. Search Field (48px sunken, pill radius) */}
       <ChatSearch
