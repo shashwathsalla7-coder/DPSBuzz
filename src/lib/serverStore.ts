@@ -2,15 +2,32 @@ import { v2 as cloudinary } from 'cloudinary';
 import fs from 'fs';
 import path from 'path';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
-import type { Post, Story, Profile, ChatNote, Notice, NotificationItem, CallSession } from './dataStore';
+import type { Post, Story, Profile, ChatNote, Notice, NotificationItem, NotificationType, CallSession } from './dataStore';
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://xdvoeddebquguuqgyscl.supabase.co';
-const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhkdm9lZGRlYnF1Z3V1cWd5c2NsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIxNDE4NjQsImV4cCI6MjEwNzcxNzg2NH0.w7HbWCGQmyK-tayzXR8l06rLzCsPQtIrnGhJQjhzUbg';
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
 function getSupabase() {
-  return createSupabaseClient(SUPABASE_URL, SUPABASE_KEY, {
-    auth: { persistSession: false },
-  });
+  return createSupabaseClient(
+    SUPABASE_URL || 'https://placeholder.supabase.co',
+    SUPABASE_KEY || 'placeholder_key',
+    {
+      auth: { persistSession: false },
+    }
+  );
+}
+
+export interface ServerReportItem {
+  id: string;
+  type: 'post' | 'comment' | 'message' | 'call' | 'user';
+  targetUser: string;
+  reporterUsername: string;
+  reporterReason: string;
+  contentSnippet?: string;
+  reportCount?: number;
+  urgency: 'urgent' | 'high' | 'medium' | 'low';
+  createdAt: string;
+  status: 'pending' | 'hidden' | 'deleted' | 'warned' | 'banned' | 'resolved';
 }
 
 export interface ServerStoreData {
@@ -26,6 +43,7 @@ export interface ServerStoreData {
   deletedUsernames?: string[]; // Usernames deleted permanently - NEVER re-add to profiles/posts/leaderboard
   unsentMessageIds?: string[]; // IDs of permanently unsent chat messages across all devices
   notifications?: NotificationItem[];
+  reports?: ServerReportItem[];
   activeCalls?: Record<string, CallSession>;
   follows?: Array<{ follower: string; following: string }>;
   followRequests?: Array<{ requester: string; target: string }>;
@@ -35,16 +53,18 @@ export interface ServerStoreData {
   lastUpdated: number;
 }
 
-const CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME || 'ogfaxmjw';
-const API_KEY = process.env.CLOUDINARY_API_KEY || '585871931796836';
-const API_SECRET = process.env.CLOUDINARY_API_SECRET || 'Fpudf-0uhRPjKpFdmQzOiXZTh1M';
+const CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME || '';
+const API_KEY = process.env.CLOUDINARY_API_KEY || '';
+const API_SECRET = process.env.CLOUDINARY_API_SECRET || '';
 
-cloudinary.config({
-  cloud_name: CLOUD_NAME,
-  api_key: API_KEY,
-  api_secret: API_SECRET,
-  secure: true,
-});
+if (CLOUD_NAME && API_KEY && API_SECRET) {
+  cloudinary.config({
+    cloud_name: CLOUD_NAME,
+    api_key: API_KEY,
+    api_secret: API_SECRET,
+    secure: true,
+  });
+}
 
 const DATA_DIR = path.join(process.cwd(), 'data');
 const STORE_FILE = path.join(DATA_DIR, 'server_store.json');
@@ -104,7 +124,7 @@ function ensureDataDirectory(): void {
   } catch {}
 }
 
-function normalizeStore(parsed: any): ServerStoreData {
+export function normalizeStore(parsed: any): ServerStoreData {
   if (!parsed || typeof parsed !== 'object') {
     return createInitialStore();
   }
@@ -116,11 +136,61 @@ function normalizeStore(parsed: any): ServerStoreData {
     return true;
   });
 
+  const deletedUsernamesList: string[] = Array.isArray(parsed.deletedUsernames) ? parsed.deletedUsernames : [];
+  const deletedUsernamesSet = new Set(deletedUsernamesList.map((u: string) => (u || '').toLowerCase().trim()));
+  const TEST_DUMMIES = new Set(['arjun_8a', 'priya_7b', 'arjun', 'priya', 'demo-user-1', 'test_user', 'testuser']);
+
+  // Clean follows (exclude deleted users and test dummies)
+  const rawFollows = Array.isArray(parsed.follows) ? parsed.follows : [];
+  const seenFollowKeys = new Set<string>();
+  const validFollows: Array<{ follower: string; following: string }> = [];
+  for (const f of rawFollows) {
+    if (!f || !f.follower || !f.following) continue;
+    const fol = (f.follower || '').toLowerCase().trim();
+    const fing = (f.following || '').toLowerCase().trim();
+    if (!fol || !fing || fol === fing) continue;
+    if (deletedUsernamesSet.has(fol) || deletedUsernamesSet.has(fing)) continue;
+    if (TEST_DUMMIES.has(fol) || TEST_DUMMIES.has(fing)) continue;
+    const key = `${fol}->${fing}`;
+    if (!seenFollowKeys.has(key)) {
+      seenFollowKeys.add(key);
+      validFollows.push({ follower: fol, following: fing });
+    }
+  }
+
+  // Dynamic profiles with accurate follower/following counts
+  const rawProfiles = Array.isArray(parsed.profiles) && parsed.profiles.length > 0 ? parsed.profiles : [DEFAULT_ADMIN];
+  const validProfiles: Profile[] = rawProfiles
+    .filter((p: Profile) => {
+      if (!p || !p.username) return false;
+      const u = p.username.toLowerCase().trim();
+      return !deletedUsernamesSet.has(u) && !TEST_DUMMIES.has(u);
+    })
+    .map((p: Profile) => {
+      const u = p.username.toLowerCase().trim();
+      const followerCount = validFollows.filter((f) => f.following.toLowerCase().trim() === u).length;
+      const followingCount = validFollows.filter((f) => f.follower.toLowerCase().trim() === u).length;
+      return {
+        ...p,
+        followerCount,
+        followingCount,
+      };
+    });
+  if (validProfiles.length === 0) validProfiles.push(DEFAULT_ADMIN);
+
   return {
-    posts: Array.isArray(parsed.posts) ? parsed.posts : [],
+    posts: Array.isArray(parsed.posts) ? parsed.posts.filter((p: Post) => {
+      if (!p || !p.username) return false;
+      const u = p.username.toLowerCase().trim();
+      return !deletedUsernamesSet.has(u) && !TEST_DUMMIES.has(u);
+    }) : [],
     stories: activeStories,
-    profiles: Array.isArray(parsed.profiles) && parsed.profiles.length > 0 ? parsed.profiles : [DEFAULT_ADMIN],
-    chatNotes: Array.isArray(parsed.chatNotes) ? parsed.chatNotes : [],
+    profiles: validProfiles,
+    chatNotes: Array.isArray(parsed.chatNotes) ? parsed.chatNotes.filter((n: ChatNote) => {
+      if (!n || !n.username) return false;
+      const u = n.username.toLowerCase().trim();
+      return !deletedUsernamesSet.has(u) && !TEST_DUMMIES.has(u);
+    }) : [],
     chatMessages: (() => {
       const sanitized: Record<string, any[]> = {};
       if (parsed.chatMessages && typeof parsed.chatMessages === 'object') {
@@ -129,6 +199,8 @@ function normalizeStore(parsed: any): ServerStoreData {
           if (key.includes('__')) {
             const parts = key.split('__').map((p) => p.trim().toLowerCase()).filter(Boolean);
             if (parts.length === 2 && parts[0] !== parts[1]) {
+              if (deletedUsernamesSet.has(parts[0]) || deletedUsernamesSet.has(parts[1])) continue;
+              if (TEST_DUMMIES.has(parts[0]) || TEST_DUMMIES.has(parts[1])) continue;
               sanitized[parts.sort().join('__')] = msgs;
             }
           } else if (key.startsWith('conv-group-')) {
@@ -164,8 +236,12 @@ function normalizeStore(parsed: any): ServerStoreData {
       }
       return calls;
     })(),
-    follows: Array.isArray(parsed.follows) ? parsed.follows : [],
-    followRequests: Array.isArray(parsed.followRequests) ? parsed.followRequests : [],
+    follows: validFollows,
+    followRequests: Array.isArray(parsed.followRequests) ? parsed.followRequests.filter((r: any) => {
+      const req = (r.requester || '').toLowerCase().trim();
+      const tar = (r.target || '').toLowerCase().trim();
+      return req && tar && !deletedUsernamesSet.has(req) && !deletedUsernamesSet.has(tar) && !TEST_DUMMIES.has(req) && !TEST_DUMMIES.has(tar);
+    }) : [],
     groups: Array.isArray(parsed.groups) ? parsed.groups : [],
     groupMembers: parsed.groupMembers && typeof parsed.groupMembers === 'object' ? parsed.groupMembers : {},
     groupJoinRequests: Array.isArray(parsed.groupJoinRequests) ? parsed.groupJoinRequests : [],
@@ -190,33 +266,62 @@ function writeLocalStore(data: ServerStoreData): void {
   } catch {}
 }
 
+let lastCloudFetchFailure = 0;
+let cloudUploadTimer: NodeJS.Timeout | null = null;
+let pendingCloudData: ServerStoreData | null = null;
+let isUploadingCloud = false;
+
 async function fetchCloudStore(): Promise<ServerStoreData | null> {
+  // Circuit breaker: skip if failed within the last 2 minutes
+  if (Date.now() - lastCloudFetchFailure < 120000) {
+    return null;
+  }
   try {
     const url = `https://res.cloudinary.com/${CLOUD_NAME}/raw/upload/${CLOUD_STORE_PUBLIC_ID}?t=${Date.now()}`;
-    const res = await fetch(url, { cache: 'no-store' });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 1200);
+    const res = await fetch(url, { cache: 'no-store', signal: controller.signal });
+    clearTimeout(timeout);
     if (res.ok) {
       const data = await res.json();
       return normalizeStore(data);
     }
-  } catch (e) {
-    console.warn('Could not read store from Cloudinary raw storage:', e);
+  } catch {
+    lastCloudFetchFailure = Date.now();
   }
   return null;
 }
 
-async function uploadCloudStore(data: ServerStoreData): Promise<void> {
-  try {
-    const jsonStr = JSON.stringify(data);
-    const base64Data = 'data:application/json;base64,' + Buffer.from(jsonStr).toString('base64');
-    await cloudinary.uploader.upload(base64Data, {
-      resource_type: 'raw',
-      public_id: CLOUD_STORE_PUBLIC_ID,
-      overwrite: true,
-      invalidate: true,
-    });
-  } catch (e) {
-    console.error('Error uploading store to Cloudinary:', e);
-  }
+function scheduleCloudUpload(data: ServerStoreData): void {
+  // Debounce background backup so user requests and serverless routes never wait for Cloudinary
+  pendingCloudData = data;
+  if (cloudUploadTimer) return;
+
+  cloudUploadTimer = setTimeout(async () => {
+    cloudUploadTimer = null;
+    if (!pendingCloudData || isUploadingCloud) return;
+    const toUpload = pendingCloudData;
+    pendingCloudData = null;
+    isUploadingCloud = true;
+
+    try {
+      const jsonStr = JSON.stringify(toUpload);
+      const base64Data = 'data:application/json;base64,' + Buffer.from(jsonStr).toString('base64');
+      await Promise.race([
+        cloudinary.uploader.upload(base64Data, {
+          resource_type: 'raw',
+          public_id: CLOUD_STORE_PUBLIC_ID,
+          overwrite: true,
+          invalidate: true,
+        }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Cloud upload timeout')), 3500)),
+      ]);
+    } catch {
+      // Non-blocking background sync error
+    } finally {
+      isUploadingCloud = false;
+    }
+  }, 3000);
 }
 
 export async function getServerStore(options?: { forceRefresh?: boolean }): Promise<ServerStoreData> {
@@ -225,7 +330,20 @@ export async function getServerStore(options?: { forceRefresh?: boolean }): Prom
     return memoryCache;
   }
 
-  // 1. Fetch from Cloudinary
+  // 1. Check local file store FIRST (instant 0.1ms read, zero network lag)
+  const localData = readLocalStore();
+  if (localData) {
+    memoryCache = localData;
+    lastFetchTime = Date.now();
+    return memoryCache;
+  }
+
+  // 2. Return memory cache if available
+  if (memoryCache) {
+    return memoryCache;
+  }
+
+  // 3. Fall back to cloud store on cold boot with tight timeout
   const cloudData = await fetchCloudStore();
   if (cloudData) {
     memoryCache = cloudData;
@@ -234,21 +352,11 @@ export async function getServerStore(options?: { forceRefresh?: boolean }): Prom
     return memoryCache;
   }
 
-  // 2. Fall back to local file if available
-  const localData = readLocalStore();
-  if (localData) {
-    memoryCache = localData;
-    lastFetchTime = Date.now();
-    return memoryCache;
-  }
-
-  // 3. Fall back to memoryCache or default
-  if (!memoryCache) {
-    memoryCache = createInitialStore();
-    lastFetchTime = Date.now();
-    writeLocalStore(memoryCache);
-    uploadCloudStore(memoryCache).catch(() => {});
-  }
+  // 4. Fall back to fresh initial store
+  memoryCache = createInitialStore();
+  lastFetchTime = Date.now();
+  writeLocalStore(memoryCache);
+  scheduleCloudUpload(memoryCache);
 
   return memoryCache;
 }
@@ -264,18 +372,19 @@ export function getServerStoreSync(): ServerStoreData {
 }
 
 export async function saveServerStore(data: Partial<ServerStoreData>): Promise<ServerStoreData> {
-  const current = await getServerStore({ forceRefresh: true });
-  const updated: ServerStoreData = {
+  const current = await getServerStore({ forceRefresh: false });
+  const rawUpdated: ServerStoreData = {
     ...current,
     ...data,
     lastUpdated: Date.now(),
   };
 
+  const updated = normalizeStore(rawUpdated);
   memoryCache = updated;
   lastFetchTime = Date.now();
 
   writeLocalStore(updated);
-  await uploadCloudStore(updated);
+  scheduleCloudUpload(updated); // Non-blocking background sync
 
   return updated;
 }
@@ -796,8 +905,32 @@ export async function deleteServerAccount(username: string): Promise<ServerStore
     deletedUsernames.push(clean);
   }
 
+  // 10. Clean follows (remove user as follower or following)
+  const updatedFollows = (current.follows || []).filter((f) => {
+    const fol = (f.follower || '').toLowerCase().trim();
+    const fing = (f.following || '').toLowerCase().trim();
+    return fol !== clean && fing !== clean;
+  });
+
+  // 11. Clean follow requests
+  const updatedFollowRequests = (current.followRequests || []).filter((r) => {
+    const req = (r.requester || '').toLowerCase().trim();
+    const tar = (r.target || '').toLowerCase().trim();
+    return req !== clean && tar !== clean;
+  });
+
+  // 12. Recalculate follower and following counts for remaining profiles
+  const updatedProfiles = profiles.map((p) => {
+    const u = (p.username || '').toLowerCase().trim();
+    return {
+      ...p,
+      followerCount: updatedFollows.filter((f) => (f.following || '').toLowerCase().trim() === u).length,
+      followingCount: updatedFollows.filter((f) => (f.follower || '').toLowerCase().trim() === u).length,
+    };
+  });
+
   return await saveServerStore({
-    profiles,
+    profiles: updatedProfiles,
     posts: updatedPosts,
     stories,
     comments: updatedComments,
@@ -806,7 +939,116 @@ export async function deleteServerAccount(username: string): Promise<ServerStore
     chatNotes,
     notifications,
     deletedUsernames,
+    follows: updatedFollows,
+    followRequests: updatedFollowRequests,
   });
+}
+
+/**
+ * Dispatch server-level in-app notification to a user
+ */
+export async function addServerNotification(notif: {
+  userId: string;
+  type: NotificationType;
+  title: string;
+  body: string;
+  link?: string;
+}): Promise<ServerStoreData> {
+  const current = await getServerStore({ forceRefresh: true });
+  const existing = current.notifications || [];
+  const fullNotif: NotificationItem = {
+    id: `notif-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+    userId: notif.userId.toLowerCase().trim(),
+    type: notif.type,
+    title: notif.title,
+    body: notif.body,
+    timeAgo: 'Just now',
+    isRead: false,
+    link: notif.link || '/home',
+    createdAt: new Date().toISOString(),
+  };
+  return await saveServerStore({
+    notifications: [fullNotif, ...existing].slice(0, 100),
+  });
+}
+
+/**
+ * Update cricket game invite status inside chatMessages across all conversations
+ */
+export async function updateCricketInviteInChat(
+  gameId: string,
+  newStatus: 'selecting' | 'in_progress' | 'completed' | 'declined',
+  extra?: { winner?: string; winningGuess?: string; forfeitedBy?: string }
+): Promise<void> {
+  const current = await getServerStore({ forceRefresh: true });
+  const chatMessages = { ...(current.chatMessages || {}) };
+  let modified = false;
+
+  for (const [key, msgs] of Object.entries(chatMessages)) {
+    if (!Array.isArray(msgs)) continue;
+    for (let i = 0; i < msgs.length; i++) {
+      const msg = msgs[i];
+      if (msg && msg.text && msg.text.startsWith('🎮 [CRICKET_GAME]:')) {
+        try {
+          const inviteData = JSON.parse(msg.text.replace('🎮 [CRICKET_GAME]:', ''));
+          if (inviteData.gameId === gameId) {
+            inviteData.status = newStatus;
+            if (extra?.winner) inviteData.winner = extra.winner;
+            if (extra?.winningGuess) inviteData.winningGuess = extra.winningGuess;
+            if (extra?.forfeitedBy) inviteData.forfeitedBy = extra.forfeitedBy;
+            msgs[i] = {
+              ...msg,
+              text: '🎮 [CRICKET_GAME]:' + JSON.stringify(inviteData),
+            };
+            modified = true;
+          }
+        } catch {}
+      }
+    }
+  }
+
+  if (modified) {
+    await saveServerStore({ chatMessages });
+  }
+}
+
+/**
+ * Update Connect 4 game invite status inside chatMessages across all conversations
+ */
+export async function updateConnect4InviteInChat(
+  gameId: string,
+  newStatus: 'in_progress' | 'completed' | 'declined',
+  extra?: { winner?: string; forfeitedBy?: string }
+): Promise<void> {
+  const current = await getServerStore({ forceRefresh: true });
+  const chatMessages = { ...(current.chatMessages || {}) };
+  let modified = false;
+
+  for (const [key, msgs] of Object.entries(chatMessages)) {
+    if (!Array.isArray(msgs)) continue;
+    for (let i = 0; i < msgs.length; i++) {
+      const msg = msgs[i];
+      if (msg && msg.text && msg.text.startsWith('🔴 [CONNECT4_GAME]:')) {
+        try {
+          const inviteData = JSON.parse(msg.text.replace('🔴 [CONNECT4_GAME]:', ''));
+          if (inviteData.gameId === gameId) {
+            inviteData.status = newStatus;
+            if (extra?.winner) inviteData.winner = extra.winner;
+            if (extra?.forfeitedBy) inviteData.forfeitedBy = extra.forfeitedBy;
+            msgs[i] = {
+              ...msg,
+              text: '🔴 [CONNECT4_GAME]:' + JSON.stringify(inviteData),
+            };
+            modified = true;
+          }
+        } catch {}
+      }
+    }
+  }
+
+  if (modified) {
+    await saveServerStore({ chatMessages });
+  }
 }
 
 // ==========================================
@@ -1167,6 +1409,44 @@ export async function removeServerGroupMember(groupId: string, username: string)
   }
   await saveServerStore(store);
   return store;
+}
+
+export async function addServerReport(report: Omit<ServerReportItem, 'id' | 'createdAt' | 'status'>): Promise<ServerReportItem> {
+  const store = await getServerStore({ forceRefresh: true });
+  if (!store.reports) store.reports = [];
+
+  const newReport: ServerReportItem = {
+    ...report,
+    id: `rep_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+    createdAt: new Date().toISOString(),
+    status: 'pending',
+    reportCount: 1,
+  };
+
+  store.reports.unshift(newReport);
+  await saveServerStore(store);
+  return newReport;
+}
+
+export async function getServerReports(): Promise<ServerReportItem[]> {
+  const store = await getServerStore();
+  return store.reports || [];
+}
+
+export async function pruneExpiredServerStories(): Promise<number> {
+  const store = await getServerStore({ forceRefresh: true });
+  const now = Date.now();
+  const initialCount = (store.stories || []).length;
+  // Expire after 24 hours
+  store.stories = (store.stories || []).filter((s) => {
+    const created = new Date(s.createdAt).getTime();
+    return now - created < 24 * 60 * 60 * 1000;
+  });
+  const pruned = initialCount - store.stories.length;
+  if (pruned > 0) {
+    await saveServerStore(store);
+  }
+  return pruned;
 }
 
 export async function upsertServerGroupJoinRequest(req: any): Promise<ServerStoreData> {

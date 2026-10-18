@@ -143,6 +143,9 @@ export const PostImage: React.FC<PostImageProps> = ({
                   src={imgUrl}
                   alt={`Photo ${idx + 1} by ${post.username}`}
                   loading="lazy"
+                  decoding="async"
+                  width={1080}
+                  height={1350}
                   onError={() => setHasError(true)}
                   className="w-full h-full object-cover"
                 />
@@ -174,6 +177,10 @@ export const PostImage: React.FC<PostImageProps> = ({
               <img
                 src={effectiveAvatar}
                 alt={post.username}
+                width={36}
+                height={36}
+                loading="lazy"
+                decoding="async"
                 className="w-full h-full object-cover"
                 onError={() => setAvatarLoadError(true)}
               />

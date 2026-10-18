@@ -1,13 +1,6 @@
 import { Suspense } from 'react';
 import ProfileClient from './ProfileClient';
 
-export function generateStaticParams() {
-  return [
-    { username: 'shashwath71845' },
-    { username: 'admin' },
-  ];
-}
-
 export default async function UserProfilePage({
   params,
 }: {

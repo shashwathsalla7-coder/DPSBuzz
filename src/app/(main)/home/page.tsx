@@ -32,7 +32,17 @@ import { GetAppWidget } from '@/components/home/GetAppWidget';
 import { HomeFeedSkeleton } from '@/components/home/HomeFeedSkeleton';
 import { SuggestedAccountsList } from '@/components/suggestions';
 import { HomeStreakWidget } from '@/components/home/HomeStreakWidget';
-import { SharePostModal } from '@/components/home/SharePostModal';
+import dynamic from 'next/dynamic';
+
+const SharePostModal = dynamic(
+  () => import('@/components/home/SharePostModal').then((m) => m.SharePostModal),
+  { ssr: false }
+);
+
+const SoloGame2048Modal = dynamic(
+  () => import('@/components/games').then((m) => m.SoloGame2048Modal),
+  { ssr: false }
+);
 
 export default function HomePage() {
   return (
@@ -44,12 +54,31 @@ export default function HomePage() {
 
 function HomeContent() {
   const router = useRouter();
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [notices, setNotices] = useState<Notice[]>([]);
-  const [broadcastAlert, setBroadcastAlert] = useState<BroadcastAlert | null>(null);
-  const [likedPosts, setLikedPosts] = useState<Record<string, boolean>>({});
-  const [savedPosts, setSavedPosts] = useState<Record<string, boolean>>({});
+  const [isMounted, setIsMounted] = useState(false);
+  const [posts, setPosts] = useState<Post[]>(() => (typeof window !== 'undefined' ? DataStore.getPosts() : []));
+  const [notices, setNotices] = useState<Notice[]>(() => (typeof window !== 'undefined' ? DataStore.getNotices() : []));
+  const [broadcastAlert, setBroadcastAlert] = useState<BroadcastAlert | null>(() => (typeof window !== 'undefined' ? DataStore.getBroadcastAlert() : null));
+  const [likedPosts, setLikedPosts] = useState<Record<string, boolean>>(() => {
+    if (typeof window === 'undefined') return {};
+    const cur = DataStore.getCurrentUser();
+    const map: Record<string, boolean> = {};
+    if (cur?.username) {
+      DataStore.getUserLikedPostIds(cur.username).forEach((id) => { map[id] = true; });
+    }
+    return map;
+  });
+  const [savedPosts, setSavedPosts] = useState<Record<string, boolean>>(() => {
+    if (typeof window === 'undefined') return {};
+    const cur = DataStore.getCurrentUser();
+    const map: Record<string, boolean> = {};
+    if (cur?.username) {
+      DataStore.getSavedPostIds(cur.username).forEach((id) => { map[id] = true; });
+    }
+    return map;
+  });
   const [activeTab, setActiveTab] = useState<'following' | 'all'>('following');
+  const [visibleCount, setVisibleCount] = useState(12);
+  const feedSentinelRef = useRef<HTMLDivElement | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Demo states for screenshot & testing (?state=loading | ?state=empty)
@@ -67,6 +96,7 @@ function HomeContent() {
   const [shareSearchQuery, setShareSearchQuery] = useState('');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [sentMap, setSentMap] = useState<Record<string, boolean>>({});
+  const [isSolo2048Open, setIsSolo2048Open] = useState<boolean>(false);
 
   // Notice Read Suppression
   const [readNoticeIds, setReadNoticeIds] = useState<string[]>(() => DataStore.getReadNoticeIds());
@@ -121,6 +151,7 @@ function HomeContent() {
   const currentUser = DataStore.getCurrentUser();
 
   useEffect(() => {
+    setIsMounted(true);
     if (typeof window !== 'undefined') {
       const cur = DataStore.getCurrentUser();
       if (!cur || !cur.username || cur.username.toLowerCase() === 'guest') {
@@ -163,6 +194,13 @@ function HomeContent() {
         likedMap[id] = true;
       });
       setLikedPosts(likedMap);
+
+      if (typeof window !== 'undefined') {
+        const searchParams = new URLSearchParams(window.location.search);
+        if (searchParams.get('game') === '2048' || searchParams.get('solo') === '2048') {
+          setIsSolo2048Open(true);
+        }
+      }
     };
 
     loadData();
@@ -181,12 +219,21 @@ function HomeContent() {
       }
     };
 
-    window.addEventListener('dpsbuzz:content_updated', loadData);
+    const handleContentUpdated = (e: Event) => {
+      const detail = (e as CustomEvent)?.detail;
+      // Skip heavy feed reload if it was an optimistic action already handled locally
+      if (detail?.type === 'like_post' || detail?.type === 'save_post' || detail?.type === 'follow') {
+        return;
+      }
+      loadData();
+    };
+
+    window.addEventListener('dpsbuzz:content_updated', handleContentUpdated);
     window.addEventListener('storage', loadData);
     document.addEventListener('visibilitychange', handleVisibility);
 
     return () => {
-      window.removeEventListener('dpsbuzz:content_updated', loadData);
+      window.removeEventListener('dpsbuzz:content_updated', handleContentUpdated);
       window.removeEventListener('storage', loadData);
       document.removeEventListener('visibilitychange', handleVisibility);
       clearInterval(syncInterval);
@@ -394,13 +441,8 @@ function HomeContent() {
 
     if (activeTab === 'following') {
       const filtered = posts.filter((p) => {
-        const u = p.username.toLowerCase();
-        return (
-          u === myUsername ||
-          u === 'dpsbuzz' ||
-          u === 'dps_official' ||
-          followedUsernames.includes(u)
-        );
+        const u = (p.username || '').toLowerCase().trim();
+        return u === myUsername || followedUsernames.includes(u);
       });
       return [...filtered].sort(sortFn);
     }
@@ -415,7 +457,16 @@ function HomeContent() {
       const authorProfile = profileMap.get(u);
       const isPrivate = Boolean(authorProfile?.isPrivate);
       if (isPrivate) {
-        return followedUsernames.includes(u);
+        if (!followedUsernames.includes(u)) return false;
+      }
+
+      // Check audience: if restricted to a specific class group
+      if (p.audience === 'class-group' || p.targetClass) {
+        const targetCls = (p.targetClass || p.class || '').replace(/[^0-9]/g, '');
+        const viewerCls = (currentUser?.class || '').toString().replace(/[^0-9]/g, '');
+        if (targetCls && viewerCls && targetCls !== viewerCls) {
+          return false;
+        }
       }
       return true; // Public posts are visible to all students
     };
@@ -424,7 +475,32 @@ function HomeContent() {
     return [...publicAndFollowedPosts].sort(sortFn);
   }, [activeTab, posts, followedUsernames, currentUser.username, demoState]);
 
-  if (!currentUser || !currentUser.username || currentUser.username.toLowerCase() === 'guest') {
+  // Reset pagination slice when switching tabs
+  useEffect(() => {
+    setVisibleCount(12);
+  }, [activeTab]);
+
+  // Infinite scroll observer: load next batch of 12 posts when scrolling near bottom
+  useEffect(() => {
+    if (!feedSentinelRef.current) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setVisibleCount((prev) => Math.min(prev + 12, displayedPosts.length));
+        }
+      },
+      { rootMargin: '600px' }
+    );
+    observer.observe(feedSentinelRef.current);
+    return () => observer.disconnect();
+  }, [displayedPosts.length]);
+
+  // Paginated posts subset for ultra-lightweight mobile DOM rendering
+  const visiblePosts = useMemo(() => {
+    return displayedPosts.slice(0, visibleCount);
+  }, [displayedPosts, visibleCount]);
+
+  if (!isMounted || !currentUser || !currentUser.username || currentUser.username.toLowerCase() === 'guest') {
     return <HomeFeedSkeleton />;
   }
 
@@ -455,6 +531,42 @@ function HomeContent() {
 
       {/* Mini Streak & Strike Points Top Pill Bar */}
       <HomeStreakWidget compact={true} />
+
+      {/* Mini 2048 Solo Game Card / Banner */}
+      <div
+        className="mx-3 my-2.5 p-3 rounded-[18px] border flex items-center justify-between gap-3 shadow-xs transition-all hover:border-amber-500/40"
+        style={{
+          background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(236, 72, 153, 0.08) 100%)',
+          borderColor: 'var(--line)',
+        }}
+      >
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 via-orange-500 to-pink-500 flex items-center justify-center text-lg shadow-sm shrink-0">
+            🐝
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5">
+              <h4 className="text-xs font-extrabold text-[var(--text)] tracking-tight">
+                2048 Buzz Solo
+              </h4>
+              <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-500 font-bold border border-amber-500/30">
+                5 Levels
+              </span>
+            </div>
+            <p className="text-[10.5px] text-[var(--text-muted)] truncate">
+              Swipe tiles, climb levels 1-5 &amp; win Star Points!
+            </p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setIsSolo2048Open(true)}
+          className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-pink-500 hover:opacity-90 active:scale-95 text-white font-extrabold text-xs shadow-sm transition-all shrink-0 cursor-pointer flex items-center gap-1"
+        >
+          <span>Play 🚀</span>
+        </button>
+      </div>
 
       {/* 5. Upload-in-progress card at the top of the feed */}
       {uploadInProgress && (
@@ -581,7 +693,7 @@ function HomeContent() {
       ) : (
         /* Posts Feed */
         <div className="space-y-4 pt-1 max-w-[480px] mx-auto">
-          {displayedPosts.map((post, postIdx) => (
+          {visiblePosts.map((post, postIdx) => (
             <div key={post.id}>
               {/* Photo-First Post Card */}
               <PostCard
@@ -622,6 +734,13 @@ function HomeContent() {
               {postIdx === 2 && <HomeStreakWidget />}
             </div>
           ))}
+
+          {/* Infinite Scroll Sentinel: triggers loading the next batch of 12 posts */}
+          {visibleCount < displayedPosts.length && (
+            <div ref={feedSentinelRef} className="py-6 flex items-center justify-center">
+              <div className="w-5 h-5 border-2 border-[var(--primary)] border-t-transparent rounded-full animate-spin" />
+            </div>
+          )}
 
           {/* Left-aligned 'That's everything for now.' with small pencil doodle */}
           <div className="px-5 py-10 text-left border-t" style={{ borderColor: 'var(--line)' }}>
@@ -809,12 +928,14 @@ function HomeContent() {
         </div>
       )}
 
-      {/* Share Post Sheet */}
-      <SharePostModal
-        isOpen={Boolean(selectedSharePost)}
-        onClose={() => setSelectedSharePost(null)}
-        post={selectedSharePost}
-      />
+      {/* Share Post Sheet (loaded on demand) */}
+      {selectedSharePost && (
+        <SharePostModal
+          isOpen={Boolean(selectedSharePost)}
+          onClose={() => setSelectedSharePost(null)}
+          post={selectedSharePost}
+        />
+      )}
 
       {/* Post More Options Sheet */}
       {selectedOptionsPost && (
@@ -926,6 +1047,15 @@ function HomeContent() {
             </button>
           </div>
         </div>
+      )}
+
+      {/* Solo 2048 Game Modal (loaded on demand) */}
+      {isSolo2048Open && (
+        <SoloGame2048Modal
+          isOpen={isSolo2048Open}
+          onClose={() => setIsSolo2048Open(false)}
+          currentUsername={currentUser.username}
+        />
       )}
 
       {/* Toast Notification */}

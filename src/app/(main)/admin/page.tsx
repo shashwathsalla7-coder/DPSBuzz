@@ -118,13 +118,10 @@ export default function AdminPage() {
     return null;
   });
 
-  // Auto-redirect unauthorized users away from admin console
+  // Immediate client redirect away from admin console for unauthorized users
   useEffect(() => {
     if (!currentUser || currentUser.username?.toLowerCase().trim() !== 'shashwath71845') {
-      const timer = setTimeout(() => {
-        router.replace('/home');
-      }, 1200);
-      return () => clearTimeout(timer);
+      router.replace('/admin/login');
     }
   }, [currentUser, router]);
 
@@ -205,6 +202,16 @@ export default function AdminPage() {
     setStorageAnalytics(DataStore.getStorageAnalytics());
     setStorageSettings(DataStore.getStorageSettings());
     setBanAppeals(DataStore.getBanAppeals());
+
+    // Load safety reports from server
+    fetch('/api/reports')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.reports)) {
+          setReports(data.reports);
+        }
+      })
+      .catch(() => {});
 
     // Load active session user
     const cur = DataStore.getCurrentUser();

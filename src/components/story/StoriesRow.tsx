@@ -25,8 +25,9 @@ export const StoriesRow: React.FC<StoriesRowProps> = ({ currentUser }) => {
 
   const [isCreatorOpen, setIsCreatorOpen] = useState<boolean>(false);
   const [user, setUser] = useState<Profile | null>(currentUser || null);
+  const [mounted, setMounted] = useState(false);
 
-  const effectiveUser = user || DataStore.getCurrentUser();
+  const effectiveUser = (mounted ? (user || DataStore.getCurrentUser()) : currentUser) || null;
 
   const loadStoryGroups = useCallback(() => {
     const activeUser = currentUser || DataStore.getCurrentUser();
@@ -35,6 +36,7 @@ export const StoriesRow: React.FC<StoriesRowProps> = ({ currentUser }) => {
   }, [currentUser]);
 
   useEffect(() => {
+    setMounted(true);
     loadStoryGroups();
     if (!user) {
       setUser(DataStore.getCurrentUser());

@@ -10,30 +10,15 @@ export async function GET() {
   }
 
   const stat = fs.statSync(apkPath);
-  const fileStream = fs.createReadStream(apkPath);
+  const fileBuffer = fs.readFileSync(apkPath);
 
-  // Convert Node readable stream to Web ReadableStream
-  const stream = new ReadableStream({
-    start(controller) {
-      fileStream.on('data', (chunk) => {
-        controller.enqueue(chunk);
-      });
-      fileStream.on('end', () => {
-        controller.close();
-      });
-      fileStream.on('error', (err) => {
-        controller.error(err);
-      });
-    },
-  });
-
-  return new NextResponse(stream, {
+  return new NextResponse(fileBuffer, {
     status: 200,
     headers: {
       'Content-Type': 'application/vnd.android.package-archive',
       'Content-Length': stat.size.toString(),
       'Content-Disposition': 'attachment; filename="DPS_Buzz.apk"',
-      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+      'Cache-Control': 'public, max-age=3600',
     },
   });
 }

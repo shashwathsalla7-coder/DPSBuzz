@@ -34,17 +34,17 @@ END $$;
 
 ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Allow public read on messages" ON public.messages
-  FOR SELECT USING (true);
+CREATE POLICY "Users read own messages" ON public.messages
+  FOR SELECT USING (auth.uid()::text = sender_id OR auth.uid()::text = recipient_id OR auth.role() = 'service_role');
 
-CREATE POLICY "Allow public insert on messages" ON public.messages
-  FOR INSERT WITH CHECK (true);
+CREATE POLICY "Users insert own messages" ON public.messages
+  FOR INSERT WITH CHECK (auth.uid()::text = sender_id OR auth.role() = 'service_role');
 
-CREATE POLICY "Allow public update on messages" ON public.messages
-  FOR UPDATE USING (true);
+CREATE POLICY "Users update own messages" ON public.messages
+  FOR UPDATE USING (auth.uid()::text = sender_id OR auth.role() = 'service_role');
 
-CREATE POLICY "Allow public delete on messages" ON public.messages
-  FOR DELETE USING (true);
+CREATE POLICY "Users delete own messages" ON public.messages
+  FOR DELETE USING (auth.uid()::text = sender_id OR auth.role() = 'service_role');
 
 -- Index for instant chat querying
 CREATE INDEX IF NOT EXISTS idx_messages_chat_id_created_at ON public.messages(chat_id, created_at ASC);

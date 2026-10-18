@@ -78,7 +78,10 @@ export const StarBoardTeaser: React.FC<StarBoardTeaserProps> = ({
 
     loadData();
 
-    const handleUpdate = () => {
+    const handleUpdate = (e?: Event) => {
+      const customDetail = (e as CustomEvent)?.detail;
+      const action = customDetail?.action;
+      if (action === 'like_post' || action === 'save_post') return;
       loadData();
     };
 

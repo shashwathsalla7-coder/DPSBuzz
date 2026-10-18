@@ -36,6 +36,7 @@ import {
 import { textStoryPresets, TextStoryPreset } from '@/config/tokens';
 import { DataStore, Profile, SongTrack } from '@/lib/dataStore';
 import { SongPickerModal } from '@/components/music/SongPickerModal';
+import { processImageForUpload } from '@/lib/imageProcessor';
 
 export interface StoryCreatorModalProps {
   isOpen: boolean;
@@ -363,24 +364,24 @@ export const StoryCreatorModal: React.FC<StoryCreatorModalProps> = ({
     }
   };
 
-  // Device file loader
-  const handleDevicePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Device file loader with client-side canvas compression (max 1080px, WebP ~150KB)
+  const handleDevicePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith('image/')) {
       setError('Please select a valid image file.');
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      setPhotoUrl(result);
+    try {
+      const processed = await processImageForUpload(file, 1080, 0.82);
+      const compressedDataUrl = processed.previewUrl;
+      setPhotoUrl(compressedDataUrl);
       // Prepend to gallery photos list
       setGalleryPhotos((prev) => [
         {
           id: `user-upload-${Date.now()}`,
           label: '📱 My Photo',
-          url: result,
+          url: compressedDataUrl,
           caption: '',
         },
         ...prev,
@@ -389,8 +390,9 @@ export const StoryCreatorModal: React.FC<StoryCreatorModalProps> = ({
       setTab('gallery');
       stopCameraStream();
       setError(null);
-    };
-    reader.readAsDataURL(file);
+    } catch {
+      setError('Failed to process image. Please try another photo.');
+    }
   };
 
   // Submission Handlers

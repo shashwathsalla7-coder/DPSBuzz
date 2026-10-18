@@ -42,8 +42,8 @@ function DownloadContent() {
   const [installed, setInstalled] = useState(false);
   const [activeStep, setActiveStep] = useState<number | null>(null);
   const [downloadStarted, setDownloadStarted] = useState(false);
-  const [showDesktopHelp, setShowDesktopHelp] = useState(false);
-  const [showAndroidHelp, setShowAndroidHelp] = useState(false);
+  const [showDesktopHelp, setShowDesktopHelp] = useState(true);
+  const [showAndroidHelp, setShowAndroidHelp] = useState(true);
   const [detectedOS, setDetectedOS] = useState<'windows' | 'mac' | 'android' | 'ios' | 'other'>('windows');
 
   useEffect(() => {
@@ -125,11 +125,15 @@ function DownloadContent() {
   const handleApkDownload = () => {
     setDownloadStarted(true);
     const link = document.createElement('a');
-    link.href = '/api/download/apk';
-    link.download = 'DPS_Buzz.apk';
+    link.href = '/downloads/DPS_Buzz.apk';
+    link.setAttribute('download', 'DPS_Buzz.apk');
     document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
+    setTimeout(() => {
+      try {
+        document.body.removeChild(link);
+      } catch {}
+    }, 200);
   };
 
   return (
@@ -285,43 +289,45 @@ function DownloadContent() {
                   </button>
                 </div>
 
-                <div className="space-y-2 text-xs text-zinc-300">
-                  <div className="flex items-start gap-2.5 bg-zinc-900/80 p-2.5 rounded-xl border border-zinc-800/80">
-                    <span className="w-5 h-5 rounded-full bg-pink-500/20 text-pink-300 font-bold flex items-center justify-center shrink-0 text-[11px]">
-                      1
-                    </span>
-                    <div>
-                      <strong className="text-white">Option A — Address Bar Icon:</strong>
-                      <p className="text-zinc-400 text-[11px] mt-0.5">
-                        Look at the right side of your browser URL/address bar at the very top. Click the <strong>Install App icon (📥 / computer screen icon)</strong>.
-                      </p>
+                {showDesktopHelp && (
+                  <div className="space-y-2 text-xs text-zinc-300 animate-fade-in">
+                    <div className="flex items-start gap-2.5 bg-zinc-900/80 p-2.5 rounded-xl border border-zinc-800/80">
+                      <span className="w-5 h-5 rounded-full bg-pink-500/20 text-pink-300 font-bold flex items-center justify-center shrink-0 text-[11px]">
+                        1
+                      </span>
+                      <div>
+                        <strong className="text-white">Option A — Address Bar Icon:</strong>
+                        <p className="text-zinc-400 text-[11px] mt-0.5">
+                          Look at the right side of your browser URL/address bar at the very top. Click the <strong>Install App icon (📥 / computer screen icon)</strong>.
+                        </p>
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="flex items-start gap-2.5 bg-zinc-900/80 p-2.5 rounded-xl border border-zinc-800/80">
-                    <span className="w-5 h-5 rounded-full bg-pink-500/20 text-pink-300 font-bold flex items-center justify-center shrink-0 text-[11px]">
-                      2
-                    </span>
-                    <div>
-                      <strong className="text-white">Option B — Browser Menu:</strong>
-                      <p className="text-zinc-400 text-[11px] mt-0.5">
-                        Click the <strong>Three Dots menu (⋮)</strong> in the top-right corner of Chrome or Edge &rarr; Click <strong>&quot;Install DPS Buzz...&quot;</strong> (or <em>Save and share &rarr; Install page as app</em>).
-                      </p>
+                    <div className="flex items-start gap-2.5 bg-zinc-900/80 p-2.5 rounded-xl border border-zinc-800/80">
+                      <span className="w-5 h-5 rounded-full bg-pink-500/20 text-pink-300 font-bold flex items-center justify-center shrink-0 text-[11px]">
+                        2
+                      </span>
+                      <div>
+                        <strong className="text-white">Option B — Browser Menu:</strong>
+                        <p className="text-zinc-400 text-[11px] mt-0.5">
+                          Click the <strong>Three Dots menu (⋮)</strong> in the top-right corner of Chrome or Edge &rarr; Click <strong>&quot;Install DPS Buzz...&quot;</strong> (or <em>Save and share &rarr; Install page as app</em>).
+                        </p>
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="flex items-start gap-2.5 bg-zinc-900/80 p-2.5 rounded-xl border border-zinc-800/80">
-                    <span className="w-5 h-5 rounded-full bg-pink-500/20 text-pink-300 font-bold flex items-center justify-center shrink-0 text-[11px]">
-                      3
-                    </span>
-                    <div>
-                      <strong className="text-white">Done & Pin to Taskbar:</strong>
-                      <p className="text-zinc-400 text-[11px] mt-0.5">
-                        Click <strong>&quot;Install&quot;</strong> in the confirmation popup. Right-click the app icon on your Windows Taskbar and select <strong>&quot;Pin to taskbar&quot;</strong> for instant 1-click access anytime!
-                      </p>
+                    <div className="flex items-start gap-2.5 bg-zinc-900/80 p-2.5 rounded-xl border border-zinc-800/80">
+                      <span className="w-5 h-5 rounded-full bg-pink-500/20 text-pink-300 font-bold flex items-center justify-center shrink-0 text-[11px]">
+                        3
+                      </span>
+                      <div>
+                        <strong className="text-white">Done & Pin to Taskbar:</strong>
+                        <p className="text-zinc-400 text-[11px] mt-0.5">
+                          Click <strong>&quot;Install&quot;</strong> in the confirmation popup. Right-click the app icon on your Windows Taskbar and select <strong>&quot;Pin to taskbar&quot;</strong> for instant 1-click access anytime!
+                        </p>
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
               </div>
             </div>
           </div>
@@ -377,13 +383,25 @@ function DownloadContent() {
                 <span>{installed ? '✓ App Already Installed!' : 'Install App to Home Screen'}</span>
               </button>
 
-              {showAndroidHelp && !deferredPrompt && (
-                <div className="p-3 bg-zinc-950 border border-zinc-800 rounded-xl text-xs text-zinc-300 space-y-1.5">
+              <div className="flex items-center justify-between pt-2">
+                <span className="text-xs font-bold text-pink-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <Smartphone size={14} /> Android Chrome Steps
+                </span>
+                <button
+                  onClick={() => setShowAndroidHelp(!showAndroidHelp)}
+                  className="text-[11px] text-zinc-400 hover:text-white underline cursor-pointer"
+                >
+                  {showAndroidHelp ? 'Hide guide' : 'Show details'}
+                </button>
+              </div>
+
+              {showAndroidHelp && (
+                <div className="p-3.5 bg-zinc-950 border border-zinc-800 rounded-xl text-xs text-zinc-300 space-y-1.5 animate-fade-in">
                   <p className="font-bold text-white flex items-center gap-1.5">
                     <Info size={14} className="text-pink-400" /> In Android Chrome:
                   </p>
-                  <p className="text-[11px] text-zinc-400">
-                    Tap the <strong>3 dots (⋮)</strong> in the top-right corner of Chrome &rarr; Select <strong>&quot;Install app&quot;</strong> or <strong>&quot;Add to Home screen&quot;</strong>.
+                  <p className="text-[11px] text-zinc-400 leading-relaxed">
+                    Tap the <strong>Three Dots menu (⋮)</strong> in the top-right corner of Chrome &rarr; Select <strong>&quot;Install app&quot;</strong> (or <em>&quot;Add to Home screen&quot;</em>). The app icon will appear instantly on your phone!
                   </p>
                 </div>
               )}
@@ -416,13 +434,24 @@ function DownloadContent() {
               </div>
             )}
 
-            <button
-              onClick={handleApkDownload}
-              className="w-full min-h-[46px] rounded-2xl bg-zinc-800 hover:bg-zinc-700 border border-zinc-600 text-white text-sm font-bold flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer shadow-md"
-            >
-              <Download size={18} />
-              <span>Download Android APK (DPS_Buzz.apk)</span>
-            </button>
+            <div className="space-y-2">
+              <button
+                onClick={handleApkDownload}
+                className="w-full min-h-[48px] rounded-2xl bg-zinc-800 hover:bg-zinc-700 border border-zinc-600 text-white text-sm font-bold flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer shadow-md"
+              >
+                <Download size={18} />
+                <span>Download Android APK (DPS_Buzz.apk)</span>
+              </button>
+              <div className="text-center">
+                <a
+                  href="/downloads/DPS_Buzz.apk"
+                  download="DPS_Buzz.apk"
+                  className="text-[11px] text-pink-400 hover:underline font-semibold"
+                >
+                  Direct link: Tap here if download didn&apos;t start automatically
+                </a>
+              </div>
+            </div>
 
             {/* 3-Step APK Install Guide */}
             <div className="border-t border-zinc-800 pt-4 space-y-3">

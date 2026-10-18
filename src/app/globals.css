@@ -185,6 +185,13 @@ html {
   background-color: var(--bg);
   color: var(--text);
   -webkit-tap-highlight-color: transparent;
+  scroll-behavior: auto;
+  touch-action: manipulation;
+  text-rendering: optimizeLegibility;
+  -webkit-text-size-adjust: 100%;
+}
+
+html[data-scroll-smooth="true"] {
   scroll-behavior: smooth;
 }
 
@@ -198,8 +205,21 @@ body {
   margin: 0;
   padding: 0;
   overflow-x: hidden;
+  overscroll-behavior-y: contain;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Apple-style zero touch latency */
+button,
+a,
+[role="button"],
+input,
+select,
+textarea {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* Headings: Cabinet Grotesk, letter-spacing -0.02em, line-height 1.1 to 1.2 */
@@ -541,10 +561,10 @@ body[data-theme="dark"] .story-ring-reward .story-ring-inner,
 }
 
 /* ==========================================================================
-   APPLE-STYLE UI BUTTON PHYSICS & HAPTIC TACTILE ANIMATIONS
-   - Spring-like scale on press (0.952 scale with fluid spring return)
-   - Subtle tactile brightness feedback
-   - High-responsiveness with zero tap lag on mobile touchscreens
+   HIGH PERFORMANCE TACTILE BUTTON INTERACTIONS (ZERO LAG)
+   - Zero tap delay with touch-action manipulation
+   - Lightweight hardware-accelerated active press feedback
+   - No will-change layer bloating or expensive filter repaints
    ========================================================================== */
 button, .btn-apple, .btn-press, [role="button"] {
   -webkit-tap-highlight-color: transparent;
@@ -555,16 +575,14 @@ button, .btn-apple, .btn-press, [role="button"] {
 button:not([disabled]):not([data-no-apple="true"]),
 .btn-apple,
 .btn-press {
-  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.15s ease, background-color 0.15s ease;
-  will-change: transform;
+  transition: transform 0.1s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.1s ease;
 }
 
 button:not([disabled]):not([data-no-apple="true"]):active,
 .btn-apple:active,
 .btn-press:active {
-  transform: scale(0.952) translateZ(0);
-  filter: brightness(0.92);
-  transition: transform 0.08s cubic-bezier(0.2, 0.8, 0.2, 1), filter 0.08s ease;
+  transform: scale(0.965);
+  opacity: 0.88;
 }
 
 /* ==========================================================================
@@ -633,6 +651,16 @@ button:not([disabled]):not([data-no-apple="true"]):active,
 }
 .animate-notes-marquee:hover {
   animation-play-state: paused;
+}
+
+/* Story Progress Hardware Accelerated GPU Animation */
+@keyframes story-progress-fill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
 }
 
 /* Sticker / Badge Elevation */
@@ -830,6 +858,99 @@ body[data-theme="dark"] .logo-light-img,
     border-radius: 12px !important;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.7) !important;
     z-index: 30 !important;
+  }
+}
+
+/* ==========================================================================
+   3D CRICKET EQUIPMENT & CINEMATIC GAME OVER ANIMATIONS
+   ========================================================================== */
+@keyframes cricket-ball-float {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-8px) rotate(180deg);
+  }
+}
+
+@keyframes cricket-bat-swing {
+  0%, 100% {
+    transform: perspective(500px) rotateZ(-18deg) rotateY(0deg);
+  }
+  50% {
+    transform: perspective(500px) rotateZ(12deg) rotateY(-15deg);
+  }
+}
+
+@keyframes bat-smash-swing {
+  0% {
+    transform: perspective(600px) translate3d(-180px, 80px, -200px) rotateZ(-65deg);
+    opacity: 0;
+  }
+  45% {
+    transform: perspective(600px) translate3d(-20px, 10px, 0px) rotateZ(15deg);
+    opacity: 1;
+  }
+  100% {
+    transform: perspective(600px) translate3d(240px, -60px, 150px) rotateZ(85deg);
+    opacity: 0;
+  }
+}
+
+@keyframes ball-smash-zoom {
+  0% {
+    transform: perspective(700px) translate3d(0, 0, -250px) scale(0.2) rotate(0deg);
+    opacity: 0;
+  }
+  45% {
+    transform: perspective(700px) translate3d(0, 0, 0) scale(1) rotate(180deg);
+    opacity: 1;
+  }
+  75% {
+    transform: perspective(700px) translate3d(0, 0, 200px) scale(2.4) rotate(360deg);
+    opacity: 1;
+  }
+  100% {
+    transform: perspective(700px) translate3d(0, -20px, 50px) scale(1.1) rotate(540deg);
+    opacity: 0.95;
+  }
+}
+
+@keyframes impact-flash {
+  0% {
+    transform: scale(0.2);
+    opacity: 0;
+  }
+  40% {
+    transform: scale(1.8);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(2.6);
+    opacity: 0;
+  }
+}
+
+@keyframes apple-scale-in {
+  0% {
+    transform: scale(0.88) translateY(24px);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+
+/* ===== MOBILE GPU PERFORMANCE OPTIMIZATIONS ===== */
+/* Cap heavy backdrop-filter radii on mobile screens to prevent GPU bottleneck on budget Android chipsets */
+@media (max-width: 768px) {
+  .backdrop-blur-2xl,
+  .backdrop-blur-xl,
+  .backdrop-blur-lg,
+  .backdrop-blur-md {
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
   }
 }
 

@@ -177,16 +177,30 @@ export default function LeaderboardPage() {
         !deletedUsers.has(p.username.toLowerCase().trim())
     );
 
+    // Pre-aggregate post stats once in O(M) time instead of nested O(N*M) filter/reduce scans
+    const postStatsByAuthor = new Map<string, { count: number; views: number; likes: number; comments: number }>();
+    for (const post of posts) {
+      if (!post || !post.username || post.isRepost) continue;
+      const authorKey = post.username.toLowerCase().trim();
+      let stat = postStatsByAuthor.get(authorKey);
+      if (!stat) {
+        stat = { count: 0, views: 0, likes: 0, comments: 0 };
+        postStatsByAuthor.set(authorKey, stat);
+      }
+      stat.count += 1;
+      stat.views += (post.views || 0);
+      stat.likes += (post.likes || 0);
+      stat.comments += (post.comments || 0);
+    }
+
     return realUsers
       .map((p) => {
         const u = p.username.toLowerCase().trim();
-        const userPosts = posts.filter(
-          (post) => post && post.username && post.username.toLowerCase().trim() === u && !post.isRepost
-        );
-        const realPostCount = userPosts.length;
-        const totalViews = userPosts.reduce((acc, post) => acc + (post.views || 0), 0);
-        const totalLikes = userPosts.reduce((acc, post) => acc + (post.likes || 0), 0);
-        const totalComments = userPosts.reduce((acc, post) => acc + (post.comments || 0), 0);
+        const stat = postStatsByAuthor.get(u) || { count: 0, views: 0, likes: 0, comments: 0 };
+        const realPostCount = stat.count;
+        const totalViews = stat.views;
+        const totalLikes = stat.likes;
+        const totalComments = stat.comments;
         const realFollowers = p.followerCount || 0;
         const realFollowing = p.followingCount || 0;
 

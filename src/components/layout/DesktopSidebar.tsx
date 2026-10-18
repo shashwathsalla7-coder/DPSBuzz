@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   Home, Search, PlusSquare, MessageCircle, Users,
-  Megaphone, Trophy, User, Settings, Bell, Shield, Smartphone, Download
+  Megaphone, Trophy, User, Settings, Bell, Shield, Smartphone, Download, Gamepad2
 } from 'lucide-react';
 import { schoolConfig } from '@/config/school';
 import { DataStore } from '@/lib/dataStore';
@@ -16,6 +16,7 @@ const navItems = [
   { href: '/search', icon: Search, label: 'Search' },
   { href: '/post/new', icon: PlusSquare, label: 'Post' },
   { href: '/chats', icon: MessageCircle, label: 'Chats' },
+  { href: '/chats?view=games', icon: Gamepad2, label: 'Games Arena' },
   { href: '/groups', icon: Users, label: 'Groups' },
   { href: '/notices', icon: Megaphone, label: 'Notices' },
   { href: '/leaderboard', icon: Trophy, label: 'Star Board' },
@@ -27,13 +28,18 @@ export const DesktopSidebar: FC = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [unreadChatsCount, setUnreadChatsCount] = useState(0);
   const [unreadNotifsCount, setUnreadNotifsCount] = useState(0);
+  const [currentUsername, setCurrentUsername] = useState<string>('');
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     const updateStats = () => {
       const cur = DataStore.getCurrentUser();
-      setIsAdmin(cur?.username?.toLowerCase() === 'shashwath71845');
-      setUnreadNotifsCount(DataStore.getUnreadNotificationCount(cur?.username));
-      setUnreadChatsCount(DataStore.getUnreadChatsCount(cur?.username));
+      const u = cur?.username || '';
+      setCurrentUsername(u);
+      setIsAdmin(u.toLowerCase() === 'shashwath71845');
+      setUnreadNotifsCount(DataStore.getUnreadNotificationCount(u));
+      setUnreadChatsCount(DataStore.getUnreadChatsCount(u));
     };
 
     updateStats();
@@ -48,7 +54,7 @@ export const DesktopSidebar: FC = () => {
   const bottomItems = [
     ...(isAdmin ? [{ href: '/admin', icon: Shield, label: 'Admin ID' }] : []),
     { href: '/download', icon: Download, label: 'Install App' },
-    { href: '/profile', icon: User, label: 'Profile' },
+    { href: mounted && currentUsername ? `/u/${currentUsername}` : '/profile', icon: User, label: 'Profile' },
     { href: '/settings', icon: Settings, label: 'Settings' },
   ];
 

@@ -56,8 +56,8 @@ export function CricketAvatar({
 
   const countryStyle =
     COUNTRY_COLORS[cricketer.country || ''] || {
-      bg: 'from-purple-600 to-indigo-950',
-      text: 'text-pink-300',
+      bg: 'from-blue-700 to-slate-900',
+      text: 'text-cyan-300',
     };
 
   return (
@@ -113,7 +113,7 @@ export function CricketAvatar({
               e.stopPropagation();
               setShowMetaPopover(!showMetaPopover);
             }}
-            className="w-4 h-4 rounded-full bg-black/80 hover:bg-pink-600 text-[9px] text-white flex items-center justify-center border border-white/20 shadow-xs cursor-pointer transition-colors"
+            className="w-4 h-4 rounded-full bg-black/80 hover:bg-blue-600 text-[9px] text-white flex items-center justify-center border border-white/20 shadow-xs cursor-pointer transition-colors"
             title="Image License & Attribution"
           >
             ©
@@ -122,15 +122,15 @@ export function CricketAvatar({
           {showMetaPopover && (
             <div
               onClick={(e) => e.stopPropagation()}
-              className="absolute bottom-6 right-0 z-50 w-56 p-2.5 rounded-xl bg-slate-900/95 border border-purple-500/30 text-white text-[10px] space-y-1.5 shadow-2xl backdrop-blur-md animate-fade-in"
+              className="absolute bottom-6 right-0 z-50 w-56 p-2.5 rounded-xl bg-slate-900/95 border border-blue-500/30 text-white text-[10px] space-y-1.5 shadow-2xl backdrop-blur-md animate-fade-in"
             >
-              <div className="flex items-center justify-between font-bold text-pink-300 border-b border-white/10 pb-1">
+              <div className="flex items-center justify-between font-bold text-cyan-300 border-b border-white/10 pb-1">
                 <span>Wikimedia Commons</span>
                 <span className="text-[9px] text-emerald-400 font-semibold">
                   {imgMeta.licenseName || 'Free License'}
                 </span>
               </div>
-              <p className="text-purple-200/90 leading-tight">
+              <p className="text-slate-300 leading-tight">
                 {imgMeta.attributionText || `Photo of ${cricketer.name}`}
               </p>
               {imgMeta.sourcePageUrl && (
@@ -138,7 +138,7 @@ export function CricketAvatar({
                   href={imgMeta.sourcePageUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-pink-400 hover:text-pink-300 underline flex items-center gap-1 font-semibold pt-0.5"
+                  className="text-cyan-400 hover:text-cyan-300 underline flex items-center gap-1 font-semibold pt-0.5"
                 >
                   <span>View Source Page</span>
                   <ExternalLink size={10} />

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { deleteR2Object, deleteR2Objects } from '@/lib/r2';
-import { pruneExpiredServerChatPhotos } from '@/lib/serverStore';
+import { pruneExpiredServerChatPhotos, pruneExpiredServerStories } from '@/lib/serverStore';
 
 /**
  * Cleanup job endpoint for free schedulers (GitHub Actions, Vercel Cron, or Admin trigger)
@@ -37,8 +37,8 @@ export async function POST(req: NextRequest) {
     }
 
     if (!action || action === 'all' || action === 'expired_stories') {
-      // In production with Supabase, calls admin_get_expired_stories_for_cleanup() and deleteR2Objects()
-      results.expiredStoriesCleaned = 0;
+      const expiredCount = await pruneExpiredServerStories();
+      results.expiredStoriesCleaned = expiredCount;
     }
 
     return NextResponse.json({

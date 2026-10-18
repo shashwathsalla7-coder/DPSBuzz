@@ -9,6 +9,7 @@ import {
   askQuestion,
   answerQuestion,
   submitGuess,
+  forfeitGameSession,
   requestRematch,
   getActiveGameForUser,
   getCricketLeaderboard,
@@ -26,17 +27,25 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const action = searchParams.get('action');
     const gameId = searchParams.get('gameId');
-    const username = (searchParams.get('username') || '').toLowerCase().trim();
+    const viewerParam = searchParams.get('viewer') || '';
+    const usernameParam = searchParams.get('username') || '';
+    const targetUserParam = searchParams.get('targetUser') || '';
+
+    const username = (usernameParam || viewerParam).toLowerCase().trim();
+    const viewer = (viewerParam || username).toLowerCase().trim();
+    const targetUser = targetUserParam
+      ? targetUserParam.toLowerCase().trim()
+      : (viewerParam && usernameParam ? usernameParam.toLowerCase().trim() : undefined);
 
     // 1. Leaderboard request
     if (action === 'leaderboard') {
-      const leaderboard = await getCricketLeaderboard();
+      const leaderboard = await getCricketLeaderboard(viewer);
       return NextResponse.json({ success: true, leaderboard }, { headers: NO_CACHE_HEADERS });
     }
 
     // 2. Match history request
     if (action === 'history') {
-      const history = await getCricketMatchHistory(username || undefined);
+      const history = await getCricketMatchHistory(targetUser, viewer);
       return NextResponse.json({ success: true, history }, { headers: NO_CACHE_HEADERS });
     }
 
@@ -165,6 +174,16 @@ export async function POST(req: NextRequest) {
       const res = await requestRematch(gameId, cleanUser);
       if (!res.success || !res.session) {
         return NextResponse.json({ success: false, error: res.error || 'Failed to restart match' }, { status: 400 });
+      }
+      const sanitized = sanitizeGameSession(res.session, cleanUser);
+      return NextResponse.json({ success: true, session: sanitized }, { headers: NO_CACHE_HEADERS });
+    }
+
+    // 9. Forfeit / Quit match
+    if (action === 'forfeit' || action === 'quit') {
+      const res = await forfeitGameSession(gameId, cleanUser);
+      if (!res.success || !res.session) {
+        return NextResponse.json({ success: false, error: res.error || 'Failed to forfeit match' }, { status: 400 });
       }
       const sanitized = sanitizeGameSession(res.session, cleanUser);
       return NextResponse.json({ success: true, session: sanitized }, { headers: NO_CACHE_HEADERS });

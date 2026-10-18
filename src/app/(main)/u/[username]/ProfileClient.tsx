@@ -478,7 +478,13 @@ export default function ProfileClient({ username }: { username: string }) {
         try {
           const parsed = JSON.parse(stored);
           if (parsed.username.toLowerCase() === username.toLowerCase()) {
-            setProfile(parsed);
+            const followers = DataStore.getFollowers(username);
+            const following = DataStore.getFollowing(username);
+            setProfile({
+              ...parsed,
+              followerCount: followers.length,
+              followingCount: following.length,
+            });
             setEditFullName(parsed.fullName);
             setEditBio(parsed.bio || '');
             setEditClass(parsed.class || '8');
@@ -1266,11 +1272,12 @@ export default function ProfileClient({ username }: { username: string }) {
                   if (updated) setProfile(updated);
                   showToast(isFollowedBy ? `You and @${profile.username} are now friends! 🤝` : `Following @${profile.username}`);
                 }}
-                className="flex-1 h-9 rounded-full text-xs font-semibold btn-press flex items-center justify-center cursor-pointer shadow-xs"
+                className="flex-1 h-9 rounded-full text-xs font-semibold btn-press flex items-center justify-center cursor-pointer shadow-xs touch-manipulation"
                 style={{
                   backgroundColor: (isFollowing || isRequested) && !hasIncomingRequest ? 'var(--surface-sunken)' : 'var(--accent-cta)',
                   color: (isFollowing || isRequested) && !hasIncomingRequest ? 'var(--text)' : 'var(--on-accent-cta)',
                   border: (isFollowing || isRequested) && !hasIncomingRequest ? '1px solid var(--line)' : 'none',
+                  touchAction: 'manipulation',
                 }}
               >
                 {hasIncomingRequest
@@ -2564,17 +2571,23 @@ export default function ProfileClient({ username }: { username: string }) {
               <Flag size={16} />
               <span>Report Account</span>
             </button>
-            <button
-              onClick={() => {
-                setShowProfileOptions(false);
-                showToast(`Blocked @${profile.username}. You won't see their posts.`);
-              }}
-              className="w-full py-3.5 px-4 text-xs font-semibold text-left flex items-center gap-3 hover:bg-[var(--surface-sunken)] transition-colors cursor-pointer"
-              style={{ color: 'var(--danger)' }}
-            >
-              <UserX size={16} />
-              <span>Block @{profile.username}</span>
-            </button>
+            {!isOwnProfile && (
+              <button
+                onClick={() => {
+                  setShowProfileOptions(false);
+                  const cur = DataStore.getCurrentUser();
+                  if (cur?.username && cur.username.toLowerCase() !== profile.username.toLowerCase()) {
+                    DataStore.blockUser(cur.username, profile.username);
+                    showToast(`Blocked @${profile.username}. You won't see their posts.`);
+                  }
+                }}
+                className="w-full py-3.5 px-4 text-xs font-semibold text-left flex items-center gap-3 hover:bg-[var(--surface-sunken)] transition-colors cursor-pointer"
+                style={{ color: 'var(--danger)' }}
+              >
+                <UserX size={16} />
+                <span>Block @{profile.username}</span>
+              </button>
+            )}
             <button
               onClick={() => setShowProfileOptions(false)}
               className="w-full py-3 px-4 text-xs font-bold text-center hover:bg-[var(--surface-sunken)] transition-colors cursor-pointer"
@@ -2802,14 +2815,14 @@ export default function ProfileClient({ username }: { username: string }) {
         </div>
       )}
 
-      {/* ─── 3. Archive Modal ─────────────────────────────────────────────── */}
+      {/* ─── 3. Archive Modal (Rectangular Card Layout with Real Story Data) ─── */}
       {showArchiveModal && (
         <div
           className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in"
           onClick={() => setShowArchiveModal(false)}
         >
           <div
-            className="w-full max-w-[420px] max-h-[70vh] flex flex-col border rounded-full overflow-hidden"
+            className="w-full max-w-[440px] max-h-[75vh] flex flex-col border rounded-2xl overflow-hidden shadow-2xl animate-scale-in"
             style={{
               backgroundColor: 'var(--surface)',
               borderColor: 'var(--line)',
@@ -2826,7 +2839,7 @@ export default function ProfileClient({ username }: { username: string }) {
               </div>
               <button
                 onClick={() => setShowArchiveModal(false)}
-                className="p-1 cursor-pointer"
+                className="p-1 cursor-pointer hover:opacity-75 transition"
                 style={{ color: 'var(--text-muted)' }}
               >
                 <X size={18} />
@@ -2835,25 +2848,51 @@ export default function ProfileClient({ username }: { username: string }) {
 
             <div className="p-4 overflow-y-auto space-y-3">
               <p className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
-                Your vanished 24-hour stories are saved here privately:
+                Your vanished 24-hour stories and deleted stories are saved here privately:
               </p>
-              <div className="grid grid-cols-3 gap-2">
-                {[
-                  { title: 'Maths test prep', time: 'Oct 8', color: '#1E3A8A' },
-                  { title: 'Cricket win', time: 'Oct 5', color: '#B7791F' },
-                  { title: 'Campus rains', time: 'Sep 29', color: '#0B9DB0' },
-                ].map((item, idx) => (
-                  <div
-                    key={idx}
-                    className="aspect-[9/12] p-2 flex flex-col justify-between text-white text-[10px] font-bold border border-white/10 rounded-full shadow-sm cursor-pointer hover:opacity-90"
-                    style={{ backgroundColor: item.color }}
-                    onClick={() => showToast(`Replaying archived story: "${item.title}"`)}
-                  >
-                    <span>{item.time}</span>
-                    <span className="line-clamp-2 leading-tight">{item.title}</span>
+
+              {(() => {
+                const realArchived = DataStore.getArchivedStories(profile.username);
+                if (realArchived.length === 0) {
+                  return (
+                    <div className="py-10 text-center space-y-2 select-none">
+                      <div className="w-12 h-12 rounded-xl bg-[var(--surface-sunken)] border border-[var(--line)] mx-auto flex items-center justify-center text-[var(--text-muted)]">
+                        <Archive size={22} />
+                      </div>
+                      <p className="text-xs font-bold text-[var(--text)]">No archived stories yet</p>
+                      <p className="text-[11px] text-[var(--text-muted)] max-w-xs mx-auto leading-relaxed">
+                        When your 24-hour stories expire or are deleted, they will be archived here safely and privately for you.
+                      </p>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="grid grid-cols-3 gap-2">
+                    {realArchived.map((item) => (
+                      <div
+                        key={item.id}
+                        className="aspect-[9/12] p-2 flex flex-col justify-between text-white text-[10px] font-bold border border-white/10 rounded-xl shadow-sm cursor-pointer hover:opacity-90 overflow-hidden relative group"
+                        style={{
+                          backgroundColor: item.background || '#1E3A8A',
+                          backgroundImage: item.imageUrl || item.mediaUrl ? `url(${item.imageUrl || item.mediaUrl})` : undefined,
+                          backgroundSize: 'cover',
+                          backgroundPosition: 'center',
+                        }}
+                        onClick={() => showToast(`Archived story from ${new Date(item.createdAt).toLocaleDateString()}`)}
+                      >
+                        <div className="absolute inset-0 bg-black/30 pointer-events-none group-hover:bg-black/20 transition-colors" />
+                        <span className="relative z-10 text-[9px] bg-black/60 backdrop-blur-xs px-1.5 py-0.5 rounded-md inline-block w-fit font-mono">
+                          {new Date(item.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                        </span>
+                        <span className="relative z-10 line-clamp-2 leading-tight drop-shadow-sm">
+                          {item.text || 'Photo Story'}
+                        </span>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                );
+              })()}
             </div>
           </div>
         </div>

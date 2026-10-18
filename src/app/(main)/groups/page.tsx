@@ -46,9 +46,14 @@ export default function GroupsPage() {
   const [selectedGroupMembers, setSelectedGroupMembers] = useState<string[]>([]);
 
   // Join Requests, Invites, and Groups State
-  const [joinRequests, setJoinRequests] = useState<GroupJoinRequest[]>([]);
-  const [myInvites, setMyInvites] = useState<GroupJoinRequest[]>([]);
-  const [groups, setGroups] = useState<Group[]>([]);
+  const [joinRequests, setJoinRequests] = useState<GroupJoinRequest[]>(() => (typeof window !== 'undefined' ? DataStore.getGroupJoinRequests() : []));
+  const [myInvites, setMyInvites] = useState<GroupJoinRequest[]>(() => {
+    if (typeof window === 'undefined') return [];
+    const cur = DataStore.getCurrentUser();
+    const cleanCur = (cur?.username || '').toLowerCase().trim();
+    return DataStore.getGroupJoinRequests().filter((r) => r.username.toLowerCase().trim() === cleanCur && r.status === 'pending');
+  });
+  const [groups, setGroups] = useState<Group[]>(() => (typeof window !== 'undefined' ? DataStore.getGroups() : []));
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isAddGroupFriendsOpen, setIsAddGroupFriendsOpen] = useState(false);
   const [addFriendsSearchQuery, setAddFriendsSearchQuery] = useState('');

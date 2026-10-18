@@ -29,7 +29,7 @@ export interface PostCardProps {
   onOptionsClick: (post: Post) => void;
 }
 
-export const PostCard: React.FC<PostCardProps> = ({
+const PostCardComponent: React.FC<PostCardProps> = ({
   post,
   isLiked,
   isSaved,
@@ -96,15 +96,59 @@ export const PostCard: React.FC<PostCardProps> = ({
     post.username.toLowerCase() === 'dps_official' ||
     post.fullName?.toLowerCase().includes('official');
 
-  const handleDoubleTap = () => {
-    if (!isLiked) {
-      onLikeToggle(post.id);
+  // Optimistic instantaneous like feedback (<16ms)
+  const [localLiked, setLocalLiked] = React.useState(isLiked);
+  const [localLikesCount, setLocalLikesCount] = React.useState(post.likes ?? 0);
+  const isLikingRef = React.useRef(false);
+
+  React.useEffect(() => {
+    setLocalLiked(isLiked);
+  }, [isLiked]);
+
+  React.useEffect(() => {
+    setLocalLikesCount(post.likes ?? 0);
+  }, [post.likes]);
+
+  const handleLikeClick = () => {
+    if (isLikingRef.current) return;
+    isLikingRef.current = true;
+    const nextLiked = !localLiked;
+    setLocalLiked(nextLiked);
+    setLocalLikesCount((prev) => Math.max(0, prev + (nextLiked ? 1 : -1)));
+    if (nextLiked) {
+      setShowHeartPop(true);
+      setTimeout(() => setShowHeartPop(false), 700);
     }
-    setShowHeartPop(true);
-    setTimeout(() => setShowHeartPop(false), 700);
+    try {
+      onLikeToggle(post.id);
+    } finally {
+      setTimeout(() => {
+        isLikingRef.current = false;
+      }, 200);
+    }
   };
 
-  const likesCount = post.likes ?? 0;
+  const handleDoubleTap = () => {
+    if (!localLiked) {
+      handleLikeClick();
+    } else {
+      setShowHeartPop(true);
+      setTimeout(() => setShowHeartPop(false), 700);
+    }
+  };
+
+  // Optimistic instantaneous bookmark save feedback
+  const [localSaved, setLocalSaved] = React.useState(isSaved);
+  React.useEffect(() => {
+    setLocalSaved(isSaved);
+  }, [isSaved]);
+
+  const handleSaveClick = () => {
+    setLocalSaved(!localSaved);
+    onSaveToggle(post.id);
+  };
+
+  const likesCount = localLikesCount;
 
   const renderCaption = (text: string) => {
     const parts = text.split(/(#[a-zA-Z0-9_]+|@[a-zA-Z0-9_]+)/g);
@@ -197,17 +241,18 @@ export const PostCard: React.FC<PostCardProps> = ({
           {/* Like Heart Button */}
           <button
             type="button"
-            onClick={() => onLikeToggle(post.id)}
-            className="w-11 h-11 rounded-full flex items-center justify-center transition-transform active:scale-85 cursor-pointer"
+            onClick={handleLikeClick}
+            className="w-11 h-11 rounded-full flex items-center justify-center transition-transform active:scale-85 cursor-pointer touch-manipulation"
             style={{
-              color: isLiked ? 'var(--like)' : 'var(--text)',
+              color: localLiked ? 'var(--like)' : 'var(--text)',
+              touchAction: 'manipulation',
             }}
-            aria-label={isLiked ? 'Unlike' : 'Like'}
+            aria-label={localLiked ? 'Unlike' : 'Like'}
           >
             <Heart
               size={24}
               strokeWidth={1.8}
-              className={`transition-colors ${isLiked ? 'fill-[var(--like)] text-[var(--like)] animate-heart-pop' : ''}`}
+              className={`transition-colors ${localLiked ? 'fill-[var(--like)] text-[var(--like)] animate-heart-pop' : ''}`}
             />
           </button>
 
@@ -215,7 +260,8 @@ export const PostCard: React.FC<PostCardProps> = ({
           <button
             type="button"
             onClick={() => onCommentClick(post)}
-            className="w-11 h-11 rounded-full flex items-center justify-center text-[var(--text)] transition-transform active:scale-85 cursor-pointer"
+            className="w-11 h-11 rounded-full flex items-center justify-center text-[var(--text)] transition-transform active:scale-85 cursor-pointer touch-manipulation"
+            style={{ touchAction: 'manipulation' }}
             aria-label="Comments"
           >
             <MessageCircle size={24} strokeWidth={1.8} />
@@ -225,7 +271,8 @@ export const PostCard: React.FC<PostCardProps> = ({
           <button
             type="button"
             onClick={() => onShareClick(post)}
-            className="w-11 h-11 rounded-full flex items-center justify-center text-[var(--text)] transition-transform active:scale-85 cursor-pointer"
+            className="w-11 h-11 rounded-full flex items-center justify-center text-[var(--text)] transition-transform active:scale-85 cursor-pointer touch-manipulation"
+            style={{ touchAction: 'manipulation' }}
             aria-label="Share in chat"
           >
             <Send size={22} strokeWidth={1.8} className="-rotate-12" />
@@ -235,7 +282,8 @@ export const PostCard: React.FC<PostCardProps> = ({
           <button
             type="button"
             onClick={() => setShowRepostSheet(true)}
-            className="h-11 px-2.5 rounded-full flex items-center gap-1 text-[var(--text)] transition-transform active:scale-85 cursor-pointer hover:text-pink-500"
+            className="h-11 px-2.5 rounded-full flex items-center gap-1 text-[var(--text)] transition-transform active:scale-85 cursor-pointer hover:text-pink-500 touch-manipulation"
+            style={{ touchAction: 'manipulation' }}
             aria-label="Repost post to feed or story"
             title="Repost to feed or add to your story"
           >
@@ -251,17 +299,18 @@ export const PostCard: React.FC<PostCardProps> = ({
         {/* Save Bookmark Button */}
         <button
           type="button"
-          onClick={() => onSaveToggle(post.id)}
-          className="w-11 h-11 rounded-full flex items-center justify-center transition-transform active:scale-85 cursor-pointer -mr-1"
+          onClick={handleSaveClick}
+          className="w-11 h-11 rounded-full flex items-center justify-center transition-transform active:scale-85 cursor-pointer -mr-1 touch-manipulation"
           style={{
-            color: isSaved ? 'var(--primary)' : 'var(--text)',
+            color: localSaved ? 'var(--primary)' : 'var(--text)',
+            touchAction: 'manipulation',
           }}
-          aria-label={isSaved ? 'Remove from saved' : 'Save post'}
+          aria-label={localSaved ? 'Remove from saved' : 'Save post'}
         >
           <Bookmark
             size={23}
             strokeWidth={1.8}
-            className={isSaved ? 'fill-[var(--primary)] text-[var(--primary)]' : ''}
+            className={localSaved ? 'fill-[var(--primary)] text-[var(--primary)]' : ''}
           />
         </button>
       </div>
@@ -469,4 +518,5 @@ export const PostCard: React.FC<PostCardProps> = ({
   );
 };
 
+export const PostCard = React.memo(PostCardComponent);
 export default PostCard;

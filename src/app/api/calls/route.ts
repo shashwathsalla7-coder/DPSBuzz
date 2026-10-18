@@ -6,6 +6,7 @@ import {
   saveServerCall,
   updateServerCall,
   deleteServerCall,
+  getServerStore,
 } from '@/lib/serverStore';
 
 export type { CallSession };
@@ -206,6 +207,15 @@ export async function POST(req: NextRequest) {
     if (action === 'initiate') {
       if (!callerUsername || !receiverUsername) {
         return NextResponse.json({ success: false, error: 'Caller and receiver required' }, { status: 400 });
+      }
+
+      const cleanCaller = callerUsername.toLowerCase().trim();
+      const cleanReceiver = receiverUsername.toLowerCase().trim();
+
+      const store = await getServerStore();
+      const deleted = new Set((store.deletedUsernames || []).map((u: string) => u.toLowerCase().trim()));
+      if (deleted.has(cleanCaller) || deleted.has(cleanReceiver)) {
+        return NextResponse.json({ success: false, error: 'Cannot call this account' }, { status: 403 });
       }
 
       const id = callId || `call-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;

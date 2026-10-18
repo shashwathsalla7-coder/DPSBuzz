@@ -2,11 +2,6 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   /* config options here */
-  cacheComponents: true,
-  partialPrefetching: true,
-  typescript: {
-    ignoreBuildErrors: true,
-  },
   turbopack: {
     rules: {
       "*.css": {
@@ -17,6 +12,10 @@ const nextConfig: NextConfig = {
   },
   images: {
     remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'res.cloudinary.com',
+      },
       {
         protocol: 'https',
         hostname: 'upload.wikimedia.org',
@@ -42,6 +41,26 @@ const nextConfig: NextConfig = {
       {
         source: '/cricket',
         destination: '/chats?view=games',
+        permanent: false,
+      },
+      {
+        source: '/requests',
+        destination: '/chats?view=requests',
+        permanent: false,
+      },
+      {
+        source: '/game-requests',
+        destination: '/chats?view=requests',
+        permanent: false,
+      },
+      {
+        source: '/game/requests',
+        destination: '/chats?view=requests',
+        permanent: false,
+      },
+      {
+        source: '/games/requests',
+        destination: '/chats?view=requests',
         permanent: false,
       },
     ];

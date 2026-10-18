@@ -1,0 +1,59 @@
+<html>
+
+<head>
+    <title>ZegoCloud - Live Streaming</title>
+    <style>
+        #root {
+            width: 100vw;
+            height: 100vh;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="root"></div>
+</body>
+
+<!-- 1. Pinned to stable version 2.18.4 -->
+<script src="https://unpkg.com/@zegocloud/zego-uikit-prebuilt@2.18.4/zego-uikit-prebuilt.js"></script>
+<!-- Shared wrapper fixes for audio, speaker routing, secure context, and credentials -->
+<script src="zego-audio-fixes.js"></script>
+
+<script>
+    // Only proceed to join room if the secure context check passes
+    if (initZegoAudioFixes()) {
+        const { appID, serverSecret } = window.ZEGO_CONFIG;
+        const roomID = getZegoRoomId();
+        const userID = getZegoUserId();
+        const userName = getZegoUserName(userID);
+
+        const TOKEN = ZegoUIKitPrebuilt.generateKitTokenForTest(appID, serverSecret, roomID, userID, userName);
+
+        // Assign role based on URL parameter (?role=Host or ?role=Audience)
+        const params = getUrlParams(window.location.href);
+        let role = params['role'] || 'Host';
+        role = role.toLowerCase() === 'audience' ? ZegoUIKitPrebuilt.Audience : ZegoUIKitPrebuilt.Host;
+
+        const zp = ZegoUIKitPrebuilt.create(TOKEN);
+        zp.joinRoom({
+            container: document.querySelector("#root"),
+            scenario: {
+                mode: ZegoUIKitPrebuilt.LiveStreaming,
+                config: {
+                    role,
+                },
+            },
+            sharedLinks: [{
+                name: 'Join as audience',
+                url:
+                    window.location.origin +
+                    window.location.pathname +
+                    '?roomID=' +
+                    encodeURIComponent(roomID) +
+                    '&role=Audience',
+            }],
+        });
+    }
+</script>
+
+</html>

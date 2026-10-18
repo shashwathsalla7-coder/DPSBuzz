@@ -4031,6 +4031,16 @@ export interface SuggestedQuestionCategory {
 
 export const SUGGESTED_QUESTION_CATEGORIES: SuggestedQuestionCategory[] = [
   {
+    category: 'Lobby & Arena',
+    icon: '🏟️',
+    questions: [
+      'Is this cricketer from our lobby?',
+      'Is this cricketer kept in our lobby?',
+      'Is this cricketer in our featured lobby roster?',
+      'Is this cricketer kept here in the arena pool?',
+    ],
+  },
+  {
     category: 'Nationality & Origin',
     icon: '🌍',
     questions: [
@@ -4083,6 +4093,42 @@ export const SUGGESTED_QUESTION_CATEGORIES: SuggestedQuestionCategory[] = [
 ];
 
 export const SUGGESTED_QUESTIONS = SUGGESTED_QUESTION_CATEGORIES;
+
+// Curated cricketers kept in our match lobby & arena pool
+export const LOBBY_CRICKETERS: string[] = [
+  'virat-kohli',
+  'rohit-sharma',
+  'ms-dhoni',
+  'jasprit-bumrah',
+  'shubman-gill',
+  'hardik-pandya',
+  'ravindra-jadeja',
+  'kl-rahul',
+  'suryakumar-yadav',
+  'sachin-tendulkar',
+  'rishabh-pant',
+  'mohammed-shami',
+  'ravichandran-ashwin',
+  'shreyas-iyer',
+  'kuldeep-yadav',
+  'axar-patel',
+  'yashasvi-jaiswal',
+  'ab-de-villiers',
+  'glenn-maxwell',
+  'pat-cummins',
+  'travis-head',
+  'mitchell-starc',
+  'rashid-khan',
+  'ben-stokes',
+];
+
+export function isCricketerInLobby(cricketerIdOrName: string): boolean {
+  if (!cricketerIdOrName) return false;
+  const clean = cricketerIdOrName.toLowerCase().trim();
+  if (LOBBY_CRICKETERS.some((id) => id.toLowerCase() === clean)) return true;
+  const found = getCricketerById(clean) || CRICKETERS.find((c) => c.name.toLowerCase() === clean);
+  return Boolean(found);
+}
 
 export function getCricketerById(id: string): Cricketer | undefined {
   return CRICKETERS.find((c) => c.id.toLowerCase() === id.toLowerCase());

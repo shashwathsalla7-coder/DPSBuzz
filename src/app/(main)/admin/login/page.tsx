@@ -12,34 +12,35 @@ export default function AdminLoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
-    setTimeout(() => {
-      if (password === '71845shashwath123' || password.toUpperCase() === 'DPS71845' || password === '71845') {
-        const adminUser = {
-          id: 'admin-shashwath-id',
-          username: 'shashwath71845',
-          fullName: 'Shashwath Salla',
-          role: 'admin',
-          avatar: null,
-          isVerified: true,
-          isApproved: true,
-          class: 'Staff',
-          section: 'Admin',
-        };
-        localStorage.setItem('dpsbuzz_user', JSON.stringify(adminUser));
+    try {
+      const res = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      });
+      const data = await res.json();
+
+      if (data.success && data.user) {
+        localStorage.setItem('dpsbuzz_user', JSON.stringify(data.user));
         localStorage.setItem('dpsbuzz_shashwath_authenticated', 'true');
-        const adminCookie = encodeURIComponent(JSON.stringify({ id: adminUser.id, username: adminUser.username, role: adminUser.role }));
+        const adminCookie = encodeURIComponent(
+          JSON.stringify({ id: data.user.id, username: data.user.username, role: data.user.role })
+        );
         document.cookie = `dpsbuzz_user=${adminCookie}; path=/; max-age=31536000; SameSite=Lax`;
         router.push('/admin');
       } else {
-        setError('Incorrect administrator password. Access restricted to Admin ID: @shashwath71845.');
+        setError(data.error || 'Incorrect administrator password. Access restricted to Admin ID: @shashwath71845.');
         setLoading(false);
       }
-    }, 400);
+    } catch {
+      setError('Unable to authenticate with administrator server. Please try again.');
+      setLoading(false);
+    }
   };
 
   return (

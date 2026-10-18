@@ -54,6 +54,11 @@ import {
   CricketGameInviteCard,
   CricketLeaderboardModal,
   type CricketGameInviteData,
+  Connect4GameModal,
+  Connect4GameInviteCard,
+  type Connect4InviteData,
+  type Connect4Difficulty,
+  SoloGame2048Modal,
 } from '@/components/games';
 import { getAvatarColorPair } from '@/config/tokens';
 import { DataStore, DUMMY_TEST_USERNAMES, ChatNote, type GroupJoinRequest } from '@/lib/dataStore';
@@ -73,6 +78,7 @@ interface ChatMessage {
   reaction?: string;
   isCallLog?: boolean;
   gameInvite?: CricketGameInviteData;
+  connect4Invite?: Connect4InviteData;
   sharedPost?: {
     id: string;
     username: string;
@@ -308,8 +314,8 @@ const ActiveChatHeader = React.memo(({
             onClick={onToggleVanishMode}
             className={`w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer ${
               isVanishMode
-                ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30'
-                : 'hover:bg-[var(--surface-sunken)] text-[var(--text-muted)] hover:text-purple-400'
+                ? 'bg-cyan-600 text-white shadow-md shadow-cyan-600/30'
+                : 'hover:bg-[var(--surface-sunken)] text-[var(--text-muted)] hover:text-cyan-400'
             }`}
             aria-label="Toggle Vanish Mode"
             title={isVanishMode ? 'Vanish Mode is ON (tap to turn off)' : 'Turn on Vanish Mode'}
@@ -399,6 +405,21 @@ function ChatsContent() {
       return [currentUsername, target].sort().join('__');
     }
     return conv.id;
+  };
+
+  const getOpponentUsernameFromConv = (conv: ConversationItem | null): string => {
+    if (!conv) return '';
+    if (conv.username && !conv.username.includes('__')) {
+      return conv.username.toLowerCase().trim();
+    }
+    const raw = conv.id.replace(/^conv-/, '').trim();
+    if (raw.includes('__')) {
+      const cleanMe = (currentUsername || '').toLowerCase().trim();
+      const parts = raw.split('__').map((p) => p.toLowerCase().trim());
+      const other = parts.find((p) => p !== cleanMe);
+      return other || parts[0];
+    }
+    return raw.toLowerCase().trim();
   };
 
   const getListForConv = (
@@ -577,7 +598,14 @@ function ChatsContent() {
         const savedConv = localStorage.getItem(userConvKey);
         if (savedConv) {
           const parsed: ConversationItem[] = JSON.parse(savedConv);
-          setConversations(parsed.filter((c) => !c.username || !DUMMY_TEST_USERNAMES.has(c.username.toLowerCase())));
+          setConversations(
+            parsed
+              .filter((c) => !c.username || !DUMMY_TEST_USERNAMES.has(c.username.toLowerCase()))
+              .map((c) => ({
+                ...c,
+                isMuted: DataStore.isConversationMuted(c.id) || Boolean(c.isMuted),
+              }))
+          );
         }
         const userMsgKey = `dpsbuzz_chat_messages_${uname}_v3`;
         const savedMsg = localStorage.getItem(userMsgKey);
@@ -644,21 +672,35 @@ function ChatsContent() {
   const [chatBackgrounds, setChatBackgrounds] = useState<Record<string, ChatBackgroundOption>>({});
   const chatMediaInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Guess the Cricketer Game State
+  // Multiplayer Games State (Cricket + Connect 4)
   const [isGameDrawerOpen, setIsGameDrawerOpen] = useState(false);
   const [activeGameId, setActiveGameId] = useState<string | null>(null);
   const [isGameModalOpen, setIsGameModalOpen] = useState(false);
+  const [activeConnect4GameId, setActiveConnect4GameId] = useState<string | null>(null);
+  const [isConnect4ModalOpen, setIsConnect4ModalOpen] = useState(false);
+  const [isSolo2048ModalOpen, setIsSolo2048ModalOpen] = useState(false);
   const [isLeaderboardModalOpen, setIsLeaderboardModalOpen] = useState(false);
   const [leaderboardDefaultTab, setLeaderboardDefaultTab] = useState<'leaderboard' | 'history' | 'rules'>('leaderboard');
 
   // Auto-reconnect to any active game session for current user on mount/refresh
   useEffect(() => {
     if (!currentUsername || currentUsername === 'guest') return;
+    // Auto reconnect Cricket
     fetch(`/api/games/cricket?action=active&username=${encodeURIComponent(currentUsername)}`, { cache: 'no-store' })
       .then((res) => res.json())
       .then((data) => {
         if (data.success && data.session?.gameId) {
           setActiveGameId(data.session.gameId);
+        }
+      })
+      .catch(() => {});
+
+    // Auto reconnect Connect 4
+    fetch(`/api/games/connect4?action=active&username=${encodeURIComponent(currentUsername)}`, { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.session?.gameId) {
+          setActiveConnect4GameId(data.session.gameId);
         }
       })
       .catch(() => {});
@@ -1036,7 +1078,7 @@ function ChatsContent() {
     const interval = setInterval(() => {
       if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
       pollMessages();
-    }, 3500);
+    }, 800);
 
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
@@ -1111,9 +1153,10 @@ function ChatsContent() {
         if (isCurrentlyViewingThis && !isMe && currentUsername) {
           DataStore.markChatRead(conversationId, currentUsername);
         } else if (!isMe) {
-          // Trigger system notification if user is in background or viewing a different conversation
+          const isMuted = DataStore.isConversationMuted(conversationId);
+          // Trigger system notification if user is in background or viewing a different conversation (and not muted)
           const isDocHidden = typeof document !== 'undefined' && document.hidden;
-          if (!isCurrentlyViewingThis || isDocHidden) {
+          if (!isMuted && (!isCurrentlyViewingThis || isDocHidden)) {
             showBackgroundNotification(`💬 @${message.senderUsername || otherUser}`, {
               body: message.text || (message.sharedPost ? 'Sent a photo' : 'New message on DPS Buzz'),
               tag: `chat-${conversationId}`,
@@ -1342,17 +1385,35 @@ function ChatsContent() {
     else if (stateParam === 'offline') setDemoState('offline');
     else setDemoState('normal');
 
-    if (viewParam === 'requests') setActiveChip('requests');
-    else if (viewParam === 'groups') setActiveChip('groups');
-    else if (viewParam === 'games' || viewParam === 'cricket' || searchParams.get('game')) {
+    if (viewParam === 'requests') {
+      setActiveChip('requests');
+    } else if (viewParam === 'groups') {
+      setActiveChip('groups');
+    } else if (viewParam === 'games' || viewParam === 'cricket') {
+      setIsGameDrawerOpen(true);
+    } else if (viewParam === 'leaderboard') {
       setLeaderboardDefaultTab('leaderboard');
       setIsLeaderboardModalOpen(true);
     }
 
-    const activeGid = searchParams.get('gameId');
-    if (activeGid) {
-      setActiveGameId(activeGid);
-      setIsGameModalOpen(true);
+    if (searchParams.get('game') === '2048' || searchParams.get('solo') === '2048') {
+      setIsSolo2048ModalOpen(true);
+    } else {
+      const activeGid = searchParams.get('gameId');
+      if (activeGid) {
+        if (searchParams.get('game') === 'connect4') {
+          setActiveConnect4GameId(activeGid);
+          setIsConnect4ModalOpen(true);
+        } else {
+          setActiveGameId(activeGid);
+          setIsGameModalOpen(true);
+        }
+      }
+      const c4Gid = searchParams.get('connect4GameId');
+      if (c4Gid) {
+        setActiveConnect4GameId(c4Gid);
+        setIsConnect4ModalOpen(true);
+      }
     }
   }, [stateParam, viewParam, searchParams]);
 
@@ -1575,7 +1636,7 @@ function ChatsContent() {
     const interval = setInterval(() => {
       if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
       fetchLatestSync();
-    }, 10000);
+    }, 1200);
 
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
@@ -1791,7 +1852,13 @@ function ChatsContent() {
           const lastMsgIsMe = lastMsg
             ? (lastMsg.senderUsername ? lastMsg.senderUsername.toLowerCase() === currentUsername : lastMsg.sender === 'me')
             : false;
-          if (!lastMsgIsMe && !DataStore.getAcceptedMessageRequests(currentUsername).includes(target)) {
+          const isGameInvite = Boolean(
+            lastMsg?.gameInvite ||
+            lastMsg?.connect4Invite ||
+            lastMsg?.text?.includes('[CRICKET_GAME]:') ||
+            lastMsg?.text?.includes('[CONNECT4_GAME]:')
+          );
+          if (!isGameInvite && !lastMsgIsMe && !DataStore.getAcceptedMessageRequests(currentUsername).includes(target)) {
             return false;
           }
         }
@@ -1877,7 +1944,14 @@ function ChatsContent() {
 
   const handleMuteToggle = useCallback((id: string) => {
     setConversations((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, isMuted: !c.isMuted } : c))
+      prev.map((c) => {
+        if (c.id === id) {
+          const nextMuted = !c.isMuted;
+          DataStore.setConversationMuted(id, nextMuted);
+          return { ...c, isMuted: nextMuted };
+        }
+        return c;
+      })
     );
   }, []);
 
@@ -1894,34 +1968,32 @@ function ChatsContent() {
   };
 
   const openConversation = useCallback((conv: ConversationItem) => {
-    startTransition(() => {
-      const target = (conv.username || conv.id.replace(/^conv-/, '')).toLowerCase().trim();
-      const isIncomingReq =
-        !conv.isGroup &&
-        target &&
-        DataStore.getInboxTier(currentUsername, target) === 'REQUESTS';
+    const target = (conv.username || conv.id.replace(/^conv-/, '')).toLowerCase().trim();
+    const isIncomingReq =
+      !conv.isGroup &&
+      target &&
+      DataStore.getInboxTier(currentUsername, target) === 'REQUESTS';
 
-      // Anonymity (Invisible Reads): Opening/reading a message request never emits seen or clears unread
-      if (isIncomingReq) {
-        setActiveConversation(conv);
-        return;
-      }
+    // Anonymity (Invisible Reads): Opening/reading a message request never emits seen or clears unread
+    if (isIncomingReq) {
+      setActiveConversation(conv);
+      return;
+    }
 
-      const readConv = { ...conv, isUnread: false, unreadCount: 0 };
-      setActiveConversation(readConv);
-      setConversations((prev) => {
-        const updated = prev.map((c) =>
-          c.id === conv.id || (c.username && c.username.toLowerCase() === conv.username?.toLowerCase())
-            ? { ...c, isUnread: false, unreadCount: 0 }
-            : c
-        );
-        try {
-          if (currentUsername && currentUsername !== 'guest') {
-            localStorage.setItem(`dpsbuzz_chat_conversations_${currentUsername}_v3`, JSON.stringify(updated));
-          }
-        } catch {}
-        return updated;
-      });
+    const readConv = { ...conv, isUnread: false, unreadCount: 0 };
+    setActiveConversation(readConv);
+    setConversations((prev) => {
+      const updated = prev.map((c) =>
+        c.id === conv.id || (c.username && c.username.toLowerCase() === conv.username?.toLowerCase())
+          ? { ...c, isUnread: false, unreadCount: 0 }
+          : c
+      );
+      try {
+        if (currentUsername && currentUsername !== 'guest') {
+          localStorage.setItem(`dpsbuzz_chat_conversations_${currentUsername}_v3`, JSON.stringify(updated));
+        }
+      } catch {}
+      return updated;
     });
   }, [currentUsername]);
 
@@ -2075,10 +2147,81 @@ function ChatsContent() {
 
   const handleToggleVanishMode = () => {
     if (!activeConversation || activeConversation.isGroup) return;
+    const rawId = activeConversation.id;
     const canonicalId = getCanonicalConvId(activeConversation);
+    const targetUser = (activeConversation.username || activeConversation.id.replace(/^conv-/, '')).toLowerCase().trim();
     const nextVal = !isVanishMode;
     setIsVanishMode(nextVal);
     DataStore.setVanishMode(canonicalId, nextVal);
+
+    // Broadcast in-chat handshake system message so both users know vanish mode changed
+    const now = Date.now();
+    const senderDisplay = currentUsername ? `@${currentUsername}` : 'You';
+    const systemNoticeText = nextVal
+      ? `${senderDisplay} turned on vanish mode. Seen messages disappear when the chat is closed.`
+      : `${senderDisplay} turned off vanish mode.`;
+
+    const systemMsg: ChatMessage = {
+      id: `vanish-sys-${now}-${uuidv4()}`,
+      client_id: `vanish-sys-${now}`,
+      status: 'sent',
+      text: systemNoticeText,
+      sender: 'them',
+      senderUsername: 'system',
+      time: new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date(now)),
+      createdAt: new Date(now).toISOString(),
+      timestamp: now,
+      isDelivered: true,
+      is_read: true,
+      isSeen: true,
+    };
+
+    setChatMessages((prev) => {
+      const currentList = getListForConv(prev, canonicalId, rawId);
+      const updated = [...currentList, systemMsg];
+      const nextMap = {
+        ...prev,
+        [rawId]: updated,
+        [canonicalId]: updated,
+      };
+      try {
+        if (currentUsername) {
+          localStorage.setItem(`dpsbuzz_chat_messages_${currentUsername}_v3`, JSON.stringify(nextMap));
+        }
+      } catch {}
+      return nextMap;
+    });
+
+    if (targetUser) {
+      try {
+        const targetMsgKey = `dpsbuzz_chat_messages_${targetUser}_v3`;
+        const recipientMsgs = JSON.parse(localStorage.getItem(targetMsgKey) || '{}');
+        const rConvId = `conv-${currentUsername}`;
+        const rList = recipientMsgs[canonicalId] || recipientMsgs[rConvId] || [];
+        const nextRList = [...rList, systemMsg];
+        recipientMsgs[canonicalId] = nextRList;
+        recipientMsgs[rConvId] = nextRList;
+        localStorage.setItem(targetMsgKey, JSON.stringify(recipientMsgs));
+      } catch {}
+    }
+
+    DataStore.broadcastChatEvent({
+      type: 'MESSAGE_SENT',
+      conversationId: canonicalId,
+      message: systemMsg,
+      senderUsername: currentUsername,
+      recipientUsername: targetUser,
+    });
+
+    fetch('/api/chats', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        conversationId: canonicalId,
+        senderUsername: currentUsername,
+        message: systemMsg,
+      }),
+    }).catch(() => {});
   };
 
   // Vanish Mode Pull-Up Touch & Drag Handlers (Instagram Style)
@@ -2160,10 +2303,8 @@ function ChatsContent() {
   }, [isVanishPulling, vanishPullDistance]);
 
   const handleCloseActiveChat = useCallback(() => {
-    startTransition(() => {
-      setActiveConversation(null);
-      setIsGameDrawerOpen(false);
-    });
+    setActiveConversation(null);
+    setIsGameDrawerOpen(false);
   }, []);
 
   const handleComposeClick = useCallback(() => {
@@ -2175,14 +2316,11 @@ function ChatsContent() {
   }, []);
 
   const handleOpenGamesClick = useCallback(() => {
-    setLeaderboardDefaultTab('leaderboard');
-    setIsLeaderboardModalOpen(true);
+    setIsGameDrawerOpen(true);
   }, []);
 
   const handleSelectChip = useCallback((chip: 'all' | 'groups' | 'requests') => {
-    startTransition(() => {
-      setActiveChip(chip);
-    });
+    setActiveChip(chip);
   }, []);
 
   const handleAcceptRequestFromSandbox = (targetUser: string) => {
@@ -2610,74 +2748,74 @@ function ChatsContent() {
 
     setMessageInput('');
 
-    // Update recipient local storage for single-browser multi-account testing
-    if (!activeConversation.isGroup && targetUser) {
+    // Non-blocking asynchronous update of recipient storage for local test accounts
+    setTimeout(() => {
       try {
-        const targetConvKey = `dpsbuzz_chat_conversations_${targetUser}_v3`;
-        const targetMsgKey = `dpsbuzz_chat_messages_${targetUser}_v3`;
-        const recipientConv = JSON.parse(localStorage.getItem(targetConvKey) || '[]');
-        const recipientMsgs = JSON.parse(localStorage.getItem(targetMsgKey) || '{}');
-        const rConvId = `conv-${currentUsername}`;
-        const rList = recipientMsgs[canonicalId] || recipientMsgs[rConvId] || [];
-        const rMsg: ChatMessage = { ...newMsg, sender: 'them' };
-        if (!rList.some((m: any) => m.id === rMsg.id)) {
-          const nextRList = [...rList, rMsg];
-          recipientMsgs[canonicalId] = nextRList;
-          recipientMsgs[rConvId] = nextRList;
-          localStorage.setItem(targetMsgKey, JSON.stringify(recipientMsgs));
-        }
-        const rExistingIdx = recipientConv.findIndex(
-          (c: any) => (c.username || '').toLowerCase() === currentUsername || c.id === rConvId || c.id === canonicalId
-        );
-        if (rExistingIdx >= 0) {
-          recipientConv[rExistingIdx] = {
-            ...recipientConv[rExistingIdx],
-            lastMessage: sentText,
-            timeAgo: 'Just now',
-            isUnread: true,
-            unreadCount: (recipientConv[rExistingIdx].unreadCount || 0) + 1,
-          };
-          const [item] = recipientConv.splice(rExistingIdx, 1);
-          recipientConv.unshift(item);
-        }
-        localStorage.setItem(targetConvKey, JSON.stringify(recipientConv));
-      } catch {}
-    } else if (activeConversation.isGroup) {
-      try {
-        const activeGroupId = activeConversation.id.replace(/^conv-/, '');
-        const members = DataStore.getGroupMembers(activeGroupId);
-        for (const member of members) {
-          const cleanMember = (typeof member === 'string' ? member : (member as any)?.username || '').toLowerCase().trim();
-          if (cleanMember && cleanMember !== currentUsername) {
-            const memberMsgKey = `dpsbuzz_chat_messages_${cleanMember}_v3`;
-            const memberConvKey = `dpsbuzz_chat_conversations_${cleanMember}_v3`;
-            const memberMsgs = JSON.parse(localStorage.getItem(memberMsgKey) || '{}');
-            const memberConvs = JSON.parse(localStorage.getItem(memberConvKey) || '[]');
-            const gList = memberMsgs[canonicalId] || memberMsgs[rawId] || [];
-            const rMsg: ChatMessage = { ...newMsg, sender: 'them' };
-            if (!gList.some((m: any) => m.id === rMsg.id)) {
-              const nextGList = [...gList, rMsg];
-              memberMsgs[canonicalId] = nextGList;
-              memberMsgs[rawId] = nextGList;
-              localStorage.setItem(memberMsgKey, JSON.stringify(memberMsgs));
+        if (!activeConversation.isGroup && targetUser) {
+          const targetConvKey = `dpsbuzz_chat_conversations_${targetUser}_v3`;
+          const targetMsgKey = `dpsbuzz_chat_messages_${targetUser}_v3`;
+          const recipientConv = JSON.parse(localStorage.getItem(targetConvKey) || '[]');
+          const recipientMsgs = JSON.parse(localStorage.getItem(targetMsgKey) || '{}');
+          const rConvId = `conv-${currentUsername}`;
+          const rList = recipientMsgs[canonicalId] || recipientMsgs[rConvId] || [];
+          const rMsg: ChatMessage = { ...newMsg, sender: 'them' };
+          if (!rList.some((m: any) => m.id === rMsg.id)) {
+            const nextRList = [...rList, rMsg];
+            recipientMsgs[canonicalId] = nextRList;
+            recipientMsgs[rConvId] = nextRList;
+            localStorage.setItem(targetMsgKey, JSON.stringify(recipientMsgs));
+          }
+          const rExistingIdx = recipientConv.findIndex(
+            (c: any) => (c.username || '').toLowerCase() === currentUsername || c.id === rConvId || c.id === canonicalId
+          );
+          if (rExistingIdx >= 0) {
+            recipientConv[rExistingIdx] = {
+              ...recipientConv[rExistingIdx],
+              lastMessage: sentText,
+              timeAgo: 'Just now',
+              isUnread: true,
+              unreadCount: (recipientConv[rExistingIdx].unreadCount || 0) + 1,
+            };
+            const [item] = recipientConv.splice(rExistingIdx, 1);
+            recipientConv.unshift(item);
+          }
+          localStorage.setItem(targetConvKey, JSON.stringify(recipientConv));
+        } else if (activeConversation.isGroup) {
+          const activeGroupId = activeConversation.id.replace(/^conv-/, '');
+          const members = DataStore.getGroupMembers(activeGroupId);
+          for (const member of members) {
+            const cleanMember = (typeof member === 'string' ? member : (member as any)?.username || '').toLowerCase().trim();
+            if (cleanMember && cleanMember !== currentUsername) {
+              const memberMsgKey = `dpsbuzz_chat_messages_${cleanMember}_v3`;
+              const memberConvKey = `dpsbuzz_chat_conversations_${cleanMember}_v3`;
+              const memberMsgs = JSON.parse(localStorage.getItem(memberMsgKey) || '{}');
+              const memberConvs = JSON.parse(localStorage.getItem(memberConvKey) || '[]');
+              const gList = memberMsgs[canonicalId] || memberMsgs[rawId] || [];
+              const rMsg: ChatMessage = { ...newMsg, sender: 'them' };
+              if (!gList.some((m: any) => m.id === rMsg.id)) {
+                const nextGList = [...gList, rMsg];
+                memberMsgs[canonicalId] = nextGList;
+                memberMsgs[rawId] = nextGList;
+                localStorage.setItem(memberMsgKey, JSON.stringify(memberMsgs));
+              }
+              const cIdx = memberConvs.findIndex((c: any) => c.id === canonicalId || c.id === rawId);
+              if (cIdx >= 0) {
+                memberConvs[cIdx] = {
+                  ...memberConvs[cIdx],
+                  lastMessage: `${currentUsername}: ${sentText}`,
+                  timeAgo: 'Just now',
+                  isUnread: true,
+                  unreadCount: (memberConvs[cIdx].unreadCount || 0) + 1,
+                };
+                const [item] = memberConvs.splice(cIdx, 1);
+                memberConvs.unshift(item);
+              }
+              localStorage.setItem(memberConvKey, JSON.stringify(memberConvs));
             }
-            const cIdx = memberConvs.findIndex((c: any) => c.id === canonicalId || c.id === rawId);
-            if (cIdx >= 0) {
-              memberConvs[cIdx] = {
-                ...memberConvs[cIdx],
-                lastMessage: `${currentUsername}: ${sentText}`,
-                timeAgo: 'Just now',
-                isUnread: true,
-                unreadCount: (memberConvs[cIdx].unreadCount || 0) + 1,
-              };
-              const [item] = memberConvs.splice(cIdx, 1);
-              memberConvs.unshift(item);
-            }
-            localStorage.setItem(memberConvKey, JSON.stringify(memberConvs));
           }
         }
       } catch {}
-    }
+    }, 0);
 
     // Instant 0ms broadcast across all tabs and components
     DataStore.broadcastChatEvent({
@@ -2719,14 +2857,53 @@ function ChatsContent() {
       .catch((err) => console.warn('Failed to sync chat message:', err));
   };
 
-  const handleSendGameChallenge = async () => {
-    if (!activeConversation || activeConversation.isGroup) {
-      alert('Guess the Cricketer is a 1-on-1 multiplayer duel. Please open a direct chat with a classmate.');
-      return;
+  const handleSendGameChallenge = async (
+    targetUserOverride?: { username: string; fullName?: string; avatar?: string | null; class?: string; section?: string }
+  ) => {
+    let targetUsername = targetUserOverride?.username;
+    let targetName = targetUserOverride?.fullName;
+    let targetAvatar = targetUserOverride?.avatar;
+
+    if (!targetUsername) {
+      if (!activeConversation || activeConversation.isGroup) {
+        alert('Guess the Cricketer is a 1-on-1 multiplayer duel. Please open a direct chat with a classmate or select a player from the arena.');
+        return;
+      }
+      targetUsername = getOpponentUsernameFromConv(activeConversation);
+      targetName = activeConversation.name || targetUsername;
+      targetAvatar = activeConversation.avatar || null;
     }
 
-    const targetUsername = (activeConversation.username || activeConversation.id.replace(/^conv-/, '')).toLowerCase().trim();
     if (!targetUsername) return;
+
+    const cleanTarget = targetUsername.toLowerCase().trim();
+    const cleanCurrent = (currentUsername || '').toLowerCase().trim();
+    const canonicalId = [cleanCurrent, cleanTarget].sort().join('__');
+    const rawId = activeConversation?.id || `conv-${cleanTarget}`;
+
+    // Ensure conversation exists in state
+    if (!activeConversation || (activeConversation.username || '').toLowerCase() !== cleanTarget) {
+      const existing = conversations.find(
+        (c) => (c.username || '').toLowerCase() === cleanTarget || c.id === `conv-${cleanTarget}`
+      );
+      if (existing) {
+        setActiveConversation(existing);
+      } else {
+        const newConv: ConversationItem = {
+          id: `conv-${cleanTarget}`,
+          name: targetName || targetUsername,
+          username: cleanTarget,
+          avatar: targetAvatar || null,
+          studentClass: targetUserOverride?.class ? `Class ${targetUserOverride.class}` : 'Student',
+          lastMessage: `Challenged @${cleanTarget} to Guess the Cricketer! 🏏`,
+          timeAgo: 'Just now',
+          inboxTier: 'PRIMARY',
+          isUnread: false,
+        };
+        setConversations((prev) => [newConv, ...prev]);
+        setActiveConversation(newConv);
+      }
+    }
 
     try {
       const res = await fetch('/api/games/cricket', {
@@ -2740,11 +2917,11 @@ function ChatsContent() {
             avatar: currentUser?.avatar || null,
           },
           opponent: {
-            username: targetUsername,
-            fullName: activeConversation.name || targetUsername,
-            avatar: activeConversation.avatar || null,
+            username: cleanTarget,
+            fullName: targetName || cleanTarget,
+            avatar: targetAvatar || null,
           },
-          chatId: activeConversation.id,
+          chatId: canonicalId,
         }),
       });
 
@@ -2756,15 +2933,13 @@ function ChatsContent() {
           gameType: 'cricket',
           inviterUsername: currentUsername,
           inviterName: currentUser?.fullName || currentUsername,
-          opponentUsername: targetUsername,
-          opponentName: activeConversation.name || targetUsername,
+          opponentUsername: cleanTarget,
+          opponentName: targetName || cleanTarget,
           status: 'waiting_invite',
         };
 
         const inviteText = `🎮 [CRICKET_GAME]:${JSON.stringify(invitePayload)}`;
         const now = Date.now();
-        const rawId = activeConversation.id;
-        const canonicalId = getCanonicalConvId(activeConversation);
         const ephemeralTrackingId = uuidv4();
 
         const newMsg: ChatMessage = {
@@ -2798,7 +2973,7 @@ function ChatsContent() {
         setConversations((prev) =>
           prev.map((c) =>
             c.id === rawId || c.id === canonicalId
-              ? { ...c, lastMessage: `You challenged @${targetUsername} to Guess the Cricketer! 🏏`, timeAgo: 'Just now' }
+              ? { ...c, lastMessage: `You challenged @${cleanTarget} to Guess the Cricketer! 🏏`, timeAgo: 'Just now' }
               : c
           )
         );
@@ -2809,8 +2984,16 @@ function ChatsContent() {
           conversationId: canonicalId,
           message: newMsg,
           senderUsername: currentUsername,
-          recipientUsername: targetUsername,
+          recipientUsername: cleanTarget,
         });
+
+        try {
+          if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+            const bc = new BroadcastChannel('dpsbuzz_cricket_realtime');
+            bc.postMessage({ type: 'invite', gameId, inviter: currentUsername, opponent: cleanTarget });
+            bc.close();
+          }
+        } catch {}
 
         // Supabase Realtime dispatch
         sendSupabaseRealtimeMessage(inviteText, ephemeralTrackingId);
@@ -2837,6 +3020,32 @@ function ChatsContent() {
   };
 
   const handleAcceptGame = async (gameId: string) => {
+    // Apple-style optimistic open with 0ms perceived latency:
+    setActiveGameId(gameId);
+    setIsGameModalOpen(true);
+    setChatMessages((prev) => {
+      const next: Record<string, typeof prev[string]> = { ...prev };
+      for (const key of Object.keys(next)) {
+        next[key] = next[key].map((m) => {
+          const isMatch = (m.gameInvite && m.gameInvite.gameId === gameId) || (m.text && m.text.includes(gameId));
+          if (isMatch) {
+            let invite = m.gameInvite;
+            if (!invite && m.text?.startsWith('🎮 [CRICKET_GAME]:')) {
+              try { invite = JSON.parse(m.text.replace('🎮 [CRICKET_GAME]:', '')); } catch {}
+            }
+            const updatedInvite = { ...(invite || {}), gameId, status: 'selecting' as const };
+            return {
+              ...m,
+              gameInvite: updatedInvite as CricketGameInviteData,
+              text: `🎮 [CRICKET_GAME]:${JSON.stringify(updatedInvite)}`,
+            };
+          }
+          return m;
+        });
+      }
+      return next;
+    });
+
     try {
       const res = await fetch('/api/games/cricket', {
         method: 'POST',
@@ -2849,8 +3058,14 @@ function ChatsContent() {
       });
       const data = await res.json();
       if (data.success) {
-        setActiveGameId(gameId);
-        setIsGameModalOpen(true);
+        try {
+          if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+            const bc = new BroadcastChannel('dpsbuzz_cricket_realtime');
+            bc.postMessage({ type: 'update', gameId });
+            bc.close();
+          }
+          window.dispatchEvent(new CustomEvent('dpsbuzz_cricket_update', { detail: { gameId } }));
+        } catch {}
       } else {
         alert(data.error || 'Failed to accept game');
       }
@@ -2860,8 +3075,295 @@ function ChatsContent() {
   };
 
   const handleDeclineGame = async (gameId: string) => {
+    // Apple-style optimistic decline in 0ms:
+    setChatMessages((prev) => {
+      const next: Record<string, typeof prev[string]> = { ...prev };
+      for (const key of Object.keys(next)) {
+        next[key] = next[key].map((m) => {
+          const isMatch = (m.gameInvite && m.gameInvite.gameId === gameId) || (m.text && m.text.includes(gameId));
+          if (isMatch) {
+            let invite = m.gameInvite;
+            if (!invite && m.text?.startsWith('🎮 [CRICKET_GAME]:')) {
+              try { invite = JSON.parse(m.text.replace('🎮 [CRICKET_GAME]:', '')); } catch {}
+            }
+            const updatedInvite = { ...(invite || {}), gameId, status: 'declined' as const };
+            return {
+              ...m,
+              gameInvite: updatedInvite as CricketGameInviteData,
+              text: `🎮 [CRICKET_GAME]:${JSON.stringify(updatedInvite)}`,
+            };
+          }
+          return m;
+        });
+      }
+      return next;
+    });
+
     try {
       await fetch('/api/games/cricket', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'decline',
+          gameId,
+          username: currentUsername,
+        }),
+      });
+      try {
+        if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+          const bc = new BroadcastChannel('dpsbuzz_cricket_realtime');
+          bc.postMessage({ type: 'update', gameId });
+          bc.close();
+        }
+        window.dispatchEvent(new CustomEvent('dpsbuzz_cricket_update', { detail: { gameId } }));
+      } catch {}
+    } catch {}
+  };
+
+  const handleSendConnect4Challenge = async (
+    isBot: boolean = false,
+    targetUserOverride?: { username: string; fullName?: string; avatar?: string | null; class?: string; section?: string },
+    difficulty: Connect4Difficulty = 'hard'
+  ) => {
+    let targetUsername = isBot ? 'buzzbot' : targetUserOverride?.username;
+    let targetName = isBot ? 'BuzzBot 🤖' : targetUserOverride?.fullName;
+    let targetAvatar = isBot ? null : targetUserOverride?.avatar;
+
+    if (!isBot && !targetUsername) {
+      if (!activeConversation || activeConversation.isGroup) {
+        alert('Connect 4 is a 1-on-1 multiplayer duel. Please open a direct chat with a classmate, select a player from the arena, or play vs BuzzBot.');
+        return;
+      }
+      targetUsername = getOpponentUsernameFromConv(activeConversation);
+      targetName = activeConversation.name || targetUsername;
+      targetAvatar = activeConversation.avatar || null;
+    }
+
+    if (!targetUsername) return;
+
+    const cleanTarget = targetUsername.toLowerCase().trim();
+    const cleanCurrent = (currentUsername || '').toLowerCase().trim();
+    const canonicalId = isBot ? `conv-bot-${cleanCurrent}` : [cleanCurrent, cleanTarget].sort().join('__');
+    const rawId = activeConversation?.id || (isBot ? `conv-bot-${cleanCurrent}` : `conv-${cleanTarget}`);
+
+    // Ensure conversation exists in state if not bot
+    if (!isBot) {
+      if (!activeConversation || (activeConversation.username || '').toLowerCase() !== cleanTarget) {
+        const existing = conversations.find(
+          (c) => (c.username || '').toLowerCase() === cleanTarget || c.id === `conv-${cleanTarget}`
+        );
+        if (existing) {
+          setActiveConversation(existing);
+        } else {
+          const newConv: ConversationItem = {
+            id: `conv-${cleanTarget}`,
+            name: targetName || targetUsername,
+            username: cleanTarget,
+            avatar: targetAvatar || null,
+            studentClass: targetUserOverride?.class ? `Class ${targetUserOverride.class}` : 'Student',
+            lastMessage: `Challenged @${cleanTarget} to Connect 4! 🔴🟡`,
+            timeAgo: 'Just now',
+            inboxTier: 'PRIMARY',
+            isUnread: false,
+          };
+          setConversations((prev) => [newConv, ...prev]);
+          setActiveConversation(newConv);
+        }
+      }
+    }
+
+    try {
+      const res = await fetch('/api/games/connect4', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'invite',
+          difficulty,
+          inviter: {
+            username: currentUsername,
+            fullName: currentUser?.fullName || currentUsername,
+            avatar: currentUser?.avatar || null,
+          },
+          opponent: {
+            username: cleanTarget,
+            fullName: isBot ? 'BuzzBot 🤖' : targetName || cleanTarget,
+            avatar: isBot ? null : targetAvatar || null,
+            isBot,
+            difficulty,
+          },
+          chatId: canonicalId,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success && data.session) {
+        const gameId = data.session.gameId;
+        const invitePayload: Connect4InviteData = {
+          gameId,
+          gameType: 'connect4',
+          inviterUsername: currentUsername,
+          inviterName: currentUser?.fullName || currentUsername,
+          opponentUsername: cleanTarget,
+          opponentName: isBot ? 'BuzzBot 🤖' : targetName || cleanTarget,
+          status: isBot ? 'in_progress' : 'waiting_invite',
+          botDifficulty: isBot ? difficulty : undefined,
+        };
+
+        if (!isBot) {
+          const inviteText = `🔴 [CONNECT4_GAME]:${JSON.stringify(invitePayload)}`;
+          const now = Date.now();
+          const ephemeralTrackingId = uuidv4();
+
+          const newMsg: ChatMessage = {
+            id: ephemeralTrackingId,
+            client_id: ephemeralTrackingId,
+            status: 'sending',
+            text: inviteText,
+            sender: 'me',
+            senderUsername: currentUsername,
+            connect4Invite: invitePayload,
+            time: new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date(now)),
+            createdAt: new Date(now).toISOString(),
+            timestamp: now,
+            isDelivered: false,
+            is_read: false,
+            isSeen: false,
+          };
+
+          setChatMessages((prev) => {
+            const currentList = getListForConv(prev, canonicalId, rawId);
+            const updated = [...currentList, newMsg];
+            const nextMap = { ...prev, [rawId]: updated, [canonicalId]: updated };
+            try {
+              if (currentUsername) {
+                localStorage.setItem(`dpsbuzz_chat_messages_${currentUsername}_v3`, JSON.stringify(nextMap));
+              }
+            } catch {}
+            return nextMap;
+          });
+
+          setConversations((prev) =>
+            prev.map((c) =>
+              c.id === rawId || c.id === canonicalId
+                ? { ...c, lastMessage: `You challenged @${cleanTarget} to Connect 4! 🔴🟡`, timeAgo: 'Just now' }
+                : c
+            )
+          );
+
+          DataStore.broadcastChatEvent({
+            type: 'MESSAGE_SENT',
+            conversationId: canonicalId,
+            message: newMsg,
+            senderUsername: currentUsername,
+            recipientUsername: cleanTarget,
+          });
+
+          try {
+            if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+              const bc = new BroadcastChannel('dpsbuzz_connect4_realtime');
+              bc.postMessage({ type: 'invite', gameId, inviter: currentUsername, opponent: cleanTarget });
+              bc.close();
+            }
+          } catch {}
+
+          sendSupabaseRealtimeMessage(inviteText, ephemeralTrackingId);
+
+          fetch('/api/chats', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              conversationId: canonicalId,
+              senderUsername: currentUsername,
+              message: newMsg,
+            }),
+          }).catch(() => {});
+        }
+
+        setActiveConnect4GameId(gameId);
+        setIsConnect4ModalOpen(true);
+      } else {
+        alert(data.error || 'Failed to send Connect 4 challenge');
+      }
+    } catch {
+      alert('Error initiating Connect 4 challenge');
+    }
+  };
+
+  const handleAcceptConnect4Game = async (gameId: string) => {
+    setActiveConnect4GameId(gameId);
+    setIsConnect4ModalOpen(true);
+    setChatMessages((prev) => {
+      const next: Record<string, typeof prev[string]> = { ...prev };
+      for (const key of Object.keys(next)) {
+        next[key] = next[key].map((m) => {
+          const isMatch = (m.connect4Invite && m.connect4Invite.gameId === gameId) || (m.text && m.text.includes(gameId));
+          if (isMatch) {
+            let invite = m.connect4Invite;
+            if (!invite && m.text?.startsWith('🔴 [CONNECT4_GAME]:')) {
+              try { invite = JSON.parse(m.text.replace('🔴 [CONNECT4_GAME]:', '')); } catch {}
+            }
+            const updatedInvite = { ...(invite || {}), gameId, status: 'in_progress' as const };
+            return {
+              ...m,
+              connect4Invite: updatedInvite as Connect4InviteData,
+              text: `🔴 [CONNECT4_GAME]:${JSON.stringify(updatedInvite)}`,
+            };
+          }
+          return m;
+        });
+      }
+      return next;
+    });
+
+    try {
+      const res = await fetch('/api/games/connect4', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'accept',
+          gameId,
+          username: currentUsername,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        try {
+          if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+            const bc = new BroadcastChannel('dpsbuzz_connect4_realtime');
+            bc.postMessage({ type: 'update', gameId });
+            bc.close();
+          }
+        } catch {}
+      }
+    } catch {}
+  };
+
+  const handleDeclineConnect4Game = async (gameId: string) => {
+    setChatMessages((prev) => {
+      const next: Record<string, typeof prev[string]> = { ...prev };
+      for (const key of Object.keys(next)) {
+        next[key] = next[key].map((m) => {
+          const isMatch = (m.connect4Invite && m.connect4Invite.gameId === gameId) || (m.text && m.text.includes(gameId));
+          if (isMatch) {
+            let invite = m.connect4Invite;
+            if (!invite && m.text?.startsWith('🔴 [CONNECT4_GAME]:')) {
+              try { invite = JSON.parse(m.text.replace('🔴 [CONNECT4_GAME]:', '')); } catch {}
+            }
+            const updatedInvite = { ...(invite || {}), gameId, status: 'declined' as const };
+            return {
+              ...m,
+              connect4Invite: updatedInvite as Connect4InviteData,
+              text: `🔴 [CONNECT4_GAME]:${JSON.stringify(updatedInvite)}`,
+            };
+          }
+          return m;
+        });
+      }
+      return next;
+    });
+
+    try {
+      await fetch('/api/games/connect4', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -3288,7 +3790,7 @@ function ChatsContent() {
                     </div>
                   )}
 
-                  {/* Guess the Cricketer Game Invite Card or Standard Message Bubble */}
+                  {/* Multiplayer Game Invite Cards (Cricket or Connect 4) or Standard Message Bubble */}
                   {(() => {
                     let inviteData: CricketGameInviteData | null = msg.gameInvite || null;
                     if (!inviteData && msg.text?.startsWith('🎮 [CRICKET_GAME]:')) {
@@ -3312,6 +3814,47 @@ function ChatsContent() {
                             setIsGameModalOpen(true);
                           }}
                         />
+                      );
+                    }
+
+                    let c4InviteData: Connect4InviteData | null = msg.connect4Invite || null;
+                    if (!c4InviteData && msg.text?.startsWith('🔴 [CONNECT4_GAME]:')) {
+                      try {
+                        c4InviteData = JSON.parse(msg.text.replace('🔴 [CONNECT4_GAME]:', ''));
+                      } catch {
+                        c4InviteData = null;
+                      }
+                    }
+
+                    if (c4InviteData) {
+                      return (
+                        <Connect4GameInviteCard
+                          invite={c4InviteData}
+                          isMe={isMe}
+                          currentUsername={currentUsername}
+                          onAccept={handleAcceptConnect4Game}
+                          onDecline={handleDeclineConnect4Game}
+                          onOpenGame={(gid) => {
+                            setActiveConnect4GameId(gid);
+                            setIsConnect4ModalOpen(true);
+                          }}
+                        />
+                      );
+                    }
+
+                    const isVanishSystemMsg =
+                      msg.senderUsername === 'system' ||
+                      msg.text?.includes('turned on vanish mode') ||
+                      msg.text?.includes('turned off vanish mode');
+
+                    if (isVanishSystemMsg) {
+                      return (
+                        <div key={msg.id} className="w-full flex justify-center my-3 select-none">
+                          <div className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-cyan-500/15 border border-cyan-500/25 text-cyan-600 dark:text-cyan-300 text-xs font-semibold backdrop-blur-xs text-center max-w-sm shadow-xs">
+                            <Ghost size={14} className="shrink-0 text-cyan-400" />
+                            <span>{msg.text}</span>
+                          </div>
+                        </div>
                       );
                     }
 
@@ -3354,10 +3897,10 @@ function ChatsContent() {
                       className={`px-4 py-2.5 rounded-[var(--r-bubble,14px)] text-[15px] leading-[1.4] tracking-[-0.015em] font-semibold chat-bubble-text font-sf-display ${
                         isMe
                           ? isVanishMode || msg.is_vanish_mode_message || msg.isVanishMode
-                            ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-br-[5px] shadow-xs ring-1 ring-purple-400/30'
+                            ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-br-[5px] shadow-xs ring-1 ring-cyan-400/30'
                             : 'bg-[#007AFF] text-white rounded-br-[5px] shadow-xs'
                           : isVanishMode || msg.is_vanish_mode_message || msg.isVanishMode
-                            ? 'bg-purple-950/70 text-purple-100 border border-purple-500/30 rounded-bl-[5px] shadow-xs'
+                            ? 'bg-[#0B1526] text-cyan-100 border border-cyan-500/30 rounded-bl-[5px] shadow-xs'
                             : 'bg-[#FFFFFF] text-slate-900 border border-black/10 dark:border-white/15 rounded-bl-[5px] shadow-xs'
                       }`}
                       style={{
@@ -3554,7 +4097,7 @@ function ChatsContent() {
                   {/* Message Time, Vanish Indicator, and Delivery Checkmarks */}
                   <div className="flex items-center gap-1 px-1 mt-1">
                     {(msg.is_vanish_mode_message || msg.isVanishMode) && (
-                      <span title="Disappears when chat is closed" className="text-[10px] text-purple-400 flex items-center select-none">
+                      <span title="Disappears when chat is closed" className="text-[10px] text-cyan-400 flex items-center select-none">
                         👻
                       </span>
                     )}
@@ -3614,7 +4157,7 @@ function ChatsContent() {
             onTouchStart={(e) => handleVanishTouchStart(e.touches[0].clientY)}
             onTouchMove={(e) => handleVanishTouchMove(e.touches[0].clientY)}
             onTouchEnd={handleVanishTouchEnd}
-            className="w-full flex items-center justify-center select-none transition-all relative z-25 py-2 px-4 bg-black/40 backdrop-blur-md border-t border-purple-500/20 text-purple-300"
+            className="w-full flex items-center justify-center select-none transition-all relative z-25 py-2 px-4 bg-black/40 backdrop-blur-md border-t border-cyan-500/20 text-cyan-300"
             style={{
               transform: `translateY(-${Math.min(vanishPullDistance * 0.4, 20)}px)`,
               touchAction: 'none',
@@ -3622,7 +4165,7 @@ function ChatsContent() {
           >
             <div className="flex items-center gap-2 text-xs font-medium">
               <div
-                className="w-2.5 h-2.5 rounded-full bg-purple-400 transition-transform duration-100"
+                className="w-2.5 h-2.5 rounded-full bg-cyan-400 transition-transform duration-100"
                 style={{
                   transform: `scale(${1 + Math.min(vanishPullDistance / 50, 0.6)})`,
                   opacity: Math.min(vanishPullDistance / 40, 1),
@@ -3678,7 +4221,7 @@ function ChatsContent() {
           <form
             onSubmit={handleSendMessage}
             className={`p-3 border-t flex items-center gap-2 shrink-0 relative z-20 transition-colors ${
-              isVanishMode ? 'bg-[#100918] border-purple-500/30' : 'bg-[var(--surface)] border-[var(--line)]'
+              isVanishMode ? 'bg-[#0B1320] border-cyan-500/30' : 'bg-[var(--surface)] border-[var(--line)]'
             }`}
             style={{
               paddingBottom: 'max(14px, env(safe-area-inset-bottom, 14px))',
@@ -3708,7 +4251,7 @@ function ChatsContent() {
               }}
               disabled={isMaintenanceActive}
               className={`w-10 h-10 rounded-full flex items-center justify-center hover:bg-[var(--surface-sunken)] cursor-pointer transition-colors shrink-0 disabled:opacity-40 ${
-                isVanishMode ? 'text-purple-400 hover:text-purple-200' : 'text-[var(--text-muted)] hover:text-[#007AFF]'
+                isVanishMode ? 'text-cyan-400 hover:text-cyan-200' : 'text-[var(--text-muted)] hover:text-[#007AFF]'
               }`}
               aria-label="Attach photo"
               title="Send photo"
@@ -3722,7 +4265,7 @@ function ChatsContent() {
               onClick={() => setIsEmojiPickerOpen(true)}
               disabled={isMaintenanceActive}
               className={`w-10 h-10 rounded-full flex items-center justify-center hover:bg-[var(--surface-sunken)] cursor-pointer transition-colors shrink-0 disabled:opacity-40 ${
-                isVanishMode ? 'text-purple-400 hover:text-purple-200' : 'text-[var(--text-muted)] hover:text-[#007AFF]'
+                isVanishMode ? 'text-cyan-400 hover:text-cyan-200' : 'text-[var(--text-muted)] hover:text-[#007AFF]'
               }`}
               aria-label="Pick emoji"
               title="Emoji picker"
@@ -3737,7 +4280,7 @@ function ChatsContent() {
                 onClick={() => setIsGameDrawerOpen(true)}
                 disabled={isMaintenanceActive}
                 className={`w-10 h-10 rounded-full flex items-center justify-center hover:bg-[var(--surface-sunken)] cursor-pointer transition-colors shrink-0 disabled:opacity-40 ${
-                  isVanishMode ? 'text-purple-400 hover:text-purple-200' : 'text-[var(--text-muted)] hover:text-pink-500'
+                  isVanishMode ? 'text-cyan-400 hover:text-cyan-200' : 'text-[var(--text-muted)] hover:text-cyan-400'
                 }`}
                 aria-label="Play Games"
                 title="Guess the Cricketer & Games 🎮"
@@ -3760,7 +4303,7 @@ function ChatsContent() {
               }
               className={`flex-1 h-11 px-4 rounded-full text-[14.5px] outline-none border focus:ring-1 disabled:opacity-50 transition-all font-semibold font-sf-display ${
                 isVanishMode
-                  ? 'bg-purple-950/40 text-purple-100 placeholder:text-purple-400/50 border-purple-500/40 focus:border-purple-400 focus:ring-purple-400'
+                  ? 'bg-[#0F1E33] text-cyan-100 placeholder:text-cyan-400/50 border-cyan-500/40 focus:border-cyan-400 focus:ring-cyan-400'
                   : 'bg-[var(--surface-sunken)] text-[var(--text)] border-[var(--line)] focus:border-[#007AFF] focus:ring-[#007AFF] placeholder:text-[var(--text-muted)]'
               }`}
               style={{
@@ -3775,7 +4318,7 @@ function ChatsContent() {
                 disabled={isMaintenanceActive}
                 className={`w-11 h-11 rounded-full flex items-center justify-center cursor-pointer transition-transform active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shrink-0 text-white shadow-xs ${
                   isVanishMode
-                    ? 'bg-gradient-to-r from-purple-600 to-indigo-600 shadow-purple-900/40'
+                    ? 'bg-gradient-to-r from-blue-600 to-cyan-600 shadow-cyan-900/40'
                     : 'bg-[#007AFF]'
                 }`}
                 aria-label="Send message"
@@ -3821,6 +4364,18 @@ function ChatsContent() {
               setLongPressConv(null);
               return;
             }
+            fetch('/api/reports', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                type: 'message',
+                targetUser: c.username,
+                reporterUsername: currentUsername,
+                reporterReason: 'Inappropriate or abusive chat behavior',
+                contentSnippet: c.lastMessage || `Conversation with @${c.username}`,
+                urgency: 'high',
+              }),
+            }).catch(() => {});
             alert(`Report submitted for @${c.username}. School moderation will review.`);
             setLongPressConv(null);
           }}
@@ -3829,6 +4384,9 @@ function ChatsContent() {
               alert('You cannot block yourself.');
               setLongPressConv(null);
               return;
+            }
+            if (currentUsername && c.username) {
+              DataStore.blockUser(currentUsername, c.username);
             }
             alert(`Blocked @${c.username}. They cannot message you.`);
             setLongPressConv(null);
@@ -4201,13 +4759,15 @@ function ChatsContent() {
           );
         })()}
 
-        {/* Guess the Cricketer: Game Challenge Drawer (inside active chat view) */}
+        {/* Multiplayer Games: Game Challenge Drawer (inside active chat view) */}
         <CricketGameDrawer
           isOpen={isGameDrawerOpen}
           onClose={() => setIsGameDrawerOpen(false)}
-          opponentUsername={activeConversation.username || activeConversation.id.replace(/^conv-/, '')}
-          opponentName={activeConversation.name || activeConversation.username || ''}
+          opponentUsername={getOpponentUsernameFromConv(activeConversation)}
+          opponentName={activeConversation?.name || getOpponentUsernameFromConv(activeConversation)}
           onSendChallenge={handleSendGameChallenge}
+          onSendConnect4Challenge={handleSendConnect4Challenge}
+          onOpenSoloGame={() => setIsSolo2048ModalOpen(true)}
           onOpenLeaderboard={(tab) => {
             setLeaderboardDefaultTab(tab || 'leaderboard');
             setIsLeaderboardModalOpen(true);
@@ -4222,6 +4782,31 @@ function ChatsContent() {
           onClose={() => setIsGameModalOpen(false)}
           onOpenLeaderboard={(tab) => {
             setLeaderboardDefaultTab(tab || 'leaderboard');
+            setIsLeaderboardModalOpen(true);
+          }}
+        />
+
+        {/* Connect 4: Match Arena Modal (inside active chat view) */}
+        <Connect4GameModal
+          isOpen={isConnect4ModalOpen}
+          gameId={activeConnect4GameId}
+          currentUsername={currentUsername}
+          onClose={() => setIsConnect4ModalOpen(false)}
+          onOpenLeaderboard={() => {
+            setIsConnect4ModalOpen(false);
+            setLeaderboardDefaultTab('leaderboard');
+            setIsLeaderboardModalOpen(true);
+          }}
+        />
+
+        {/* Solo 2048 Arcade Modal (inside active chat view) */}
+        <SoloGame2048Modal
+          isOpen={isSolo2048ModalOpen}
+          onClose={() => setIsSolo2048ModalOpen(false)}
+          currentUsername={currentUsername}
+          onOpenLeaderboard={() => {
+            setIsSolo2048ModalOpen(false);
+            setLeaderboardDefaultTab('leaderboard');
             setIsLeaderboardModalOpen(true);
           }}
         />
@@ -4318,7 +4903,7 @@ function ChatsContent() {
           aria-label="Group chats"
         >
           <span>Groups</span>
-          {myGroupInvites.length > 0 && (
+          {isMounted && myGroupInvites.length > 0 && (
             <span
               className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold tabular-nums ${
                 activeChip === 'groups'
@@ -4339,10 +4924,10 @@ function ChatsContent() {
               ? 'bg-[var(--primary)] text-[var(--on-primary)] shadow-xs'
               : 'bg-[var(--surface-sunken)] text-[var(--text-muted)] border border-[var(--line)] hover:text-[var(--text)]'
           }`}
-          aria-label={`Message requests (${computedRequests.length})`}
+          aria-label={`Message requests (${isMounted ? computedRequests.length : 0})`}
         >
           <span>Requests</span>
-          {computedRequests.length > 0 && (
+          {isMounted && computedRequests.length > 0 && (
             <span
               className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold tabular-nums ${
                 activeChip === 'requests'
@@ -4368,7 +4953,7 @@ function ChatsContent() {
       </div>
 
       {/* Pending Group Invitations Banner (Visible on All and Groups tabs) */}
-      {myGroupInvites.length > 0 && activeChip !== 'requests' && (
+      {isMounted && myGroupInvites.length > 0 && activeChip !== 'requests' && (
         <div className="mx-4 my-2.5 p-3.5 rounded-[22px] bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-transparent border border-emerald-500/30 space-y-2.5 shadow-sm">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -4457,10 +5042,10 @@ function ChatsContent() {
         /* Conversation Rows & States */
         <div className="divide-y" style={{ borderColor: 'var(--line)' }}>
           {/* Prominent Instagram-Style Message Request Alert Strip */}
-          {activeChip === 'all' && computedRequests.length > 0 && (
+          {isMounted && activeChip === 'all' && computedRequests.length > 0 && (
             <div
               onClick={() => setActiveChip('requests')}
-              className="mx-3.5 my-2.5 p-3 rounded-2xl bg-gradient-to-r from-orange-500/15 via-pink-500/15 to-purple-500/15 border border-orange-500/30 flex items-center justify-between cursor-pointer hover:opacity-95 transition-all shadow-xs"
+              className="mx-3.5 my-2.5 p-3 rounded-2xl bg-gradient-to-r from-blue-500/15 via-cyan-500/15 to-blue-600/15 border border-blue-500/30 flex items-center justify-between cursor-pointer hover:opacity-95 transition-all shadow-xs"
             >
               <div className="flex items-center gap-3 min-w-0">
                 <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] flex items-center justify-center text-white font-extrabold text-xs shadow-xs shrink-0">
@@ -4887,13 +5472,15 @@ function ChatsContent() {
         </div>
       )}
 
-      {/* Guess the Cricketer: Game Challenge Drawer */}
+      {/* Multiplayer Games: Game Challenge Drawer */}
       <CricketGameDrawer
         isOpen={isGameDrawerOpen}
         onClose={() => setIsGameDrawerOpen(false)}
-        opponentUsername={(activeConversation as ConversationItem | null)?.username || ''}
-        opponentName={(activeConversation as ConversationItem | null)?.name || ''}
+        opponentUsername={getOpponentUsernameFromConv(activeConversation as ConversationItem | null)}
+        opponentName={(activeConversation as ConversationItem | null)?.name || getOpponentUsernameFromConv(activeConversation as ConversationItem | null)}
         onSendChallenge={handleSendGameChallenge}
+        onSendConnect4Challenge={handleSendConnect4Challenge}
+        onOpenSoloGame={() => setIsSolo2048ModalOpen(true)}
         onOpenLeaderboard={(tab) => {
           setLeaderboardDefaultTab(tab || 'leaderboard');
           setIsLeaderboardModalOpen(true);
@@ -4908,6 +5495,31 @@ function ChatsContent() {
         onClose={() => setIsGameModalOpen(false)}
         onOpenLeaderboard={(tab) => {
           setLeaderboardDefaultTab(tab || 'leaderboard');
+          setIsLeaderboardModalOpen(true);
+        }}
+      />
+
+      {/* Connect 4: Match Arena Modal */}
+      <Connect4GameModal
+        isOpen={isConnect4ModalOpen}
+        gameId={activeConnect4GameId}
+        currentUsername={currentUsername}
+        onClose={() => setIsConnect4ModalOpen(false)}
+        onOpenLeaderboard={() => {
+          setIsConnect4ModalOpen(false);
+          setLeaderboardDefaultTab('leaderboard');
+          setIsLeaderboardModalOpen(true);
+        }}
+      />
+
+      {/* Solo 2048 Arcade Modal */}
+      <SoloGame2048Modal
+        isOpen={isSolo2048ModalOpen}
+        onClose={() => setIsSolo2048ModalOpen(false)}
+        currentUsername={currentUsername}
+        onOpenLeaderboard={() => {
+          setIsSolo2048ModalOpen(false);
+          setLeaderboardDefaultTab('leaderboard');
           setIsLeaderboardModalOpen(true);
         }}
       />

@@ -108,7 +108,18 @@ export async function POST(req: NextRequest) {
     }
 
     // 4. Role validation (Notices attachments only permitted for admin)
-    if (folder === 'notices' && userRole !== 'admin') {
+    let verifiedRole = 'student';
+    const userCookie = req.cookies.get('dpsbuzz_user')?.value;
+    if (userCookie) {
+      try {
+        const parsed = JSON.parse(decodeURIComponent(userCookie));
+        if (parsed?.role === 'admin' && parsed?.username === 'shashwath71845') {
+          verifiedRole = 'admin';
+        }
+      } catch {}
+    }
+
+    if (folder === 'notices' && verifiedRole !== 'admin') {
       return NextResponse.json(
         { success: false, error: 'Only school administrators can attach documents to circulars' },
         { status: 403 }

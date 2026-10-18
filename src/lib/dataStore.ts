@@ -79,7 +79,7 @@ export interface Post {
   song?: SongTrack;
   createdAt: string;
   timeAgo: string;
-  habitCategory?: 'studies' | 'sports' | 'reading' | 'stem' | 'arts' | 'routine';
+  habitCategory?: 'studies' | 'sports' | 'reading' | 'stem' | 'arts' | 'routine' | 'entertainment' | 'casual' | 'other' | string;
   habitTag?: string;
   habitPointsAwarded?: number;
   isRepost?: boolean;
@@ -96,6 +96,8 @@ export interface Post {
   slideCaptions?: string[];
   taggedUsers?: string[];
   isTaggedOnGrid?: boolean;
+  audience?: 'whole-school' | 'class-group' | string;
+  targetClass?: string;
 }
 
 export interface UserActivityComment {
@@ -327,15 +329,18 @@ export interface RosterEntry {
   claimedBy?: string;
 }
 
+export type NotificationType = 'like' | 'comment' | 'follow' | 'notice' | 'badge' | 'system' | 'chat' | 'post' | 'cricket' | 'connect4';
+
 export interface NotificationItem {
   id: string;
   userId: string;
-  type: 'like' | 'comment' | 'follow' | 'notice' | 'badge' | 'system' | 'chat' | 'post';
+  type: NotificationType;
   title: string;
   body: string;
   timeAgo: string;
   isRead: boolean;
   link?: string;
+  createdAt?: string;
 }
 
 export interface UserWarning {
@@ -486,11 +491,39 @@ const STORAGE_KEYS = {
   COMMENTS: 'dpsbuzz_comments_v1',
 };
 
+// In-memory memory cache for lightning-fast reads without JSON.parse overhead
+const storageMemoryCache = new Map<string, any>();
+const storageRawStringCache = new Map<string, string | null>();
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (e) => {
+    if (e.key) {
+      storageMemoryCache.delete(e.key);
+      storageRawStringCache.delete(e.key);
+    } else {
+      storageMemoryCache.clear();
+      storageRawStringCache.clear();
+    }
+  });
+}
+
 function getStorage<T>(key: string, defaultValue: T): T {
   if (typeof window === 'undefined') return defaultValue;
   try {
-    const item = localStorage.getItem(key);
-    return item ? JSON.parse(item) : defaultValue;
+    const raw = localStorage.getItem(key);
+    if (raw === null) {
+      storageMemoryCache.delete(key);
+      storageRawStringCache.delete(key);
+      return defaultValue;
+    }
+    // Instant hit: if raw string is identical to what we previously parsed, return cached object in 0ms
+    if (storageRawStringCache.get(key) === raw && storageMemoryCache.has(key)) {
+      return storageMemoryCache.get(key);
+    }
+    const parsed = JSON.parse(raw);
+    storageRawStringCache.set(key, raw);
+    storageMemoryCache.set(key, parsed);
+    return parsed;
   } catch {
     return defaultValue;
   }
@@ -499,7 +532,10 @@ function getStorage<T>(key: string, defaultValue: T): T {
 function setStorage<T>(key: string, value: T): void {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(key, JSON.stringify(value));
+    const serialized = JSON.stringify(value);
+    localStorage.setItem(key, serialized);
+    storageRawStringCache.set(key, serialized);
+    storageMemoryCache.set(key, value);
   } catch (e) {
     console.error('Failed to save to localStorage:', e);
   }
@@ -507,7 +543,7 @@ function setStorage<T>(key: string, value: T): void {
 
 // Set of mock/test usernames to purge and exclude from all public feeds and screens
 export const DUMMY_TEST_USERNAMES = new Set([
-  'arjun_8a', 'rohan_8a', 'ananya_8a', 'aditya_8a', 'priya_8a', 'karthik_8a',
+  'arjun_8a', 'arjun', 'priya_7b', 'priya', 'rohan_8a', 'ananya_8a', 'aditya_8a', 'priya_8a', 'karthik_8a',
   'tanvi_8a', 'dev_6a', 'kavya_7b', 'sneha_10c', 'rahul_9b', 'tanvi_10a',
   'vikram_9a', 'siddharth_8g', 'meera_8g', 'aarav_8g', 'diya_8g', 'ishaan_8g',
   'riya_7g', 'varun_7g', 'priya_10a', 'arjun_9b', 'karthik_8b', 'aarav_8b',
@@ -680,6 +716,17 @@ export const STARTER_CALENDAR: CalendarEvent[] = [];
 let lastServerSyncTime = 0;
 let activeSyncPromise: Promise<boolean> | null = null;
 
+// High-speed in-memory cache for current user to prevent main-thread lag during renders and taps
+let _cachedCurrentUserRaw: string | null = null;
+let _cachedCurrentUserObj: Profile | null = null;
+let _cachedCurrentUserTime: number = 0;
+
+export function invalidateCurrentUserCache(): void {
+  _cachedCurrentUserRaw = null;
+  _cachedCurrentUserObj = null;
+  _cachedCurrentUserTime = 0;
+}
+
 export const DataStore = {
   // Cross-device synchronization between Web and Android App
   async syncWithServer(force = false): Promise<boolean> {
@@ -691,8 +738,8 @@ export const DataStore = {
     if (!force && typeof document !== 'undefined' && document.visibilityState === 'hidden') {
       return true;
     }
-    // Throttle: don't hammer the server more often than once every 4 seconds unless forced
-    if (!force && Date.now() - lastServerSyncTime < 4000) {
+    // Throttle: don't hammer the server more often than once every 12 seconds unless forced
+    if (!force && Date.now() - lastServerSyncTime < 12000) {
       return true;
     }
 
@@ -1235,42 +1282,56 @@ export const DataStore = {
   getCurrentUser(): Profile {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('dpsbuzz_user');
-      if (stored) {
-        try {
-          let parsed = JSON.parse(stored);
-          if (parsed && parsed.username && !DUMMY_TEST_USERNAMES.has(parsed.username.toLowerCase())) {
-            // Protect Shashwath Admin account: require explicit login authentication flag
-            if (parsed.username.toLowerCase() === 'shashwath71845') {
-              const isAuth = localStorage.getItem('dpsbuzz_shashwath_authenticated');
-              if (!isAuth) {
-                // Clear leaked session from visitor device
-                localStorage.removeItem('dpsbuzz_user');
-                document.cookie = 'dpsbuzz_user=; path=/; max-age=0; SameSite=Lax';
-                return GUEST_USER;
-              }
-              if (parsed.followerCount === 145 || parsed.spiritPoints === 999) {
-                parsed = { ...parsed, followerCount: 0, followingCount: 0, postCount: 0, spiritPoints: 0 };
-                localStorage.setItem('dpsbuzz_user', JSON.stringify(parsed));
-              }
-            }
-            if (parsed.fullName && parsed.fullName.includes('(Admin)')) {
-              parsed.fullName = parsed.fullName.replace(/\s*\(Admin\)/gi, '').trim();
-              if (parsed.username.toLowerCase() === 'shashwath71845' && parsed.fullName === 'Shashwath') {
-                parsed.fullName = 'Shashwath Salla';
-              }
-              localStorage.setItem('dpsbuzz_user', JSON.stringify(parsed));
-            }
-            // Always resolve live profile avatar if user added/changed their picture
-            const savedProfiles = getStorage<Profile[]>(STORAGE_KEYS.PROFILES, []);
-            const match = savedProfiles.find((p) => p.username.toLowerCase().trim() === parsed.username.toLowerCase().trim());
-            if (match?.avatar && parsed.avatar !== match.avatar) {
-              parsed.avatar = match.avatar;
-              localStorage.setItem('dpsbuzz_user', JSON.stringify(parsed));
-            }
-            return parsed;
-          }
-        } catch {}
+      if (!stored) return GUEST_USER;
+      const now = Date.now();
+      if (_cachedCurrentUserObj && _cachedCurrentUserRaw === stored && now - _cachedCurrentUserTime < 8000) {
+        return _cachedCurrentUserObj;
       }
+      try {
+        let parsed = JSON.parse(stored);
+        if (parsed && parsed.username && !DUMMY_TEST_USERNAMES.has(parsed.username.toLowerCase())) {
+          // Protect Shashwath Admin account: require explicit login authentication flag
+          if (parsed.username.toLowerCase() === 'shashwath71845') {
+            const isAuth = localStorage.getItem('dpsbuzz_shashwath_authenticated');
+            if (!isAuth) {
+              // Clear leaked session from visitor device
+              localStorage.removeItem('dpsbuzz_user');
+              document.cookie = 'dpsbuzz_user=; path=/; max-age=0; SameSite=Lax';
+              _cachedCurrentUserObj = null;
+              _cachedCurrentUserRaw = null;
+              return GUEST_USER;
+            }
+            if (parsed.followerCount === 145 || parsed.spiritPoints === 999) {
+              parsed = { ...parsed, followerCount: 0, followingCount: 0, postCount: 0, spiritPoints: 0 };
+              localStorage.setItem('dpsbuzz_user', JSON.stringify(parsed));
+            }
+          }
+          if (parsed.fullName && parsed.fullName.includes('(Admin)')) {
+            parsed.fullName = parsed.fullName.replace(/\s*\(Admin\)/gi, '').trim();
+            if (parsed.username.toLowerCase() === 'shashwath71845' && parsed.fullName === 'Shashwath') {
+              parsed.fullName = 'Shashwath Salla';
+            }
+            localStorage.setItem('dpsbuzz_user', JSON.stringify(parsed));
+          }
+          // Always resolve live profile avatar if user added/changed their picture
+          const savedProfiles = getStorage<Profile[]>(STORAGE_KEYS.PROFILES, []);
+          const match = savedProfiles.find((p) => p.username.toLowerCase().trim() === parsed.username.toLowerCase().trim());
+          if (match?.avatar && parsed.avatar !== match.avatar) {
+            parsed.avatar = match.avatar;
+            localStorage.setItem('dpsbuzz_user', JSON.stringify(parsed));
+          }
+          // Real-time authoritative follower & following counts
+          const follows = this.getFollows();
+          const cleanUser = (parsed.username || '').toLowerCase().trim();
+          parsed.followerCount = follows.filter((f) => (f.following || '').toLowerCase().trim() === cleanUser).length;
+          parsed.followingCount = follows.filter((f) => (f.follower || '').toLowerCase().trim() === cleanUser).length;
+
+          _cachedCurrentUserObj = parsed;
+          _cachedCurrentUserRaw = stored;
+          _cachedCurrentUserTime = now;
+          return parsed;
+        }
+      } catch {}
     }
     return GUEST_USER;
   },
@@ -1286,8 +1347,25 @@ export const DataStore = {
         if (stored) {
           const activeUser = JSON.parse(stored);
           if (activeUser && (activeUser.username || '').toLowerCase().trim() === clean) {
-            if (activeUser.avatar) {
-              prof = prof ? { ...prof, ...activeUser, avatar: activeUser.avatar } : activeUser;
+            if (prof) {
+              prof = {
+                ...prof,
+                avatar: activeUser.avatar || prof.avatar,
+                fullName: activeUser.fullName || prof.fullName,
+                bio: activeUser.bio !== undefined ? activeUser.bio : prof.bio,
+                class: activeUser.class || prof.class,
+                section: activeUser.section || prof.section,
+                isPrivate: activeUser.isPrivate !== undefined ? activeUser.isPrivate : prof.isPrivate,
+              };
+            } else {
+              const follows = this.getFollows();
+              const realFollowers = follows.filter((f) => (f.following || '').toLowerCase().trim() === clean).length;
+              const realFollowing = follows.filter((f) => (f.follower || '').toLowerCase().trim() === clean).length;
+              prof = {
+                ...activeUser,
+                followerCount: realFollowers,
+                followingCount: realFollowing,
+              };
             }
           }
         }
@@ -1452,6 +1530,41 @@ export const DataStore = {
               }
             }
           }
+
+          // Propagate updated class & section to all posts and habit streaks
+          if (updates.class !== undefined || updates.section !== undefined) {
+            const newClass = updates.class || (updatedProfile as any)?.class || '8';
+            const newSection = updates.section || (updatedProfile as any)?.section || 'A';
+            const classFormatted = `Class ${newClass}-${newSection}`;
+
+            // 1. Update user's posts
+            const posts = getStorage<Post[]>(STORAGE_KEYS.POSTS, []);
+            let postsChanged = false;
+            const updatedPosts = posts.map((p) => {
+              if ((p.username || '').toLowerCase().trim() === clean) {
+                postsChanged = true;
+                return { ...p, class: classFormatted };
+              }
+              return p;
+            });
+            if (postsChanged) {
+              setStorage(STORAGE_KEYS.POSTS, updatedPosts);
+            }
+
+            // 2. Update user's habit streaks
+            const streaks = getStorage<HabitStreak[]>(STORAGE_KEYS.HABIT_STREAKS, []);
+            let streaksChanged = false;
+            const updatedStreaks = streaks.map((st) => {
+              if (st.username.toLowerCase().trim() === clean) {
+                streaksChanged = true;
+                return { ...st, class: classFormatted };
+              }
+              return st;
+            });
+            if (streaksChanged) {
+              setStorage(STORAGE_KEYS.HABIT_STREAKS, updatedStreaks);
+            }
+          }
         } catch {}
         window.dispatchEvent(
           new CustomEvent('dpsbuzz:content_updated', {
@@ -1464,19 +1577,28 @@ export const DataStore = {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ profile: updatedProfile }),
         }).catch(() => {});
+        fetch('/api/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ profiles: [updatedProfile] }),
+        }).catch(() => {});
       }
     }
     return updatedProfile;
   },
 
+  addSpiritPoints(username: string, amount: number, reason?: string): number {
+    const profile = this.getProfileByUsername(username);
+    if (!profile) return 0;
+    const currentPoints = profile.spiritPoints || 0;
+    const newPoints = Math.max(0, currentPoints + amount);
+    this.updateProfile(username, { spiritPoints: newPoints });
+    return newPoints;
+  },
+
   // Posts (Start completely empty)
   // Posts (Defaults to rich explore posts across grades 6-10)
   getPosts(includeBanned = false): Post[] {
-    if (typeof window !== 'undefined' && Date.now() - lastServerSyncTime > 3000) {
-      lastServerSyncTime = Date.now();
-      DataStore.syncWithServer().catch(() => {});
-    }
-
     const stored = getStorage<Post[]>(STORAGE_KEYS.POSTS, []);
     const banned = this.getBannedUsers();
     const deletedUsers = this.getDeletedUsernames();
@@ -1552,6 +1674,26 @@ export const DataStore = {
     newPost.habitPointsAwarded = habitResult.awarded ? habitResult.points : 0;
     newPost.habitCategory = (post as any).habitCategory || 'studies';
     newPost.habitTag = this.evaluateHabitPost(post.caption, post.habitCategory).habitTag;
+
+    // Dispatch in-app notifications for tagged classmates
+    if (newPost.taggedUsers && Array.isArray(newPost.taggedUsers) && newPost.taggedUsers.length > 0) {
+      const notifs = this.getNotifications();
+      for (const tagged of newPost.taggedUsers) {
+        const cleanTagged = (tagged || '').toLowerCase().trim();
+        if (cleanTagged && cleanTagged !== (post.username || '').toLowerCase().trim()) {
+          notifs.unshift({
+            id: `notif-tag-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+            userId: cleanTagged,
+            type: 'system',
+            title: `@${post.username} tagged you in a post! 🏷️`,
+            body: post.caption?.slice(0, 90) || 'You were tagged in a new photo/post.',
+            timeAgo: 'Just now',
+            isRead: false,
+          });
+        }
+      }
+      setStorage(STORAGE_KEYS.NOTIFICATIONS, notifs);
+    }
 
     // Sync post to server so it is immediately visible to Android App & all devices
     if (typeof window !== 'undefined') {
@@ -2076,11 +2218,6 @@ export const DataStore = {
 
   // Stories
   getStories(includeBanned = false): Story[] {
-    if (typeof window !== 'undefined' && Date.now() - lastServerSyncTime > 2500) {
-      lastServerSyncTime = Date.now();
-      DataStore.syncWithServer().catch(() => {});
-    }
-
     const stored = getStorage<Story[]>(STORAGE_KEYS.STORIES, []);
     const banned = this.getBannedUsers();
     const deletedUsers = this.getDeletedUsernames();
@@ -3263,8 +3400,67 @@ export const DataStore = {
     return this.getPosts().filter((p) => savedIds.has(p.id));
   },
 
+  archiveStory(story: Story): void {
+    if (!story || !story.username || typeof window === 'undefined') return;
+    try {
+      const clean = story.username.toLowerCase().trim();
+      const key = `dpsbuzz_story_archive_${clean}`;
+      const raw = localStorage.getItem(key);
+      const existing = raw ? JSON.parse(raw) : [];
+      if (Array.isArray(existing)) {
+        if (!existing.some((s: any) => s.id === story.id)) {
+          existing.unshift(story);
+          localStorage.setItem(key, JSON.stringify(existing.slice(0, 50)));
+        }
+      }
+    } catch {}
+  },
+
+  getArchivedStories(username: string): Story[] {
+    const clean = (username || '').toLowerCase().trim();
+    if (!clean || typeof window === 'undefined') return [];
+    try {
+      const key = `dpsbuzz_story_archive_${clean}`;
+      const raw = localStorage.getItem(key);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch {}
+    return [];
+  },
+
+  isConversationMuted(convId: string): boolean {
+    if (!convId || typeof window === 'undefined') return false;
+    try {
+      const raw = localStorage.getItem('dpsbuzz_muted_convs');
+      const list = raw ? JSON.parse(raw) : [];
+      return Array.isArray(list) && list.includes(convId);
+    } catch {
+      return false;
+    }
+  },
+
+  setConversationMuted(convId: string, muted: boolean): void {
+    if (!convId || typeof window === 'undefined') return;
+    try {
+      const raw = localStorage.getItem('dpsbuzz_muted_convs');
+      const list = raw ? JSON.parse(raw) : [];
+      const set = new Set(Array.isArray(list) ? list : []);
+      if (muted) set.add(convId);
+      else set.delete(convId);
+      localStorage.setItem('dpsbuzz_muted_convs', JSON.stringify(Array.from(set)));
+      window.dispatchEvent(new CustomEvent('dpsbuzz:conv_mute_changed', { detail: { convId, muted } }));
+    } catch {}
+  },
+
   deleteStory(storyId: string): void {
-    const stories = this.getStories().filter((s) => s.id !== storyId);
+    const allStories = getStorage<Story[]>(STORAGE_KEYS.STORIES, []);
+    const target = allStories.find((s) => s.id === storyId);
+    if (target) {
+      this.archiveStory(target);
+    }
+    const stories = allStories.filter((s) => s.id !== storyId);
     setStorage(STORAGE_KEYS.STORIES, stories);
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated', { detail: { type: 'story_deleted', storyId } }));
@@ -4436,37 +4632,22 @@ export const DataStore = {
 
   // Follows and Mutuals
   getFollows(): Array<{ follower: string; following: string }> {
-    let saved = getStorage<Array<{ follower: string; following: string }>>(
+    const saved = getStorage<Array<{ follower: string; following: string }>>(
       STORAGE_KEYS.FOLLOWS,
       []
     );
-    if (!saved || saved.length === 0) {
-      saved = [
-        { follower: 'priya_7b', following: 'rahul_9a' },
-        { follower: 'priya_7b', following: 'sneha_10c' },
-        { follower: 'priya_7b', following: 'ananya_8b' },
-        { follower: 'rahul_9a', following: 'priya_7b' },
-        { follower: 'rahul_9a', following: 'sneha_10c' },
-        { follower: 'rahul_9a', following: 'varun_7a' },
-        { follower: 'sneha_10c', following: 'priya_7b' },
-        { follower: 'sneha_10c', following: 'rahul_9a' },
-        { follower: 'ananya_8b', following: 'priya_7b' },
-        { follower: 'ananya_8b', following: 'aditya_8a' },
-        { follower: 'aditya_8a', following: 'meera_8a' },
-        { follower: 'aditya_8a', following: 'priya_7b' },
-        { follower: 'meera_8a', following: 'aditya_8a' },
-        { follower: 'meera_8a', following: 'ananya_8b' },
-        { follower: 'karthik_6a', following: 'varun_7a' },
-        { follower: 'varun_7a', following: 'karthik_6a' },
-      ];
-      setStorage(STORAGE_KEYS.FOLLOWS, saved);
-    }
-    return saved.filter((f) => {
+    const deletedUsers = this.getDeletedUsernames();
+    return (Array.isArray(saved) ? saved : []).filter((f) => {
       if (!f || !f.follower || !f.following) return false;
       const fol = f.follower.toLowerCase().trim();
       const fing = f.following.toLowerCase().trim();
       if (fol === fing) return false; // Rule: Users can NEVER follow themselves!
-      return !DUMMY_TEST_USERNAMES.has(fol) && !DUMMY_TEST_USERNAMES.has(fing);
+      return (
+        !DUMMY_TEST_USERNAMES.has(fol) &&
+        !DUMMY_TEST_USERNAMES.has(fing) &&
+        !deletedUsers.has(fol) &&
+        !deletedUsers.has(fing)
+      );
     });
   },
 
@@ -4609,9 +4790,10 @@ export const DataStore = {
       isNowFollowing = true;
     }
     setStorage(STORAGE_KEYS.FOLLOWS, list);
+    invalidateCurrentUserCache();
 
-    // Update followerCount on target profile and followingCount on user profile
-    const profiles = this.getProfiles().map((p) => {
+    // Authoritative update of profiles list
+    const updatedProfiles = this.getProfiles().map((p) => {
       if (p.username.toLowerCase() === cleanFollowing) {
         return {
           ...p,
@@ -4626,7 +4808,7 @@ export const DataStore = {
       }
       return p;
     });
-    setStorage(STORAGE_KEYS.PROFILES, profiles);
+    setStorage(STORAGE_KEYS.PROFILES, updatedProfiles);
 
     // Send in-app notification to followed user
     if (isNowFollowing) {
@@ -4667,7 +4849,7 @@ export const DataStore = {
         body: JSON.stringify({
           follows: isNowFollowing ? [{ follower: cleanFollower, following: cleanFollowing }] : [],
           removedFollows: !isNowFollowing ? [{ follower: cleanFollower, following: cleanFollowing }] : [],
-          profiles: profiles.filter((p) => {
+          profiles: updatedProfiles.filter((p) => {
             const u = p.username.toLowerCase().trim();
             return u === cleanFollowing || u === cleanFollower;
           }),
@@ -5668,11 +5850,46 @@ export const DataStore = {
     const list = getStorage<HabitStreak[]>(STORAGE_KEYS.HABIT_STREAKS, []);
     const deletedUsers = this.getDeletedUsernames();
     const activeProfiles = new Set(this.getProfiles().map((p) => p.username.toLowerCase().trim()));
-    const cleanList = list.filter((s) => {
-      if (!s || !s.username) return false;
-      const u = s.username.toLowerCase().trim();
-      return !DUMMY_TEST_USERNAMES.has(u) && !deletedUsers.has(u) && activeProfiles.has(u);
-    });
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().slice(0, 10);
+
+    let needsSave = false;
+    const cleanList = list
+      .filter((s) => {
+        if (!s || !s.username) return false;
+        const u = s.username.toLowerCase().trim();
+        return !DUMMY_TEST_USERNAMES.has(u) && !deletedUsers.has(u) && activeProfiles.has(u);
+      })
+      .map((s) => {
+        const lastDate = s.lastPostedDate ? s.lastPostedDate.slice(0, 10) : '';
+        let streakDays = s.streakDays;
+        let postedToday = s.postedToday;
+
+        if (lastDate === todayStr) {
+          postedToday = true;
+        } else if (lastDate === yesterdayStr) {
+          postedToday = false;
+        } else if (lastDate < yesterdayStr) {
+          // Missed posting for a day: streak is broken and resets to 0
+          if (streakDays > 0 || postedToday) {
+            streakDays = 0;
+            postedToday = false;
+            needsSave = true;
+          }
+        }
+        return {
+          ...s,
+          streakDays,
+          postedToday,
+        };
+      });
+
+    if (needsSave) {
+      setStorage(STORAGE_KEYS.HABIT_STREAKS, cleanList);
+    }
+
     // Sort descending by streakDays first, then by habitPoints
     return [...cleanList].sort((a, b) => {
       if (b.streakDays !== a.streakDays) {
@@ -5696,46 +5913,98 @@ export const DataStore = {
     reason: string;
   } {
     const text = (caption || '').toLowerCase();
+    const cleanCat = (category || '').toLowerCase().trim();
 
-    // Explicit or keyword checks
-    const isStudies =
-      category === 'studies' ||
-      /study|studies|revision|exam|homework|math|physics|chapter|notes|formula|science expo|test|syllabus|prepar|quiz/i.test(
-        text
-      );
-    const isSports =
-      category === 'sports' ||
-      /sport|sports|cricket|football|badminton|running|jog|drill|match|fitness|pt|play|athletic|ball|practice/i.test(
-        text
-      );
-    const isReading =
-      category === 'reading' ||
-      /read|reading|book|novel|literature|library|chapter|diary|pages|author/i.test(text);
-    const isStem =
-      category === 'stem' ||
-      /lab|stem|robot|coding|code|circuit|chemistry|biology|experiment|tech|sensor|micro/i.test(text);
-    const isArts =
-      category === 'arts' ||
-      /art|drawing|paint|painting|music|choir|drama|sketch|dance|craft|colour/i.test(text);
-    const isRoutine =
-      category === 'routine' ||
-      /routine|morning|assembly|habit|early|water|clean|punctual|discipline|tiffin/i.test(text);
-
-    // Reject low-effort spam / nonsense (e.g. fewer than 3 words without explicit category)
-    const words = text
-      .trim()
-      .split(/\s+/)
-      .filter((w) => w.length > 1);
-    if (words.length < 3 && !category) {
+    // Explicit category checks
+    if (cleanCat === 'entertainment') {
       return {
-        isHabit: false,
-        primaryHabit: 'Studies',
-        habitTag: '#None',
-        points: 0,
-        reason:
-          'Too short to qualify as a study or good habit post. Share your homework, sports, or revision update!',
+        isHabit: true,
+        primaryHabit: 'Arts',
+        habitTag: '#Entertainment & Fun',
+        points: 25,
+        reason: 'Entertainment & creative post (+25 pts)',
       };
     }
+    if (cleanCat === 'casual') {
+      return {
+        isHabit: true,
+        primaryHabit: 'Routine',
+        habitTag: '#Casual & Thoughts',
+        points: 25,
+        reason: 'Casual thoughts update (+25 pts)',
+      };
+    }
+    if (cleanCat === 'other' || (cleanCat && !['studies', 'sports', 'reading', 'stem', 'arts', 'routine', 'none'].includes(cleanCat))) {
+      return {
+        isHabit: true,
+        primaryHabit: 'Routine',
+        habitTag: `#${category || 'Student Life'}`,
+        points: 25,
+        reason: `${category || 'Student update'} (+25 pts)`,
+      };
+    }
+    if (cleanCat === 'studies') {
+      return {
+        isHabit: true,
+        primaryHabit: 'Studies',
+        habitTag: '#Studies & Revision',
+        points: 25,
+        reason: 'Studies and homework update (+25 pts)',
+      };
+    }
+    if (cleanCat === 'sports') {
+      return {
+        isHabit: true,
+        primaryHabit: 'Sports',
+        habitTag: '#Sports & Playing',
+        points: 25,
+        reason: 'Sports and fitness habit (+25 pts)',
+      };
+    }
+    if (cleanCat === 'reading') {
+      return {
+        isHabit: true,
+        primaryHabit: 'Reading',
+        habitTag: '#Book Reading',
+        points: 25,
+        reason: 'Reading and literature habit (+25 pts)',
+      };
+    }
+    if (cleanCat === 'stem') {
+      return {
+        isHabit: true,
+        primaryHabit: 'STEM',
+        habitTag: '#Science & Lab',
+        points: 25,
+        reason: 'STEM and laboratory practice (+25 pts)',
+      };
+    }
+    if (cleanCat === 'arts') {
+      return {
+        isHabit: true,
+        primaryHabit: 'Arts',
+        habitTag: '#Creative Arts',
+        points: 25,
+        reason: 'Arts and cultural habit (+25 pts)',
+      };
+    }
+    if (cleanCat === 'routine') {
+      return {
+        isHabit: true,
+        primaryHabit: 'Routine',
+        habitTag: '#Healthy Routine',
+        points: 25,
+        reason: 'Daily discipline and routine (+25 pts)',
+      };
+    }
+
+    // Keyword detection
+    const isStudies = /study|studies|revision|exam|homework|math|physics|chapter|notes|formula|science expo|test|syllabus|prepar|quiz/i.test(text);
+    const isSports = /sport|sports|cricket|football|badminton|running|jog|drill|match|fitness|pt|play|athletic|ball|practice/i.test(text);
+    const isReading = /read|reading|book|novel|literature|library|chapter|diary|pages|author/i.test(text);
+    const isStem = /lab|stem|robot|coding|code|circuit|chemistry|biology|experiment|tech|sensor|micro/i.test(text);
+    const isArts = /art|drawing|paint|painting|music|choir|drama|sketch|dance|craft|colour/i.test(text);
+    const isRoutine = /routine|morning|assembly|habit|early|water|clean|punctual|discipline|tiffin/i.test(text);
 
     if (isStudies) {
       return {
@@ -5792,24 +6061,13 @@ export const DataStore = {
       };
     }
 
-    // Meaningful school life post default
-    if (words.length >= 4) {
-      return {
-        isHabit: true,
-        primaryHabit: 'Studies',
-        habitTag: '#School Day Habit',
-        points: 25,
-        reason: 'School habit update (+25 pts)',
-      };
-    }
-
+    // Any genuine student post awards +25 habit points on first post of the day
     return {
-      isHabit: false,
+      isHabit: true,
       primaryHabit: 'Studies',
-      habitTag: '#None',
-      points: 0,
-      reason:
-        'Low effort or unrelated post. Share studies, sports, or good habits to earn points and keep your streak!',
+      habitTag: '#Student Life',
+      points: 25,
+      reason: 'School day post (+25 pts)',
     };
   },
 
@@ -5848,6 +6106,9 @@ export const DataStore = {
     }
 
     const todayStr = new Date().toISOString().slice(0, 10);
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().slice(0, 10);
 
     if (existingIndex >= 0) {
       const entry = list[existingIndex];
@@ -5871,8 +6132,8 @@ export const DataStore = {
         };
       }
 
-      // First post of the day: award points!
-      const nextStreakDays = entry.streakDays + 1;
+      // First post of the day: check if consecutive from yesterday, otherwise start at 1
+      const nextStreakDays = lastDate === yesterdayStr ? entry.streakDays + 1 : 1;
       const nextPoints = entry.habitPoints + evalResult.points;
       const nextBest = Math.max(entry.bestStreak, nextStreakDays);
 
@@ -5889,6 +6150,13 @@ export const DataStore = {
       };
 
       setStorage(STORAGE_KEYS.HABIT_STREAKS, list);
+
+      // Sync deterministic spirit points to profile
+      if (userProfile) {
+        this.updateProfile(cleanUser, {
+          spiritPoints: (userProfile.spiritPoints || 0) + evalResult.points,
+        });
+      }
 
       if (typeof window !== 'undefined') {
         window.dispatchEvent(
@@ -5927,6 +6195,13 @@ export const DataStore = {
 
       list.push(newStreak);
       setStorage(STORAGE_KEYS.HABIT_STREAKS, list);
+
+      // Sync deterministic spirit points to profile
+      if (userProfile) {
+        this.updateProfile(cleanUser, {
+          spiritPoints: (userProfile.spiritPoints || 0) + evalResult.points,
+        });
+      }
 
       if (typeof window !== 'undefined') {
         window.dispatchEvent(
@@ -6501,16 +6776,27 @@ export const DataStore = {
     map[postId] = likers;
     setStorage(STORAGE_KEYS.POST_LIKES, map);
 
-    // Update post likes count in stored posts strictly matching likers.length
-    const posts = this.getPosts(true);
     const newCount = likers.length;
-    const updatedPosts = posts.map((p) => {
-      if (p.id === postId) {
-        return { ...p, likes: newCount };
-      }
-      return p;
-    });
-    setStorage(STORAGE_KEYS.POSTS, updatedPosts);
+
+    // Update in-memory post count without blocking the main UI thread
+    if (typeof window !== 'undefined') {
+      setTimeout(() => {
+        try {
+          const posts = this.getPosts(true);
+          let found = false;
+          const updatedPosts = posts.map((p) => {
+            if (p.id === postId) {
+              found = true;
+              return { ...p, likes: newCount };
+            }
+            return p;
+          });
+          if (found) {
+            setStorage(STORAGE_KEYS.POSTS, updatedPosts);
+          }
+        } catch {}
+      }, 0);
+    }
 
     if (typeof window !== 'undefined') {
       fetch(`/api/posts/${postId}/like`, {
@@ -6816,7 +7102,7 @@ export const DataStore = {
       return true;
     }
     // Realistic active status for top classmates
-    const activeCohort = new Set(['priya_7b', 'rahul_9a', 'sneha_10c', 'ananya_8b', 'arjun_8a', 'shashwath71845']);
+    const activeCohort = new Set(['shashwath71845']);
     return activeCohort.has(clean);
   },
 

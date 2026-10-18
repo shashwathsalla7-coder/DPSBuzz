@@ -14,7 +14,7 @@ function AuthGuardInner({ children }: { children: React.ReactNode }) {
     pathname.startsWith('/admin/login');
 
   const [isAuthorized, setIsAuthorized] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return false;
+    if (typeof window === 'undefined') return true;
     if (isPublicRoute) return true;
 
     try {
@@ -65,7 +65,7 @@ function AuthGuardInner({ children }: { children: React.ReactNode }) {
           }
         }
 
-        setIsAuthorized(true);
+        setIsAuthorized((prev) => (prev ? prev : true));
       } catch {
         setIsAuthorized(false);
         router.replace('/login');
@@ -75,7 +75,7 @@ function AuthGuardInner({ children }: { children: React.ReactNode }) {
     verifySession();
     window.addEventListener('storage', verifySession);
     return () => window.removeEventListener('storage', verifySession);
-  }, [pathname, isPublicRoute, router]);
+  }, [isPublicRoute, router]);
 
   if (isPublicRoute) {
     return <>{children}</>;

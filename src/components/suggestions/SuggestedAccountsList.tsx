@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { DataStore, type InstagramSuggestionItem } from '@/lib/dataStore';
 import { getAvatarColorPair } from '@/config/tokens';
@@ -54,32 +54,42 @@ export function SuggestedAccountsList({
   }, [refreshSuggestions]);
 
   const [requestedMap, setRequestedMap] = useState<Record<string, boolean>>({});
+  const inflightTogglesRef = useRef<Record<string, boolean>>({});
 
   const handleToggle = (targetUsername: string) => {
     if (!currentUsername || !targetUsername) return;
     const cleanTar = targetUsername.toLowerCase().trim();
+    if (inflightTogglesRef.current[cleanTar]) return;
+    inflightTogglesRef.current[cleanTar] = true;
+
     const isNowFollowing = followingMap[cleanTar];
     const targetItem = suggestions.find((s) => s.profile.username.toLowerCase() === cleanTar);
 
-    if (!isNowFollowing && targetItem?.profile.isPrivate) {
-      const hasReq = DataStore.hasRequestedFollow(currentUsername, targetUsername);
-      if (hasReq) {
-        DataStore.cancelFollowRequest(currentUsername, targetUsername);
-        setRequestedMap((prev) => ({ ...prev, [cleanTar]: false }));
-      } else {
-        DataStore.requestFollow(currentUsername, targetUsername);
-        setRequestedMap((prev) => ({ ...prev, [cleanTar]: true }));
+    try {
+      if (!isNowFollowing && targetItem?.profile.isPrivate) {
+        const hasReq = DataStore.hasRequestedFollow(currentUsername, targetUsername);
+        if (hasReq) {
+          DataStore.cancelFollowRequest(currentUsername, targetUsername);
+          setRequestedMap((prev) => ({ ...prev, [cleanTar]: false }));
+        } else {
+          DataStore.requestFollow(currentUsername, targetUsername);
+          setRequestedMap((prev) => ({ ...prev, [cleanTar]: true }));
+        }
+        return;
       }
-      return;
-    }
 
-    const isNow = DataStore.toggleFollow(currentUsername, targetUsername);
-    setFollowingMap((prev) => ({
-      ...prev,
-      [cleanTar]: isNow,
-    }));
-    if (onFollowToggled) {
-      onFollowToggled(targetUsername, isNow);
+      const isNow = DataStore.toggleFollow(currentUsername, targetUsername);
+      setFollowingMap((prev) => ({
+        ...prev,
+        [cleanTar]: isNow,
+      }));
+      if (onFollowToggled) {
+        onFollowToggled(targetUsername, isNow);
+      }
+    } finally {
+      setTimeout(() => {
+        inflightTogglesRef.current[cleanTar] = false;
+      }, 250);
     }
   };
 
@@ -195,7 +205,8 @@ export function SuggestedAccountsList({
                   <button
                     type="button"
                     onClick={() => handleToggle(person.username)}
-                    className={`text-xs font-semibold px-2 py-1.5 shrink-0 transition-colors cursor-pointer ${
+                    style={{ touchAction: 'manipulation' }}
+                    className={`text-xs font-semibold px-2 py-1.5 shrink-0 transition-colors cursor-pointer touch-manipulation ${
                       isFollowing
                         ? 'text-[var(--text-muted)] hover:text-[var(--text)]'
                         : isRequested
