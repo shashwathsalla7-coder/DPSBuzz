@@ -1,7 +1,14 @@
 import type { MetadataRoute } from 'next';
 
+function getBaseUrl(): string {
+  if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, '');
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  return 'https://dpsbuzz.netlify.app';
+}
+
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = 'https://dpsbuzz.netlify.app';
+  const baseUrl = getBaseUrl();
   const now = new Date();
 
   return [
