@@ -99,6 +99,9 @@ export const metadata: Metadata = {
   },
   verification: {
     google: '6qEUA72oc0FtLXS-QeBPATmv_1rQvgyDBL9UjzGCxoA',
+    other: {
+      'msvalidate.01': '13BBD0CAA1B0B8745F636F9391DBBD86',
+    },
   },
   category: 'education',
 };
@@ -129,6 +132,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="google-site-verification" content="6qEUA72oc0FtLXS-QeBPATmv_1rQvgyDBL9UjzGCxoA" />
+        <meta name="msvalidate.01" content="13BBD0CAA1B0B8745F636F9391DBBD86" />
         <script
           dangerouslySetInnerHTML={{
             __html: `
