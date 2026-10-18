@@ -2,18 +2,21 @@ import Link from 'next/link';
 
 export default function NotFound() {
   return (
-    <div className="min-h-screen bg-[var(--bg)] flex flex-col justify-between p-6 text-[var(--text)]">
+    <div className="min-h-screen bg-[var(--bg,#09090b)] flex flex-col justify-between p-6 text-[var(--text,#f4f4f5)]">
       {/* Top Wordmark */}
       <div className="max-w-md w-full mx-auto">
-        <span className="font-display font-extrabold text-lg text-[var(--text)] tracking-tight">
-          DPS Buzz
-        </span>
+        <Link href="/" className="inline-flex items-center gap-2">
+          <span className="text-xl">🐝</span>
+          <span className="font-extrabold text-lg text-white tracking-tight">
+            DPS Buzz
+          </span>
+        </Link>
       </div>
 
-      {/* Main 404 block: Left-aligned with subtle doodle per DESIGN.md Section 9.9 */}
+      {/* Main 404 block */}
       <div className="max-w-md w-full mx-auto my-auto space-y-6">
-        {/* Subtle school notebook doodle (Section 7) */}
-        <div className="w-16 h-16 rounded-[14px] bg-[var(--surface-sunken)] border border-[var(--line)] flex items-center justify-center text-[var(--text-muted)]">
+        {/* Notebook doodle */}
+        <div className="w-16 h-16 rounded-[14px] bg-neutral-900 border border-neutral-800 flex items-center justify-center text-neutral-400">
           <svg
             width="32"
             height="32"
@@ -33,31 +36,37 @@ export default function NotFound() {
         </div>
 
         <div className="space-y-2 text-left">
-          <span className="font-mono text-xs text-[var(--text-muted)] uppercase tracking-wider">
-            Error 404 · Missing Page
+          <span className="font-mono text-xs text-neutral-400 uppercase tracking-wider">
+            Error 404 · Page Not Found
           </span>
-          <h1 className="text-2xl font-extrabold text-[var(--text)] font-display tracking-tight">
-            This page isn't on the timetable.
+          <h1 className="text-2xl font-extrabold text-white tracking-tight">
+            This page isn&apos;t on the timetable.
           </h1>
-          <p className="text-sm text-[var(--text-muted)] leading-relaxed">
-            The link might be wrong, or the post was removed by the author.
+          <p className="text-sm text-neutral-400 leading-relaxed">
+            The link might be mistyped, or the page may have been moved or removed.
           </p>
         </div>
 
-        <div className="pt-2">
+        <div className="pt-2 flex flex-wrap gap-3">
           <Link
-            href="/home"
-            className="inline-flex items-center justify-center h-12 px-6 rounded-[12px] bg-[var(--primary)] text-[var(--on-primary)] text-sm font-semibold hover:bg-[var(--primary-hover)] transition-colors"
+            href="/"
+            className="inline-flex items-center justify-center h-11 px-5 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white text-sm font-semibold hover:opacity-90 transition-opacity"
           >
-            Back to Home
+            Go to Landing Page
+          </Link>
+          <Link
+            href="/login"
+            className="inline-flex items-center justify-center h-11 px-5 rounded-xl bg-neutral-900 border border-neutral-800 text-neutral-300 text-sm font-medium hover:bg-neutral-850 hover:text-white transition-colors"
+          >
+            Log In
           </Link>
         </div>
       </div>
 
       {/* Footer */}
       <div className="max-w-md w-full mx-auto text-left">
-        <p className="text-xs text-[var(--text-muted)]">
-          Dilsukhnagar Public School
+        <p className="text-xs text-neutral-500">
+          DPS Buzz • Dilsukhnagar Public School Student Community
         </p>
       </div>
     </div>

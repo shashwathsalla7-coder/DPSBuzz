@@ -1,16 +1,31 @@
 import type { Metadata } from 'next';
+import { getBaseUrl } from '@/lib/site-url';
+
+const baseUrl = getBaseUrl();
 
 export const metadata: Metadata = {
-  title: 'Log In | Student & Staff Portal',
+  title: 'Student & Staff Login',
   description:
-    'Log in to DPS Buzz to see what your friends and classmates are up to at Dilsukhnagar Public School.',
+    'Log in to DPS Buzz, the student community for Dilsukhnagar Public School students in Hyderabad. Connect with classmates and access school updates.',
   alternates: {
-    canonical: 'https://dpsbuzz.netlify.app/login',
+    canonical: `${baseUrl}/login`,
+  },
+  robots: {
+    index: true,
+    follow: true,
   },
   openGraph: {
     title: 'Log In to DPS Buzz | Dilsukhnagar Public School',
-    description: 'Log in to connect with classmates, see school moments, and participate in DPS Buzz.',
-    url: 'https://dpsbuzz.netlify.app/login',
+    description: 'Log in to connect with classmates and school updates on DPS Buzz.',
+    url: `${baseUrl}/login`,
+    images: [
+      {
+        url: `${baseUrl}/opengraph-image`,
+        width: 1200,
+        height: 630,
+        alt: 'DPS Buzz — Log In',
+      },
+    ],
   },
 };
 

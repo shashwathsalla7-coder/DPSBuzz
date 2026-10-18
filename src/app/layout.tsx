@@ -8,26 +8,20 @@ import {
   gambetta,
 } from './fonts';
 import JsonLd from '@/components/seo/JsonLd';
-
-function getBaseUrl(): string {
-  if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, '');
-  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
-  return 'https://dpsbuzz.netlify.app';
-}
+import { getBaseUrl } from '@/lib/site-url';
 
 const siteUrl = getBaseUrl();
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: 'DPS Buzz — Official Student Social Network | Dilsukhnagar Public School',
+    default: 'DPS Buzz — Student Community | Dilsukhnagar Public School',
     template: '%s | DPS Buzz',
   },
   description:
-    'DPS Buzz is the official student social network for Dilsukhnagar Public School (DPS). Connect with classmates, share school moments, access official school circulars & Star Board, and download the official Android APK v1.4.',
+    'DPS Buzz is a student community for Dilsukhnagar Public School students in Hyderabad. Connect with classmates, view announcements, and download the app.',
   applicationName: 'DPS Buzz',
-  authors: [{ name: 'DPS Buzz Community', url: 'https://dpsbuzz.netlify.app' }],
+  authors: [{ name: 'DPS Buzz Community', url: siteUrl }],
   generator: 'Next.js',
   keywords: [
     'DPS Buzz',
@@ -36,13 +30,11 @@ export const metadata: Metadata = {
     'DPS Hyderabad',
     'DPS Buzz app',
     'DPS Buzz APK download',
-    'Dilsukhnagar school social app',
-    'DPS school circulars and notices',
-    'DPS Star Board',
-    'DPS Buzz official student network',
+    'Dilsukhnagar student community',
+    'DPS student social app',
   ],
   creator: 'Shashwath • DPS Buzz Admin',
-  publisher: 'Dilsukhnagar Public School',
+  publisher: 'Dilsukhnagar Public School Student Community',
   formatDetection: {
     email: false,
     address: false,
@@ -67,24 +59,24 @@ export const metadata: Metadata = {
     locale: 'en_IN',
     url: siteUrl,
     siteName: 'DPS Buzz',
-    title: 'DPS Buzz — Official Student Social Network | Dilsukhnagar Public School',
+    title: 'DPS Buzz — Student Community | Dilsukhnagar Public School',
     description:
-      'Connect with classmates, share school moments, view circulars & Star Board on DPS Buzz. Download the official Android APK v1.4.',
+      'A student community for Dilsukhnagar Public School students in Hyderabad. Connect with classmates, view announcements, and download the app.',
     images: [
       {
-        url: '/icons/icon-512.png',
-        width: 512,
-        height: 512,
-        alt: 'DPS Buzz — Dilsukhnagar Public School Logo',
+        url: `${siteUrl}/opengraph-image`,
+        width: 1200,
+        height: 630,
+        alt: 'DPS Buzz — Student Community | Dilsukhnagar Public School',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'DPS Buzz — Dilsukhnagar Public School',
+    title: 'DPS Buzz — Student Community | Dilsukhnagar Public School',
     description:
-      'The vibrant student social network for Dilsukhnagar Public School. Connect with classmates, track school dispatches, and download the APK.',
-    images: ['/icons/icon-512.png'],
+      'A student community for Dilsukhnagar Public School students in Hyderabad. Connect with classmates and download the app.',
+    images: [`${siteUrl}/opengraph-image`],
     creator: '@dpsbuzz',
   },
   manifest: '/manifest.json',
@@ -124,7 +116,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html
-      lang="en"
+      lang="en-IN"
       suppressHydrationWarning
       className={`${cabinetGrotesk.variable} ${satoshi.variable} ${kalam.variable} ${ibmPlexMono.variable} ${gambetta.variable}`}
     >

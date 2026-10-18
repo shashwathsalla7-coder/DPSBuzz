@@ -26,6 +26,30 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  async headers() {
+    return [
+      {
+        // Enforce noindex, nofollow, noarchive on all private student and admin routes
+        source: '/:path(api|admin|home|u|chats|groups|notices|leaderboard|search|settings|post|cricket|game|games|preview|styleguide)/:rest*',
+        headers: [
+          {
+            key: 'X-Robots-Tag',
+            value: 'noindex, nofollow, noarchive',
+          },
+        ],
+      },
+      {
+        // Also catch root private paths without trailing subpaths
+        source: '/:path(admin|home|chats|groups|notices|leaderboard|search|settings|cricket|game|games|preview|styleguide)',
+        headers: [
+          {
+            key: 'X-Robots-Tag',
+            value: 'noindex, nofollow, noarchive',
+          },
+        ],
+      },
+    ];
+  },
   async redirects() {
     return [
       {

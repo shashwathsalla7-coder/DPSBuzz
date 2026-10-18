@@ -1,5 +1,20 @@
 import { Suspense } from 'react';
+import type { Metadata } from 'next';
 import ProfileClient from './ProfileClient';
+
+export const metadata: Metadata = {
+  title: 'Profile',
+  robots: {
+    index: false,
+    follow: false,
+    nocache: true,
+    googleBot: {
+      index: false,
+      follow: false,
+      noimageindex: true,
+    },
+  },
+};
 
 export default async function UserProfilePage({
   params,
