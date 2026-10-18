@@ -1,6 +1,6 @@
 import { ImageResponse } from 'next/og';
 
-export const alt = 'DPS Buzz — Official Student Social Network | Dilsukhnagar Public School';
+export const alt = 'DPS Buzz — Student Community | Dilsukhnagar Public School';
 export const size = {
   width: 1200,
   height: 630,
@@ -33,7 +33,7 @@ export default async function Image() {
             width: 450,
             height: 450,
             borderRadius: '50%',
-            background: 'rgba(168, 85, 247, 0.25)',
+            background: 'rgba(131, 58, 180, 0.25)',
           }}
         />
         <div
@@ -44,7 +44,7 @@ export default async function Image() {
             width: 450,
             height: 450,
             borderRadius: '50%',
-            background: 'rgba(236, 72, 153, 0.25)',
+            background: 'rgba(193, 53, 132, 0.25)',
           }}
         />
 
@@ -54,7 +54,7 @@ export default async function Image() {
             display: 'flex',
             alignItems: 'center',
             gap: '20px',
-            marginBottom: '24px',
+            marginBottom: '20px',
           }}
         >
           <div
@@ -109,7 +109,7 @@ export default async function Image() {
             lineHeight: 1.4,
           }}
         >
-          Official Student Social Network • Dilsukhnagar Public School (DPS)
+          A Student Community for Dilsukhnagar Public School • Hyderabad
         </div>
 
         {/* Badges footer */}
@@ -131,7 +131,7 @@ export default async function Image() {
               fontWeight: 700,
             }}
           >
-            📱 Official Android APK v1.4
+            🎓 Classes 6–10 Community
           </div>
           <div
             style={{
@@ -144,7 +144,7 @@ export default async function Image() {
               fontWeight: 700,
             }}
           >
-            📢 Circulars & Notices
+            🛡️ Safe &amp; Moderated
           </div>
           <div
             style={{
@@ -157,7 +157,7 @@ export default async function Image() {
               fontWeight: 700,
             }}
           >
-            🏆 School Star Board
+            📱 Web &amp; Android App
           </div>
         </div>
       </div>

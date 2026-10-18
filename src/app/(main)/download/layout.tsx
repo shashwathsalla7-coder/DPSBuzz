@@ -1,31 +1,38 @@
 import type { Metadata } from 'next';
+import { getBaseUrl } from '@/lib/site-url';
+
+const baseUrl = getBaseUrl();
 
 export const metadata: Metadata = {
-  title: 'Install DPS Buzz | Laptop, Android APK (v1.4) & iPhone App',
+  title: 'Download App & Android APK',
   description:
-    'Install or download the official DPS Buzz app for Laptop/PC (Windows, Mac), Android (APK v1.4 & PWA), and iPhone.',
+    'Download the official DPS Buzz Android APK (v1.4) or install the web app for Dilsukhnagar Public School students in Hyderabad.',
   alternates: {
-    canonical: 'https://dpsbuzz.netlify.app/download',
+    canonical: `${baseUrl}/download`,
+  },
+  robots: {
+    index: true,
+    follow: true,
   },
   openGraph: {
-    title: 'Install DPS Buzz — Laptop, Android APK (v1.4) & iPhone App',
+    title: 'Download DPS Buzz App | Dilsukhnagar Public School',
     description:
-      'Official school social app for Dilsukhnagar Public School. Standalone desktop app, Android APK v1.4, and iOS Safari app.',
-    url: 'https://dpsbuzz.netlify.app/download',
+      'Download the official Android APK v1.4 or install the web app for Dilsukhnagar Public School students.',
+    url: `${baseUrl}/download`,
     images: [
       {
-        url: '/icons/icon-512.png',
-        width: 512,
-        height: 512,
-        alt: 'DPS Buzz App Icon',
+        url: `${baseUrl}/opengraph-image`,
+        width: 1200,
+        height: 630,
+        alt: 'DPS Buzz — App Download',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Install DPS Buzz (v1.4)',
-    description: 'Install DPS Buzz on Laptop, Android, and iPhone.',
-    images: ['/icons/icon-512.png'],
+    title: 'Download DPS Buzz App',
+    description: 'Get the DPS Buzz app for Android and desktop.',
+    images: [`${baseUrl}/opengraph-image`],
   },
 };
 

@@ -1,11 +1,5 @@
 import type { MetadataRoute } from 'next';
-
-function getBaseUrl(): string {
-  if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, '');
-  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
-  return 'https://dpsbuzz.netlify.app';
-}
+import { getBaseUrl } from '@/lib/site-url';
 
 export default function robots(): MetadataRoute.Robots {
   const baseUrl = getBaseUrl();
@@ -16,21 +10,51 @@ export default function robots(): MetadataRoute.Robots {
         userAgent: '*',
         allow: [
           '/',
-          '/download',
+          '/about',
+          '/safety',
+          '/privacy',
+          '/terms',
+          '/contact',
           '/login',
           '/signup',
-          '/notices',
-          '/leaderboard',
-          '/groups',
-          '/u/*',
+          '/download',
         ],
         disallow: [
+          '/api/',
           '/api/*',
           '/admin',
+          '/admin/',
           '/admin/*',
-          '/settings',
-          '/post/*',
+          '/home',
+          '/home/',
+          '/home/*',
+          '/u/',
+          '/u/*',
+          '/chats',
+          '/chats/',
           '/chats/*',
+          '/groups',
+          '/groups/',
+          '/groups/*',
+          '/notices',
+          '/notices/',
+          '/notices/*',
+          '/leaderboard',
+          '/leaderboard/',
+          '/leaderboard/*',
+          '/search',
+          '/search/',
+          '/search/*',
+          '/settings',
+          '/settings/',
+          '/settings/*',
+          '/post/',
+          '/post/*',
+          '/cricket',
+          '/game',
+          '/games',
+          '/preview',
+          '/styleguide',
         ],
       },
     ],
