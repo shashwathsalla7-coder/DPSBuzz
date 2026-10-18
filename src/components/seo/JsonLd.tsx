@@ -1,23 +1,32 @@
 import React from 'react';
 
+function getBaseUrl(): string {
+  if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, '');
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  return 'https://dpsbuzz.netlify.app';
+}
+
 export function JsonLd() {
+  const baseUrl = getBaseUrl();
+
   const websiteSchema = {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
     name: 'DPS Buzz',
     alternateName: ['DPS Buzz App', 'Dilsukhnagar Public School Buzz', 'DPS Social'],
-    url: 'https://dpsbuzz.netlify.app',
+    url: baseUrl,
     description:
       'The private and vibrant student social network for Dilsukhnagar Public School (DPS). Connect with classmates, share school moments, track notices, and download the official Android APK.',
     publisher: {
       '@type': 'EducationalOrganization',
       name: 'Dilsukhnagar Public School',
-      url: 'https://dpsbuzz.netlify.app',
-      logo: 'https://dpsbuzz.netlify.app/icons/icon-512.png',
+      url: baseUrl,
+      logo: `${baseUrl}/icons/icon-512.png`,
     },
     potentialAction: {
       '@type': 'SearchAction',
-      target: 'https://dpsbuzz.netlify.app/search?q={search_term_string}',
+      target: `${baseUrl}/search?q={search_term_string}`,
       'query-input': 'required name=search_term_string',
     },
   };
@@ -27,8 +36,8 @@ export function JsonLd() {
     '@type': 'EducationalOrganization',
     name: 'Dilsukhnagar Public School',
     alternateName: 'DPS Dilsukhnagar',
-    url: 'https://dpsbuzz.netlify.app',
-    logo: 'https://dpsbuzz.netlify.app/icons/icon-512.png',
+    url: baseUrl,
+    logo: `${baseUrl}/icons/icon-512.png`,
     address: {
       '@type': 'PostalAddress',
       addressLocality: 'Hyderabad',
@@ -44,7 +53,7 @@ export function JsonLd() {
     name: 'DPS Buzz',
     operatingSystem: 'Android',
     applicationCategory: 'SocialNetworkingApplication',
-    downloadUrl: 'https://dpsbuzz.netlify.app/download',
+    downloadUrl: `${baseUrl}/download`,
     fileFormat: 'application/vnd.android.package-archive',
     fileSize: '12.3MB',
     softwareVersion: '1.4',
