@@ -13,7 +13,8 @@ export function proxy(request: NextRequest) {
     pathname.startsWith('/favicon.ico') ||
     pathname.startsWith('/opengraph-image') ||
     pathname.startsWith('/apple-icon') ||
-    pathname.startsWith('/icon')
+    pathname.startsWith('/icon') ||
+    pathname.startsWith('/BingSiteAuth.xml')
   ) {
     return NextResponse.next();
   }
