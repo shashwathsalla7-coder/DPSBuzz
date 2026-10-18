@@ -9,8 +9,17 @@ import {
 } from './fonts';
 import JsonLd from '@/components/seo/JsonLd';
 
+function getBaseUrl(): string {
+  if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, '');
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  return 'https://dpsbuzz.netlify.app';
+}
+
+const siteUrl = getBaseUrl();
+
 export const metadata: Metadata = {
-  metadataBase: new URL('https://dpsbuzz.netlify.app'),
+  metadataBase: new URL(siteUrl),
   title: {
     default: 'DPS Buzz — Official Student Social Network | Dilsukhnagar Public School',
     template: '%s | DPS Buzz',
@@ -40,7 +49,7 @@ export const metadata: Metadata = {
     telephone: false,
   },
   alternates: {
-    canonical: 'https://dpsbuzz.netlify.app',
+    canonical: siteUrl,
   },
   robots: {
     index: true,
@@ -56,7 +65,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'en_IN',
-    url: 'https://dpsbuzz.netlify.app',
+    url: siteUrl,
     siteName: 'DPS Buzz',
     title: 'DPS Buzz — Official Student Social Network | Dilsukhnagar Public School',
     description:
