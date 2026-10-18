@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { ChevronRight, X, MessageCircle, Bell } from 'lucide-react';
+import { ChevronRight, X, MessageCircle, Bell, Gamepad2 } from 'lucide-react';
 import { DataStore, DUMMY_TEST_USERNAMES } from '@/lib/dataStore';
 import { getAvatarColorPair } from '@/config/tokens';
 import {
@@ -19,6 +19,8 @@ interface IncomingChatToast {
   text: string;
   time: string;
   conversationId: string;
+  isGameInvite?: boolean;
+  gameType?: 'connect4' | 'cricket';
 }
 
 export function GlobalNotificationListener() {
@@ -29,6 +31,8 @@ export function GlobalNotificationListener() {
   const seenMessageIdsRef = useRef<Set<string>>(new Set());
   const seenPostIdsRef = useRef<Set<string>>(new Set());
   const isFirstRunRef = useRef(true);
+  const pathnameRef = useRef(pathname);
+  pathnameRef.current = pathname;
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -54,12 +58,20 @@ export function GlobalNotificationListener() {
     }
   };
 
-  // Gentle high-fidelity Web Audio chime
+  // Gentle high-fidelity Web Audio chime with shared singleton
   const playNotificationChime = useCallback(() => {
     try {
+      if (typeof window === 'undefined') return;
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
       if (!AudioCtx) return;
-      const ctx = new AudioCtx();
+      const win = window as any;
+      if (!win.__dpsbuzzNotifAudioCtx || win.__dpsbuzzNotifAudioCtx.state === 'closed') {
+        win.__dpsbuzzNotifAudioCtx = new AudioCtx();
+      }
+      const ctx = win.__dpsbuzzNotifAudioCtx;
+      if (ctx.state === 'suspended') {
+        ctx.resume().catch(() => {});
+      }
       const now = ctx.currentTime;
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
@@ -121,8 +133,8 @@ export function GlobalNotificationListener() {
       if (!uname || uname === 'guest') return;
 
       try {
-        // Query server sync WITH the authenticated username query param
-        const syncUrl = `/api/sync?username=${encodeURIComponent(uname)}&t=${Date.now()}`;
+        // Query server sync with mode=incoming (~1.5 KB payload instead of 628 KB full dump)
+        const syncUrl = `/api/sync?username=${encodeURIComponent(uname)}&mode=incoming&t=${Date.now()}`;
         const res = await fetch(syncUrl);
         if (!res.ok) return;
         const data = await res.json();
@@ -182,11 +194,26 @@ export function GlobalNotificationListener() {
                 let notifTitle = tier === 'REQUESTS'
                   ? `💬 Message Request from @${senderUser}`
                   : `💬 New Message from @${senderUser}`;
-                const storyMatch = msg.text.match(/^(?:You replied to their story|Replied to their story|Replied to your story|Replied to story):\s*["']?([\s\S]*?)["']?\s*(?:💬)?$/i);
-                if (storyMatch) {
-                  const content = storyMatch[1].replace(/^["']|["']$/g, '').trim();
-                  toastText = `Replied to your story: "${content}" 💬`;
-                  notifTitle = `📖 @${senderUser} replied to your story`;
+                let isGameInvite = false;
+                let gameType: 'connect4' | 'cricket' | undefined = undefined;
+
+                if (typeof msg.text === 'string' && msg.text.startsWith('🔴 [CONNECT4_GAME]:')) {
+                  isGameInvite = true;
+                  gameType = 'connect4';
+                  toastText = '🔴 Challenged you to a Connect 4 duel! 🎮';
+                  notifTitle = `🔴 @${senderUser} challenged you to Connect 4!`;
+                } else if (typeof msg.text === 'string' && msg.text.startsWith('🎮 [CRICKET_GAME]:')) {
+                  isGameInvite = true;
+                  gameType = 'cricket';
+                  toastText = '🏏 Challenged you to Guess the Cricketer! 🏆';
+                  notifTitle = `🎮 @${senderUser} challenged you to Guess the Cricketer!`;
+                } else {
+                  const storyMatch = msg.text.match(/^(?:You replied to their story|Replied to their story|Replied to your story|Replied to story):\s*["']?([\s\S]*?)["']?\s*(?:💬)?$/i);
+                  if (storyMatch) {
+                    const content = storyMatch[1].replace(/^["']|["']$/g, '').trim();
+                    toastText = `Replied to your story: "${content}" 💬`;
+                    notifTitle = `📖 @${senderUser} replied to your story`;
+                  }
                 }
 
                 newestIncomingMsg = {
@@ -197,12 +224,14 @@ export function GlobalNotificationListener() {
                   text: toastText,
                   time: msg.time || 'Just now',
                   conversationId: convKey,
+                  isGameInvite,
+                  gameType,
                 };
 
                 // Add to notifications feed in DataStore
                 DataStore.addNotification({
                   userId: uname,
-                  type: 'chat',
+                  type: isGameInvite ? 'connect4' : 'chat',
                   title: notifTitle,
                   body: toastText,
                   link: tier === 'REQUESTS' ? `/chats?view=requests` : `/chats?user=${senderUser}`,
@@ -271,7 +300,7 @@ export function GlobalNotificationListener() {
           // Determine if user is currently inside THIS specific sender's chat
           const activeChatUser = (typeof window !== 'undefined' ? (sessionStorage.getItem('dpsbuzz_active_chat_user') || '') : '').toLowerCase().trim();
           const isCurrentlyInThisChat =
-            pathname === '/chats' &&
+            pathnameRef.current === '/chats' &&
             activeChatUser !== '' &&
             activeChatUser === newestIncomingMsg.senderUsername.toLowerCase();
 
@@ -330,7 +359,7 @@ export function GlobalNotificationListener() {
       } catch {}
     };
 
-    // Run immediately and poll every 8s when visible (pauses in background to save quotas)
+    // Run immediately and poll every 8s when visible (real-time events handle 0ms instant updates)
     checkIncoming();
     const interval = setInterval(() => {
       if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
@@ -343,18 +372,16 @@ export function GlobalNotificationListener() {
       }
     };
 
-    // Also trigger immediately on internal updates and tab refocus
-    window.addEventListener('dpsbuzz:content_updated', checkIncoming);
+    // Trigger on tab refocus
     window.addEventListener('storage', checkIncoming);
     document.addEventListener('visibilitychange', handleVisibility);
 
     return () => {
       clearInterval(interval);
-      window.removeEventListener('dpsbuzz:content_updated', checkIncoming);
       window.removeEventListener('storage', checkIncoming);
       document.removeEventListener('visibilitychange', handleVisibility);
     };
-  }, [pathname, playNotificationChime]);
+  }, [playNotificationChime]);
 
   // Real-Time 0ms Instant Push / Chime Listener via BroadcastChannel & CustomEvent
   useEffect(() => {
@@ -389,12 +416,26 @@ export function GlobalNotificationListener() {
       let notifTitle = tier === 'REQUESTS'
         ? `💬 Message Request from @${senderUser}`
         : `💬 New Message from @${senderUser}`;
+      let isGameInvite = false;
+      let gameType: 'connect4' | 'cricket' | undefined = undefined;
 
-      const storyMatch = (message.text || '').match(/^(?:You replied to their story|Replied to their story|Replied to your story|Replied to story):\s*["']?([\s\S]*?)["']?\s*(?:💬)?$/i);
-      if (storyMatch) {
-        const content = storyMatch[1].replace(/^["']|["']$/g, '').trim();
-        toastText = `Replied to your story: "${content}" 💬`;
-        notifTitle = `📖 @${senderUser} replied to your story`;
+      if (typeof message.text === 'string' && message.text.startsWith('🔴 [CONNECT4_GAME]:')) {
+        isGameInvite = true;
+        gameType = 'connect4';
+        toastText = '🔴 Challenged you to a Connect 4 duel! 🎮';
+        notifTitle = `🔴 @${senderUser} challenged you to Connect 4!`;
+      } else if (typeof message.text === 'string' && message.text.startsWith('🎮 [CRICKET_GAME]:')) {
+        isGameInvite = true;
+        gameType = 'cricket';
+        toastText = '🏏 Challenged you to Guess the Cricketer! 🏆';
+        notifTitle = `🎮 @${senderUser} challenged you to Guess the Cricketer!`;
+      } else {
+        const storyMatch = (message.text || '').match(/^(?:You replied to their story|Replied to their story|Replied to your story|Replied to story):\s*["']?([\s\S]*?)["']?\s*(?:💬)?$/i);
+        if (storyMatch) {
+          const content = storyMatch[1].replace(/^["']|["']$/g, '').trim();
+          toastText = `Replied to your story: "${content}" 💬`;
+          notifTitle = `📖 @${senderUser} replied to your story`;
+        }
       }
 
       const toastItem: IncomingChatToast = {
@@ -405,12 +446,14 @@ export function GlobalNotificationListener() {
         text: toastText,
         time: message.time || 'Just now',
         conversationId,
+        isGameInvite,
+        gameType,
       };
 
       // Record in notifications feed
       DataStore.addNotification({
         userId: uname,
-        type: 'chat',
+        type: isGameInvite ? 'connect4' : 'chat',
         title: notifTitle,
         body: toastText,
         link: tier === 'REQUESTS' ? `/chats?view=requests` : `/chats?user=${senderUser}`,
@@ -439,11 +482,38 @@ export function GlobalNotificationListener() {
     };
 
     let channel: BroadcastChannel | null = null;
+    let c4Channel: BroadcastChannel | null = null;
+    let cricketChannel: BroadcastChannel | null = null;
+
     if (typeof BroadcastChannel !== 'undefined') {
       try {
         channel = new BroadcastChannel('dpsbuzz_realtime_chats');
         channel.onmessage = (e) => {
           handleRealtimeIncoming(e.data);
+        };
+      } catch {}
+
+      try {
+        c4Channel = new BroadcastChannel('dpsbuzz_connect4_realtime');
+        c4Channel.onmessage = (e) => {
+          const currentUser = DataStore.getCurrentUser();
+          const uname = (currentUser?.username || '').toLowerCase().trim();
+          if (e.data?.type === 'invite' && e.data?.opponent?.toLowerCase() === uname) {
+            window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated'));
+            window.dispatchEvent(new CustomEvent('dpsbuzz_connect4_update'));
+          }
+        };
+      } catch {}
+
+      try {
+        cricketChannel = new BroadcastChannel('dpsbuzz_cricket_realtime');
+        cricketChannel.onmessage = (e) => {
+          const currentUser = DataStore.getCurrentUser();
+          const uname = (currentUser?.username || '').toLowerCase().trim();
+          if (e.data?.type === 'invite' && e.data?.opponent?.toLowerCase() === uname) {
+            window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated'));
+            window.dispatchEvent(new CustomEvent('dpsbuzz_cricket_update'));
+          }
         };
       } catch {}
     }
@@ -455,6 +525,8 @@ export function GlobalNotificationListener() {
 
     return () => {
       if (channel) channel.close();
+      if (c4Channel) c4Channel.close();
+      if (cricketChannel) cricketChannel.close();
       window.removeEventListener('dpsbuzz:chat_event', handleCustomChatEvent);
     };
   }, [pathname, playNotificationChime]);
@@ -545,8 +617,12 @@ export function GlobalNotificationListener() {
                   activeToast.senderName.slice(0, 2).toUpperCase()
                 )}
               </div>
-              <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-emerald-500 border-2 border-[#121212] flex items-center justify-center">
-                <MessageCircle size={8} className="text-white fill-white" />
+              <span className={`absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full ${activeToast.isGameInvite ? 'bg-gradient-to-r from-[#833AB4] to-[#F77737]' : 'bg-emerald-500'} border-2 border-[#121212] flex items-center justify-center`}>
+                {activeToast.isGameInvite ? (
+                  <Gamepad2 size={9} className="text-white" />
+                ) : (
+                  <MessageCircle size={8} className="text-white fill-white" />
+                )}
               </span>
             </div>
 
@@ -556,6 +632,11 @@ export function GlobalNotificationListener() {
                 <p className="text-xs font-bold truncate text-white flex items-center gap-1.5">
                   <span>{activeToast.senderName}</span>
                   <span className="text-[11px] text-zinc-400 font-normal">@{activeToast.senderUsername}</span>
+                  {activeToast.isGameInvite && (
+                    <span className="px-1.5 py-0.5 rounded-full bg-gradient-to-r from-[#833AB4] to-[#F77737] text-[9px] font-black text-white shrink-0">
+                      GAME
+                    </span>
+                  )}
                 </p>
                 <span className="text-[10px] text-zinc-400 shrink-0 font-medium">{activeToast.time}</span>
               </div>
@@ -571,7 +652,7 @@ export function GlobalNotificationListener() {
                 onClick={() => handleOpenChatFromToast(activeToast.senderUsername)}
                 className="px-3 py-1.5 rounded-xl gradient-bg text-white text-xs font-bold flex items-center gap-1 shadow-sm hover:opacity-90 active:scale-95 cursor-pointer"
               >
-                <span>Reply</span>
+                <span>{activeToast.isGameInvite ? 'Play 🎮' : 'Reply'}</span>
                 <ChevronRight size={13} strokeWidth={2.5} />
               </button>
               <button

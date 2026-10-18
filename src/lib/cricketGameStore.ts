@@ -7,6 +7,7 @@ import type {
   CricketMatchRecord,
   AnswerType,
 } from '@/types/cricketGame';
+import { getServerStore, addServerNotification, updateCricketInviteInChat, addServerChatMessage } from './serverStore';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://xdvoeddebquguuqgyscl.supabase.co';
 const SUPABASE_KEY =
@@ -165,6 +166,7 @@ export async function createGameSession(
       correctGuesses: 0,
       incorrectGuesses: 0,
       questionsAsked: 0,
+      remainingGuesses: 3,
     },
     player2: {
       username: cleanOpponent,
@@ -176,6 +178,7 @@ export async function createGameSession(
       correctGuesses: 0,
       incorrectGuesses: 0,
       questionsAsked: 0,
+      remainingGuesses: 3,
     },
     currentTurn: cleanInviter,
     turnState: 'ask_or_guess',
@@ -218,16 +221,31 @@ export async function acceptGameInvite(
   }
 
   session.status = 'selecting';
+  const accepterName = clean === p2 ? (session.player2?.fullName || p2) : (session.player1?.fullName || p1);
   session.timeline.push({
     id: uuidv4(),
     type: 'system',
     by: clean,
-    byName: clean === p2 ? (session.player2?.fullName || p2) : (session.player1?.fullName || p1),
+    byName: accepterName,
     questionText: `Challenge accepted! Both players are now choosing their secret cricketer 🔒`,
     timestamp: Date.now(),
   });
 
   await saveRawGameSession(session);
+
+  // Update chat message invite card to 'selecting'
+  updateCricketInviteInChat(gameId, 'selecting').catch(() => {});
+
+  // Send in-app notification to the opponent (so they know challenge was accepted and they should pick!)
+  const otherUser = clean === p1 ? p2 : p1;
+  addServerNotification({
+    userId: otherUser,
+    type: 'cricket',
+    title: 'Challenge Accepted! 🏏',
+    body: `@${clean} (${accepterName}) accepted your cricket challenge! Choose your secret cricketer to start.`,
+    link: `/chats`,
+  }).catch(() => {});
+
   return session;
 }
 
@@ -253,6 +271,7 @@ export async function declineGameInvite(
   });
 
   await saveRawGameSession(session);
+  updateCricketInviteInChat(gameId, 'declined').catch(() => {});
   return session;
 }
 
@@ -306,6 +325,34 @@ export async function selectSecretCricketer(
       questionText: `Both secret cricketers are locked! Turn 1 starts with @${session.player1.username}. Ask a Yes/No question or guess! 🏏`,
       timestamp: Date.now(),
     });
+
+    updateCricketInviteInChat(gameId, 'in_progress').catch(() => {});
+
+    // Notify both players that the match is live!
+    addServerNotification({
+      userId: session.player1.username,
+      type: 'cricket',
+      title: 'Cricket Duel Live! 🏏',
+      body: `Both secret cricketers are locked! It's your turn to ask or guess.`,
+      link: `/chats`,
+    }).catch(() => {});
+    addServerNotification({
+      userId: session.player2.username,
+      type: 'cricket',
+      title: 'Cricket Duel Live! 🏏',
+      body: `Both secret cricketers are locked! Turn 1 is with @${session.player1.username}.`,
+      link: `/chats`,
+    }).catch(() => {});
+  } else {
+    // Only one player has selected so far - notify the opponent that their challenger has locked in!
+    const targetOpponent = isP1 ? session.player2.username : session.player1.username;
+    addServerNotification({
+      userId: targetOpponent,
+      type: 'cricket',
+      title: 'Opponent Picked! 🔒',
+      body: `@${clean} locked in their secret cricketer! Tap to choose yours now to begin.`,
+      link: `/chats`,
+    }).catch(() => {});
   }
 
   await saveRawGameSession(session);
@@ -419,7 +466,22 @@ export async function submitGuess(
   const targetPlayer = isP1 ? session.player2 : session.player1;
   const guesserPlayer = isP1 ? session.player1 : session.player2;
 
+  // Ensure remainingGuesses is initialized to 3
+  if (guesserPlayer.remainingGuesses === undefined) {
+    guesserPlayer.remainingGuesses = 3;
+  }
+  if (targetPlayer.remainingGuesses === undefined) {
+    targetPlayer.remainingGuesses = 3;
+  }
+
   const opponentSecretId = targetPlayer.selectedCricketerId || '';
+  const mySecretId = guesserPlayer.selectedCricketerId || '';
+
+  // A player can guess ANY cricketer, including the cricketer they picked,
+  // because both players can secretly pick the exact same cricketer!
+  // First to correctly deduce the opponent's secret cricketer WINS!
+
+  // Rule B: First to correctly deduce the opponent's cricketer WINS!
   const isCorrect = opponentSecretId.toLowerCase() === guessedCricketer.id.toLowerCase();
 
   if (isCorrect) {
@@ -453,8 +515,21 @@ export async function submitGuess(
 
     // Record completed match and update persistent leaderboard
     await recordMatchCompleted(session);
+    updateCricketInviteInChat(gameId, 'completed', { winner: clean, winningGuess: guessedCricketer.name }).catch(() => {});
+    if (session.chatId) {
+      addServerChatMessage(session.chatId, {
+        id: `msg-win-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        conversationId: session.chatId,
+        text: `🏆 Victory: @${clean} correctly deduced @${targetPlayer.username}'s secret cricketer was ${guessedCricketer.name}! @${clean} wins the match! 🏅`,
+        sender: 'them',
+        senderUsername: 'system',
+        time: new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date()),
+        createdAt: new Date().toISOString(),
+      }).catch(() => {});
+    }
   } else {
-    // INCORRECT GUESS - TURN PASSES TO OPPONENT
+    // Rule C: Wrong Guess consumes 1 of 3 lives
+    guesserPlayer.remainingGuesses = Math.max(0, guesserPlayer.remainingGuesses - 1);
     guesserPlayer.score = Math.max(0, guesserPlayer.score - 5);
     guesserPlayer.incorrectGuesses = (guesserPlayer.incorrectGuesses || 0) + 1;
 
@@ -468,21 +543,136 @@ export async function submitGuess(
       timestamp: Date.now(),
     });
 
-    session.timeline.push({
-      id: uuidv4(),
-      type: 'system',
-      by: 'system',
-      byName: 'DPSBuzz Match Umpire',
-      questionText: `@${clean} guessed ${guessedCricketer.name} — Incorrect! Turn passes to @${targetPlayer.username} ❌`,
-      timestamp: Date.now(),
-    });
+    if (guesserPlayer.remainingGuesses <= 0) {
+      // 3rd Wrong Guess: LOST THE MATCH!
+      session.status = 'completed';
+      session.winner = targetPlayer.username;
+      const targetCricketerName = getCricketerById(opponentSecretId)?.name || 'their secret cricketer';
+      session.winningGuess = `@${clean} used all 3 guesses! Secret was ${targetCricketerName}`;
+      session.completedAt = Date.now();
 
-    session.currentTurn = targetPlayer.username;
-    session.turnState = 'ask_or_guess';
+      session.timeline.push({
+        id: uuidv4(),
+        type: 'system',
+        by: 'system',
+        byName: 'DPSBuzz Match Umpire',
+        questionText: `❌ OUT! @${clean} has exhausted all 3 guesses! @${targetPlayer.username} wins the match! 🏆 (Secret was ${targetCricketerName})`,
+        timestamp: Date.now(),
+      });
+
+      await recordMatchCompleted(session);
+      updateCricketInviteInChat(gameId, 'completed', {
+        winner: targetPlayer.username,
+        winningGuess: targetCricketerName,
+      }).catch(() => {});
+      if (session.chatId) {
+        addServerChatMessage(session.chatId, {
+          id: `msg-3lives-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+          conversationId: session.chatId,
+          text: `❌ Match Over: @${clean} used all 3 guess attempts! @${targetPlayer.username} wins the match! 🏆 (Secret was ${targetCricketerName})`,
+          sender: 'them',
+          senderUsername: 'system',
+          time: new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date()),
+          createdAt: new Date().toISOString(),
+        }).catch(() => {});
+      }
+    } else {
+      // Lives remain: turn passes to opponent
+      session.timeline.push({
+        id: uuidv4(),
+        type: 'system',
+        by: 'system',
+        byName: 'DPSBuzz Match Umpire',
+        questionText: `@${clean} guessed ${guessedCricketer.name} — Incorrect! (${guesserPlayer.remainingGuesses}/3 attempts left). Turn passes to @${targetPlayer.username} ❌`,
+        timestamp: Date.now(),
+      });
+
+      session.currentTurn = targetPlayer.username;
+      session.turnState = 'ask_or_guess';
+    }
   }
 
   await saveRawGameSession(session);
   return { success: true, session, isCorrect };
+}
+
+/**
+ * Forfeit / Quit an ongoing match
+ */
+export async function forfeitGameSession(
+  gameId: string,
+  username: string
+): Promise<{ success: boolean; session?: CricketGameSession; error?: string }> {
+  const session = await getRawGameSession(gameId);
+  if (!session) return { success: false, error: 'Game not found' };
+
+  const clean = username.toLowerCase().trim();
+  const p1 = (session.player1?.username || '').toLowerCase().trim();
+  const p2 = (session.player2?.username || '').toLowerCase().trim();
+
+  if (clean !== p1 && clean !== p2) {
+    return { success: false, error: 'Unauthorized player' };
+  }
+
+  // If already ended, return as is
+  if (session.status === 'completed' || session.status === 'abandoned' || session.status === 'declined') {
+    return { success: true, session };
+  }
+
+  const quitter = clean === p1 ? session.player1 : session.player2;
+  const opponent = clean === p1 ? session.player2 : session.player1;
+
+  session.status = 'completed';
+  session.winner = opponent.username;
+  session.winningGuess = `@${quitter.username} quit the match`;
+  session.forfeitedBy = clean;
+  session.completedAt = Date.now();
+  session.rematchRequestedBy = null;
+
+  session.timeline.push({
+    id: uuidv4(),
+    type: 'forfeit',
+    by: clean,
+    byName: quitter.fullName || clean,
+    questionText: `⚠️ @${quitter.username} (${quitter.fullName}) quit the match! @${opponent.username} (${opponent.fullName}) wins by forfeit! 🏆`,
+    timestamp: Date.now(),
+  });
+
+  await recordMatchCompleted(session);
+  await saveRawGameSession(session);
+
+  // Update chat message invite card with forfeit status
+  updateCricketInviteInChat(gameId, 'completed', {
+    winner: opponent.username,
+    winningGuess: `@${quitter.username} quit`,
+    forfeitedBy: quitter.username,
+  }).catch(() => {});
+
+  // Add system announcement chat message directly into the conversation
+  try {
+    if (session.chatId) {
+      addServerChatMessage(session.chatId, {
+        id: `msg-forfeit-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        conversationId: session.chatId,
+        text: `🏏 Match Over: @${quitter.username} has quit the match! @${opponent.username} wins the match! 🏆`,
+        sender: 'them',
+        senderUsername: 'system',
+        time: new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date()),
+        createdAt: new Date().toISOString(),
+      }).catch(() => {});
+    }
+  } catch {}
+
+  // Send in-app notification to the opponent
+  addServerNotification({
+    userId: opponent.username,
+    type: 'cricket',
+    title: 'Opponent Quit - You Won! 🏆',
+    body: `@${quitter.username} quit the match. You have been awarded the victory by forfeit!`,
+    link: `/chats`,
+  }).catch(() => {});
+
+  return { success: true, session };
 }
 
 /**
@@ -504,10 +694,13 @@ export async function requestRematch(
   session.status = 'selecting';
   session.player1.selectedCricketerId = null;
   session.player1.hasSelected = false;
+  session.player1.remainingGuesses = 3;
   session.player2.selectedCricketerId = null;
   session.player2.hasSelected = false;
+  session.player2.remainingGuesses = 3;
   session.winner = null;
   session.winningGuess = null;
+  session.forfeitedBy = null;
   session.activeQuestion = null;
   session.turnState = 'ask_or_guess';
   session.completedAt = null;
@@ -602,12 +795,15 @@ async function recordMatchCompleted(session: CricketGameSession): Promise<void> 
       .eq('key', 'cricket_leaderboard')
       .maybeSingle();
 
-    const TEST_DUMMIES = new Set(['rohan728', 'p1_deduction_test', 'p2_deduction_test', 'testuser1', 'testuser2']);
+    const TEST_DUMMIES = new Set(['rohan728', 'p1_deduction_test', 'p2_deduction_test', 'testuser1', 'testuser2', 'arjun_8a', 'priya_7b', 'arjun', 'priya']);
     const leaderboard: CricketLeaderboardEntry[] = lbData?.value
       ? JSON.parse(lbData.value).filter((e: CricketLeaderboardEntry) => !TEST_DUMMIES.has(e.username.toLowerCase()))
       : [];
 
-    // Helper to update player stats
+    // Helper to update player stats with 100% accurate points formula:
+    // Base = 0, Win = +50 points, Participation = +10 points
+    // Points = (wins * 50) + (losses * 10)
+    // WinRate = round((wins / matches) * 100)
     const updatePlayerStats = (player: typeof session.player1, isWinner: boolean) => {
       let entry = leaderboard.find((e) => e.username.toLowerCase() === player.username.toLowerCase());
       if (!entry) {
@@ -615,7 +811,7 @@ async function recordMatchCompleted(session: CricketGameSession): Promise<void> 
           username: player.username,
           fullName: player.fullName,
           avatar: player.avatar,
-          points: 100,
+          points: 0,
           wins: 0,
           matches: 0,
           correctGuesses: 0,
@@ -627,13 +823,12 @@ async function recordMatchCompleted(session: CricketGameSession): Promise<void> 
       entry.matches += 1;
       if (isWinner) {
         entry.wins += 1;
-        entry.points += 60;
         entry.correctGuesses += 1;
-      } else {
-        entry.points += 15; // Participation points
       }
+      // Accurate point formula: 50 pts per win, 10 pts per completed match
+      entry.points = (entry.wins * 50) + (Math.max(0, entry.matches - entry.wins) * 10);
       entry.incorrectGuesses += player.incorrectGuesses || 0;
-      entry.winRate = Math.round((entry.wins / entry.matches) * 100);
+      entry.winRate = entry.matches > 0 ? Math.round((entry.wins / entry.matches) * 100) : 0;
     };
 
     updatePlayerStats(session.player1, session.winner === session.player1.username);
@@ -653,9 +848,11 @@ async function recordMatchCompleted(session: CricketGameSession): Promise<void> 
 }
 
 /**
- * Get persistent leaderboard
+ * Get persistent leaderboard with privacy filtering
+ * If a player has a private account, they are only displayed to their followers (or themselves).
+ * If a player has a public account, they are displayed to all!
  */
-export async function getCricketLeaderboard(): Promise<CricketLeaderboardEntry[]> {
+export async function getCricketLeaderboard(viewerUsername?: string): Promise<CricketLeaderboardEntry[]> {
   try {
     const supabase = getSupabase();
     const { data } = await supabase
@@ -666,8 +863,34 @@ export async function getCricketLeaderboard(): Promise<CricketLeaderboardEntry[]
 
     if (data?.value) {
       const parsed: CricketLeaderboardEntry[] = JSON.parse(data.value);
-      const TEST_DUMMIES = new Set(['rohan728', 'p1_deduction_test', 'p2_deduction_test', 'testuser1', 'testuser2']);
-      return parsed.filter((e) => !TEST_DUMMIES.has(e.username.toLowerCase()));
+      const TEST_DUMMIES = new Set(['rohan728', 'p1_deduction_test', 'p2_deduction_test', 'testuser1', 'testuser2', 'arjun_8a', 'priya_7b', 'arjun', 'priya']);
+      const filtered = parsed
+        .filter((e) => !TEST_DUMMIES.has(e.username.toLowerCase()))
+        .map((e) => ({
+          ...e,
+          points: (e.wins * 50) + (Math.max(0, e.matches - e.wins) * 10),
+          winRate: e.matches > 0 ? Math.round((e.wins / e.matches) * 100) : 0,
+        }))
+        .sort((a, b) => b.points - a.points || b.wins - a.wins);
+
+      const store = await getServerStore();
+      const cleanViewer = (viewerUsername || '').toLowerCase().trim();
+      const isAdmin = cleanViewer === 'shashwath71845';
+
+      return filtered.filter((entry) => {
+        const u = entry.username.toLowerCase().trim();
+        if (isAdmin || u === cleanViewer) return true;
+
+        const prof = (store.profiles || []).find((p) => p.username.toLowerCase().trim() === u);
+        // If profile is public (not private), display in Match Centre to all!
+        if (!prof || !prof.isPrivate) return true;
+
+        // If private, ONLY display to their accepted followers!
+        const isFollower = (store.follows || []).some(
+          (f) => (f.follower || '').toLowerCase().trim() === cleanViewer && (f.following || '').toLowerCase().trim() === u
+        );
+        return isFollower;
+      });
     }
   } catch {}
 
@@ -675,9 +898,11 @@ export async function getCricketLeaderboard(): Promise<CricketLeaderboardEntry[]
 }
 
 /**
- * Get completed match history
+ * Get completed match history with privacy filtering
+ * If players in a match are private, only display to their followers (or participants).
+ * If public, display in Match Centre to all!
  */
-export async function getCricketMatchHistory(username?: string): Promise<CricketMatchRecord[]> {
+export async function getCricketMatchHistory(username?: string, viewerUsername?: string): Promise<CricketMatchRecord[]> {
   try {
     const supabase = getSupabase();
     const { data } = await supabase
@@ -688,19 +913,49 @@ export async function getCricketMatchHistory(username?: string): Promise<Cricket
 
     if (data?.value) {
       const records: CricketMatchRecord[] = JSON.parse(data.value);
-      const TEST_DUMMIES = new Set(['rohan728', 'p1_deduction_test', 'p2_deduction_test', 'testuser1', 'testuser2']);
-      const filtered = records.filter(
+      const TEST_DUMMIES = new Set(['rohan728', 'p1_deduction_test', 'p2_deduction_test', 'testuser1', 'testuser2', 'arjun_8a', 'priya_7b', 'arjun', 'priya']);
+      let filtered = records.filter(
         (r) =>
           !TEST_DUMMIES.has(r.player1Username.toLowerCase()) &&
           !TEST_DUMMIES.has(r.player2Username.toLowerCase())
       );
       if (username) {
         const clean = username.toLowerCase().trim();
-        return filtered.filter(
+        filtered = filtered.filter(
           (r) => r.player1Username.toLowerCase() === clean || r.player2Username.toLowerCase() === clean
         );
       }
-      return filtered;
+
+      const store = await getServerStore();
+      const cleanViewer = (viewerUsername || '').toLowerCase().trim();
+      const isAdmin = cleanViewer === 'shashwath71845';
+
+      return filtered.filter((r) => {
+        const p1 = r.player1Username.toLowerCase().trim();
+        const p2 = r.player2Username.toLowerCase().trim();
+        if (isAdmin || p1 === cleanViewer || p2 === cleanViewer) return true;
+
+        const prof1 = (store.profiles || []).find((p) => p.username.toLowerCase().trim() === p1);
+        const prof2 = (store.profiles || []).find((p) => p.username.toLowerCase().trim() === p2);
+
+        // If player 1 is private, viewer must be a follower
+        if (prof1?.isPrivate) {
+          const followsP1 = (store.follows || []).some(
+            (f) => (f.follower || '').toLowerCase().trim() === cleanViewer && (f.following || '').toLowerCase().trim() === p1
+          );
+          if (!followsP1) return false;
+        }
+
+        // If player 2 is private, viewer must be a follower
+        if (prof2?.isPrivate) {
+          const followsP2 = (store.follows || []).some(
+            (f) => (f.follower || '').toLowerCase().trim() === cleanViewer && (f.following || '').toLowerCase().trim() === p2
+          );
+          if (!followsP2) return false;
+        }
+
+        return true;
+      });
     }
   } catch {}
 

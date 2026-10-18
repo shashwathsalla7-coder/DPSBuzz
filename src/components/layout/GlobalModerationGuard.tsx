@@ -17,7 +17,13 @@ export function GlobalModerationGuard() {
   const [appealReasonText, setAppealReasonText] = useState('');
   const [appealSubmitted, setAppealSubmitted] = useState(false);
 
+  const isPublicRoute =
+    pathname === '/download' ||
+    pathname.startsWith('/download') ||
+    pathname.startsWith('/admin/login');
+
   const checkStatus = () => {
+    if (isPublicRoute) return;
     const user = DataStore.getCurrentUser();
     if (!user || !user.username || user.username.toLowerCase() === 'guest') {
       router.replace('/login');

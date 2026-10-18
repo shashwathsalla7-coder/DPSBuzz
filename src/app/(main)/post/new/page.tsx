@@ -60,16 +60,15 @@ export default function NewPostPage() {
   const [caption, setCaption] = useState('');
   const [selectedPhotos, setSelectedPhotos] = useState<string[]>([]);
   const [audience, setAudience] = useState<'whole-school' | 'class-group'>('whole-school');
-  const [altText, setAltText] = useState('');
-  const [habitCategory, setHabitCategory] = useState<
-    'studies' | 'sports' | 'reading' | 'stem' | 'arts' | 'routine' | 'none'
-  >('studies');
+  const [habitCategory, setHabitCategory] = useState<string>('studies');
+  const [customCategoryInput, setCustomCategoryInput] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [moderationWarning, setModerationWarning] = useState<string | null>(null);
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [selectedSong, setSelectedSong] = useState<SongTrack | null>(null);
   const [showSongPicker, setShowSongPicker] = useState(false);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [altText, setAltText] = useState('');
 
   // Feature 2: Different Captions per Carousel Slide
   const [slideCaptions, setSlideCaptions] = useState<string[]>(['', '', '', '']);
@@ -512,7 +511,9 @@ export default function NewPostPage() {
       images: selectedPhotos,
       slideCaptions: finalSlideCaptions,
       taggedUsers: taggedUsers.length > 0 ? taggedUsers : undefined,
-      habitCategory: habitCategory !== 'none' ? habitCategory : undefined,
+      habitCategory: habitCategory === 'other' ? (customCategoryInput.trim() || 'Other') : (habitCategory !== 'none' ? habitCategory : undefined),
+      audience,
+      targetClass: audience === 'class-group' ? (user.class || '8') : undefined,
       song: selectedSong || undefined,
     });
 
@@ -632,7 +633,7 @@ export default function NewPostPage() {
           </div>
 
           <div className="pt-1 border-t border-black/5 dark:border-white/5 text-[11px] text-[var(--text-muted)] leading-relaxed">
-            <strong className="text-[var(--text)] font-semibold">1st Post Points Rule:</strong> Only the first post you share each day earns streak points. Second and subsequent posts will keep your feed active but will not add extra points.
+            <strong className="text-[var(--text)] font-semibold">Daily Streak Rule:</strong> Post daily to keep your habit streak alive! Earn <strong className="text-[var(--primary)]">+25 points</strong> on your 1st post each day. If you miss even one day, your streak resets to 0!
           </div>
         </div>
 
@@ -695,7 +696,7 @@ export default function NewPostPage() {
                   : 'bg-[var(--surface-sunken)] text-[var(--text-muted)] border border-[var(--line)]'
               }`}
             >
-              Class 8-G Only
+              Class {currentUser?.class || '8'}-{currentUser?.section || 'A'} Only
             </button>
           </div>
         </div>
@@ -809,12 +810,15 @@ export default function NewPostPage() {
               { id: 'stem', label: '🔬 Science Lab & STEM' },
               { id: 'arts', label: '🎨 Arts & Creative' },
               { id: 'routine', label: '🌱 Good Habit / Routine' },
+              { id: 'entertainment', label: '🎭 Entertainment & Fun' },
+              { id: 'casual', label: '☕ Casual & Thoughts' },
+              { id: 'other', label: '✨ Other / Custom' },
               { id: 'none', label: 'School Update' },
             ].map((cat) => (
               <button
                 key={cat.id}
                 type="button"
-                onClick={() => setHabitCategory(cat.id as any)}
+                onClick={() => setHabitCategory(cat.id)}
                 className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer ${
                   habitCategory === cat.id
                     ? 'bg-[var(--primary)] text-white shadow-xs'
@@ -825,6 +829,18 @@ export default function NewPostPage() {
               </button>
             ))}
           </div>
+
+          {habitCategory === 'other' && (
+            <div className="pt-2 animate-fade-in">
+              <input
+                type="text"
+                value={customCategoryInput}
+                onChange={(e) => setCustomCategoryInput(e.target.value)}
+                placeholder="Enter custom category name (e.g. Robotics, Chess, Debate)..."
+                className="w-full h-10 px-3.5 rounded-xl bg-[var(--surface-sunken)] border border-[var(--primary)]/40 text-xs text-[var(--text)] placeholder:text-[var(--text-muted)] outline-none focus:border-[var(--primary)]"
+              />
+            </div>
+          )}
         </div>
 
         {/* Music / Song Attachment (30s Free Preview from Apple) */}

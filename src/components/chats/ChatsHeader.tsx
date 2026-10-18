@@ -46,8 +46,8 @@ export const ChatsHeader: React.FC<ChatsHeaderProps> = React.memo(({
             type="button"
             onClick={onOpenGames}
             className="w-9 h-9 rounded-[10px] flex items-center justify-center transition-colors btn-press hover:bg-[var(--surface-sunken)] active:scale-95 cursor-pointer text-pink-500"
-            aria-label="Guess the Cricketer & Games"
-            title="Guess the Cricketer & Games 🏏"
+            aria-label="DPSBuzz Games Arena"
+            title="DPSBuzz Games Arena (Connect 4, Cricket, 2048 Solo) 🎮"
           >
             <Gamepad2 size={20} strokeWidth={2.2} />
           </button>

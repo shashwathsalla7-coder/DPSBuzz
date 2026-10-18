@@ -225,8 +225,11 @@ export default function SettingsPage() {
     localStorage.removeItem('dpsbuzz_shashwath_authenticated');
     localStorage.removeItem('dpsbuzz_chat_conversations_v2');
     localStorage.removeItem('dpsbuzz_chat_messages_v1');
+    localStorage.removeItem('dpsbuzz_active_call');
+    localStorage.removeItem('dpsbuzz_comments_v1');
     sessionStorage.clear();
-    document.cookie = 'dpsbuzz_user=; path=/; max-age=0; SameSite=Lax';
+    document.cookie = 'dpsbuzz_user=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
+    document.cookie = 'dpsbuzz_admin_session=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
     router.push('/login');
   };
 
@@ -239,7 +242,10 @@ export default function SettingsPage() {
       document.cookie = 'dpsbuzz_user=; path=/; max-age=0; SameSite=Lax';
     }
     setShowDeleteSheet(false);
-    router.push('/login');
+    showToast('Your account and all associated data have been permanently deleted.');
+    setTimeout(() => {
+      router.push('/login');
+    }, 500);
   };
 
   const unblockUser = (u: string) => {
@@ -905,39 +911,54 @@ export default function SettingsPage() {
         </section>
 
         {/* Footer */}
-        <div className="pt-4 text-left space-y-1">
-          <p className="text-xs font-semibold text-[var(--text)]">DPS Buzz</p>
-          <p className="text-xs text-[var(--text-muted)]">
-            Dilsukhnagar Public School student network.
+        <div className="pt-4 text-left space-y-2 border-t border-[var(--line)]">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-bold text-[var(--text)]">DPS Buzz 🐝</span>
+            <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold border border-emerald-500/25">
+              100% Ad-Free
+            </span>
+          </div>
+          <p className="text-xs text-[var(--text-muted)] leading-relaxed">
+            Dilsukhnagar Public School private student network. Strictly non-commercial and ad-free. No commercial ads, no sponsorships, and no commercial tracking ever.
           </p>
         </div>
       </div>
 
       {/* DELETE ACCOUNT CONFIRMATION SHEET */}
       {showDeleteSheet && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-end justify-center animate-fade-in">
-          <div className="w-full max-w-lg bg-[var(--surface)] border-t border-[var(--line)] rounded-t-[20px] p-6 space-y-4 animate-slide-up">
-            <div className="w-9 h-1 rounded-full bg-[var(--line-strong)] mx-auto" />
-            <div className="flex items-center gap-2.5 text-[var(--danger)]">
-              <AlertTriangle size={20} />
-              <h3 className="text-base font-bold font-display">Delete account</h3>
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-end md:items-center justify-center p-0 md:p-4 animate-fade-in">
+          <div className="w-full max-w-lg bg-[var(--surface)] border border-red-500/30 rounded-t-[24px] md:rounded-[24px] p-6 space-y-4 animate-slide-up shadow-2xl">
+            <div className="w-9 h-1 rounded-full bg-[var(--line-strong)] mx-auto md:hidden" />
+            <div className="flex items-center gap-2.5 text-red-600 dark:text-red-400">
+              <AlertTriangle size={24} className="shrink-0" />
+              <h3 className="text-lg font-bold font-display text-red-600 dark:text-red-400">
+                Permanent Account Deletion Warning
+              </h3>
             </div>
-            {/* Exact copy from Section 11 */}
-            <p className="text-sm text-[var(--text)] leading-relaxed">
-              This removes your posts, stories and messages. It can't be undone.
-            </p>
+            <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-700 dark:text-red-300 space-y-2 leading-relaxed">
+              <p className="font-bold text-sm text-red-600 dark:text-red-400">
+                ⚠️ WARNING: This action cannot be undone. Data is wiped forever!
+              </p>
+              <ul className="list-disc list-inside space-y-1.5 opacity-90 text-[12px]">
+                <li>All your photos, posts, stories, comments, and archives will be permanently erased.</li>
+                <li>All direct chats, vanish messages, and media history will be deleted.</li>
+                <li>Your habit streaks, spirit points, badges, and leaderboard rankings will be wiped.</li>
+                <li>Your follower/following relationships will be severed and follower counts updated.</li>
+                <li><strong>No re-entry:</strong> Once deleted, this account cannot be restored or re-accessed under any circumstances.</li>
+              </ul>
+            </div>
             <div className="pt-2 flex flex-col gap-2.5">
               <button
                 onClick={handleDeleteAccount}
-                className="w-full h-12 rounded-[12px] bg-[var(--danger)] text-white text-sm font-semibold hover:opacity-90 transition-opacity cursor-pointer"
+                className="w-full h-12 rounded-[14px] bg-red-600 hover:bg-red-700 text-white text-sm font-bold shadow-lg shadow-red-600/25 transition-all cursor-pointer active:scale-95"
               >
-                Delete permanently
+                Delete permanently (No re-entry)
               </button>
               <button
                 onClick={() => setShowDeleteSheet(false)}
-                className="w-full h-12 rounded-[12px] bg-[var(--surface-sunken)] border border-[var(--line)] text-sm font-semibold text-[var(--text)] hover:bg-[var(--line)] transition-colors cursor-pointer"
+                className="w-full h-12 rounded-[14px] bg-[var(--surface-sunken)] border border-[var(--line)] text-sm font-semibold text-[var(--text)] hover:bg-[var(--line)] transition-colors cursor-pointer"
               >
-                Cancel
+                Cancel & Keep My Account
               </button>
             </div>
           </div>

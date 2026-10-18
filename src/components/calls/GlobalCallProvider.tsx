@@ -5,7 +5,20 @@ import { Phone, PhoneOff, Video } from 'lucide-react';
 import { DataStore } from '@/lib/dataStore';
 import { getAvatarColorPair } from '@/config/tokens';
 import type { CallSession } from '@/app/api/calls/route';
-import { ZegoCallRoom } from './ZegoCallRoom';
+import dynamic from 'next/dynamic';
+
+const ZegoCallRoom = dynamic(
+  () => import('./ZegoCallRoom').then((mod) => mod.ZegoCallRoom),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center text-white p-4">
+        <div className="w-10 h-10 border-3 border-pink-500 border-t-transparent rounded-full animate-spin mb-4" />
+        <p className="text-sm font-semibold">Connecting call...</p>
+      </div>
+    ),
+  }
+);
 import {
   playOutgoingRingtone,
   playIncomingRingtone,
@@ -68,11 +81,6 @@ export function GlobalCallProvider() {
     };
   }, []);
 
-  useEffect(() => {
-    // Pre-load ZEGOCLOUD bundle in background so when a call starts or arrives,
-    // ZegoUIKitPrebuilt is already in memory and mounts with zero delay inside user gesture
-    import('@zegocloud/zego-uikit-prebuilt').catch(() => {});
-  }, []);
 
   const [activeCall, setActiveCall] = useState<CallSession | null>(null);
   const [incomingCall, setIncomingCall] = useState<CallSession | null>(null);
@@ -108,13 +116,8 @@ export function GlobalCallProvider() {
   const isInitiatingCallRef = useRef(false);
   const isHandlingIncomingActionRef = useRef(false);
 
-  // Preload ZEGOCLOUD bundle in idle time to eliminate startup latency
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const timer = setTimeout(() => {
-        import('@zegocloud/zego-uikit-prebuilt').catch(() => {});
-      }, 800);
-
       // Hydrate ended calls history from localStorage to avoid reviving zombie sessions
       try {
         const stored = localStorage.getItem('dpsbuzz_ended_call_ids_v1');
@@ -124,8 +127,6 @@ export function GlobalCallProvider() {
         }
         localStorage.removeItem('dpsbuzz_active_call_session');
       } catch {}
-
-      return () => clearTimeout(timer);
     }
   }, []);
 

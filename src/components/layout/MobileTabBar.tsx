@@ -11,8 +11,10 @@ export const MobileTabBar: FC = () => {
   const pathname = usePathname();
   const [currentUser, setCurrentUser] = useState<Profile | null>(null);
   const [unreadChatsCount, setUnreadChatsCount] = useState(0);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     const updateUserState = () => {
       const user = DataStore.getCurrentUser();
       setCurrentUser(user);
@@ -33,8 +35,9 @@ export const MobileTabBar: FC = () => {
   const isChatsActive = pathname === '/chats' || pathname.startsWith('/chats');
   const isProfileActive = pathname === '/profile' || pathname.startsWith('/u/');
 
-  const avatarColor = getAvatarColorPair(currentUser?.username || 'student');
-  const userInitials = (currentUser?.fullName || currentUser?.username || 'ST')
+  const activeUser = mounted ? currentUser : null;
+  const avatarColor = getAvatarColorPair(activeUser?.username || 'student');
+  const userInitials = (activeUser?.fullName || activeUser?.username || 'ST')
     .slice(0, 2)
     .toUpperCase();
 
@@ -151,7 +154,7 @@ export const MobileTabBar: FC = () => {
 
         {/* 5. Profile Tab (Own student avatar 24px, ringed in primary when active) */}
         <Link
-          href="/profile"
+          href={mounted && currentUser?.username ? `/u/${currentUser.username}` : '/profile'}
           prefetch={true}
           className="flex flex-col items-center justify-center flex-1 h-full py-1 transition-colors select-none"
           style={{

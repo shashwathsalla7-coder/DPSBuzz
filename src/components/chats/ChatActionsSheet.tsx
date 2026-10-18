@@ -102,7 +102,7 @@ export const ChatActionsSheet: React.FC<ChatActionsSheetProps> = ({
           </button>
 
           {/* Play Games */}
-          {!conversation.isGroup && onOpenGames && (
+          {onOpenGames && (
             <button
               type="button"
               onClick={() => {
@@ -113,7 +113,7 @@ export const ChatActionsSheet: React.FC<ChatActionsSheetProps> = ({
               style={{ color: 'var(--text)' }}
             >
               <Gamepad2 size={18} className="text-pink-500" />
-              <span>Play Games (Guess the Cricketer 🏏)</span>
+              <span>Play Games (Connect 4, Cricket, 2048 Solo 🎮)</span>
             </button>
           )}
 

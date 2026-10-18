@@ -81,9 +81,12 @@ export const metadata: Metadata = {
   manifest: '/manifest.json',
   icons: {
     icon: [
-      { url: '/favicon.png', sizes: '32x32', type: 'image/png' },
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/favicon.png', sizes: '64x64', type: 'image/png' },
       { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
     ],
+    shortcut: '/favicon.ico',
     apple: [
       { url: '/icons/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
     ],
@@ -94,7 +97,7 @@ export const metadata: Metadata = {
     title: 'DPS Buzz',
   },
   verification: {
-    google: 'RBSTRSJjxlFrexXvv6cjVYbZ30BMRgcGl-Vj-aQXzVc',
+    google: '6qEUA72oc0FtLXS-QeBPATmv_1rQvgyDBL9UjzGCxoA',
   },
   category: 'education',
 };
@@ -118,8 +121,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     >
       <head>
         <JsonLd />
+        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="icon" type="image/png" sizes="64x64" href="/favicon.png" />
+        <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
+        <link rel="shortcut icon" href="/favicon.ico" />
         <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
         <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="google-site-verification" content="6qEUA72oc0FtLXS-QeBPATmv_1rQvgyDBL9UjzGCxoA" />
         <script
           dangerouslySetInnerHTML={{
             __html: `

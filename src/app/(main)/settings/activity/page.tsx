@@ -296,7 +296,7 @@ function YourActivityContent() {
       )}
 
       {/* Main Container - Desktop 2-column layout matching Instagram's screenshot */}
-      <div className="w-full max-w-5xl mx-auto flex flex-col md:flex-row border-x border-[var(--line)] min-h-[calc(100vh-64px)] bg-[var(--surface)]">
+      <div className="w-full max-w-5xl mx-auto flex flex-col md:flex-row border-x border-[var(--line)] min-h-[calc(100dvh-64px)] bg-[var(--surface)]">
         
         {/* ======================================================== */}
         {/* LEFT SIDEBAR (Desktop) / TOP TABS (Mobile)              */}

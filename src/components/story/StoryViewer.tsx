@@ -238,8 +238,6 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
   // Which story index within this profile (0 .. currentGroup.stories.length - 1)
   const [currentStoryIndex, setCurrentStoryIndex] = useState<number>(initialStoryIndex);
 
-  // Progress for the currently active bar segment (0% .. 100%)
-  const [progress, setProgress] = useState<number>(0);
   const [isPaused, setIsPaused] = useState<boolean>(false);
   const [isMuted, setIsMuted] = useState<boolean>(false);
   const [audioIsPlaying, setAudioIsPlaying] = useState<boolean>(false);
@@ -279,7 +277,6 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
 
       setCurrentUserIndex(uIdx);
       setCurrentStoryIndex(sIdx);
-      setProgress(0);
       setIsPaused(false);
       setIsMuted(false);
       setShowActivitySheet(false);
@@ -407,7 +404,6 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
     if (currentStoryIndex < currentStories.length - 1) {
       // 1. Same Profile: advance to NEXT story of this profile!
       setCurrentStoryIndex((prev) => prev + 1);
-      setProgress(0);
       elapsedBeforePauseRef.current = 0;
       startTimeRef.current = Date.now();
     } else {
@@ -415,7 +411,6 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
       if (currentUserIndex < effectiveGroups.length - 1) {
         setCurrentUserIndex((prev) => prev + 1);
         setCurrentStoryIndex(0); // Start at story 1 of the new profile
-        setProgress(0);
         elapsedBeforePauseRef.current = 0;
         startTimeRef.current = Date.now();
       } else {
@@ -431,7 +426,6 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
     if (currentStoryIndex > 0) {
       // 1. Same Profile: go back to PREVIOUS story of this profile!
       setCurrentStoryIndex((prev) => prev - 1);
-      setProgress(0);
       elapsedBeforePauseRef.current = 0;
       startTimeRef.current = Date.now();
     } else {
@@ -441,12 +435,10 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
         const lastStoryIdx = Math.max(0, prevGroup.stories.length - 1);
         setCurrentUserIndex((prev) => prev - 1);
         setCurrentStoryIndex(lastStoryIdx);
-        setProgress(0);
         elapsedBeforePauseRef.current = 0;
         startTimeRef.current = Date.now();
       } else {
         // First story of first profile: restart progress from 0
-        setProgress(0);
         elapsedBeforePauseRef.current = 0;
         startTimeRef.current = Date.now();
       }
@@ -459,7 +451,6 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
     if (currentUserIndex < effectiveGroups.length - 1) {
       setCurrentUserIndex((prev) => prev + 1);
       setCurrentStoryIndex(0);
-      setProgress(0);
       elapsedBeforePauseRef.current = 0;
       startTimeRef.current = Date.now();
     } else {
@@ -473,45 +464,37 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
     if (currentUserIndex > 0) {
       setCurrentUserIndex((prev) => prev - 1);
       setCurrentStoryIndex(0);
-      setProgress(0);
       elapsedBeforePauseRef.current = 0;
       startTimeRef.current = Date.now();
     }
   }, [currentUserIndex]);
 
-  // Progress timer loop (5 seconds per slide)
+  // Auto-advance timer (5 seconds per slide, 0ms idle CPU, hardware accelerated)
   useEffect(() => {
     if (!isOpen || isPaused || showActivitySheet || !currentStory) return;
 
-    startTimeRef.current = Date.now() - elapsedBeforePauseRef.current;
+    const remaining = Math.max(150, STORY_DURATION_MS - elapsedBeforePauseRef.current);
+    startTimeRef.current = Date.now();
 
-    const interval = setInterval(() => {
-      const elapsed = Date.now() - startTimeRef.current;
-      const currentPct = Math.min(100, (elapsed / STORY_DURATION_MS) * 100);
-      setProgress(currentPct);
+    const timeout = setTimeout(() => {
+      elapsedBeforePauseRef.current = 0;
+      handleNext();
+    }, remaining);
 
-      if (elapsed >= STORY_DURATION_MS) {
-        clearInterval(interval);
-        handleNext();
-      }
-    }, 40);
-
-    timerRef.current = interval;
-
-    return () => clearInterval(interval);
+    return () => clearTimeout(timeout);
   }, [isOpen, isPaused, showActivitySheet, currentUserIndex, currentStoryIndex, currentStory, handleNext]);
 
   // Pause / Resume handler on touch hold
   const handlePause = () => {
     if (!isPaused) {
-      elapsedBeforePauseRef.current = Date.now() - startTimeRef.current;
+      elapsedBeforePauseRef.current += Math.max(0, Date.now() - startTimeRef.current);
       setIsPaused(true);
     }
   };
 
   const handleResume = () => {
     if (isPaused) {
-      startTimeRef.current = Date.now() - elapsedBeforePauseRef.current;
+      startTimeRef.current = Date.now();
       setIsPaused(false);
     }
   };
@@ -662,20 +645,23 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
             {currentStories.map((s, idx) => {
               const isPast = idx < currentStoryIndex;
               const isCurrent = idx === currentStoryIndex;
-              const segProgress = isPast ? 100 : isCurrent ? progress : 0;
 
               return (
                 <div
-                  key={s.id || idx}
+                  key={`${currentUserIndex}-${s.id || idx}`}
                   className="h-[3px] rounded-full overflow-hidden flex-1 bg-white/30"
                   style={{
                     backgroundColor: 'rgba(255, 255, 255, 0.30)',
                   }}
                 >
                   <div
-                    className="h-full bg-white transition-all duration-75 rounded-full"
+                    key={`${currentUserIndex}-${idx}-${currentStoryIndex}`}
+                    className="h-full bg-white rounded-full w-full"
                     style={{
-                      width: `${segProgress}%`,
+                      transformOrigin: 'left',
+                      transform: isPast ? 'scaleX(1)' : isCurrent ? undefined : 'scaleX(0)',
+                      animation: isCurrent ? `story-progress-fill ${STORY_DURATION_MS}ms linear forwards` : 'none',
+                      animationPlayState: isPaused ? 'paused' : 'running',
                       backgroundColor: '#FFFFFF',
                     }}
                   />

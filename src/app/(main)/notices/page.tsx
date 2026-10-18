@@ -7,8 +7,8 @@ import { DataStore, type Notice, type CalendarEvent } from '@/lib/dataStore';
 import { colors } from '@/config/tokens';
 
 export default function NoticesPage() {
-  const [notices, setNotices] = useState<Notice[]>([]);
-  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
+  const [notices, setNotices] = useState<Notice[]>(() => (typeof window !== 'undefined' ? DataStore.getNotices() : []));
+  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>(() => (typeof window !== 'undefined' ? DataStore.getCalendarEvents() : []));
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const [calendarMonth, setCalendarMonth] = useState<Date>(new Date(2026, 9, 1)); // October 2026

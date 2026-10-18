@@ -40,11 +40,11 @@ function SearchContent() {
   const [demoState, setDemoState] = useState<'normal' | 'loading' | 'error'>('normal');
 
   // App data state
-  const [currentUser, setCurrentUser] = useState<Profile | null>(null);
-  const [allProfiles, setAllProfiles] = useState<Profile[]>([]);
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [follows, setFollows] = useState<Array<{ follower: string; following: string }>>([]);
-  const [registeredUserCount, setRegisteredUserCount] = useState<number>(0);
+  const [currentUser, setCurrentUser] = useState<Profile | null>(() => (typeof window !== 'undefined' ? DataStore.getCurrentUser() : null));
+  const [allProfiles, setAllProfiles] = useState<Profile[]>(() => (typeof window !== 'undefined' ? DataStore.getProfiles() : []));
+  const [posts, setPosts] = useState<Post[]>(() => (typeof window !== 'undefined' ? DataStore.getPosts() : []));
+  const [follows, setFollows] = useState<Array<{ follower: string; following: string }>>(() => (typeof window !== 'undefined' ? DataStore.getFollows() : []));
+  const [registeredUserCount, setRegisteredUserCount] = useState<number>(() => (typeof window !== 'undefined' ? DataStore.getRegisteredUserCount() : 0));
 
   // Recent searches with localStorage persistence
   const [recentSearches, setRecentSearches] = useState<string[]>(() => {
@@ -165,15 +165,19 @@ function SearchContent() {
     setQuery(term);
   };
 
-  // 1. Star of the Week winner (Hero card)
+  // 1. Star Board & Leaderboard Top Rankers (Hero Card Carousel)
   const starWinner = useMemo(() => {
     if (allProfiles.length === 0) return [];
-    const sorted = [...allProfiles].sort(
-      (a, b) => (b.followerCount || 0) - (a.followerCount || 0)
-    );
-    return sorted.slice(0, 2).map((p) => ({
+    const streaks = DataStore.getHabitStreaks();
+    const streakMap = new Map(streaks.map((s) => [s.username.toLowerCase(), s]));
+    const sorted = [...allProfiles].sort((a, b) => {
+      const sA = streakMap.get(a.username.toLowerCase())?.habitPoints ?? ((a.spiritPoints || 0) + (a.followerCount || 0));
+      const sB = streakMap.get(b.username.toLowerCase())?.habitPoints ?? ((b.spiritPoints || 0) + (b.followerCount || 0));
+      return sB - sA;
+    });
+    return sorted.slice(0, 5).map((p, idx) => ({
       profile: p,
-      badgeTitle: 'Top Rank Student',
+      badgeTitle: idx === 0 ? 'Star of the Week' : `Star Board Rank #${idx + 1}`,
     }));
   }, [allProfiles]);
 
@@ -542,7 +546,7 @@ function SearchContent() {
             <span>Retry</span>
           </button>
         </div>
-      ) : !query && activeChip === 'Accounts' ? (
+      ) : !query && activeChip === 'Accounts' && selectedClass === 'All' && selectedSection === 'All' ? (
         /* ACCOUNTS DEFAULT STATE: Recent searches + Star of the Week + Suggested Classmates */
         <div className="space-y-4">
           {recentSearches.length > 0 && (

@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // 1. Static files & public assets - allow always
@@ -58,6 +58,37 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Strict server-side Admin Route Protection
+  if (pathname.startsWith('/admin') && pathname !== '/admin/login') {
+    const adminSession = request.cookies.get('dpsbuzz_admin_session')?.value;
+    let isSuperAdmin = false;
+
+    if (adminSession) {
+      try {
+        const decoded = JSON.parse(Buffer.from(adminSession, 'base64').toString('utf8'));
+        if (decoded && decoded.username === 'shashwath71845' && decoded.role === 'admin') {
+          isSuperAdmin = true;
+        }
+      } catch {}
+    }
+
+    if (!isSuperAdmin && userCookie) {
+      try {
+        const decoded = decodeURIComponent(userCookie);
+        const user = JSON.parse(decoded);
+        if (user && user.username === 'shashwath71845' && user.role === 'admin') {
+          isSuperAdmin = true;
+        }
+      } catch {}
+    }
+
+    if (!isSuperAdmin) {
+      const loginUrl = new URL('/admin/login', request.url);
+      loginUrl.searchParams.set('redirect', pathname);
+      return NextResponse.redirect(loginUrl);
+    }
+  }
+
   // 5. Protected student routes - require saved user on this device
   const isProtectedRoute =
     pathname.startsWith('/home') ||
@@ -70,8 +101,7 @@ export function middleware(request: NextRequest) {
     pathname.startsWith('/post') ||
     pathname.startsWith('/profile') ||
     pathname.startsWith('/groups') ||
-    pathname.startsWith('/leaderboard') ||
-    pathname.startsWith('/admin');
+    pathname.startsWith('/leaderboard');
 
   if (isProtectedRoute && !hasValidUser) {
     return NextResponse.redirect(new URL('/login', request.url));

@@ -14,7 +14,7 @@ export type AnswerType = 'yes' | 'no' | 'partially' | 'cant_say';
 
 export interface TimelineItem {
   id: string;
-  type: 'question' | 'guess' | 'system' | 'rematch';
+  type: 'question' | 'guess' | 'system' | 'rematch' | 'forfeit';
   by: string;
   byName: string;
   questionText?: string;
@@ -35,6 +35,7 @@ export interface CricketPlayer {
   correctGuesses: number;
   incorrectGuesses: number;
   questionsAsked: number;
+  remainingGuesses?: number; // 3 lives/attempts to guess
 }
 
 export interface CricketGameSession {
@@ -54,6 +55,7 @@ export interface CricketGameSession {
   timeline: TimelineItem[];
   winner: string | null;
   winningGuess: string | null;
+  forfeitedBy?: string | null;
   revealedPlayer1Cricketer?: Cricketer | null;
   revealedPlayer2Cricketer?: Cricketer | null;
   startedAt: number;

@@ -58,19 +58,22 @@ export default function SignupPage() {
       return;
     }
 
-    if (schoolCode.trim()) {
-      const clean = schoolCode.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
-      const validCode = DataStore.getInviteCode().toUpperCase().replace(/[^A-Z0-9]/g, '');
-      if (
-        clean !== 'DPS71845' &&
-        clean !== '71845' &&
-        clean !== validCode &&
-        clean !== 'DPSBUZZ2026' &&
-        !clean.includes('71845')
-      ) {
-        setError('Please enter school code DPS71845 to continue.');
-        return;
-      }
+    if (!schoolCode.trim()) {
+      setError('Please enter the school invite code (DPS71845) to continue.');
+      return;
+    }
+
+    const clean = schoolCode.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const validCode = DataStore.getInviteCode().toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (
+      clean !== 'DPS71845' &&
+      clean !== '71845' &&
+      clean !== validCode &&
+      clean !== 'DPSBUZZ2026' &&
+      !clean.includes('71845')
+    ) {
+      setError('Invalid school code. Please enter DPS71845 to continue.');
+      return;
     }
 
     setStep(2);

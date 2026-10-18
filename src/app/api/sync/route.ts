@@ -67,6 +67,43 @@ export async function GET(req: NextRequest) {
       });
     }
 
+    // Filter notifications so only recipient's notifications are returned
+    const userCookie = req.cookies.get('dpsbuzz_user')?.value;
+    let authUser = '';
+    if (userCookie) {
+      try {
+        const parsed = JSON.parse(decodeURIComponent(userCookie));
+        authUser = (parsed?.username || '').toLowerCase().trim();
+      } catch {}
+    }
+    const reqUsername = authUser || username;
+
+    const filteredNotifications = reqUsername
+      ? (store.notifications || []).filter((n: any) => {
+          const target = (n.recipientUsername || n.userId || '').toLowerCase().trim();
+          return target === reqUsername || target === '' || reqUsername === 'shashwath71845';
+        })
+      : [];
+
+    const mode = searchParams.get('mode');
+    if (mode === 'incoming' || mode === 'alerts') {
+      const recentPosts = (store.posts || []).slice(0, 3).map((p: any) => ({
+        id: p.id,
+        username: p.username,
+        caption: p.caption,
+        avatar: p.avatar,
+      }));
+      return NextResponse.json({
+        success: true,
+        mode: 'incoming',
+        chatMessages: filteredChatMessages,
+        notifications: filteredNotifications,
+        activeCalls: store.activeCalls || {},
+        posts: recentPosts,
+        lastUpdated: store.lastUpdated,
+      }, { headers: NO_CACHE_HEADERS });
+    }
+
     return NextResponse.json({
       success: true,
       posts: store.posts,
@@ -81,7 +118,7 @@ export async function GET(req: NextRequest) {
       groupJoinRequests: filteredGroupRequests,
       deletedPostIds: store.deletedPostIds || [],
       deletedUsernames: store.deletedUsernames || [],
-      notifications: store.notifications || [],
+      notifications: filteredNotifications,
       notices: store.notices || [],
       follows: store.follows || [],
       followRequests: store.followRequests || [],
@@ -130,15 +167,57 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Merge profiles (exclude deleted usernames)
+    // Merge profiles (exclude deleted usernames, update existing ones)
     let mergedProfiles = [...current.profiles];
     if (Array.isArray(profiles)) {
-      const existingUsernames = new Set(mergedProfiles.map((pr) => pr.username.toLowerCase().trim()));
+      const userCookie = req.cookies.get('dpsbuzz_user')?.value;
+      let authUser = '';
+      let isAdmin = false;
+      if (userCookie) {
+        try {
+          const parsed = JSON.parse(decodeURIComponent(userCookie));
+          authUser = (parsed?.username || '').toLowerCase().trim();
+          isAdmin = parsed?.role === 'admin' && authUser === 'shashwath71845';
+        } catch {}
+      }
+
+      const existingMap = new Map(mergedProfiles.map((pr) => [pr.username.toLowerCase().trim(), pr]));
       for (const pr of profiles) {
         const u = pr.username?.toLowerCase()?.trim();
-        if (u && !existingUsernames.has(u) && !deletedUsernames.has(u)) {
+        if (!u || deletedUsernames.has(u)) continue;
+
+        // Security: Non-admin users can ONLY update their own profile details
+        if (!isAdmin && authUser && u !== authUser) {
+          continue;
+        }
+
+        if (existingMap.has(u)) {
+          // Update existing profile with new details (class, section, bio, avatar, etc.)
+          const existing = existingMap.get(u)!;
+          if (pr.class) existing.class = pr.class;
+          if (pr.section) existing.section = pr.section;
+          if (pr.fullName) existing.fullName = pr.fullName;
+          if (pr.bio !== undefined) existing.bio = pr.bio;
+          if (pr.avatar !== undefined) existing.avatar = pr.avatar;
+          if (pr.isPrivate !== undefined) existing.isPrivate = pr.isPrivate;
+          if (isAdmin && pr.spiritPoints !== undefined) existing.spiritPoints = pr.spiritPoints;
+
+          // Propagate updated class & section to this student's posts
+          const newClassStr = pr.class
+            ? pr.class.toString().startsWith('Class')
+              ? pr.class
+              : `Class ${pr.class}-${pr.section || 'A'}`
+            : undefined;
+          if (newClassStr) {
+            for (const p of mergedPosts) {
+              if ((p.username || '').toLowerCase().trim() === u) {
+                p.class = newClassStr;
+              }
+            }
+          }
+        } else {
           mergedProfiles.push(pr);
-          existingUsernames.add(u);
+          existingMap.set(u, pr);
         }
       }
     }

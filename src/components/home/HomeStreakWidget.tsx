@@ -339,6 +339,14 @@ export const HomeStreakWidget: React.FC<HomeStreakWidgetProps> = ({
         )}
       </div>
 
+      {/* Daily Streak Golden Rule Highlight */}
+      <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/25 text-[11px] text-amber-400 font-medium flex items-start gap-2">
+        <Flame size={14} className="shrink-0 mt-0.5 text-amber-500 animate-flame" />
+        <div className="leading-snug">
+          <strong className="font-bold text-white">Daily Streak Rule:</strong> Post daily to keep your habit streak alive! Earn <strong className="text-white">+25 points</strong> on your 1st post each day. If you miss even one day, your streak resets to 0!
+        </div>
+      </div>
+
       {/* Bottom Teaser for Top Student of the Week */}
       {topStudent && (
         <div className="mt-3 pt-2.5 border-t flex items-center justify-between text-xs text-[var(--text-muted)]" style={{ borderColor: 'var(--line)' }}>
