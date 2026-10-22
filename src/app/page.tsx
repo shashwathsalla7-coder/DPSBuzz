@@ -111,6 +111,43 @@ export default function LandingPage() {
           </div>
         </div>
 
+        {/* Featured Video / Ad Spotlight */}
+        <section className="rounded-2xl overflow-hidden border border-neutral-800 bg-neutral-900/50 p-4 sm:p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">🎬</span>
+              <h2 className="text-lg sm:text-xl font-bold text-white">
+                Featured Spotlight
+              </h2>
+            </div>
+            <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-purple-500/15 text-purple-400 border border-purple-500/30">
+              Official Ad
+            </span>
+          </div>
+
+          <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-black flex items-center justify-center">
+            <video
+              src="/videos/ad.mp4"
+              controls
+              playsInline
+              preload="metadata"
+              className="w-full h-full object-contain"
+            />
+          </div>
+
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+            <p className="text-xs text-neutral-400">
+              Official video spotlight for Dilsukhnagar Public School students.
+            </p>
+            <Link
+              href="/signup"
+              className="inline-flex items-center justify-center text-xs font-semibold px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:opacity-90 transition-opacity whitespace-nowrap self-start sm:self-auto"
+            >
+              Get Started ✨
+            </Link>
+          </div>
+        </section>
+
         {/* Who Can Join Section */}
         <section className="rounded-2xl bg-neutral-900/40 border border-neutral-850 p-6 sm:p-8 space-y-4">
           <div className="flex items-center gap-2.5">

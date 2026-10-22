@@ -32,6 +32,7 @@ import { GetAppWidget } from '@/components/home/GetAppWidget';
 import { HomeFeedSkeleton } from '@/components/home/HomeFeedSkeleton';
 import { SuggestedAccountsList } from '@/components/suggestions';
 import { HomeStreakWidget } from '@/components/home/HomeStreakWidget';
+import { AdVideoCard } from '@/components/home/AdVideoCard';
 import dynamic from 'next/dynamic';
 
 const SharePostModal = dynamic(
@@ -732,6 +733,11 @@ function HomeContent() {
 
               {/* In-feed Daily Habit Streak & Strike Points Widget */}
               {postIdx === 2 && <HomeStreakWidget />}
+
+              {/* In-feed Sponsored Ad Video Card */}
+              {(postIdx === 3 || (visiblePosts.length <= 3 && postIdx === visiblePosts.length - 1)) && (
+                <AdVideoCard />
+              )}
             </div>
           ))}
 
