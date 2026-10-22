@@ -14,7 +14,8 @@ export function proxy(request: NextRequest) {
     pathname.startsWith('/opengraph-image') ||
     pathname.startsWith('/apple-icon') ||
     pathname.startsWith('/icon') ||
-    pathname.startsWith('/BingSiteAuth.xml')
+    pathname.startsWith('/BingSiteAuth.xml') ||
+    pathname.startsWith('/videos')
   ) {
     return NextResponse.next();
   }
@@ -140,6 +141,6 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|manifest.json|robots.txt|sitemap.xml|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|txt|xml|html)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|manifest.json|robots.txt|sitemap.xml|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|txt|xml|html|mp4|webm|m4v)$).*)',
   ],
 };
