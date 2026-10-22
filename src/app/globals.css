@@ -954,3 +954,15 @@ body[data-theme="dark"] .logo-light-img,
   }
 }
 
+/* Ensure full complete view when video element enters native fullscreen mode */
+video:fullscreen {
+  object-fit: contain !important;
+  background-color: #000000 !important;
+}
+
+video:-webkit-full-screen {
+  object-fit: contain !important;
+  background-color: #000000 !important;
+}
+
+
