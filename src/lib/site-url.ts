@@ -15,7 +15,7 @@ export function getBaseUrl(): string {
   if (process.env.VERCEL_URL) {
     return `https://${process.env.VERCEL_URL.replace(/\/$/, '')}`;
   }
-  return 'https://dpsbuzz.vercel.app';
+  return 'https://dpsbuzz.in';
 }
 
 export const siteUrl = getBaseUrl();
