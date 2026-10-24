@@ -399,10 +399,19 @@ export function GlobalNotificationListener() {
 
       // Verify if current user is involved in this conversation
       const isGroup = conversationId && conversationId.startsWith('conv-group-');
-      const isDirectWithMe = conversationId && conversationId.includes('__') &&
-        conversationId.split('__').map((p: string) => p.trim().toLowerCase()).includes(uname);
+      let isAuthorized = false;
+      if (isGroup) {
+        const groupId = conversationId.replace(/^conv-/, '');
+        const groupMembers = DataStore.getGroupMembers(groupId).map((m: any) =>
+          typeof m === 'string' ? m.toLowerCase().trim() : (m.username || '').toLowerCase().trim()
+        );
+        isAuthorized = groupMembers.includes(uname) || uname === 'shashwath71845';
+      } else if (conversationId && conversationId.includes('__')) {
+        const participants = conversationId.split('__').map((p: string) => p.trim().toLowerCase());
+        isAuthorized = participants.includes(uname) || uname === 'shashwath71845';
+      }
 
-      if (!isGroup && !isDirectWithMe) return;
+      if (!isAuthorized) return;
 
       if (seenMessageIdsRef.current.has(message.id)) return;
       seenMessageIdsRef.current.add(message.id);

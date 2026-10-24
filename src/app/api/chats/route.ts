@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 import {
   getServerStore,
   addServerChatMessage,
@@ -7,6 +8,9 @@ import {
   purgeVanishServerChatMessages,
   markServerChatMessagesRead,
 } from '@/lib/serverStore';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
 const NO_CACHE_HEADERS = {
   'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
@@ -94,7 +98,8 @@ export async function GET(req: NextRequest) {
 
       const messages = await getServerChatMessages(canonicalKey);
       const store = await getServerStore();
-      return NextResponse.json({ success: true, messages, unsentMessageIds: store.unsentMessageIds || [] }, { headers: NO_CACHE_HEADERS });
+      const recentMessages = messages.length > 50 ? messages.slice(-50) : messages;
+      return NextResponse.json({ success: true, messages: recentMessages, unsentMessageIds: store.unsentMessageIds || [] }, { headers: NO_CACHE_HEADERS });
     }
 
     // If no conversationId is passed, only return conversations where the user is a participant
@@ -194,6 +199,31 @@ export async function POST(req: NextRequest) {
     }
 
     const updated = await addServerChatMessage(conversationId, message);
+
+    // Sync to Supabase messages table in background
+    if (supabaseUrl && supabaseKey && message.text) {
+      try {
+        const sb = createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false } });
+        const isDirect = conversationId.includes('__');
+        const recipient = isDirect
+          ? conversationId.split('__').find((u: string) => u.toLowerCase() !== sender.toLowerCase()) || null
+          : null;
+
+        await sb.from('messages').upsert(
+          {
+            client_id: message.client_id || message.id,
+            chat_id: conversationId,
+            sender_id: sender,
+            recipient_id: recipient,
+            text: message.text,
+            status: 'sent',
+          },
+          { onConflict: 'client_id' }
+        );
+      } catch (sbErr) {
+        console.warn('Server Supabase message sync warning:', sbErr);
+      }
+    }
     return NextResponse.json({
       success: true,
       message,
