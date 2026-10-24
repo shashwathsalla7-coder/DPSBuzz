@@ -37,6 +37,7 @@ import { textStoryPresets, TextStoryPreset } from '@/config/tokens';
 import { DataStore, Profile, SongTrack } from '@/lib/dataStore';
 import { SongPickerModal } from '@/components/music/SongPickerModal';
 import { processImageForUpload } from '@/lib/imageProcessor';
+import { globalAudio } from '@/lib/audioManager';
 
 export interface StoryCreatorModalProps {
   isOpen: boolean;
@@ -270,6 +271,16 @@ export const StoryCreatorModal: React.FC<StoryCreatorModalProps> = ({
   const [templateName, setTemplateName] = useState('Aarav Reddy (8-B)');
   const [templatePhotoUrl, setTemplatePhotoUrl] = useState(SAMPLE_BIRTHDAY_STUDENTS[0].url);
   const [templateWish, setTemplateWish] = useState('Wishing you a fantastic 14th birthday! Have a blast! 🎂🎉');
+
+  // Stop music when modal closes or unmounts
+  useEffect(() => {
+    if (!isOpen) {
+      globalAudio.stop();
+    }
+    return () => {
+      globalAudio.stop();
+    };
+  }, [isOpen]);
 
   // Text & Gradient Mode State
   const [selectedPreset, setSelectedPreset] = useState<TextStoryPreset>(textStoryPresets[0]);

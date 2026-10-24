@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import { X, ChevronLeft, ChevronRight, Pause, Play, Send, Heart, User, Music, Volume2, VolumeX, Eye, Users } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Pause, Play, Send, Heart, User, Music, Volume2, VolumeX, Eye, Users, ExternalLink, Flag } from 'lucide-react';
 import { Story, UserStoryGroup, DataStore } from '@/lib/dataStore';
 import { getAvatarColorPair } from '@/config/tokens';
 import { globalAudio } from '@/lib/audioManager';
@@ -239,8 +239,10 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
   const [currentStoryIndex, setCurrentStoryIndex] = useState<number>(initialStoryIndex);
 
   const [isPaused, setIsPaused] = useState<boolean>(false);
-  const [isMuted, setIsMuted] = useState<boolean>(false);
+  const [isMuted, setIsMuted] = useState<boolean>(() => globalAudio.getSavedMuteState());
   const [audioIsPlaying, setAudioIsPlaying] = useState<boolean>(false);
+  const [showMusicCreditSheet, setShowMusicCreditSheet] = useState<boolean>(false);
+  const [reportedSong, setReportedSong] = useState<boolean>(false);
   const [replyText, setReplyText] = useState('');
   const [toastMessage, setToastMessage] = useState<string>('');
   const [floatingEmoji, setFloatingEmoji] = useState<string | null>(null);
@@ -293,6 +295,7 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
     if (!isOpen) {
       seenStoriesRef.current.clear();
       setShowActivitySheet(false);
+      setShowMusicCreditSheet(false);
       globalAudio.stop();
     }
   }, [isOpen]);
@@ -324,7 +327,7 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
       return;
     }
 
-    if (currentStory?.song && !isPaused && !isMuted && !showActivitySheet) {
+    if (currentStory?.song && !isPaused && !isMuted && !showActivitySheet && !showMusicCreditSheet) {
       globalAudio.setMuted(false);
       globalAudio.playTrack(currentStory.song);
     } else {
@@ -334,7 +337,7 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
     return () => {
       globalAudio.pauseTrack();
     };
-  }, [isOpen, currentStory?.id, currentStory?.song, isPaused, isMuted, showActivitySheet]);
+  }, [isOpen, currentStory?.id, currentStory?.song, isPaused, isMuted, showActivitySheet, showMusicCreditSheet]);
 
   // Avatar color pair
   const pair = getAvatarColorPair(currentStory?.username || 'student');
@@ -757,33 +760,48 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
           {/* Song Badge Pill if Story has Music Attached */}
           {currentStory.song && (
             <div className="mt-2.5 flex flex-wrap items-center gap-2">
-              <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/20 text-white w-fit animate-fade-in shadow-md">
-                <div className="w-4 h-4 rounded-full overflow-hidden bg-pink-500/20 flex items-center justify-center shrink-0">
-                  {currentStory.song.artworkUrl ? (
-                    <img src={currentStory.song.artworkUrl} alt={currentStory.song.title} className="w-full h-full object-cover" />
-                  ) : (
-                    <Music size={10} className="text-pink-400" />
-                  )}
+              {currentStory.song.isUnavailable ? (
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/60 border border-white/20 text-white/50 text-[11px] font-medium animate-fade-in shadow-md">
+                  <Music size={12} className="text-white/40" />
+                  <span>Song no longer available</span>
                 </div>
-                <span className="text-[11px] font-bold truncate max-w-[160px]">{currentStory.song.title}</span>
-                <span className="text-[10px] text-white/70 truncate max-w-[100px]">• {currentStory.song.artist}</span>
-                {currentStory.song.startTime !== undefined && (
-                  <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-pink-500/30 text-pink-300 font-mono font-bold shrink-0">
-                    0:{Math.floor(currentStory.song.startTime).toString().padStart(2, '0')}
-                  </span>
-                )}
-                {/* Equalizer animation bars */}
-                {!isPaused && !isMuted && audioIsPlaying && (
-                  <div className="flex items-end gap-0.5 h-3 ml-0.5 shrink-0" aria-hidden="true">
-                    <span className="w-0.5 bg-pink-400 rounded-full animate-[pulse_0.6s_ease-in-out_infinite] h-3" />
-                    <span className="w-0.5 bg-pink-400 rounded-full animate-[pulse_0.8s_ease-in-out_infinite] h-2" />
-                    <span className="w-0.5 bg-pink-400 rounded-full animate-[pulse_0.5s_ease-in-out_infinite] h-2.5" />
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsPaused(true);
+                    setShowMusicCreditSheet(true);
+                  }}
+                  className="flex items-center gap-2 px-3 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/20 text-white w-fit animate-fade-in shadow-md hover:bg-black/80 transition-colors cursor-pointer text-left"
+                  title="View music credits & license"
+                >
+                  <div className="w-4 h-4 rounded-full overflow-hidden bg-pink-500/20 flex items-center justify-center shrink-0">
+                    {currentStory.song.artworkUrl ? (
+                      <img src={currentStory.song.artworkUrl} alt={currentStory.song.title} className="w-full h-full object-cover" />
+                    ) : (
+                      <Music size={10} className="text-pink-400" />
+                    )}
                   </div>
-                )}
-              </div>
+                  <span className="text-[11px] font-bold truncate max-w-[150px]">♪ {currentStory.song.title}</span>
+                  <span className="text-[10px] text-white/70 truncate max-w-[90px]">• {currentStory.song.artist}</span>
+                  {currentStory.song.startTime !== undefined && (
+                    <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-pink-500/30 text-pink-300 font-mono font-bold shrink-0">
+                      0:{Math.floor(currentStory.song.startTime).toString().padStart(2, '0')}
+                    </span>
+                  )}
+                  {/* Equalizer animation bars */}
+                  {!isPaused && !isMuted && audioIsPlaying && (
+                    <div className="flex items-end gap-0.5 h-3 ml-0.5 shrink-0" aria-hidden="true">
+                      <span className="w-0.5 bg-pink-400 rounded-full animate-[pulse_0.6s_ease-in-out_infinite] h-3" />
+                      <span className="w-0.5 bg-pink-400 rounded-full animate-[pulse_0.8s_ease-in-out_infinite] h-2" />
+                      <span className="w-0.5 bg-pink-400 rounded-full animate-[pulse_0.5s_ease-in-out_infinite] h-2.5" />
+                    </div>
+                  )}
+                </button>
+              )}
 
               {/* Tap to Play Sound Banner if Browser Blocked Autoplay */}
-              {!isMuted && !audioIsPlaying && !isPaused && (
+              {!isMuted && !audioIsPlaying && !isPaused && !currentStory.song.isUnavailable && (
                 <button
                   type="button"
                   onClick={() => {
@@ -793,7 +811,7 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
                   className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-pink-600/90 hover:bg-pink-500 text-white text-[11px] font-bold shadow-lg animate-pulse cursor-pointer border border-white/30 transition-all active:scale-95"
                 >
                   <Volume2 size={13} />
-                  <span>Tap to play sound 🔊</span>
+                  <span>Tap for sound 🔊</span>
                 </button>
               )}
             </div>
@@ -1241,6 +1259,106 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
                     </div>
                   )
                 )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Music Credit & Attribution Sheet */}
+        {showMusicCreditSheet && currentStory?.song && (
+          <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/85 p-4 animate-fade-in">
+            <div className="w-full max-w-xs bg-[#1a1a1a] border border-[#2e2e2e] rounded-3xl p-5 text-white shadow-2xl space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold flex items-center gap-2">
+                  <Music size={16} className="text-pink-400" /> Song Details
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowMusicCreditSheet(false);
+                    setIsPaused(false);
+                  }}
+                  className="p-1 rounded-full text-white/60 hover:text-white"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <img
+                  src={currentStory.song.artworkUrl || '/icons/icon-192.png'}
+                  alt={currentStory.song.title}
+                  className="w-14 h-14 rounded-2xl object-cover border border-white/10 shrink-0"
+                />
+                <div className="min-w-0">
+                  <p className="text-sm font-bold truncate text-white">{currentStory.song.title}</p>
+                  <p className="text-xs text-white/70 truncate">{currentStory.song.artist}</p>
+                  <span className="inline-block mt-1 text-[10px] px-2 py-0.5 rounded-md bg-pink-500/20 text-pink-300 font-mono">
+                    {currentStory.song.license || 'Creative Commons'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="p-3 rounded-2xl bg-white/[0.04] border border-white/[0.08] text-xs text-white/70 space-y-1.5">
+                <p className="text-[11px] leading-relaxed">
+                  {currentStory.song.creditText || `Music provided courtesy of ${currentStory.song.artist} under Creative Commons.`}
+                </p>
+                {currentStory.song.sourcePageUrl && (
+                  <a
+                    href={currentStory.song.sourcePageUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-[11px] text-pink-400 hover:underline pt-1"
+                  >
+                    <span>Listen on Jamendo</span>
+                    <ExternalLink size={11} />
+                  </a>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      let username = 'student';
+                      const stored = localStorage.getItem('dpsbuzz_user');
+                      if (stored) username = JSON.parse(stored).username || 'student';
+
+                      await fetch('/api/music/report', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          trackId: currentStory.song?.id,
+                          trackTitle: currentStory.song?.title,
+                          trackArtist: currentStory.song?.artist,
+                          reporterUsername: username,
+                          reason: 'Reported from story playback',
+                        }),
+                      });
+                      setReportedSong(true);
+                      setTimeout(() => {
+                        setReportedSong(false);
+                        setShowMusicCreditSheet(false);
+                        setIsPaused(false);
+                      }, 1200);
+                    } catch {}
+                  }}
+                  className="flex-1 py-2 rounded-xl bg-white/[0.06] hover:bg-red-500/20 hover:text-red-300 text-white/60 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <Flag size={13} />
+                  <span>{reportedSong ? 'Reported ✓' : 'Report Song'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowMusicCreditSheet(false);
+                    setIsPaused(false);
+                  }}
+                  className="flex-1 py-2 rounded-xl bg-pink-600 hover:bg-pink-500 text-white text-xs font-bold transition-colors cursor-pointer"
+                >
+                  Close
+                </button>
               </div>
             </div>
           </div>

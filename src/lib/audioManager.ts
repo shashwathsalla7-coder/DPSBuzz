@@ -1,7 +1,8 @@
 // =====================================================
-// Global Audio Player Controller for 30s Legal Song Previews
-// Ensures only one song preview plays at a time across the entire app
-// Handles safe seeking, iOS/Android WebView autoplay policies & loadedmetadata state
+// Global Audio Player Controller for Legal Song Clips
+// Ensures only one song clip plays at a time across the entire app
+// Handles seamless segment looping, iOS Safari / Android WebView unlock,
+// and immediate stop when page is hidden or route changes
 // =====================================================
 
 import { SongTrack } from './dataStore';
@@ -13,6 +14,7 @@ export interface AudioPlayerState {
   isPlaying: boolean;
   progress: number; // 0 to 1
   currentTime: number;
+  isUnavailable?: boolean;
 }
 
 class AudioManager {
@@ -21,10 +23,13 @@ class AudioManager {
   private listeners: Set<AudioListener> = new Set();
   private progressInterval: ReturnType<typeof setInterval> | null = null;
   private isSeeking: boolean = false;
+  private isUnavailable: boolean = false;
+  private isUnlocked: boolean = false;
 
   constructor() {
     if (typeof window !== 'undefined') {
       this.initAudio();
+      this.setupLifecycleListeners();
     }
   }
 
@@ -32,14 +37,20 @@ class AudioManager {
     if (this.audio) return;
     try {
       this.audio = new Audio();
-      this.audio.preload = 'auto';
+      this.audio.preload = 'metadata'; // HTTP range requests - only loads requested clip, saving mobile data
       this.audio.crossOrigin = 'anonymous';
       this.audio.volume = 1.0;
       this.audio.muted = false;
 
       this.audio.addEventListener('ended', () => {
-        this.stopProgress();
-        this.notify(false, 0, 0);
+        // If track has a clip segment, loop back to start
+        if (this.currentTrack?.startTime !== undefined) {
+          this.safeSetCurrentTime(this.currentTrack.startTime);
+          this.audio?.play().catch(() => {});
+        } else {
+          this.stopProgress();
+          this.notify(false, 0, 0);
+        }
       });
 
       this.audio.addEventListener('pause', () => {
@@ -50,7 +61,8 @@ class AudioManager {
       });
 
       this.audio.addEventListener('error', (e) => {
-        console.warn('Audio playback error (handled):', e);
+        console.warn('Audio playback error (handled gracefully):', e);
+        this.isUnavailable = true;
         this.stopProgress();
         this.notify(false, 0, 0);
       });
@@ -59,19 +71,47 @@ class AudioManager {
     }
   }
 
-  public unlockAudio() {
+  private setupLifecycleListeners() {
     if (typeof window === 'undefined') return;
+
+    // Immediately stop audio when user switches tabs or locks phone screen
+    const handleVisibilityChange = () => {
+      if (document.hidden && this.audio && !this.audio.paused) {
+        this.pauseTrack();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Stop audio on page unload / page hide
+    window.addEventListener('pagehide', () => this.stop());
+
+    // One-time unlock listener on first user touch across the screen
+    const unlockOnce = () => {
+      this.unlockAudio();
+      window.removeEventListener('pointerdown', unlockOnce);
+      window.removeEventListener('touchstart', unlockOnce);
+    };
+    window.addEventListener('pointerdown', unlockOnce, { once: true, passive: true });
+    window.addEventListener('touchstart', unlockOnce, { once: true, passive: true });
+  }
+
+  public unlockAudio() {
+    if (typeof window === 'undefined' || this.isUnlocked) return;
     this.initAudio();
     if (!this.audio) return;
     try {
       this.audio.volume = 1.0;
       this.audio.muted = false;
-      // Pre-warm audio element on direct user gesture so future play() calls don't get blocked
+      // Pre-warm audio element on direct user gesture with tiny silent buffer
       if (this.audio.paused && (!this.audio.src || this.audio.src.startsWith('data:'))) {
         this.audio.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
-        this.audio.play().then(() => {
-          this.audio?.pause();
-        }).catch(() => {});
+        this.audio
+          .play()
+          .then(() => {
+            this.audio?.pause();
+            this.isUnlocked = true;
+          })
+          .catch(() => {});
       }
     } catch {}
   }
@@ -81,7 +121,21 @@ class AudioManager {
     try {
       this.audio.muted = muted;
       this.audio.volume = muted ? 0 : 1.0;
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('dpsbuzz_music_muted', muted ? 'true' : 'false');
+        } catch {}
+      }
     } catch {}
+  }
+
+  public getSavedMuteState(): boolean {
+    if (typeof window === 'undefined') return false;
+    try {
+      return localStorage.getItem('dpsbuzz_music_muted') === 'true';
+    } catch {
+      return false;
+    }
   }
 
   private safeSetCurrentTime(time: number) {
@@ -91,12 +145,12 @@ class AudioManager {
     const applyTime = () => {
       try {
         if (this.audio && !isNaN(this.audio.duration) && isFinite(this.audio.duration)) {
-          this.audio.currentTime = Math.min(safeTime, this.audio.duration - 0.2);
+          this.audio.currentTime = Math.min(safeTime, this.audio.duration - 0.1);
         } else if (this.audio) {
           this.audio.currentTime = safeTime;
         }
       } catch (err) {
-        console.warn('safeSetCurrentTime handled error:', err);
+        console.warn('safeSetCurrentTime handled:', err);
       }
     };
 
@@ -112,15 +166,17 @@ class AudioManager {
     this.progressInterval = setInterval(() => {
       if (this.audio && !this.audio.paused) {
         const cur = this.audio.currentTime || 0;
-        if (this.currentTrack?.clipDuration && this.currentTrack.startTime !== undefined) {
-          const maxTime = (this.currentTrack.startTime || 0) + this.currentTrack.clipDuration;
-          if (cur >= maxTime) {
-            this.safeSetCurrentTime(this.currentTrack.startTime || 0);
-          }
+        const start = this.currentTrack?.startTime || 0;
+        const clipLen = this.currentTrack?.clipDuration || 30;
+        const maxTime = start + clipLen;
+
+        // Seamless loop back to clip start point
+        if (cur >= maxTime) {
+          this.safeSetCurrentTime(start);
         }
         this.notify(true, this.getProgress(), cur);
       }
-    }, 200);
+    }, 120);
   }
 
   private stopProgress() {
@@ -137,7 +193,6 @@ class AudioManager {
 
   public subscribe(listener: AudioListener): () => void {
     this.listeners.add(listener);
-    // Send immediate state
     listener(this.getState());
     return () => {
       this.listeners.delete(listener);
@@ -145,12 +200,13 @@ class AudioManager {
   }
 
   public getState(): AudioPlayerState {
-    const isPlaying = !!(this.audio && !this.audio.paused && !this.audio.ended);
+    const isPlaying = !!(this.audio && !this.audio.paused && !this.audio.ended && !this.isUnavailable);
     return {
       currentTrack: this.currentTrack,
       isPlaying,
       progress: this.getProgress(),
       currentTime: this.audio?.currentTime || 0,
+      isUnavailable: this.isUnavailable,
     };
   }
 
@@ -160,6 +216,7 @@ class AudioManager {
       isPlaying,
       progress,
       currentTime,
+      isUnavailable: this.isUnavailable,
     };
     this.listeners.forEach((fn) => {
       try {
@@ -175,6 +232,7 @@ class AudioManager {
     this.initAudio();
     if (!this.audio) return;
 
+    this.isUnavailable = false;
     const startAt = track.startTime || 0;
     const isSameTrack = this.currentTrack?.id === track.id;
 
@@ -183,12 +241,11 @@ class AudioManager {
         this.currentTrack = track;
         this.safeSetCurrentTime(startAt);
       }
-      return; // Already playing this track
+      return;
     }
 
     this.currentTrack = track;
 
-    // Only update src if it differs
     const currentSrc = this.audio.src || '';
     if (!currentSrc.includes(track.previewUrl)) {
       this.audio.src = track.previewUrl;
@@ -196,8 +253,6 @@ class AudioManager {
     }
 
     this.safeSetCurrentTime(startAt);
-    this.audio.volume = 1.0;
-    this.audio.muted = false;
 
     const playPromise = this.audio.play();
     if (playPromise !== undefined) {
@@ -210,11 +265,9 @@ class AudioManager {
           console.warn('Playback play() promise handled (autoplay policy):', err.name);
           this.notify(false, 0, 0);
 
-          // Retry automatically on the very next user tap / click anywhere on screen
+          // Retry automatically on next tap
           const resumeOnGesture = () => {
             if (this.audio && this.currentTrack?.id === track.id) {
-              this.audio.volume = 1.0;
-              this.audio.muted = false;
               this.audio.play().then(() => {
                 this.startProgress();
                 this.notify(true, this.getProgress(), this.audio?.currentTime || startAt);
@@ -222,11 +275,9 @@ class AudioManager {
             }
             window.removeEventListener('pointerdown', resumeOnGesture);
             window.removeEventListener('touchstart', resumeOnGesture);
-            window.removeEventListener('click', resumeOnGesture);
           };
           window.addEventListener('pointerdown', resumeOnGesture, { once: true });
           window.addEventListener('touchstart', resumeOnGesture, { once: true });
-          window.addEventListener('click', resumeOnGesture, { once: true });
         });
     }
   }
@@ -236,6 +287,7 @@ class AudioManager {
     this.initAudio();
     if (!this.audio) return;
 
+    this.isUnavailable = false;
     const segmentTrack: SongTrack = {
       ...track,
       startTime: startSeconds,
@@ -289,13 +341,6 @@ class AudioManager {
     } else {
       this.playTrack(track);
     }
-  }
-
-  public seek(progress: number) {
-    if (!this.audio || !this.audio.duration || isNaN(this.audio.duration)) return;
-    const target = Math.max(0, Math.min(progress, 1)) * this.audio.duration;
-    this.safeSetCurrentTime(target);
-    this.notify(!this.audio.paused, progress, target);
   }
 
   public seekSeconds(seconds: number) {

@@ -41,10 +41,15 @@ export interface SongTrack {
   title: string;
   artist: string;
   artworkUrl: string;
-  previewUrl: string; // 30-second legal audio preview from Apple iTunes CDN
+  previewUrl: string; // Audio stream URL (Jamendo, Library, or legacy preview)
   durationSeconds?: number;
-  startTime?: number; // Starting offset in seconds (e.g. 5, 10, 15s)
+  startTime?: number; // Starting offset in seconds (e.g. 15s)
   clipDuration?: number; // Clip length in seconds (e.g. 15s or 30s)
+  provider?: 'jamendo' | 'library' | 'legacy';
+  license?: string;
+  creditText?: string;
+  sourcePageUrl?: string;
+  isUnavailable?: boolean;
 }
 
 export interface PostImageItem {

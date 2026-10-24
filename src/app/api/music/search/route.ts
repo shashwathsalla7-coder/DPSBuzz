@@ -1,121 +1,205 @@
-import { NextRequest, NextResponse, connection } from 'next/server';
+// =====================================================
+// DPS BUZZ - Music Search API Route
+// Provider 1: Jamendo REST API (Legal Creative Commons full tracks)
+// Provider 2: DPS Buzz Library (School admin royalty-free uploads)
+// In-memory 10-minute cache to respect Jamendo's 35,000 requests/mo limit
+// Audio streams directly from Jamendo/Storage to user phone (0 Vercel bandwidth)
+// =====================================================
 
-export interface ITunesTrack {
-  trackId: number;
-  trackName: string;
-  artistName: string;
-  artworkUrl100?: string;
-  artworkUrl60?: string;
-  previewUrl?: string;
-  trackTimeMillis?: number;
+import { NextRequest, NextResponse, connection } from 'next/server';
+import {
+  MusicTrack,
+  MusicBlockItem,
+} from '@/lib/music/types';
+import {
+  CURATED_JAMENDO_TRACKS,
+  DEFAULT_LIBRARY_TRACKS,
+  normalizeJamendoTrack,
+  isTrackBlocked,
+} from '@/lib/music/providers';
+
+// 10-minute cache for music searches to strictly respect Jamendo rate limits
+interface CacheEntry {
+  tracks: MusicTrack[];
+  timestamp: number;
+}
+const SEARCH_CACHE = new Map<string, CacheEntry>();
+const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+
+// In-memory blocklist & admin custom tracks storage (synced with Supabase when available)
+let IN_MEMORY_BLOCKLIST: MusicBlockItem[] = [];
+let IN_MEMORY_LIBRARY_TRACKS: MusicTrack[] = [...DEFAULT_LIBRARY_TRACKS];
+let MUSIC_FEATURE_ENABLED = true;
+
+export function getInternalBlocklist(): MusicBlockItem[] {
+  return IN_MEMORY_BLOCKLIST;
 }
 
-export const AAYA_SHER_TRACK = {
-  id: '1882240655',
-  title: 'Aaya Sher (From "The Paradise")',
-  artist: 'Anirudh Ravichander, Jangi Reddy, Arjun Chandy',
-  artworkUrl: 'https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/9f/33/28/9f3328b5-d70d-7511-123c-1a096a317042/820200508461.jpg/200x200bb.jpg',
-  previewUrl: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/46/0d/df/460ddf71-f084-822e-1fe1-ea2ceb91cb7a/mzaf_5932094318792648449.plus.aac.p.m4a',
-  durationSeconds: 287,
-};
+export function addToInternalBlocklist(item: MusicBlockItem) {
+  IN_MEMORY_BLOCKLIST = [item, ...IN_MEMORY_BLOCKLIST.filter((b) => b.identifier !== item.identifier)];
+}
 
-// In-memory cache with timestamp to guarantee sub-3 second responses (typically < 10ms)
-const SEARCH_CACHE = new Map<string, { tracks: any[]; timestamp: number }>();
-const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+export function removeFromInternalBlocklist(identifier: string) {
+  IN_MEMORY_BLOCKLIST = IN_MEMORY_BLOCKLIST.filter((b) => b.identifier !== identifier);
+}
+
+export function getInternalLibraryTracks(): MusicTrack[] {
+  return IN_MEMORY_LIBRARY_TRACKS;
+}
+
+export function addInternalLibraryTrack(track: MusicTrack) {
+  IN_MEMORY_LIBRARY_TRACKS = [track, ...IN_MEMORY_LIBRARY_TRACKS.filter((t) => t.id !== track.id)];
+}
+
+export function deleteInternalLibraryTrack(id: string) {
+  IN_MEMORY_LIBRARY_TRACKS = IN_MEMORY_LIBRARY_TRACKS.filter((t) => t.id !== id);
+}
+
+export function isMusicFeatureEnabled(): boolean {
+  return MUSIC_FEATURE_ENABLED;
+}
+
+export function setMusicFeatureEnabled(enabled: boolean) {
+  MUSIC_FEATURE_ENABLED = enabled;
+}
 
 export async function GET(request: NextRequest) {
   await connection();
-  const searchParams = request.nextUrl.searchParams;
-  const rawQuery = searchParams.get('q')?.trim() || 'trending hits';
-  const query = rawQuery.toLowerCase();
-  const limit = Math.min(parseInt(searchParams.get('limit') || '25', 10), 50);
 
-  // Check in-memory cache first
-  const cacheKey = `${query}:${limit}`;
+  if (!MUSIC_FEATURE_ENABLED) {
+    return NextResponse.json(
+      { tracks: [], message: 'Music feature is temporarily disabled by school admin', disabled: true },
+      { status: 200 }
+    );
+  }
+
+  const searchParams = request.nextUrl.searchParams;
+  const rawQuery = searchParams.get('q')?.trim() || '';
+  const category = searchParams.get('category')?.toLowerCase().trim() || 'popular';
+  const providerFilter = searchParams.get('provider')?.toLowerCase().trim() || 'all'; // 'all' | 'jamendo' | 'library'
+  const limit = Math.min(parseInt(searchParams.get('limit') || '20', 10), 50);
+
+  // If requesting school library only
+  if (category === 'library' || providerFilter === 'library') {
+    const query = rawQuery.toLowerCase();
+    const filteredLib = IN_MEMORY_LIBRARY_TRACKS.filter((t) => {
+      if (isTrackBlocked(t, IN_MEMORY_BLOCKLIST)) return false;
+      if (!query) return true;
+      return t.title.toLowerCase().includes(query) || t.artist.toLowerCase().includes(query);
+    });
+    return NextResponse.json({ tracks: filteredLib, source: 'library' }, { status: 200 });
+  }
+
+  const cacheKey = `${category}:${rawQuery.toLowerCase()}:${limit}`;
   const cached = SEARCH_CACHE.get(cacheKey);
   if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
-    return NextResponse.json({ tracks: cached.tracks, source: 'cache' }, { status: 200 });
+    // Filter out any newly blocked tracks even from cached entries
+    const safeCached = cached.tracks.filter((t) => !isTrackBlocked(t, IN_MEMORY_BLOCKLIST));
+    return NextResponse.json({ tracks: safeCached, source: 'cache' }, { status: 200 });
+  }
+
+  const clientId = process.env.JAMENDO_CLIENT_ID;
+
+  // If JAMENDO_CLIENT_ID is not configured yet, serve high-quality curated Creative Commons tracks
+  if (!clientId) {
+    let results = [...CURATED_JAMENDO_TRACKS, ...IN_MEMORY_LIBRARY_TRACKS];
+
+    if (rawQuery) {
+      const q = rawQuery.toLowerCase();
+      results = results.filter(
+        (t) =>
+          t.title.toLowerCase().includes(q) ||
+          t.artist.toLowerCase().includes(q) ||
+          t.genre?.toLowerCase().includes(q) ||
+          t.mood?.toLowerCase().includes(q)
+      );
+    } else if (category === 'study' || category === 'lofi') {
+      results = results.filter((t) => t.genre?.toLowerCase().includes('lofi') || t.mood?.toLowerCase().includes('chill'));
+    } else if (category === 'energetic' || category === 'sports') {
+      results = results.filter((t) => t.genre?.toLowerCase().includes('rock') || t.mood?.toLowerCase().includes('hyped'));
+    }
+
+    const safeResults = results.filter((t) => !isTrackBlocked(t, IN_MEMORY_BLOCKLIST));
+    return NextResponse.json(
+      {
+        tracks: safeResults,
+        source: 'curated_cc',
+        notice: 'Using curated Creative Commons tracks. Register free JAMENDO_CLIENT_ID on developer.jamendo.com for full search.',
+      },
+      { status: 200 }
+    );
   }
 
   try {
-    const itunesUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(
-      rawQuery
-    )}&media=music&entity=song&limit=${limit}`;
+    let jamendoUrl = `https://api.jamendo.com/v3.0/tracks/?client_id=${encodeURIComponent(
+      clientId
+    )}&format=json&include=licenses&audioformat=mp32&limit=${limit}`;
 
-    // Abort controller with 2.4s timeout to guarantee under 3s response
+    if (rawQuery) {
+      jamendoUrl += `&namesearch=${encodeURIComponent(rawQuery)}`;
+    } else if (category === 'popular') {
+      jamendoUrl += `&order=popularity_total&boost=popularity_month`;
+    } else if (category === 'study' || category === 'lofi') {
+      jamendoUrl += `&tags=chillout+lofi&order=popularity_total`;
+    } else if (category === 'energetic') {
+      jamendoUrl += `&speed=fast&tags=electronic+rock&order=popularity_total`;
+    } else if (category === 'acoustic') {
+      jamendoUrl += `&acousticelectric=acoustic&tags=acoustic+pop&order=popularity_total`;
+    }
+
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2400);
+    const timeoutId = setTimeout(() => controller.abort(), 2800);
 
-    const res = await fetch(itunesUrl, {
+    const res = await fetch(jamendoUrl, {
       headers: {
-        'User-Agent': 'DPSBuzz/1.0',
+        'User-Agent': 'DPSBuzz-SchoolApp/1.0',
         Accept: 'application/json',
       },
       signal: controller.signal,
     }).finally(() => clearTimeout(timeoutId));
 
     if (!res.ok) {
-      throw new Error(`iTunes API returned ${res.status}`);
+      throw new Error(`Jamendo API HTTP error ${res.status}`);
     }
 
     const data = await res.json();
-    const results: ITunesTrack[] = data.results || [];
+    const rawTracks = data.results || [];
 
-    let tracks = results
-      .filter((item) => item.trackName && item.artistName && item.previewUrl)
-      .map((item) => ({
-        id: item.trackId.toString(),
-        title: item.trackName,
-        artist: item.artistName,
-        artworkUrl:
-          item.artworkUrl100?.replace('100x100bb.jpg', '200x200bb.jpg') ||
-          item.artworkUrl60 ||
-          '/icons/icon-192.png',
-        previewUrl: item.previewUrl,
-        durationSeconds: Math.round((item.trackTimeMillis || 30000) / 1000),
-      }));
-
-    // If query matches Aaya Sher or Anirudh or Trending, pin Aaya Sher at the top
-    const isAayaSherRelated =
-      query.includes('aaya') ||
-      query.includes('sher') ||
-      query.includes('paradise') ||
-      query.includes('anirudh') ||
-      query.includes('trending') ||
-      query.includes('popular hits');
-
-    if (isAayaSherRelated) {
-      tracks = [AAYA_SHER_TRACK, ...tracks.filter((t) => t.id !== AAYA_SHER_TRACK.id)];
+    const normalizedTracks: MusicTrack[] = [];
+    for (const raw of rawTracks) {
+      const track = normalizeJamendoTrack(raw);
+      if (track && !isTrackBlocked(track, IN_MEMORY_BLOCKLIST)) {
+        normalizedTracks.push(track);
+      }
     }
 
-    // Cache the result
-    SEARCH_CACHE.set(cacheKey, { tracks, timestamp: Date.now() });
+    // Include any matching DPS Buzz library tracks
+    const matchingLib = IN_MEMORY_LIBRARY_TRACKS.filter((t) => {
+      if (isTrackBlocked(t, IN_MEMORY_BLOCKLIST)) return false;
+      if (!rawQuery) return true;
+      return (
+        t.title.toLowerCase().includes(rawQuery.toLowerCase()) ||
+        t.artist.toLowerCase().includes(rawQuery.toLowerCase())
+      );
+    });
 
-    return NextResponse.json({ tracks, source: 'network' }, { status: 200 });
-  } catch (error) {
-    console.error('Music search timed out or failed, falling back:', error);
+    const finalTracks = [...matchingLib, ...normalizedTracks];
 
-    // Immediate fallback with Aaya Sher and standard hits
-    const fallbackTracks = [
-      AAYA_SHER_TRACK,
-      {
-        id: '1544494285',
-        title: 'Master Coming (From "Master")',
-        artist: 'Anirudh Ravichander',
-        artworkUrl: 'https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/9a/c0/81/9ac08173-0d5b-433b-85fa-7104b9015ebc/8902894358897_cover.jpg/200x200bb.jpg',
-        previewUrl: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview115/v4/05/23/b0/0523b05f-7557-ca59-a2e0-f20387401c10/mzaf_6135805213601815316.plus.aac.p.m4a',
-        durationSeconds: 230,
-      },
-      {
-        id: '1576432420',
-        title: 'Arabic Kuthu (From "Beast")',
-        artist: 'Anirudh Ravichander & Jonita Gandhi',
-        artworkUrl: 'https://is1-ssl.mzstatic.com/image/thumb/Music122/v4/64/59/94/645994f7-be75-d1ce-cb15-4ad9bf43ee9e/196589308103.jpg/200x200bb.jpg',
-        previewUrl: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview122/v4/a4/4f/44/a44f447a-6f09-b695-1f92-5eb36b44a2b9/mzaf_5980005706927429141.plus.aac.p.m4a',
-        durationSeconds: 279,
-      },
-    ];
+    // Cache the response
+    SEARCH_CACHE.set(cacheKey, { tracks: finalTracks, timestamp: Date.now() });
 
-    return NextResponse.json({ tracks: fallbackTracks, source: 'fallback' }, { status: 200 });
+    return NextResponse.json({ tracks: finalTracks, source: 'network' }, { status: 200 });
+  } catch (err: any) {
+    console.warn('Jamendo API fetch failed or timed out, returning curated tracks:', err.message);
+
+    // Immediate resilient fallback: return curated CC tracks + library tracks matching query
+    let fallback = [...CURATED_JAMENDO_TRACKS, ...IN_MEMORY_LIBRARY_TRACKS];
+    if (rawQuery) {
+      const q = rawQuery.toLowerCase();
+      fallback = fallback.filter((t) => t.title.toLowerCase().includes(q) || t.artist.toLowerCase().includes(q));
+    }
+
+    const safeFallback = fallback.filter((t) => !isTrackBlocked(t, IN_MEMORY_BLOCKLIST));
+    return NextResponse.json({ tracks: safeFallback, source: 'fallback_curated' }, { status: 200 });
   }
 }
