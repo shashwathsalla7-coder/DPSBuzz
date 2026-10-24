@@ -3454,6 +3454,28 @@ export const DataStore = {
     } catch {}
   },
 
+  getReadReceiptsEnabled(username?: string): boolean {
+    if (typeof window === 'undefined') return true;
+    try {
+      const u = (username || this.getCurrentUser()?.username || '').toLowerCase().trim();
+      if (!u) return true;
+      const raw = localStorage.getItem(`dpsbuzz_read_receipts_${u}`);
+      return raw === null ? true : raw === 'true';
+    } catch {
+      return true;
+    }
+  },
+
+  setReadReceiptsEnabled(username: string, enabled: boolean): void {
+    if (typeof window === 'undefined') return;
+    try {
+      const u = (username || this.getCurrentUser()?.username || '').toLowerCase().trim();
+      if (!u) return;
+      localStorage.setItem(`dpsbuzz_read_receipts_${u}`, String(enabled));
+      window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated'));
+    } catch {}
+  },
+
   deleteStory(storyId: string): void {
     const allStories = getStorage<Story[]>(STORAGE_KEYS.STORIES, []);
     const target = allStories.find((s) => s.id === storyId);

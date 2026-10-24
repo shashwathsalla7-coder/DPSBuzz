@@ -162,8 +162,64 @@ export async function POST(req: NextRequest) {
       const reader = (body.readerUsername || senderUsername || '').toLowerCase().trim();
       if (reader) {
         await markServerChatMessagesRead(conversationId, reader);
+        if (supabaseUrl && supabaseKey) {
+          try {
+            const sb = createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false } });
+            const now = new Date().toISOString();
+            await sb
+              .from('messages')
+              .update({ read_at: now, delivered_at: now, status: 'read' })
+              .eq('chat_id', conversationId)
+              .neq('sender_id', reader)
+              .is('read_at', null);
+
+            // Record into message_receipts if client_ids provided
+            if (Array.isArray(body.messageIds) && body.messageIds.length > 0) {
+              const rows = body.messageIds.map((mid: string) => ({
+                chat_id: conversationId,
+                client_id: mid,
+                user_id: reader,
+                delivered_at: now,
+                read_at: now,
+              }));
+              await sb.from('message_receipts').upsert(rows, { onConflict: 'chat_id,client_id,user_id' });
+            }
+          } catch (e) {
+            console.warn('Supabase mark_read warning:', e);
+          }
+        }
       }
       return NextResponse.json({ success: true, action: 'mark_read' }, { headers: NO_CACHE_HEADERS });
+    }
+
+    if (action === 'mark_delivered') {
+      const recipient = (body.recipientUsername || body.readerUsername || senderUsername || '').toLowerCase().trim();
+      if (recipient && supabaseUrl && supabaseKey) {
+        try {
+          const sb = createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false } });
+          const now = new Date().toISOString();
+          await sb
+            .from('messages')
+            .update({ delivered_at: now, status: 'delivered' })
+            .eq('chat_id', conversationId)
+            .neq('sender_id', recipient)
+            .is('delivered_at', null)
+            .is('read_at', null);
+
+          if (Array.isArray(body.messageIds) && body.messageIds.length > 0) {
+            const rows = body.messageIds.map((mid: string) => ({
+              chat_id: conversationId,
+              client_id: mid,
+              user_id: recipient,
+              delivered_at: now,
+            }));
+            await sb.from('message_receipts').upsert(rows, { onConflict: 'chat_id,client_id,user_id' });
+          }
+        } catch (e) {
+          console.warn('Supabase mark_delivered warning:', e);
+        }
+      }
+      return NextResponse.json({ success: true, action: 'mark_delivered' }, { headers: NO_CACHE_HEADERS });
     }
 
     if (!message || (!message.text && !message.sharedPost && !message.mediaUrl && !message.audioUrl && !message.image && !message.id)) {
