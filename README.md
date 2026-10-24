@@ -30,6 +30,24 @@ node tests/unit.test.mjs
 
 ---
 
+## 2. Database & Deployment Checklist
+
+Before deploying any new chat features or code changes that touch database models, ALWAYS follow this 3-step checklist:
+
+1. **Apply Database Migrations FIRST**:
+   - Go to your Supabase Project Dashboard -> **SQL Editor**.
+   - Run the additive migration script (`supabase/migrations/007_...` or latest).
+   - Verify table columns exist (`SELECT * FROM messages LIMIT 1;`) BEFORE code deployment.
+2. **Run Local Verification**:
+   - Run `node tests/test-ticks-and-typing.mjs` to confirm all 11 test flows pass.
+   - Run `npm run build` to verify 0 TypeScript and build errors across all routes.
+3. **Verify Deployment & Logs**:
+   - Push to `main` to trigger hosting deployment.
+   - Check real-time browser console & network tab for zero `403` or `PGRST204` errors.
+
+
+---
+
 ## 2. School Invite Code & Verification
 
 - **Default School Invite Code:** `DPS71845`
