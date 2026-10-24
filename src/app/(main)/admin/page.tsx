@@ -39,7 +39,9 @@ import {
   Shield,
   Clock,
   Sparkles,
+  Music,
 } from 'lucide-react';
+import { AdminMusicManager } from '@/components/admin/AdminMusicManager';
 import {
   DataStore,
   type Profile,
@@ -83,7 +85,7 @@ interface ChatMessageItem {
 
 export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<
-    'users' | 'chats' | 'notices' | 'calendar' | 'moderation' | 'system'
+    'users' | 'chats' | 'notices' | 'calendar' | 'moderation' | 'music' | 'system'
   >('users');
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [inviteCode, setInviteCode] = useState('DPS71845');
@@ -747,6 +749,7 @@ export default function AdminPage() {
             { id: 'notices', label: `Notices (${notices.length})`, icon: Megaphone },
             { id: 'calendar', label: `Calendar (${calendarEvents.length})`, icon: CalendarIcon },
             { id: 'moderation', label: `Reports (${reports.filter((r) => r.status === 'pending').length})`, icon: ShieldAlert },
+            { id: 'music', label: 'Music & Audio', icon: Music },
             { id: 'system', label: 'System & Code', icon: Sliders },
           ].map((tab) => {
             const Icon = tab.icon;
@@ -1975,6 +1978,9 @@ export default function AdminPage() {
             </div>
           </div>
         )}
+
+        {/* Music Management Tab Panel */}
+        {activeTab === 'music' && <AdminMusicManager />}
       </div>
 
       {/* MODAL: CREATE NEW NOTICE */}
