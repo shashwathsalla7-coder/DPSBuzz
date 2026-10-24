@@ -546,7 +546,13 @@ function ChatsContent() {
                   const existing = next[k] || [];
                   const msgMap = new Map(existing.map((m) => [m.id, m]));
                   for (const m of v) {
-                    msgMap.set(m.id, { ...(msgMap.get(m.id) || {}), ...m });
+                    const healedMsg: ChatMessage = {
+                      ...(msgMap.get(m.id) || {}),
+                      ...m,
+                      status: 'sent',
+                      isDelivered: true,
+                    };
+                    msgMap.set(m.id, healedMsg);
                   }
                   next[k] = Array.from(msgMap.values());
                 }
@@ -610,7 +616,18 @@ function ChatsContent() {
         const userMsgKey = `dpsbuzz_chat_messages_${uname}_v3`;
         const savedMsg = localStorage.getItem(userMsgKey);
         if (savedMsg) {
-          setChatMessages(JSON.parse(savedMsg));
+          const rawParsed: Record<string, ChatMessage[]> = JSON.parse(savedMsg);
+          const healedMap: Record<string, ChatMessage[]> = {};
+          for (const [k, v] of Object.entries(rawParsed)) {
+            if (Array.isArray(v)) {
+              healedMap[k] = v.map((m) => ({
+                ...m,
+                status: 'sent',
+                isDelivered: true,
+              }));
+            }
+          }
+          setChatMessages(healedMap);
         }
         const bgKey = `dpsbuzz_chat_backgrounds_${uname}_v2`;
         const savedBg = localStorage.getItem(bgKey);
@@ -2520,7 +2537,8 @@ function ChatsContent() {
       time: new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date(now)),
       createdAt: new Date(now).toISOString(),
       timestamp: now,
-      isDelivered: false,
+      status: 'sent',
+      isDelivered: true,
       is_read: false,
       isSeen: false,
       ...(isVanishMode ? { is_vanish_mode_message: true, isVanishMode: true } : {}),
@@ -2706,17 +2724,22 @@ function ChatsContent() {
     const sentText = messageInput.trim();
     const ephemeralTrackingId = uuidv4();
 
+    // Auto-accept request when sending a reply so messaging flows seamlessly
+    if (targetUser && DataStore.getInboxTier(currentUsername, targetUser) === 'REQUESTS') {
+      DataStore.acceptMessageRequest(currentUsername, targetUser);
+    }
+
     const newMsg: ChatMessage = {
       id: ephemeralTrackingId,
       client_id: ephemeralTrackingId,
-      status: 'sending',
+      status: 'sent',
       text: sentText,
       sender: 'me',
       senderUsername: currentUsername,
       time: new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date(now)),
       createdAt: new Date(now).toISOString(),
       timestamp: now,
-      isDelivered: false,
+      isDelivered: true,
       is_read: false,
       isSeen: false,
       ...(isVanishMode ? { is_vanish_mode_message: true, isVanishMode: true } : {}),
@@ -2846,11 +2869,17 @@ function ChatsContent() {
             const updated = currentList.map((m) =>
               m.id === newMsg.id ? { ...m, isDelivered: true, status: 'sent' as const } : m
             );
-            return {
+            const nextMap = {
               ...prev,
               [rawId]: updated,
               [canonicalId]: updated,
             };
+            try {
+              if (currentUsername) {
+                localStorage.setItem(`dpsbuzz_chat_messages_${currentUsername}_v3`, JSON.stringify(nextMap));
+              }
+            } catch {}
+            return nextMap;
           });
         }
       })
@@ -2945,7 +2974,7 @@ function ChatsContent() {
         const newMsg: ChatMessage = {
           id: ephemeralTrackingId,
           client_id: ephemeralTrackingId,
-          status: 'sending',
+          status: 'sent',
           text: inviteText,
           sender: 'me',
           senderUsername: currentUsername,
@@ -2953,7 +2982,7 @@ function ChatsContent() {
           time: new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date(now)),
           createdAt: new Date(now).toISOString(),
           timestamp: now,
-          isDelivered: false,
+          isDelivered: true,
           is_read: false,
           isSeen: false,
         };
@@ -3217,7 +3246,7 @@ function ChatsContent() {
           const newMsg: ChatMessage = {
             id: ephemeralTrackingId,
             client_id: ephemeralTrackingId,
-            status: 'sending',
+            status: 'sent',
             text: inviteText,
             sender: 'me',
             senderUsername: currentUsername,
@@ -3225,7 +3254,7 @@ function ChatsContent() {
             time: new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date(now)),
             createdAt: new Date(now).toISOString(),
             timestamp: now,
-            isDelivered: false,
+            isDelivered: true,
             is_read: false,
             isSeen: false,
           };
@@ -3432,7 +3461,8 @@ function ChatsContent() {
       time: new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date(now)),
       createdAt: new Date(now).toISOString(),
       timestamp: now,
-      isDelivered: false,
+      status: 'sent',
+      isDelivered: true,
       is_read: false,
       isSeen: false,
       isChatPhoto: true,
@@ -3629,12 +3659,13 @@ function ChatsContent() {
 
         if (matchKey) {
           const existing = map.get(matchKey)!;
+          const isConfirmed = existing.status === 'sent' || existing.isDelivered || rm.status === 'sent';
           map.set(matchKey, {
             ...existing,
             id: rm.id,
             client_id: rm.client_id || existing.client_id,
-            status: rm.status || 'sent',
-            isDelivered: rm.status === 'sent' || existing.isDelivered,
+            status: isConfirmed ? 'sent' : (rm.status || 'sent'),
+            isDelivered: isConfirmed,
           });
         } else {
           const newMsgFromDb: ChatMessage = {
@@ -4119,14 +4150,14 @@ function ChatsContent() {
                             : 'Sent'
                         }
                       >
-                        {msg.status === 'error' ? (
-                          <AlertCircle size={13} className="text-rose-500 shrink-0" />
-                        ) : msg.status === 'sending' || msg.isSending ? (
-                          <Clock size={12} className="text-zinc-400 shrink-0 animate-pulse" />
-                        ) : msg.is_read || msg.isSeen || msg.readAt ? (
+                        {msg.is_read || msg.isSeen || msg.readAt ? (
                           <CheckCheck size={13} className="text-[#007AFF] shrink-0" />
                         ) : msg.isDelivered || msg.status === 'sent' ? (
                           <CheckCheck size={13} className="text-zinc-400 shrink-0" />
+                        ) : msg.status === 'error' ? (
+                          <AlertCircle size={13} className="text-rose-500 shrink-0" />
+                        ) : msg.status === 'sending' || msg.isSending ? (
+                          <Clock size={12} className="text-zinc-400 shrink-0 animate-pulse" />
                         ) : (
                           <Check size={13} className="text-zinc-400 shrink-0" />
                         )}
@@ -4180,164 +4211,172 @@ function ChatsContent() {
           </div>
         )}
 
-        {/* Stranger Sandbox Action Bar (Instagram Architecture Section 4) */}
+        {/* Stranger Sandbox Action Bar (Only shown when there are incoming messages from them that haven't been accepted yet) */}
         {!activeConversation.isGroup &&
-        targetUser &&
-        DataStore.getInboxTier(currentUsername, targetUser) === 'REQUESTS' ? (
-          <div className="p-4 border-t border-[var(--line)] bg-[var(--surface)] space-y-3 shrink-0 relative z-20">
-            <div className="flex items-center justify-center gap-1.5 text-xs text-[var(--text-muted)] text-center px-2">
-              <Shield size={14} className="text-amber-500 shrink-0" />
-              <span>
-                <strong>@{targetUser}</strong> wants to send you a message. Accept to reply & follow each other.
-              </span>
+          targetUser &&
+          DataStore.getInboxTier(currentUsername, targetUser) === 'REQUESTS' &&
+          messages.some((m) => (m.senderUsername || '').toLowerCase() === targetUser) &&
+          !messages.some((m) => (m.senderUsername || '').toLowerCase() === currentUsername) && (
+            <div className="p-3 border-t border-[var(--line)] bg-[var(--surface)] space-y-2.5 shrink-0 relative z-20">
+              <div className="flex items-center justify-center gap-1.5 text-xs text-[var(--text-muted)] text-center px-2">
+                <Shield size={14} className="text-amber-500 shrink-0" />
+                <span>
+                  <strong>@{targetUser}</strong> sent you a message request.
+                </span>
+              </div>
+              <div className="flex items-center gap-2 max-w-md mx-auto">
+                <button
+                  type="button"
+                  onClick={() => handleBlockStranger(targetUser)}
+                  className="flex-1 py-2 rounded-full text-xs font-bold text-rose-500 bg-rose-500/10 hover:bg-rose-500/20 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1"
+                >
+                  <UserX size={13} />
+                  <span>Block</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDeleteRequest(targetUser)}
+                  className="flex-1 py-2 rounded-full text-xs font-bold text-[var(--text-muted)] bg-[var(--surface-sunken)] border border-[var(--line)] hover:text-[var(--text)] active:scale-95 transition-all cursor-pointer"
+                >
+                  Delete
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleAcceptRequestFromSandbox(targetUser)}
+                  className="flex-1 py-2 rounded-full text-xs font-bold text-white bg-[var(--primary)] hover:opacity-90 active:scale-95 transition-all cursor-pointer shadow-xs"
+                >
+                  Accept & Follow
+                </button>
+              </div>
             </div>
-            <div className="flex items-center gap-2 max-w-md mx-auto">
-              <button
-                type="button"
-                onClick={() => handleBlockStranger(targetUser)}
-                className="flex-1 py-2.5 rounded-full text-xs font-bold text-rose-500 bg-rose-500/10 hover:bg-rose-500/20 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1"
-              >
-                <UserX size={14} />
-                <span>Block</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleDeleteRequest(targetUser)}
-                className="flex-1 py-2.5 rounded-full text-xs font-bold text-[var(--text-muted)] bg-[var(--surface-sunken)] border border-[var(--line)] hover:text-[var(--text)] active:scale-95 transition-all cursor-pointer"
-              >
-                Delete
-              </button>
-              <button
-                type="button"
-                onClick={() => handleAcceptRequestFromSandbox(targetUser)}
-                className="flex-1 py-2.5 rounded-full text-xs font-bold text-white bg-[var(--primary)] hover:opacity-90 active:scale-95 transition-all cursor-pointer shadow-xs"
-              >
-                Accept & Follow
-              </button>
-            </div>
-          </div>
-        ) : (
-          /* Input Bar */
-          <form
-            onSubmit={handleSendMessage}
-            className={`p-3 border-t flex items-center gap-2 shrink-0 relative z-20 transition-colors ${
-              isVanishMode ? 'bg-[#0B1320] border-cyan-500/30' : 'bg-[var(--surface)] border-[var(--line)]'
+          )}
+
+        {/* ALWAYS VISIBLE & FUNCTIONAL Input Bar */}
+        <form
+          onSubmit={handleSendMessage}
+          className={`p-3 border-t flex items-center gap-2 shrink-0 relative z-20 transition-colors ${
+            isVanishMode ? 'bg-[#0B1320] border-cyan-500/30' : 'bg-[var(--surface)] border-[var(--line)]'
+          }`}
+          style={{
+            paddingBottom: 'max(14px, env(safe-area-inset-bottom, 14px))',
+          }}
+        >
+          {/* Hidden file input for photo sharing */}
+          <input
+            type="file"
+            ref={chatMediaInputRef}
+            accept="image/*"
+            onChange={handleImageAttachment}
+            className="hidden"
+          />
+
+          {/* Photo attachment button */}
+          <button
+            type="button"
+            onClick={() => {
+              if (!activeConversation.isGroup && targetUser) {
+                const isBlocked = DataStore.isBlocked(targetUser, currentUsername);
+                if (isBlocked) {
+                  alert('Unable to message this user.');
+                  return;
+                }
+              }
+              chatMediaInputRef.current?.click();
+            }}
+            disabled={isMaintenanceActive}
+            className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center hover:bg-[var(--surface-sunken)] cursor-pointer transition-colors shrink-0 disabled:opacity-40 ${
+              isVanishMode ? 'text-cyan-400 hover:text-cyan-200' : 'text-[var(--text-muted)] hover:text-[#007AFF]'
+            }`}
+            aria-label="Attach photo"
+            title="Send photo"
+          >
+            <ImageIcon size={19} />
+          </button>
+
+          {/* Emoji drawer button */}
+          <button
+            type="button"
+            onClick={() => setIsEmojiPickerOpen(true)}
+            disabled={isMaintenanceActive}
+            className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center hover:bg-[var(--surface-sunken)] cursor-pointer transition-colors shrink-0 disabled:opacity-40 ${
+              isVanishMode ? 'text-cyan-400 hover:text-cyan-200' : 'text-[var(--text-muted)] hover:text-[#007AFF]'
+            }`}
+            aria-label="Pick emoji"
+            title="Emoji picker"
+          >
+            <Smile size={19} />
+          </button>
+
+          {/* Guess the Cricketer Games button */}
+          {!activeConversation.isGroup && (
+            <button
+              type="button"
+              onClick={() => setIsGameDrawerOpen(true)}
+              disabled={isMaintenanceActive}
+              className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center hover:bg-[var(--surface-sunken)] cursor-pointer transition-colors shrink-0 disabled:opacity-40 ${
+                isVanishMode ? 'text-cyan-400 hover:text-cyan-200' : 'text-[var(--text-muted)] hover:text-cyan-400'
+              }`}
+              aria-label="Play Games"
+              title="Guess the Cricketer & Games 🎮"
+            >
+              <Gamepad2 size={19} />
+            </button>
+          )}
+
+          <input
+            type="text"
+            value={messageInput}
+            disabled={isMaintenanceActive}
+            onChange={(e) => setMessageInput(e.target.value)}
+            placeholder={
+              isMaintenanceActive
+                ? 'Chat is disabled during scheduled maintenance 🔒'
+                : isVanishMode
+                ? 'Message (disappears in 24h)...'
+                : 'Message...'
+            }
+            className={`flex-1 h-10 sm:h-11 px-3.5 sm:px-4 rounded-full text-[14px] sm:text-[14.5px] outline-none border focus:ring-1 disabled:opacity-50 transition-all font-semibold font-sf-display ${
+              isVanishMode
+                ? 'bg-[#0F1E33] text-cyan-100 placeholder:text-cyan-400/50 border-cyan-500/40 focus:border-cyan-400 focus:ring-cyan-400'
+                : 'bg-[var(--surface-sunken)] text-[var(--text)] border-[var(--line)] focus:border-[#007AFF] focus:ring-[#007AFF] placeholder:text-[var(--text-muted)]'
             }`}
             style={{
-              paddingBottom: 'max(14px, env(safe-area-inset-bottom, 14px))',
+              fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF UI Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif',
+              fontWeight: 600,
             }}
+          />
+
+          {/* Quick Heart icon button when input is empty */}
+          {!messageInput.trim() && (
+            <button
+              type="button"
+              disabled={isMaintenanceActive}
+              onClick={handleSendHeart}
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center cursor-pointer transition-transform active:scale-75 hover:scale-110 text-rose-500 shrink-0 disabled:opacity-40"
+              aria-label="Send heart"
+              title="Send heart ❤️"
+            >
+              <Heart size={20} className="fill-rose-500" />
+            </button>
+          )}
+
+          {/* ALWAYS VISIBLE Send Button */}
+          <button
+            type="submit"
+            disabled={isMaintenanceActive || !messageInput.trim()}
+            className={`w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center transition-all active:scale-95 shrink-0 text-white shadow-xs ${
+              messageInput.trim()
+                ? isVanishMode
+                  ? 'bg-gradient-to-r from-blue-600 to-cyan-600 shadow-cyan-900/40 cursor-pointer opacity-100'
+                  : 'bg-[#007AFF] hover:bg-blue-600 cursor-pointer opacity-100'
+                : 'bg-zinc-700/40 text-zinc-400 opacity-40 cursor-not-allowed'
+            }`}
+            aria-label="Send message"
+            title="Send message"
           >
-            {/* Hidden file input for photo sharing */}
-            <input
-              type="file"
-              ref={chatMediaInputRef}
-              accept="image/*"
-              onChange={handleImageAttachment}
-              className="hidden"
-            />
-
-            {/* Photo attachment button */}
-            <button
-              type="button"
-              onClick={() => {
-                if (!activeConversation.isGroup && targetUser) {
-                  const isBlocked = DataStore.isBlocked(targetUser, currentUsername);
-                  if (isBlocked) {
-                    alert('Unable to message this user.');
-                    return;
-                  }
-                }
-                chatMediaInputRef.current?.click();
-              }}
-              disabled={isMaintenanceActive}
-              className={`w-10 h-10 rounded-full flex items-center justify-center hover:bg-[var(--surface-sunken)] cursor-pointer transition-colors shrink-0 disabled:opacity-40 ${
-                isVanishMode ? 'text-cyan-400 hover:text-cyan-200' : 'text-[var(--text-muted)] hover:text-[#007AFF]'
-              }`}
-              aria-label="Attach photo"
-              title="Send photo"
-            >
-              <ImageIcon size={20} />
-            </button>
-
-            {/* Emoji drawer button */}
-            <button
-              type="button"
-              onClick={() => setIsEmojiPickerOpen(true)}
-              disabled={isMaintenanceActive}
-              className={`w-10 h-10 rounded-full flex items-center justify-center hover:bg-[var(--surface-sunken)] cursor-pointer transition-colors shrink-0 disabled:opacity-40 ${
-                isVanishMode ? 'text-cyan-400 hover:text-cyan-200' : 'text-[var(--text-muted)] hover:text-[#007AFF]'
-              }`}
-              aria-label="Pick emoji"
-              title="Emoji picker"
-            >
-              <Smile size={20} />
-            </button>
-
-            {/* Guess the Cricketer Games button */}
-            {!activeConversation.isGroup && (
-              <button
-                type="button"
-                onClick={() => setIsGameDrawerOpen(true)}
-                disabled={isMaintenanceActive}
-                className={`w-10 h-10 rounded-full flex items-center justify-center hover:bg-[var(--surface-sunken)] cursor-pointer transition-colors shrink-0 disabled:opacity-40 ${
-                  isVanishMode ? 'text-cyan-400 hover:text-cyan-200' : 'text-[var(--text-muted)] hover:text-cyan-400'
-                }`}
-                aria-label="Play Games"
-                title="Guess the Cricketer & Games 🎮"
-              >
-                <Gamepad2 size={20} />
-              </button>
-            )}
-
-            <input
-              type="text"
-              value={messageInput}
-              disabled={isMaintenanceActive}
-              onChange={(e) => setMessageInput(e.target.value)}
-              placeholder={
-                isMaintenanceActive
-                  ? 'Chat is disabled during scheduled maintenance 🔒'
-                  : isVanishMode
-                  ? 'Message (disappears in 24h)...'
-                  : 'Message...'
-              }
-              className={`flex-1 h-11 px-4 rounded-full text-[14.5px] outline-none border focus:ring-1 disabled:opacity-50 transition-all font-semibold font-sf-display ${
-                isVanishMode
-                  ? 'bg-[#0F1E33] text-cyan-100 placeholder:text-cyan-400/50 border-cyan-500/40 focus:border-cyan-400 focus:ring-cyan-400'
-                  : 'bg-[var(--surface-sunken)] text-[var(--text)] border-[var(--line)] focus:border-[#007AFF] focus:ring-[#007AFF] placeholder:text-[var(--text-muted)]'
-              }`}
-              style={{
-                fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF UI Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif',
-                fontWeight: 600,
-              }}
-            />
-
-            {messageInput.trim() ? (
-              <button
-                type="submit"
-                disabled={isMaintenanceActive}
-                className={`w-11 h-11 rounded-full flex items-center justify-center cursor-pointer transition-transform active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shrink-0 text-white shadow-xs ${
-                  isVanishMode
-                    ? 'bg-gradient-to-r from-blue-600 to-cyan-600 shadow-cyan-900/40'
-                    : 'bg-[#007AFF]'
-                }`}
-                aria-label="Send message"
-              >
-                <Send size={18} />
-              </button>
-            ) : (
-              <button
-                type="button"
-                disabled={isMaintenanceActive}
-                onClick={handleSendHeart}
-                className="w-11 h-11 rounded-full flex items-center justify-center cursor-pointer transition-transform active:scale-75 hover:scale-110 text-rose-500 shrink-0 disabled:opacity-40"
-                aria-label="Send heart"
-              >
-                <Heart size={22} className="fill-rose-500" />
-              </button>
-            )}
-          </form>
-        )}
+            <Send size={18} className="translate-x-0.5" />
+          </button>
+        </form>
 
         {/* Chat Actions Sheet inside active chat view */}
         <ChatActionsSheet

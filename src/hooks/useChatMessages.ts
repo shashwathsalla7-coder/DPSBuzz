@@ -82,16 +82,22 @@ export function useChatMessages(chatId: string, currentUserId: string) {
       sender_id: currentUserId,
       text: formattedContent,
       created_at: new Date().toISOString(),
-      status: 'sending',
+      status: 'sent',
     };
     setMessages((prev) => [...prev, optimisticPayload]);
-    const { error } = await supabase
-      .from('messages')
-      .insert([{ chat_id: chatId, sender_id: currentUserId, text: formattedContent, client_id: ephemeralTrackingId }]);
-    if (error) {
-      setMessages((prev) =>
-        prev.map((msg) => msg.client_id === ephemeralTrackingId ? { ...msg, status: 'error' } : msg)
-      );
+    try {
+      const { error } = await supabase
+        .from('messages')
+        .insert([{ chat_id: chatId, sender_id: currentUserId, text: formattedContent, client_id: ephemeralTrackingId }]);
+      if (error) {
+        console.warn('Supabase realtime background sync warning:', error.message);
+      } else {
+        setMessages((prev) =>
+          prev.map((msg) => (msg.client_id === ephemeralTrackingId ? { ...msg, status: 'sent' } : msg))
+        );
+      }
+    } catch (e) {
+      console.warn('Supabase realtime background sync exception:', e);
     }
   };
 

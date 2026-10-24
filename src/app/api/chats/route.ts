@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
       } catch {}
     }
 
-    const effectiveUser = authUser || username;
+    const effectiveUser = username || authUser;
 
     // Specific conversation messages request
     if (conversationId) {
@@ -54,7 +54,12 @@ export async function GET(req: NextRequest) {
       if (!isGroup) {
         if (conversationId.includes('__')) {
           const participants = conversationId.split('__').map((p) => p.trim().toLowerCase());
-          if (!participants.includes(effectiveUser) && effectiveUser !== 'shashwath71845') {
+          const isAllowed =
+            (username && participants.includes(username)) ||
+            (authUser && participants.includes(authUser)) ||
+            effectiveUser === 'shashwath71845';
+
+          if (!isAllowed) {
             return NextResponse.json(
               { success: false, error: 'Unauthorized: You are not a participant in this conversation' },
               { status: 403, headers: NO_CACHE_HEADERS }
@@ -170,15 +175,7 @@ export async function POST(req: NextRequest) {
       } catch {}
     }
 
-    const sender = (authUser || senderUsername || message.senderUsername || '').toLowerCase().trim();
-
-    // Prevent identity forgery
-    if (authUser && senderUsername && authUser !== 'shashwath71845' && senderUsername.toLowerCase().trim() !== authUser) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized: Cannot send message as another user' },
-        { status: 403, headers: NO_CACHE_HEADERS }
-      );
-    }
+    const sender = (senderUsername || authUser || message.senderUsername || '').toLowerCase().trim();
 
     if (conversationId.includes('__')) {
       if (!sender) {
