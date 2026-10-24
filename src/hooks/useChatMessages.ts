@@ -140,6 +140,31 @@ export function useChatMessages(chatId: string, currentUserId: string) {
           });
         }
       )
+      // Realtime listener for message updates (delivered_at and read_at live ticks)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'messages', filter: `chat_id=eq.${chatId}` },
+        (payload) => {
+          const updated = payload.new as Message;
+          if (!updated || (updated.chat_id && updated.chat_id !== activeChatIdRef.current)) return;
+          setMessages((previousState) =>
+            previousState.map((msg) => {
+              const match = (updated.client_id && msg.client_id === updated.client_id) || msg.id === updated.id;
+              if (!match) return msg;
+              const isRead = Boolean(updated.read_at || updated.status === 'read');
+              const isDelivered = Boolean(updated.delivered_at || updated.status === 'delivered' || isRead);
+              return {
+                ...msg,
+                ...updated,
+                status: isRead ? 'read' : isDelivered ? 'delivered' : (updated.status || msg.status || 'sent'),
+                is_read: isRead,
+                isSeen: isRead,
+                isDelivered: isDelivered,
+              };
+            })
+          );
+        }
+      )
       // Real-time broadcast for Typing indicator (Zero DB writes!)
       .on('broadcast', { event: 'typing' }, (payload) => {
         const { username, name, isTyping } = payload.payload || {};
@@ -334,7 +359,7 @@ export function useChatMessages(chatId: string, currentUserId: string) {
     // Show immediately in UI with Clock
     setMessages((prev) => [...prev, optimisticPayload]);
 
-    // Safety timeout: if server doesn't respond in 12s, allow user to retry
+    // Safety timeout: if server doesn't respond in 10s, allow user to retry
     const timeoutTimer = setTimeout(() => {
       setMessages((prev) =>
         prev.map((msg) =>
@@ -343,10 +368,11 @@ export function useChatMessages(chatId: string, currentUserId: string) {
             : msg
         )
       );
-    }, 12000);
+    }, 10000);
 
     try {
-      const { error } = await supabase
+      // Guaranteed column payload for zero-fail insert
+      const { data, error } = await supabase
         .from('messages')
         .insert([
           {
@@ -354,24 +380,44 @@ export function useChatMessages(chatId: string, currentUserId: string) {
             sender_id: currentUserId,
             text: formattedContent,
             client_id: ephemeralTrackingId,
-            status: 'sent',
           },
-        ]);
+        ])
+        .select();
 
       clearTimeout(timeoutTimer);
 
       if (error) {
-        console.warn('Supabase realtime background sync warning:', error.message);
-      } else {
+        console.error('Supabase message insert failed:', error.message, error);
+        // Switch IMMEDIATELY from white clock to red Retry button!
         setMessages((prev) =>
           prev.map((msg) =>
-            msg.client_id === ephemeralTrackingId ? { ...msg, status: 'sent' } : msg
+            msg.client_id === ephemeralTrackingId ? { ...msg, status: 'error' } : msg
+          )
+        );
+      } else {
+        // INSTANT 1 TICK: The exact millisecond the server returns, switch to 1 grey tick!
+        const saved = data && data[0] ? data[0] : null;
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.client_id === ephemeralTrackingId
+              ? {
+                  ...msg,
+                  id: saved?.id || msg.id,
+                  status: 'sent',
+                  created_at: saved?.created_at || msg.created_at,
+                }
+              : msg
           )
         );
       }
     } catch (e) {
       clearTimeout(timeoutTimer);
-      console.warn('Supabase realtime background sync exception:', e);
+      console.error('Supabase message insert exception:', e);
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.client_id === ephemeralTrackingId ? { ...msg, status: 'error' } : msg
+        )
+      );
     }
   };
 

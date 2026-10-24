@@ -256,29 +256,24 @@ export async function POST(req: NextRequest) {
 
     const updated = await addServerChatMessage(conversationId, message);
 
-    // Sync to Supabase messages table in background
+    // Non-blocking background sync to Supabase messages table
     if (supabaseUrl && supabaseKey && message.text) {
-      try {
-        const sb = createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false } });
-        const isDirect = conversationId.includes('__');
-        const recipient = isDirect
-          ? conversationId.split('__').find((u: string) => u.toLowerCase() !== sender.toLowerCase()) || null
-          : null;
-
-        await sb.from('messages').upsert(
-          {
-            client_id: message.client_id || message.id,
-            chat_id: conversationId,
-            sender_id: sender,
-            recipient_id: recipient,
-            text: message.text,
-            status: 'sent',
-          },
-          { onConflict: 'client_id' }
-        );
-      } catch (sbErr) {
-        console.warn('Server Supabase message sync warning:', sbErr);
-      }
+      (async () => {
+        try {
+          const sb = createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false } });
+          await sb.from('messages').upsert(
+            {
+              client_id: message.client_id || message.id,
+              chat_id: conversationId,
+              sender_id: sender,
+              text: message.text,
+            },
+            { onConflict: 'client_id' }
+          );
+        } catch (sbErr) {
+          console.warn('Server Supabase message sync warning:', sbErr);
+        }
+      })().catch(() => {});
     }
     return NextResponse.json({
       success: true,

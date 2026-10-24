@@ -61,6 +61,7 @@ import {
   SoloGame2048Modal,
 } from '@/components/games';
 import { getAvatarColorPair } from '@/config/tokens';
+import { chatConfig } from '@/config/theme';
 import { DataStore, DUMMY_TEST_USERNAMES, ChatNote, type GroupJoinRequest } from '@/lib/dataStore';
 import { showBackgroundNotification } from '@/lib/pushNotifications';
 import { v4 as uuidv4 } from 'uuid';
@@ -3763,7 +3764,16 @@ function ChatsContent() {
           const existing = map.get(matchKey)!;
           const isRead = Boolean(rm.read_at || rm.is_read || existing.is_read || existing.isSeen || existing.readAt);
           const isDelivered = Boolean(rm.delivered_at || rm.isDelivered || isRead || rm.status === 'delivered' || rm.status === 'read');
-          const finalStatus = isRead ? 'read' : isDelivered ? 'delivered' : (rm.status || existing.status || 'sent');
+          // Anti-Downgrade Guard: Never allow optimistic 'sending' to overwrite an already-sent message!
+          const finalStatus = isRead
+            ? 'read'
+            : isDelivered
+            ? 'delivered'
+            : rm.status === 'error'
+            ? 'error'
+            : (existing.status === 'sent' || rm.status === 'sent')
+            ? 'sent'
+            : (rm.status || existing.status || 'sent');
           map.set(matchKey, {
             ...existing,
             id: rm.id,
@@ -4294,7 +4304,7 @@ function ChatsContent() {
                           <Clock size={12} className="text-zinc-400 shrink-0 animate-pulse" />
                         ) : msg.status === 'read' || msg.is_read || msg.isSeen || msg.readAt ? (
                           readReceiptsEnabled ? (
-                            <CheckCheck size={13} className="text-[#22C55E] shrink-0" />
+                            <CheckCheck size={13} style={{ color: chatConfig.tickColors.read }} className="shrink-0" />
                           ) : (
                             <CheckCheck size={13} className="text-zinc-400 shrink-0" />
                           )
