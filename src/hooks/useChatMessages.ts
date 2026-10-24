@@ -23,6 +23,7 @@ export interface Message {
   isSeen?: boolean;
   isDelivered?: boolean;
   status?: 'sending' | 'sent' | 'delivered' | 'read' | 'error';
+  error_reason?: string;
 }
 
 export interface TypingUser {
@@ -31,11 +32,42 @@ export interface TypingUser {
   timestamp: number;
 }
 
+export interface OutboxItem {
+  client_id: string;
+  chat_id: string;
+  sender_id: string;
+  text: string;
+  created_at: string;
+  attempts: number;
+  lastAttemptAt?: number;
+}
+
+const OUTBOX_STORAGE_PREFIX = 'dpsbuzz_chat_outbox_v1_';
+const RATE_LIMIT_WINDOW_MS = 60000; // 1 minute
+const MAX_MESSAGES_PER_MINUTE = 20;
+const MAX_MESSAGE_LENGTH = 1000;
+const RETRY_BACKOFF_MS = [2000, 5000, 10000]; // 3 automatic retries with growing waits
+
+// Helper to log send failures safely (Zero message text, zero personal data)
+async function logFailureDiagnostics(errorType: string, statusCode?: number, durationMs?: number) {
+  try {
+    await supabase.from('chat_send_failures').insert([
+      {
+        error_type: errorType,
+        status_code: statusCode || null,
+        duration_ms: durationMs || null,
+      },
+    ]);
+  } catch {}
+}
+
 export function useChatMessages(chatId: string, currentUserId: string) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isPending, startTransition] = useTransition();
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
+  const [isOffline, setIsOffline] = useState<boolean>(() => typeof navigator !== 'undefined' ? !navigator.onLine : false);
   const [typingUsers, setTypingUsers] = useState<Record<string, TypingUser>>({});
+  const [outboxCount, setOutboxCount] = useState<number>(0);
 
   const activeChatIdRef = useRef<string>(chatId);
   activeChatIdRef.current = chatId;
@@ -43,10 +75,51 @@ export function useChatMessages(chatId: string, currentUserId: string) {
   const lastTypingSentRef = useRef<number>(0);
   const typingStopTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  // In-flight send guard & flood protection timestamps
+  const inFlightRef = useRef<Set<string>>(new Set());
+  const sendTimestampsRef = useRef<number[]>([]);
+  const outboxProcessingRef = useRef<boolean>(false);
+
+  const outboxStorageKey = `${OUTBOX_STORAGE_PREFIX}${currentUserId.toLowerCase().trim()}`;
+
+  // Read outbox from persistent localStorage
+  const loadOutbox = useCallback((): OutboxItem[] => {
+    if (typeof window === 'undefined' || !currentUserId) return [];
+    try {
+      const raw = localStorage.getItem(outboxStorageKey);
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  }, [outboxStorageKey, currentUserId]);
+
+  // Save outbox to persistent localStorage
+  const saveOutbox = useCallback((items: OutboxItem[]) => {
+    if (typeof window === 'undefined' || !currentUserId) return;
+    try {
+      localStorage.setItem(outboxStorageKey, JSON.stringify(items));
+      setOutboxCount(items.length);
+    } catch {}
+  }, [outboxStorageKey, currentUserId]);
+
+  const addToOutbox = useCallback((item: OutboxItem) => {
+    const current = loadOutbox();
+    const filtered = current.filter((x) => x.client_id !== item.client_id);
+    const updated = [...filtered, item];
+    saveOutbox(updated);
+  }, [loadOutbox, saveOutbox]);
+
+  const removeFromOutbox = useCallback((clientId: string) => {
+    const current = loadOutbox();
+    const updated = current.filter((x) => x.client_id !== clientId);
+    saveOutbox(updated);
+  }, [loadOutbox, saveOutbox]);
+
   // 1. Immediately wipe previous conversation state when chatId changes (Prevents cross-chat message leaks!)
   useEffect(() => {
     setMessages([]);
     setTypingUsers({});
+    inFlightRef.current.clear();
   }, [chatId]);
 
   // 2. Fetch latest 30 messages with indexed pagination & ordering
@@ -69,9 +142,9 @@ export function useChatMessages(chatId: string, currentUserId: string) {
         // Reverse descending results so they render chronologically (oldest at top, newest at bottom)
         const chronological = [...data].reverse().map((msg) => ({
           ...msg,
-          is_read: Boolean(msg.read_at),
-          isSeen: Boolean(msg.read_at),
-          isDelivered: Boolean(msg.delivered_at || msg.read_at),
+          is_read: Boolean(msg.read_at || msg.status === 'read'),
+          isSeen: Boolean(msg.read_at || msg.status === 'read'),
+          isDelivered: Boolean(msg.delivered_at || msg.read_at || msg.status === 'delivered' || msg.status === 'read'),
           status: (msg.status as Message['status']) || (msg.read_at ? 'read' : msg.delivered_at ? 'delivered' : 'sent'),
         }));
 
@@ -90,7 +163,29 @@ export function useChatMessages(chatId: string, currentUserId: string) {
     fetchHistoricalPayload();
   }, [chatId, fetchHistoricalPayload]);
 
-  // 3. Realtime Channel Subscription with Reconnect, Typing Broadcast & Status Handling
+  // 3. Online/Offline & Window Focus Listeners with Auto-Reconnect
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOffline(false);
+      if (chatId) {
+        fetchHistoricalPayload();
+      }
+    };
+    const handleOffline = () => {
+      setIsOffline(true);
+      setConnectionStatus('disconnected');
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [chatId, fetchHistoricalPayload]);
+
+  // 4. Realtime Channel Subscription with Reconnect, Typing Broadcast & Status Handling
   useEffect(() => {
     if (!chatId) return;
     let isMounted = true;
@@ -133,7 +228,7 @@ export function useChatMessages(chatId: string, currentUserId: string) {
 
             if (matchesExisting !== -1) {
               return previousState.map((msg, index) =>
-                index === matchesExisting ? { ...freshMessage, status: freshMessage.status || 'sent' } : msg
+                index === matchesExisting ? { ...msg, ...freshMessage, status: freshMessage.status || 'sent' } : msg
               );
             }
             return [...previousState, { ...freshMessage, status: freshMessage.status || 'sent' }];
@@ -230,7 +325,7 @@ export function useChatMessages(chatId: string, currentUserId: string) {
     };
   }, [chatId, currentUserId, fetchHistoricalPayload]);
 
-  // 4. Auto-expire typing indicator on receiver if no event for 5 seconds (safety against stuck typing indicators)
+  // 5. Auto-expire typing indicator on receiver if no event for 5 seconds (safety against stuck typing indicators)
   useEffect(() => {
     const interval = setInterval(() => {
       const now = Date.now();
@@ -250,22 +345,18 @@ export function useChatMessages(chatId: string, currentUserId: string) {
     return () => clearInterval(interval);
   }, []);
 
-  // 5. Send typing status with strict 3-second rate limit
+  // 6. Send typing status with strict 3-second rate limit
   const sendTypingStatus = useCallback(
     (isTyping: boolean, senderName?: string) => {
       if (!channelRef.current || !chatId || !currentUserId) return;
 
-      // QUOTA OPTIMIZATION: Only send typing broadcast in 1-on-1 direct conversations.
-      // Omit typing broadcast in class group chats to stay safely below 2M monthly free Realtime messages.
       const isGroup = chatId.startsWith('conv-group-') || chatId.startsWith('group-') || chatId.includes('class-');
       if (isGroup) return;
 
       const now = Date.now();
 
       if (isTyping) {
-        // Only send at most once every 3 seconds while typing
         if (now - lastTypingSentRef.current < 3000) {
-          // Restart inactivity timer to send stop typing after 3s of no keystrokes
           if (typingStopTimerRef.current) clearTimeout(typingStopTimerRef.current);
           typingStopTimerRef.current = setTimeout(() => {
             sendTypingStatus(false, senderName);
@@ -304,7 +395,7 @@ export function useChatMessages(chatId: string, currentUserId: string) {
     [chatId, currentUserId]
   );
 
-  // 6. Broadcast delivery or read receipts live
+  // 7. Broadcast delivery or read receipts live
   const sendReceipt = useCallback(
     (type: 'delivered' | 'read', messageIds?: string[]) => {
       if (!channelRef.current || !chatId) return;
@@ -319,7 +410,7 @@ export function useChatMessages(chatId: string, currentUserId: string) {
     [chatId, currentUserId]
   );
 
-  // 7. Foreground / Network recovery: refetch missed messages when coming back online or switching tabs
+  // 8. Foreground sync
   useEffect(() => {
     if (!chatId) return;
     const handleSyncOnFocus = () => {
@@ -329,23 +420,138 @@ export function useChatMessages(chatId: string, currentUserId: string) {
     };
 
     window.addEventListener('visibilitychange', handleSyncOnFocus);
-    window.addEventListener('online', handleSyncOnFocus);
-
     return () => {
       window.removeEventListener('visibilitychange', handleSyncOnFocus);
-      window.removeEventListener('online', handleSyncOnFocus);
     };
   }, [chatId, fetchHistoricalPayload]);
 
-  // 8. Send message with client_id handshake and clear status flow
-  const dispatchNewMessage = async (messageContent: string, customTrackingId?: string) => {
+  // 9. Single-Attempt Internal Send Function
+  const attemptDatabaseSend = async (
+    targetChatId: string,
+    targetSenderId: string,
+    content: string,
+    trackingId: string
+  ): Promise<{ success: boolean; data?: any; error?: any; reason?: string; isNetworkError?: boolean }> => {
+    const t0 = Date.now();
+
+    // Check offline state before even attempting
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      return { success: false, reason: 'No internet connection', isNetworkError: true };
+    }
+
+    try {
+      // Abort controller timeout at 8 seconds so we don't hang indefinitely
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+      // Check if already persisted on server (Prevents duplicate messages on network retries)
+      const { data: existingRecord } = await supabase
+        .from('messages')
+        .select('id, client_id, chat_id, created_at')
+        .eq('client_id', trackingId)
+        .maybeSingle();
+
+      if (existingRecord) {
+        clearTimeout(timeoutId);
+        return { success: true, data: existingRecord };
+      }
+
+      // Safe insert with returned row
+      const { data, error } = await supabase
+        .from('messages')
+        .insert([
+          {
+            chat_id: targetChatId,
+            sender_id: targetSenderId,
+            text: content,
+            client_id: trackingId,
+          },
+        ])
+        .select();
+
+      clearTimeout(timeoutId);
+      const duration = Date.now() - t0;
+
+      if (error) {
+        // If unique constraint violation (23505), message already succeeded on server!
+        if (error.code === '23505') {
+          return { success: true, data: { client_id: trackingId } };
+        }
+
+        const isAuthError = error.code === '401' || error.message?.includes('JWT') || error.message?.includes('auth');
+        const isRateLimited = error.code === '429' || error.message?.includes('rate limit');
+        const is5xx = error.code?.startsWith('5') || error.code === '503';
+
+        logFailureDiagnostics(isAuthError ? 'AUTH' : isRateLimited ? 'HTTP_429' : is5xx ? 'HTTP_5XX' : 'POSTGRES_ERROR', parseInt(error.code || '0', 10) || 500, duration);
+
+        return {
+          success: false,
+          error,
+          reason: isAuthError
+            ? 'Session expired. Please re-login.'
+            : isRateLimited
+            ? 'Server is busy. Tap Retry.'
+            : is5xx
+            ? 'Server momentarily unavailable. Tap Retry.'
+            : error.message || 'Failed to send message',
+          isNetworkError: isRateLimited || is5xx,
+        };
+      }
+
+      return { success: true, data: data && data[0] ? data[0] : null };
+    } catch (e: any) {
+      const duration = Date.now() - t0;
+      const isTimeout = e?.name === 'AbortError' || e?.message?.includes('aborted');
+      logFailureDiagnostics(isTimeout ? 'TIMEOUT' : 'NETWORK', 0, duration);
+
+      return {
+        success: false,
+        error: e,
+        reason: isTimeout ? 'Request timed out. Tap Retry.' : 'No internet connection',
+        isNetworkError: true,
+      };
+    }
+  };
+
+  // 10. Robust Dispatch with Exponential Backoff Auto-Retries & Offline Outbox
+  const dispatchNewMessage = async (messageContent: string, customTrackingId?: string, isExplicitRetry = false) => {
     const formattedContent = messageContent.trim();
     if (!formattedContent || !chatId) return;
 
-    // Immediately cancel typing indicator when sending
-    sendTypingStatus(false);
+    // Rate Limit Guard (Capacity Protection: 20 msgs/min per student)
+    const now = Date.now();
+    sendTimestampsRef.current = sendTimestampsRef.current.filter((t) => now - t < RATE_LIMIT_WINDOW_MS);
+    if (sendTimestampsRef.current.length >= MAX_MESSAGES_PER_MINUTE) {
+      const rateLimitMsg: Message = {
+        id: uuidv4(),
+        client_id: null,
+        chat_id: chatId,
+        sender_id: 'system',
+        text: '⚠️ You are sending messages too quickly. Please wait a moment before sending more.',
+        created_at: new Date().toISOString(),
+        status: 'error',
+        error_reason: 'Rate limit reached (max 20 messages per minute)',
+      };
+      setMessages((prev) => [...prev, rateLimitMsg]);
+      return;
+    }
 
+    // Message Length Guard
+    if (formattedContent.length > MAX_MESSAGE_LENGTH) {
+      alert(`Message too long! DPS Buzz allows a maximum of ${MAX_MESSAGE_LENGTH} characters per message.`);
+      return;
+    }
+
+    sendTypingStatus(false);
     const ephemeralTrackingId = customTrackingId || uuidv4();
+
+    // In-Flight Guard: Never send identical client_id simultaneously
+    if (inFlightRef.current.has(ephemeralTrackingId) && !isExplicitRetry) {
+      return;
+    }
+    inFlightRef.current.add(ephemeralTrackingId);
+    sendTimestampsRef.current.push(now);
+
     const optimisticPayload: Message = {
       id: ephemeralTrackingId,
       client_id: ephemeralTrackingId,
@@ -353,79 +559,116 @@ export function useChatMessages(chatId: string, currentUserId: string) {
       sender_id: currentUserId,
       text: formattedContent,
       created_at: new Date().toISOString(),
-      status: 'sending',
+      status: 'sending', // Instant clock!
     };
 
-    // Show immediately in UI with Clock
-    setMessages((prev) => [...prev, optimisticPayload]);
+    // If explicit retry, update existing message in place; otherwise append
+    setMessages((prev) => {
+      const idx = prev.findIndex((m) => m.client_id === ephemeralTrackingId || m.id === ephemeralTrackingId);
+      if (idx !== -1) {
+        return prev.map((m, i) => (i === idx ? { ...m, status: 'sending', error_reason: undefined } : m));
+      }
+      return [...prev, optimisticPayload];
+    });
 
-    // Safety timeout: if server doesn't respond in 10s, allow user to retry
-    const timeoutTimer = setTimeout(() => {
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg.client_id === ephemeralTrackingId && msg.status === 'sending'
-            ? { ...msg, status: 'error' }
-            : msg
-        )
-      );
-    }, 10000);
+    // Save to persistent offline outbox so message survives page reload or app restart
+    addToOutbox({
+      client_id: ephemeralTrackingId,
+      chat_id: chatId,
+      sender_id: currentUserId,
+      text: formattedContent,
+      created_at: optimisticPayload.created_at || new Date().toISOString(),
+      attempts: 0,
+      lastAttemptAt: now,
+    });
 
-    try {
-      // Guaranteed column payload for zero-fail insert
-      const { data, error } = await supabase
-        .from('messages')
-        .insert([
-          {
-            chat_id: chatId,
-            sender_id: currentUserId,
-            text: formattedContent,
-            client_id: ephemeralTrackingId,
-          },
-        ])
-        .select();
+    // Attempt loop with up to 3 automated retries
+    let success = false;
+    let lastReason = 'Failed to send';
 
-      clearTimeout(timeoutTimer);
+    for (let attempt = 0; attempt <= RETRY_BACKOFF_MS.length; attempt++) {
+      if (attempt > 0) {
+        const delay = RETRY_BACKOFF_MS[attempt - 1];
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
 
-      if (error) {
-        console.error('Supabase message insert failed:', error.message, error);
-        // Switch IMMEDIATELY from white clock to red Retry button!
+      const res = await attemptDatabaseSend(chatId, currentUserId, formattedContent, ephemeralTrackingId);
+
+      if (res.success) {
+        success = true;
+        removeFromOutbox(ephemeralTrackingId);
+        inFlightRef.current.delete(ephemeralTrackingId);
+
+        const saved = res.data;
+        // INSTANT 1 TICK: Switch immediately the millisecond the server returns
         setMessages((prev) =>
           prev.map((msg) =>
-            msg.client_id === ephemeralTrackingId ? { ...msg, status: 'error' } : msg
-          )
-        );
-      } else {
-        // INSTANT 1 TICK: The exact millisecond the server returns, switch to 1 grey tick!
-        const saved = data && data[0] ? data[0] : null;
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg.client_id === ephemeralTrackingId
+            msg.client_id === ephemeralTrackingId || msg.id === ephemeralTrackingId
               ? {
                   ...msg,
                   id: saved?.id || msg.id,
                   status: 'sent',
                   created_at: saved?.created_at || msg.created_at,
+                  error_reason: undefined,
                 }
               : msg
           )
         );
+        return;
       }
-    } catch (e) {
-      clearTimeout(timeoutTimer);
-      console.error('Supabase message insert exception:', e);
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg.client_id === ephemeralTrackingId ? { ...msg, status: 'error' } : msg
-        )
-      );
+
+      lastReason = res.reason || lastReason;
+
+      // Do NOT auto-retry fatal non-network errors (e.g. permission denied or validation)
+      if (!res.isNetworkError) {
+        break;
+      }
     }
+
+    // All retries failed -> Mark as red 'error' with clear human reason and single-tap Retry
+    inFlightRef.current.delete(ephemeralTrackingId);
+    setMessages((prev) =>
+      prev.map((msg) =>
+        msg.client_id === ephemeralTrackingId || msg.id === ephemeralTrackingId
+          ? {
+              ...msg,
+              status: 'error',
+              error_reason: lastReason,
+            }
+          : msg
+      )
+    );
   };
 
-  // 9. Explicit retry handler for failed messages
+  // 11. Process Outbox: Automatically sends unsent messages when back online
+  const processOutbox = useCallback(async () => {
+    if (outboxProcessingRef.current || typeof navigator === 'undefined' || !navigator.onLine) return;
+    outboxProcessingRef.current = true;
+
+    try {
+      const items = loadOutbox();
+      for (const item of items) {
+        if (!inFlightRef.current.has(item.client_id)) {
+          await dispatchNewMessage(item.text, item.client_id, true);
+        }
+      }
+    } finally {
+      outboxProcessingRef.current = false;
+    }
+  }, [loadOutbox]);
+
+  // Trigger outbox drain on mount and when connection restores
+  useEffect(() => {
+    if (!isOffline && connectionStatus === 'connected') {
+      processOutbox();
+    }
+  }, [isOffline, connectionStatus, processOutbox]);
+
+  // 12. Explicit retry handler for failed messages (Sends exactly once, deduplicated)
   const retryMessage = (msgId: string) => {
     const target = messages.find((m) => m.id === msgId || m.client_id === msgId);
     if (!target) return;
-    dispatchNewMessage(target.text, target.client_id || target.id);
+    dispatchNewMessage(target.text, target.client_id || target.id, true);
   };
 
   return {
@@ -437,6 +680,9 @@ export function useChatMessages(chatId: string, currentUserId: string) {
     typingUsers,
     isLoadingHistory: isPending,
     connectionStatus,
+    isOffline,
+    outboxCount,
     refreshHistory: fetchHistoricalPayload,
+    processOutbox,
   };
 }

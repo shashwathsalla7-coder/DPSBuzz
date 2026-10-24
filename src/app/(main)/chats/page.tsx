@@ -71,6 +71,7 @@ interface ChatMessage {
   id: string;
   client_id?: string | null;
   status?: 'sending' | 'sent' | 'delivered' | 'read' | 'error';
+  error_reason?: string;
   text: string;
   sender: 'me' | 'them';
   senderUsername?: string;
@@ -673,6 +674,7 @@ function ChatsContent() {
     sendTypingStatus,
     sendReceipt,
     typingUsers,
+    isOffline,
   } = useChatMessages(activeCanonicalConvId, currentUsername);
 
   const [readReceiptsEnabled, setReadReceiptsEnabled] = useState(true);
@@ -3779,6 +3781,7 @@ function ChatsContent() {
             id: rm.id,
             client_id: rm.client_id || existing.client_id,
             status: finalStatus,
+            error_reason: rm.error_reason || existing.error_reason,
             isDelivered,
             is_read: isRead,
             isSeen: isRead,
@@ -3795,6 +3798,7 @@ function ChatsContent() {
             time: formattedTime,
             createdAt: rm.created_at,
             status: isRead ? 'read' : isDelivered ? 'delivered' : (rm.status || 'sent'),
+            error_reason: rm.error_reason,
             isDelivered,
             is_read: isRead,
             isSeen: isRead,
@@ -3843,6 +3847,14 @@ function ChatsContent() {
           onToggleVanishMode={handleToggleVanishMode}
           onOpenOptions={handleOpenOptions}
         />
+
+        {/* Offline Status Warning Banner */}
+        {isOffline && (
+          <div className="px-4 py-2 bg-amber-500/15 border-b border-amber-500/30 text-amber-300 text-xs font-semibold flex items-center gap-2 select-none shrink-0">
+            <span>📡</span>
+            <span>No internet connection. Messages will send automatically when connected.</span>
+          </div>
+        )}
 
         {/* Messages Stream with dynamic persistent background */}
         <div
@@ -4288,18 +4300,25 @@ function ChatsContent() {
                         }
                       >
                         {msg.status === 'error' ? (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              retrySupabaseMessage(msg.id);
-                            }}
-                            className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-500 hover:text-rose-400 cursor-pointer active:scale-95 transition-all"
-                            title="Tap to retry sending"
-                          >
-                            <AlertCircle size={12} className="shrink-0" />
-                            <span>Retry</span>
-                          </button>
+                          <div className="flex flex-col items-end gap-0.5">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                retrySupabaseMessage(msg.id);
+                              }}
+                              className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-500 hover:text-rose-400 cursor-pointer active:scale-95 transition-all"
+                              title={msg.error_reason ? `Failed: ${msg.error_reason} — Tap to retry` : 'Failed to send — Tap to retry'}
+                            >
+                              <AlertCircle size={12} className="shrink-0" />
+                              <span>Retry</span>
+                            </button>
+                            {msg.error_reason && (
+                              <span className="text-[9px] text-rose-400/90 font-medium max-w-[120px] truncate" title={msg.error_reason}>
+                                {msg.error_reason}
+                              </span>
+                            )}
+                          </div>
                         ) : msg.status === 'sending' || msg.isSending ? (
                           <Clock size={12} className="text-zinc-400 shrink-0 animate-pulse" />
                         ) : msg.status === 'read' || msg.is_read || msg.isSeen || msg.readAt ? (
