@@ -29,6 +29,7 @@ export interface ConversationItem {
   previewType?: string;
   section?: 'pinned' | 'today' | 'earlier';
   inboxTier?: 'PRIMARY' | 'GENERAL' | 'REQUESTS';
+  typingText?: string;
 }
 
 export interface ConversationRowProps {
@@ -306,19 +307,27 @@ export const ConversationRow: React.FC<ConversationRowProps> = React.memo(({
               )}
             </div>
 
-            {/* Preview line: 14px muted with ' · 4h' */}
+            {/* Preview line: 14px muted with ' · 4h' or green typing indicator */}
             <p
               className={`text-sm truncate mt-0.5 leading-tight font-sf-display ${
-                isUnread ? 'font-semibold text-[var(--text)]' : 'font-medium text-[var(--text-muted)]'
+                conversation.typingText
+                  ? 'text-[#22C55E] italic font-medium'
+                  : isUnread ? 'font-semibold text-[var(--text)]' : 'font-medium text-[var(--text-muted)]'
               }`}
               style={{
                 fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF UI Display", "SF Pro Text", "Helvetica Neue", sans-serif',
               }}
             >
-              <span>{conversation.lastMessage || 'Say hi to your classmate'}</span>
-              <span className="text-xs text-[var(--text-muted)] ml-1.5">
-                · {conversation.timeAgo || '2h'}
-              </span>
+              {conversation.typingText ? (
+                <span className="animate-pulse">{conversation.typingText}</span>
+              ) : (
+                <>
+                  <span>{conversation.lastMessage || 'Say hi to your classmate'}</span>
+                  <span className="text-xs text-[var(--text-muted)] ml-1.5">
+                    · {conversation.timeAgo || '2h'}
+                  </span>
+                </>
+              )}
             </p>
           </div>
         </div>

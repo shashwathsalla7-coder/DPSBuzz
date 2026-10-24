@@ -148,6 +148,7 @@ export default function SettingsPage() {
           }
           setCurrentUser(u);
           setPrivateAccount(Boolean(u.isPrivate));
+          setReadReceipts(DataStore.getReadReceiptsEnabled(u.username));
         } else {
           router.replace('/login');
           return;
@@ -820,7 +821,14 @@ export default function SettingsPage() {
               <input
                 type="checkbox"
                 checked={readReceipts}
-                onChange={(e) => setReadReceipts(e.target.checked)}
+                onChange={(e) => {
+                  const nextVal = e.target.checked;
+                  setReadReceipts(nextVal);
+                  if (currentUser?.username) {
+                    DataStore.setReadReceiptsEnabled(currentUser.username, nextVal);
+                    showToast(nextVal ? 'Read receipts turned ON 🟢' : 'Read receipts turned OFF ⚪');
+                  }
+                }}
                 className="w-5 h-5 accent-[var(--primary)] rounded cursor-pointer"
               />
             </div>

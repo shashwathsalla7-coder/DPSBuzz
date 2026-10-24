@@ -160,6 +160,7 @@ interface ActiveChatHeaderProps {
   effectiveActiveAvatar: string | null;
   colors: { bg: string; text: string };
   initials: string;
+  typingText?: string;
   onClose: () => void;
   onOpenGroupInfo: () => void;
   onViewProfile: (username: string) => void;
@@ -181,6 +182,7 @@ const ActiveChatHeader = React.memo(({
   effectiveActiveAvatar,
   colors,
   initials,
+  typingText,
   onClose,
   onOpenGroupInfo,
   onViewProfile,
@@ -263,7 +265,11 @@ const ActiveChatHeader = React.memo(({
             {conversation.name}
           </h2>
           <p className="text-[11px] text-[var(--text-muted)] truncate">
-            {isGroup ? (() => {
+            {typingText ? (
+              <span className="text-[#22C55E] font-medium animate-pulse">
+                {typingText}
+              </span>
+            ) : isGroup ? (() => {
               const activeGroupId = conversation.id.replace(/^conv-/, '');
               const rawMembers = DataStore.getGroupMembers(activeGroupId);
               const count = Math.max(1, rawMembers.length || 1);
@@ -663,7 +669,47 @@ function ChatsContent() {
     sendMessage: sendSupabaseRealtimeMessage,
     retryMessage: retrySupabaseMessage,
     isLoadingHistory: isRealtimeLoadingHistory,
+    sendTypingStatus,
+    sendReceipt,
+    typingUsers,
   } = useChatMessages(activeCanonicalConvId, currentUsername);
+
+  const [readReceiptsEnabled, setReadReceiptsEnabled] = useState(true);
+  const [selectedMessageInfo, setSelectedMessageInfo] = useState<ChatMessage | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && currentUsername) {
+      setReadReceiptsEnabled(DataStore.getReadReceiptsEnabled(currentUsername));
+    }
+  }, [currentUsername]);
+
+  // Cancel typing when tab or phone goes into background
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+        sendTypingStatus(false);
+      }
+    };
+    window.addEventListener('visibilitychange', handleVisibility);
+    return () => window.removeEventListener('visibilitychange', handleVisibility);
+  }, [sendTypingStatus]);
+
+  const activeTypingList = useMemo(() => {
+    return Object.values(typingUsers).filter(
+      (t) => t.username.toLowerCase() !== currentUsername
+    );
+  }, [typingUsers, currentUsername]);
+
+  const activeTypingText = useMemo(() => {
+    if (!activeTypingList || activeTypingList.length === 0) return '';
+    if (activeConversation?.isGroup) {
+      if (activeTypingList.length === 1) {
+        return `${activeTypingList[0].name || activeTypingList[0].username} is typing...`;
+      }
+      return `${activeTypingList.length} people are typing...`;
+    }
+    return 'typing...';
+  }, [activeTypingList, activeConversation?.isGroup]);
   const [isNewChatOpen, setIsNewChatOpen] = useState(false);
   const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
@@ -1345,12 +1391,50 @@ function ChatsContent() {
 
   // Mark messages as read when active conversation is opened or viewed
   useEffect(() => {
-    if (!activeConversation || activeConversation.isGroup || !currentUsername) return;
+    if (!activeConversation || !currentUsername) return;
     if (activeConversation.inboxTier === 'REQUESTS') return;
 
     const canonicalId = getCanonicalConvId(activeConversation);
     DataStore.markMessagesAsRead(canonicalId, currentUsername);
-  }, [activeConversation, currentUsername]);
+
+    // If read receipts enabled and document visible, broadcast 'read' receipt and sync to DB
+    if (readReceiptsEnabled && typeof document !== 'undefined' && document.visibilityState === 'visible') {
+      const timer = setTimeout(() => {
+        sendReceipt('read');
+        fetch('/api/chats', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            conversationId: canonicalId,
+            readerUsername: currentUsername,
+            action: 'mark_read',
+          }),
+        }).catch(() => {});
+      }, 1200);
+      return () => clearTimeout(timer);
+    }
+  }, [activeConversation, currentUsername, readReceiptsEnabled, sendReceipt]);
+
+  // When returning from background/tab switch, mark any new incoming messages read if chat is still open
+  useEffect(() => {
+    const handleVisibilityReceipt = () => {
+      if (document.visibilityState === 'visible' && activeConversation && currentUsername && readReceiptsEnabled) {
+        const canonicalId = getCanonicalConvId(activeConversation);
+        sendReceipt('read');
+        fetch('/api/chats', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            conversationId: canonicalId,
+            readerUsername: currentUsername,
+            action: 'mark_read',
+          }),
+        }).catch(() => {});
+      }
+    };
+    window.addEventListener('visibilitychange', handleVisibilityReceipt);
+    return () => window.removeEventListener('visibilitychange', handleVisibilityReceipt);
+  }, [activeConversation, currentUsername, readReceiptsEnabled, sendReceipt]);
 
   // Handle incoming notification banner clicks / instantaneous switch
   useEffect(() => {
@@ -2721,6 +2805,7 @@ function ChatsContent() {
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
+    sendTypingStatus(false);
     if (isMaintenanceActive) {
       alert('Chat messaging is disabled during scheduled maintenance.');
       return;
@@ -3676,15 +3761,21 @@ function ChatsContent() {
 
         if (matchKey) {
           const existing = map.get(matchKey)!;
-          const isConfirmed = existing.status === 'sent' || existing.isDelivered || rm.status === 'sent';
+          const isRead = Boolean(rm.read_at || rm.is_read || existing.is_read || existing.isSeen || existing.readAt);
+          const isDelivered = Boolean(rm.delivered_at || rm.isDelivered || isRead || rm.status === 'delivered' || rm.status === 'read');
+          const finalStatus = isRead ? 'read' : isDelivered ? 'delivered' : (rm.status || existing.status || 'sent');
           map.set(matchKey, {
             ...existing,
             id: rm.id,
             client_id: rm.client_id || existing.client_id,
-            status: isConfirmed ? 'sent' : (rm.status || 'sent'),
-            isDelivered: isConfirmed,
+            status: finalStatus,
+            isDelivered,
+            is_read: isRead,
+            isSeen: isRead,
           });
         } else {
+          const isRead = Boolean(rm.read_at || rm.is_read);
+          const isDelivered = Boolean(rm.delivered_at || rm.isDelivered || isRead || rm.status === 'delivered' || rm.status === 'read');
           const newMsgFromDb: ChatMessage = {
             id: rm.id,
             client_id: rm.client_id,
@@ -3693,10 +3784,10 @@ function ChatsContent() {
             senderUsername: rm.sender_id,
             time: formattedTime,
             createdAt: rm.created_at,
-            status: rm.status || 'sent',
-            isDelivered: rm.status === 'sent',
-            is_read: false,
-            isSeen: false,
+            status: isRead ? 'read' : isDelivered ? 'delivered' : (rm.status || 'sent'),
+            isDelivered,
+            is_read: isRead,
+            isSeen: isRead,
           };
           map.set(rm.client_id || rm.id, newMsgFromDb);
         }
@@ -3733,6 +3824,7 @@ function ChatsContent() {
           effectiveActiveAvatar={effectiveActiveAvatar}
           colors={colors}
           initials={initials}
+          typingText={activeTypingText}
           onClose={handleCloseActiveChat}
           onOpenGroupInfo={handleOpenGroupInfo}
           onViewProfile={handleViewProfile}
@@ -3822,18 +3914,32 @@ function ChatsContent() {
 
                       {/* Unsend Protocol (Instagram Architecture Section 5) */}
                       {isMe && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleUnsendMessage(msg.id);
-                          }}
-                          className="ml-1 pl-1.5 pr-2 py-0.5 border-l border-zinc-200 dark:border-zinc-700 text-rose-500 hover:text-rose-600 hover:bg-rose-500/10 rounded-full text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors"
-                          title="Unsend for everyone"
-                        >
-                          <Trash2 size={12} />
-                          <span>Unsend</span>
-                        </button>
+                        <>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedMessageInfo(msg);
+                              setActiveReactionMsgId(null);
+                            }}
+                            className="ml-1 pl-1.5 pr-2 py-0.5 border-l border-zinc-200 dark:border-zinc-700 text-zinc-400 hover:text-zinc-200 rounded-full text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors"
+                            title="Message Info (Delivery & Read receipts)"
+                          >
+                            <span>ℹ️ Info</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleUnsendMessage(msg.id);
+                            }}
+                            className="pl-1.5 pr-2 py-0.5 border-l border-zinc-200 dark:border-zinc-700 text-rose-500 hover:text-rose-600 hover:bg-rose-500/10 rounded-full text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors"
+                            title="Unsend for everyone"
+                          >
+                            <Trash2 size={12} />
+                            <span>Unsend</span>
+                          </button>
+                        </>
                       )}
                     </div>
                   )}
@@ -4154,22 +4260,24 @@ function ChatsContent() {
                     </span>
                     {isMe && (
                       <span
-                        className="inline-flex items-center shrink-0"
+                        className="inline-flex items-center shrink-0 cursor-pointer"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedMessageInfo(msg);
+                        }}
                         title={
                           msg.status === 'error'
-                            ? 'Failed to send'
+                            ? 'Failed to send - Tap to retry'
                             : msg.status === 'sending' || msg.isSending
                             ? 'Sending...'
-                            : msg.is_read || msg.isSeen || msg.readAt
-                            ? 'Read'
-                            : msg.isDelivered || msg.status === 'sent'
-                            ? 'Delivered'
-                            : 'Sent'
+                            : msg.status === 'read' || msg.is_read || msg.isSeen || msg.readAt
+                            ? (readReceiptsEnabled ? 'Read (2 green ticks)' : 'Read (receipts off)')
+                            : msg.status === 'delivered' || msg.isDelivered
+                            ? 'Delivered (2 grey ticks)'
+                            : 'Sent to server (1 grey tick)'
                         }
                       >
-                        {msg.is_read || msg.isSeen || msg.readAt ? (
-                          <CheckCheck size={13} className="text-[#007AFF] shrink-0" />
-                        ) : msg.status === 'error' ? (
+                        {msg.status === 'error' ? (
                           <button
                             type="button"
                             onClick={(e) => {
@@ -4184,8 +4292,16 @@ function ChatsContent() {
                           </button>
                         ) : msg.status === 'sending' || msg.isSending ? (
                           <Clock size={12} className="text-zinc-400 shrink-0 animate-pulse" />
-                        ) : (
+                        ) : msg.status === 'read' || msg.is_read || msg.isSeen || msg.readAt ? (
+                          readReceiptsEnabled ? (
+                            <CheckCheck size={13} className="text-[#22C55E] shrink-0" />
+                          ) : (
+                            <CheckCheck size={13} className="text-zinc-400 shrink-0" />
+                          )
+                        ) : msg.status === 'delivered' || msg.isDelivered ? (
                           <CheckCheck size={13} className="text-zinc-400 shrink-0" />
+                        ) : (
+                          <Check size={13} className="text-zinc-400 shrink-0" />
                         )}
                       </span>
                     )}
@@ -4353,7 +4469,18 @@ function ChatsContent() {
             type="text"
             value={messageInput}
             disabled={isMaintenanceActive}
-            onChange={(e) => setMessageInput(e.target.value)}
+            onChange={(e) => {
+              const val = e.target.value;
+              setMessageInput(val);
+              if (val.trim()) {
+                sendTypingStatus(true, currentUser?.fullName || currentUser?.name || currentUsername);
+              } else {
+                sendTypingStatus(false);
+              }
+            }}
+            onBlur={() => {
+              sendTypingStatus(false);
+            }}
             placeholder={
               isMaintenanceActive
                 ? 'Chat is disabled during scheduled maintenance 🔒'
@@ -4823,6 +4950,120 @@ function ChatsContent() {
             </div>
           );
         })()}
+
+        {/* Message Info Modal: WhatsApp-style Delivery & Read Receipts Inspection */}
+        {selectedMessageInfo && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in"
+            onClick={() => setSelectedMessageInfo(null)}
+          >
+            <div
+              className="relative w-full max-w-sm rounded-[24px] border p-5 shadow-2xl z-10 space-y-4 max-h-[85vh] overflow-y-auto"
+              style={{
+                backgroundColor: 'var(--surface)',
+                borderColor: 'var(--line)',
+                color: 'var(--text)',
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: 'var(--line)' }}>
+                <div className="flex items-center gap-2">
+                  <span className="text-base font-bold">Message Info</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedMessageInfo(null)}
+                  className="p-1 rounded-full text-[var(--text-muted)] hover:text-[var(--text)] cursor-pointer"
+                  aria-label="Close"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Message Preview */}
+              <div
+                className="p-3 rounded-[16px] text-xs font-medium border"
+                style={{
+                  backgroundColor: 'var(--surface-sunken)',
+                  borderColor: 'var(--line)',
+                }}
+              >
+                <p className="line-clamp-3 text-[var(--text)] font-sf-display">{selectedMessageInfo.text}</p>
+                <p className="text-[10px] text-[var(--text-muted)] mt-1.5">{selectedMessageInfo.time}</p>
+              </div>
+
+              {/* Delivery & Read Receipts */}
+              <div className="space-y-3 pt-1">
+                {/* Read Status */}
+                <div className="flex items-start gap-3 p-2.5 rounded-[16px] bg-[var(--surface-sunken)]/40 border border-[var(--line)]">
+                  <div className="p-1.5 rounded-full bg-emerald-500/10 text-[#22C55E] shrink-0 mt-0.5">
+                    <CheckCheck size={16} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-[var(--text)]">Read</p>
+                    <p className="text-[11px] text-[var(--text-muted)] mt-0.5">
+                      {selectedMessageInfo.status === 'read' || selectedMessageInfo.is_read || selectedMessageInfo.isSeen || selectedMessageInfo.readAt ? (
+                        readReceiptsEnabled ? (
+                          <span className="text-[#22C55E] font-medium">Read by recipient</span>
+                        ) : (
+                          <span>Read (receipts turned off in settings)</span>
+                        )
+                      ) : (
+                        <span>Not read yet</span>
+                      )}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Delivered Status */}
+                <div className="flex items-start gap-3 p-2.5 rounded-[16px] bg-[var(--surface-sunken)]/40 border border-[var(--line)]">
+                  <div className="p-1.5 rounded-full bg-zinc-500/10 text-zinc-400 shrink-0 mt-0.5">
+                    <CheckCheck size={16} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-[var(--text)]">Delivered</p>
+                    <p className="text-[11px] text-[var(--text-muted)] mt-0.5">
+                      {selectedMessageInfo.isDelivered || selectedMessageInfo.status === 'delivered' || selectedMessageInfo.status === 'read' ? (
+                        <span className="text-zinc-300">Delivered to recipient device</span>
+                      ) : (
+                        <span>Pending delivery</span>
+                      )}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Sent Status */}
+                <div className="flex items-start gap-3 p-2.5 rounded-[16px] bg-[var(--surface-sunken)]/40 border border-[var(--line)]">
+                  <div className="p-1.5 rounded-full bg-zinc-500/10 text-zinc-400 shrink-0 mt-0.5">
+                    <Check size={16} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-[var(--text)]">Sent</p>
+                    <p className="text-[11px] text-[var(--text-muted)] mt-0.5">
+                      {selectedMessageInfo.status === 'sending' ? (
+                        <span className="text-amber-400 font-medium animate-pulse">Sending to server...</span>
+                      ) : selectedMessageInfo.status === 'error' ? (
+                        <span className="text-rose-500 font-medium">Failed to send</span>
+                      ) : (
+                        <span className="text-zinc-300">Saved to server</span>
+                      )}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Close Button */}
+              <button
+                type="button"
+                onClick={() => setSelectedMessageInfo(null)}
+                className="w-full py-2.5 rounded-full text-xs font-bold bg-[var(--primary)] text-white hover:opacity-90 active:scale-98 transition-all cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Multiplayer Games: Game Challenge Drawer (inside active chat view) */}
         <CricketGameDrawer

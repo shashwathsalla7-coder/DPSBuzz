@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 import { deleteR2Object, deleteR2Objects } from '@/lib/r2';
 import { pruneExpiredServerChatPhotos, pruneExpiredServerStories } from '@/lib/serverStore';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
 /**
  * Cleanup job endpoint for free schedulers (GitHub Actions, Vercel Cron, or Admin trigger)
@@ -34,6 +38,19 @@ export async function POST(req: NextRequest) {
       // 10-day chat photo expiration policy
       const { prunedCount } = await pruneExpiredServerChatPhotos(10);
       results.chatMessagesPruned = prunedCount;
+
+      // 30-day Supabase database message pruning (Keeps DB under 120MB)
+      if (supabaseUrl && supabaseKey) {
+        try {
+          const sb = createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false } });
+          const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+          const { count } = await sb.from('messages').delete({ count: 'exact' }).lt('created_at', thirtyDaysAgo);
+          await sb.from('message_receipts').delete().lt('created_at', thirtyDaysAgo);
+          results.supabaseMessagesPruned = count || 0;
+        } catch (sbErr) {
+          console.warn('Supabase cleanup warning:', sbErr);
+        }
+      }
     }
 
     if (!action || action === 'all' || action === 'expired_stories') {
