@@ -410,7 +410,11 @@ const PostCardComponent: React.FC<PostCardProps> = ({
           onClick={() => onCommentClick(post)}
           className="text-xs text-[var(--text-muted)] font-medium pt-0.5 hover:underline cursor-pointer block"
         >
-          View all {Math.max(post.comments || 0, 8)} comments
+          {post.comments && post.comments > 0
+            ? post.comments === 1
+              ? 'View 1 comment'
+              : `View all ${post.comments} comments`
+            : 'Add a comment...'}
         </button>
       </div>
 

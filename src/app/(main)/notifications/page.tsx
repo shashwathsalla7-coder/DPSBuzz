@@ -31,18 +31,25 @@ export default function NotificationsPage() {
       DataStore.getGroupJoinRequests().filter((r) => r.status === 'pending' && myGroupIds.has(r.groupId))
     );
     setFollowRequests(
-      DataStore.getFollowRequests().filter(
-        (f) => f.target.toLowerCase() === currentUser.username.toLowerCase()
-      )
+      currentClean
+        ? DataStore.getFollowRequests().filter(
+            (f) => f.target.toLowerCase() === currentClean
+          )
+        : []
     );
   };
 
   useEffect(() => {
     loadAll();
+    DataStore.syncWithServer().then(() => loadAll()).catch(() => {});
     const handleUpdate = () => loadAll();
     window.addEventListener('dpsbuzz:content_updated', handleUpdate);
-    return () => window.removeEventListener('dpsbuzz:content_updated', handleUpdate);
-  }, [currentUser.username]);
+    window.addEventListener('storage', handleUpdate);
+    return () => {
+      window.removeEventListener('dpsbuzz:content_updated', handleUpdate);
+      window.removeEventListener('storage', handleUpdate);
+    };
+  }, [currentUser?.username]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -75,14 +82,18 @@ export default function NotificationsPage() {
   };
 
   const handleAcceptFollowReq = (req: any) => {
-    DataStore.acceptFollowRequest(currentUser.username, req.requester);
-    setFollowRequests((prev) => prev.filter((f) => f.requester !== req.requester));
+    const currentClean = (currentUser?.username || '').toLowerCase().trim();
+    if (!currentClean) return;
+    DataStore.acceptFollowRequest(currentClean, req.requester);
+    setFollowRequests((prev) => prev.filter((f) => f.requester.toLowerCase() !== req.requester.toLowerCase()));
     showToast(`Accepted friend request from @${req.requester}! You are now following each other 🎉`);
   };
 
   const handleDeclineFollowReq = (req: any) => {
-    DataStore.cancelFollowRequest(req.requester, currentUser.username);
-    setFollowRequests((prev) => prev.filter((f) => f.requester !== req.requester));
+    const currentClean = (currentUser?.username || '').toLowerCase().trim();
+    if (!currentClean) return;
+    DataStore.cancelFollowRequest(req.requester, currentClean);
+    setFollowRequests((prev) => prev.filter((f) => f.requester.toLowerCase() !== req.requester.toLowerCase()));
     showToast(`Declined friend request from @${req.requester}`);
   };
 

@@ -109,6 +109,43 @@ export async function GET(req: NextRequest) {
       }, { headers: NO_CACHE_HEADERS });
     }
 
+    let syncFollows = Array.isArray(store.follows) ? [...store.follows] : [];
+    let syncFollowRequests = Array.isArray(store.followRequests) ? [...store.followRequests] : [];
+
+    if (supabaseUrl && supabaseKey) {
+      try {
+        const sb = createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false } });
+        const [{ data: dbFollows }, { data: dbReqs }] = await Promise.all([
+          sb.from('follows').select('*').limit(500),
+          sb.from('follow_requests').select('*').eq('status', 'pending').limit(500),
+        ]);
+        if (Array.isArray(dbFollows)) {
+          const followSet = new Set(syncFollows.map((f: any) => `${(f.follower || '').toLowerCase().trim()}__${(f.following || '').toLowerCase().trim()}`));
+          for (const df of dbFollows) {
+            const fol = (df.follower || '').toLowerCase().trim();
+            const fing = (df.following || '').toLowerCase().trim();
+            if (fol && fing && fol !== fing && !followSet.has(`${fol}__${fing}`)) {
+              syncFollows.push({ follower: fol, following: fing });
+              followSet.add(`${fol}__${fing}`);
+            }
+          }
+        }
+        if (Array.isArray(dbReqs)) {
+          const reqSet = new Set(syncFollowRequests.map((r: any) => `${(r.requester || '').toLowerCase().trim()}__${(r.target || '').toLowerCase().trim()}`));
+          for (const dr of dbReqs) {
+            const req = (dr.requester || '').toLowerCase().trim();
+            const tar = (dr.target || '').toLowerCase().trim();
+            if (req && tar && req !== tar && !reqSet.has(`${req}__${tar}`)) {
+              syncFollowRequests.push({ requester: req, target: tar });
+              reqSet.add(`${req}__${tar}`);
+            }
+          }
+        }
+      } catch (err) {
+        // Fallback to store
+      }
+    }
+
     return NextResponse.json({
       success: true,
       posts: store.posts,
@@ -125,8 +162,8 @@ export async function GET(req: NextRequest) {
       deletedUsernames: store.deletedUsernames || [],
       notifications: filteredNotifications,
       notices: store.notices || [],
-      follows: store.follows || [],
-      followRequests: store.followRequests || [],
+      follows: syncFollows,
+      followRequests: syncFollowRequests,
       lastUpdated: store.lastUpdated,
     }, { headers: NO_CACHE_HEADERS });
   } catch (error: any) {

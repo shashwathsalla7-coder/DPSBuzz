@@ -196,6 +196,12 @@ function HomeContent() {
       });
       setLikedPosts(likedMap);
 
+      // Reload comments map
+      try {
+        const savedComments = localStorage.getItem('dpsbuzz_comments_v1');
+        if (savedComments) setCommentsMap(JSON.parse(savedComments));
+      } catch {}
+
       if (typeof window !== 'undefined') {
         const searchParams = new URLSearchParams(window.location.search);
         if (searchParams.get('game') === '2048' || searchParams.get('solo') === '2048') {
@@ -283,9 +289,11 @@ function HomeContent() {
   const handleAddComment = (postId: string) => {
     const trimmed = newCommentText.trim();
     if (!trimmed && !commentImage) return;
+    const cur = currentUser || DataStore.getCurrentUser();
     const newComment = {
       id: 'c-' + Date.now(),
-      username: currentUser.username || 'student',
+      username: cur?.username || 'student',
+      avatar: cur?.avatar || DataStore.getProfileByUsername(cur?.username || '')?.avatar || null,
       text: trimmed,
       image: commentImage || undefined,
       timeAgo: 'Just now',
@@ -307,6 +315,11 @@ function HomeContent() {
       prev.map((p) => (p.id === postId ? { ...p, comments: (p.comments || 0) + 1 } : p))
     );
     showToast(newComment.image ? 'Photo comment posted! 📸' : 'Comment posted');
+
+    // Notify other components & tabs
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated'));
+    }
 
     // Sync comment to server
     fetch(`/api/posts/${postId}/comment`, {
@@ -589,8 +602,8 @@ function HomeContent() {
     return rawList.filter((c) => {
       if (!c || !c.username) return false;
       const author = (c.username || '').toLowerCase().trim();
-      if (author === myUser) return true;
-      if ((selectedCommentsPost.username || '').toLowerCase().trim() === myUser) return true;
+      if (myUser && author === myUser) return true;
+      if (myUser && (selectedCommentsPost.username || '').toLowerCase().trim() === myUser) return true;
       if (myUser === 'shashwath71845') return true;
 
       const authorProf = profileMap.get(author) || DataStore.getProfileByUsername(author);

@@ -171,6 +171,16 @@ function SearchContent() {
       showToast('You cannot follow yourself! 🙅');
       return;
     }
+
+    // If target has sent an incoming friend request to me, confirm it!
+    if (DataStore.hasRequestedFollow(targetUsername, currentUser.username)) {
+      DataStore.acceptFollowRequest(currentUser.username, targetUsername);
+      setFollows([...DataStore.getFollows()]);
+      setFollowRequests([...DataStore.getFollowRequests()]);
+      showToast(`Accepted friend request from @${targetUsername}! 🎉`);
+      return;
+    }
+
     const isCurrentlyFollowing = isFollowing(targetUsername);
     if (!isCurrentlyFollowing) {
       const targetProf =
@@ -730,12 +740,21 @@ function SearchContent() {
                       r.requester.toLowerCase() === (currentUser?.username || '').toLowerCase() &&
                       r.target.toLowerCase() === person.username.toLowerCase()
                   ) || DataStore.hasRequestedFollow(currentUser?.username || '', person.username);
+                const hasIncomingRequest =
+                  followRequests.some(
+                    (r) =>
+                      r.requester.toLowerCase() === person.username.toLowerCase() &&
+                      r.target.toLowerCase() === (currentUser?.username || '').toLowerCase()
+                  ) || DataStore.hasRequestedFollow(person.username, currentUser?.username || '');
                 const isFollowedByThem =
                   follows.some(
                     (f) =>
                       f.follower.toLowerCase() === person.username.toLowerCase() &&
                       f.following.toLowerCase() === (currentUser?.username || '').toLowerCase()
                   ) || (currentUser?.username ? DataStore.isFollowing(person.username, currentUser.username) : false);
+                const mutuals = currentUser?.username
+                  ? DataStore.getMutualFollows(currentUser.username, person.username)
+                  : [];
                 const pair = getAvatarColorPair(person.username);
                 const isShashwath = person.username.toLowerCase() === 'shashwath71845';
 
@@ -774,6 +793,11 @@ function SearchContent() {
                         <p className="text-[11px] text-[var(--text-muted)] truncate">
                           @{person.username} · {isShashwath ? 'School Admin' : `Class ${person.class}-${person.section || 'A'}`}
                         </p>
+                        {mutuals.length > 0 && (
+                          <p className="text-[10px] text-[var(--text-muted)] truncate pt-0.5">
+                            Followed by @{mutuals[0]}{mutuals.length > 1 ? ` +${mutuals.length - 1} other${mutuals.length > 2 ? 's' : ''}` : ''}
+                          </p>
+                        )}
                       </div>
                     </Link>
 
@@ -783,15 +807,29 @@ function SearchContent() {
                         onClick={() => handleFollowToggle(person.username)}
                         className="px-4 py-1.5 rounded-full text-xs font-bold shrink-0 cursor-pointer transition-all active:scale-95 shadow-xs"
                         style={{
-                          backgroundColor: following || hasRequested ? 'var(--surface-sunken)' : 'var(--primary)',
-                          color: following || hasRequested ? 'var(--text)' : 'var(--on-primary)',
-                          border: following || hasRequested ? '1px solid var(--line)' : 'none',
+                          backgroundColor: hasIncomingRequest
+                            ? 'var(--primary)'
+                            : following || hasRequested
+                            ? 'var(--surface-sunken)'
+                            : 'var(--primary)',
+                          color: hasIncomingRequest
+                            ? 'var(--on-primary)'
+                            : following || hasRequested
+                            ? 'var(--text)'
+                            : 'var(--on-primary)',
+                          border: hasIncomingRequest
+                            ? 'none'
+                            : following || hasRequested
+                            ? '1px solid var(--line)'
+                            : 'none',
                         }}
                       >
                         {following
                           ? 'Following'
                           : hasRequested
                           ? 'Requested 🔒'
+                          : hasIncomingRequest
+                          ? 'Confirm'
                           : isFollowedByThem
                           ? 'Follow Back'
                           : 'Follow'}
