@@ -905,10 +905,26 @@ export const DataStore = {
         }
       }
 
-      // 4. Merge comments
+      // 4. Merge comments safely by comment ID so local comments are never clobbered
       if (data.comments && typeof data.comments === 'object') {
         const localComments = getStorage<Record<string, any[]>>('dpsbuzz_comments_v1', {});
-        const mergedComments = { ...localComments, ...data.comments };
+        const mergedComments: Record<string, any[]> = { ...localComments };
+        for (const [pId, serverList] of Object.entries(data.comments)) {
+          if (Array.isArray(serverList)) {
+            const currentList = mergedComments[pId] || [];
+            const cMap = new Map<string, any>();
+            for (const c of currentList) {
+              if (c && (c.id || c.createdAt)) cMap.set(c.id || c.createdAt, c);
+            }
+            for (const c of serverList as any[]) {
+              if (c && (c.id || c.createdAt)) {
+                if (!cMap.has(c.id || c.createdAt)) changed = true;
+                cMap.set(c.id || c.createdAt, c);
+              }
+            }
+            mergedComments[pId] = Array.from(cMap.values());
+          }
+        }
         setStorage('dpsbuzz_comments_v1', mergedComments);
       }
 

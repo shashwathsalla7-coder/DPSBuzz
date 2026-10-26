@@ -436,6 +436,7 @@ export default function ProfileClient({ username }: { username: string }) {
     const newComment = {
       id: 'c-' + Date.now(),
       username: cur.username || 'student',
+      avatar: cur.avatar || DataStore.getProfileByUsername(cur.username || '')?.avatar || null,
       text: trimmed,
       timeAgo: 'Just now',
       createdAt: new Date().toISOString(),
@@ -468,6 +469,10 @@ export default function ProfileClient({ username }: { username: string }) {
 
     setPostsVersion((v) => v + 1);
     showToast('Comment posted! 💬');
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated'));
+    }
 
     fetch(`/api/posts/${postId}/comment`, {
       method: 'POST',
@@ -1136,8 +1141,8 @@ export default function ProfileClient({ username }: { username: string }) {
             </p>
           )}
 
-          {/* Social proof / Mutual follows: Followed by [avatar] @username (hidden for private accounts from non-followers) */}
-          {!isOwnProfile && (isOwnProfile || !profile.isPrivate || isFollowing) && mutualFollowers.length > 0 && (
+          {/* Social proof / Mutual follows: Followed by [avatar] @username */}
+          {!isOwnProfile && mutualFollowers.length > 0 && (
             <div
               onClick={() => handleOpenFollowModal('followers')}
               className="flex items-center gap-2 pt-1 cursor-pointer group"
