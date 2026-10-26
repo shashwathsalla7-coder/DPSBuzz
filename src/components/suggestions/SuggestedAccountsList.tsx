@@ -39,6 +39,15 @@ export function SuggestedAccountsList({
         map[f.following.toLowerCase()] = true;
       });
     setFollowingMap(map);
+
+    const requests = DataStore.getFollowRequests();
+    const reqMap: Record<string, boolean> = {};
+    requests
+      .filter((r) => r.requester.toLowerCase() === cleanUser)
+      .forEach((r) => {
+        reqMap[r.target.toLowerCase()] = true;
+      });
+    setRequestedMap(reqMap);
   }, []);
 
   useEffect(() => {
@@ -237,7 +246,7 @@ export function SuggestedAccountsList({
                       isFollowing
                         ? 'text-[var(--text-muted)] hover:text-[var(--text)]'
                         : isRequested
-                        ? 'text-amber-500 font-bold'
+                        ? 'text-[var(--text-muted)] font-bold'
                         : 'text-[#0095F6] hover:text-[#1877F2] active:opacity-75'
                     }`}
                     aria-label={isFollowing ? `Unfollow ${person.username}` : `Follow ${person.username}`}

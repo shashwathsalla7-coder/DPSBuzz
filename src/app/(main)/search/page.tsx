@@ -44,6 +44,7 @@ function SearchContent() {
   const [allProfiles, setAllProfiles] = useState<Profile[]>(() => (typeof window !== 'undefined' ? DataStore.getProfiles() : []));
   const [posts, setPosts] = useState<Post[]>(() => (typeof window !== 'undefined' ? DataStore.getPosts() : []));
   const [follows, setFollows] = useState<Array<{ follower: string; following: string }>>(() => (typeof window !== 'undefined' ? DataStore.getFollows() : []));
+  const [followRequests, setFollowRequests] = useState<Array<{ requester: string; target: string }>>(() => (typeof window !== 'undefined' ? DataStore.getFollowRequests() : []));
   const [registeredUserCount, setRegisteredUserCount] = useState<number>(() => (typeof window !== 'undefined' ? DataStore.getRegisteredUserCount() : 0));
 
   // Recent searches with localStorage persistence
@@ -79,9 +80,10 @@ function SearchContent() {
 
     const loadData = () => {
       setCurrentUser(DataStore.getCurrentUser());
-      setAllProfiles(DataStore.getProfiles());
-      setPosts(DataStore.getPosts());
-      setFollows(DataStore.getFollows());
+      setAllProfiles([...DataStore.getProfiles()]);
+      setPosts([...DataStore.getPosts()]);
+      setFollows([...DataStore.getFollows()]);
+      setFollowRequests([...DataStore.getFollowRequests()]);
       setRegisteredUserCount(DataStore.getRegisteredUserCount());
     };
 
@@ -171,7 +173,9 @@ function SearchContent() {
     }
     const isCurrentlyFollowing = isFollowing(targetUsername);
     if (!isCurrentlyFollowing) {
-      const targetProf = allProfiles.find((p) => p.username.toLowerCase() === targetUsername.toLowerCase());
+      const targetProf =
+        allProfiles.find((p) => p.username.toLowerCase() === targetUsername.toLowerCase()) ||
+        DataStore.getProfileByUsername(targetUsername);
       if (targetProf && targetProf.isPrivate) {
         const hasReq = DataStore.hasRequestedFollow(currentUser.username, targetUsername);
         if (hasReq) {
@@ -181,12 +185,14 @@ function SearchContent() {
           DataStore.requestFollow(currentUser.username, targetUsername);
           showToast(`Follow request sent to @${targetUsername} 🔒`);
         }
-        setFollows(DataStore.getFollows());
+        setFollows([...DataStore.getFollows()]);
+        setFollowRequests([...DataStore.getFollowRequests()]);
         return;
       }
     }
     const isNow = DataStore.toggleFollow(currentUser.username, targetUsername);
-    setFollows(DataStore.getFollows());
+    setFollows([...DataStore.getFollows()]);
+    setFollowRequests([...DataStore.getFollowRequests()]);
     showToast(isNow ? `Following @${targetUsername}` : `Unfollowed @${targetUsername}`);
   };
 
@@ -622,6 +628,13 @@ function SearchContent() {
             winners={starWinner}
             onFollowToggle={handleFollowToggle}
             isFollowing={isFollowing}
+            isRequested={(tar) =>
+              followRequests.some(
+                (r) =>
+                  r.requester.toLowerCase() === (currentUser?.username || '').toLowerCase() &&
+                  r.target.toLowerCase() === tar.toLowerCase()
+              ) || DataStore.hasRequestedFollow(currentUser?.username || '', tar)
+            }
             currentUsername={currentUser?.username}
           />
 
@@ -711,6 +724,18 @@ function SearchContent() {
 
               {searchResults.people.map((person) => {
                 const following = isFollowing(person.username);
+                const hasRequested =
+                  followRequests.some(
+                    (r) =>
+                      r.requester.toLowerCase() === (currentUser?.username || '').toLowerCase() &&
+                      r.target.toLowerCase() === person.username.toLowerCase()
+                  ) || DataStore.hasRequestedFollow(currentUser?.username || '', person.username);
+                const isFollowedByThem =
+                  follows.some(
+                    (f) =>
+                      f.follower.toLowerCase() === person.username.toLowerCase() &&
+                      f.following.toLowerCase() === (currentUser?.username || '').toLowerCase()
+                  ) || (currentUser?.username ? DataStore.isFollowing(person.username, currentUser.username) : false);
                 const pair = getAvatarColorPair(person.username);
                 const isShashwath = person.username.toLowerCase() === 'shashwath71845';
 
@@ -742,6 +767,9 @@ function SearchContent() {
                           {person.isVerified && (
                             <span className="text-blue-400 text-[10px]">✓</span>
                           )}
+                          {person.isPrivate && (
+                            <span className="text-[10px] text-[var(--text-muted)]" title="Private Account">🔒</span>
+                          )}
                         </div>
                         <p className="text-[11px] text-[var(--text-muted)] truncate">
                           @{person.username} · {isShashwath ? 'School Admin' : `Class ${person.class}-${person.section || 'A'}`}
@@ -755,16 +783,16 @@ function SearchContent() {
                         onClick={() => handleFollowToggle(person.username)}
                         className="px-4 py-1.5 rounded-full text-xs font-bold shrink-0 cursor-pointer transition-all active:scale-95 shadow-xs"
                         style={{
-                          backgroundColor: following || (!following && DataStore.hasRequestedFollow(currentUser?.username || '', person.username)) ? 'var(--surface-sunken)' : 'var(--primary)',
-                          color: following || (!following && DataStore.hasRequestedFollow(currentUser?.username || '', person.username)) ? 'var(--text)' : 'var(--on-primary)',
-                          border: following || (!following && DataStore.hasRequestedFollow(currentUser?.username || '', person.username)) ? '1px solid var(--line)' : 'none',
+                          backgroundColor: following || hasRequested ? 'var(--surface-sunken)' : 'var(--primary)',
+                          color: following || hasRequested ? 'var(--text)' : 'var(--on-primary)',
+                          border: following || hasRequested ? '1px solid var(--line)' : 'none',
                         }}
                       >
                         {following
                           ? 'Following'
-                          : DataStore.hasRequestedFollow(currentUser?.username || '', person.username)
+                          : hasRequested
                           ? 'Requested 🔒'
-                          : currentUser?.username && DataStore.isFollowing(person.username, currentUser.username)
+                          : isFollowedByThem
                           ? 'Follow Back'
                           : 'Follow'}
                       </button>
