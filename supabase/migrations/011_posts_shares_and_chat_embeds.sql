@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS public.posts (
 
 -- 4. CREATE FOLLOWS TABLE
 CREATE TABLE IF NOT EXISTS public.follows (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   follower TEXT NOT NULL,
   following TEXT NOT NULL,
   created_at TIMESTAMPTZ DEFAULT now(),
@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS public.follows (
 
 -- 5. CREATE FOLLOW REQUESTS TABLE (For Private Profiles)
 CREATE TABLE IF NOT EXISTS public.follow_requests (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   requester TEXT NOT NULL,
   target TEXT NOT NULL,
   status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'rejected')),
