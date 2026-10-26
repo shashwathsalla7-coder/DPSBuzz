@@ -294,6 +294,8 @@ export default function ProfileClient({ username }: { username: string }) {
         setHasIncomingRequest(DataStore.isFollowRequested(username, cur.username));
       }
     };
+    handleUpdate();
+    DataStore.syncWithServer().then(() => handleUpdate()).catch(() => {});
     window.addEventListener('dpsbuzz:content_updated', handleUpdate);
     window.addEventListener('storage', handleUpdate);
     return () => {
@@ -1324,7 +1326,7 @@ export default function ProfileClient({ username }: { username: string }) {
                   ? 'Confirm'
                   : isFollowedBy && !isFollowing && !isRequested
                   ? 'Follow Back'
-                  : isFollowing ? 'Following' : isRequested ? 'Requested' : 'Follow'}
+                  : isFollowing ? 'Following' : isRequested ? 'Requested 🔒' : 'Follow'}
               </button>
               <Link
                 href={`/chats?user=${profile.username}`}

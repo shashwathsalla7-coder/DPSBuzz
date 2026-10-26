@@ -14,6 +14,7 @@ export interface HeroCardProps {
   }>;
   onFollowToggle?: (username: string) => void;
   isFollowing?: (username: string) => boolean;
+  isRequested?: (username: string) => boolean;
   currentUsername?: string;
 }
 
@@ -21,6 +22,7 @@ export const HeroCard: React.FC<HeroCardProps> = ({
   winners = [],
   onFollowToggle,
   isFollowing,
+  isRequested,
   currentUsername,
 }) => {
   const [activeIndex, setActiveIndex] = useState(0);
@@ -58,6 +60,7 @@ export const HeroCard: React.FC<HeroCardProps> = ({
   const currentWinner = winners[activeIndex] || winners[0];
   const profile = currentWinner.profile;
   const followingState = isFollowing ? isFollowing(profile.username) : false;
+  const requestedState = !followingState && (isRequested ? isRequested(profile.username) : false);
   const avatarColor = getAvatarColorPair(profile.username);
   const initials = (profile.fullName || profile.username || 'ST').slice(0, 2).toUpperCase();
 
@@ -191,12 +194,12 @@ export const HeroCard: React.FC<HeroCardProps> = ({
               onClick={() => onFollowToggle?.(profile.username)}
               className="px-4 py-2 rounded-full text-xs font-bold transition-all btn-press shrink-0 shadow-xs cursor-pointer"
               style={{
-                backgroundColor: followingState ? 'var(--surface)' : 'var(--primary)',
-                color: followingState ? 'var(--text)' : 'var(--on-primary)',
-                border: followingState ? '1px solid var(--line)' : 'none',
+                backgroundColor: followingState || requestedState ? 'var(--surface)' : 'var(--primary)',
+                color: followingState || requestedState ? 'var(--text)' : 'var(--on-primary)',
+                border: followingState || requestedState ? '1px solid var(--line)' : 'none',
               }}
             >
-              {followingState ? 'Following' : 'Follow'}
+              {followingState ? 'Following' : requestedState ? 'Requested 🔒' : 'Follow'}
             </button>
           )}
         </div>
