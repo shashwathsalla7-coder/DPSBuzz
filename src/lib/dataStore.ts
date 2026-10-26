@@ -1284,6 +1284,17 @@ export const DataStore = {
     ).length;
   },
 
+  saveProfiles(profiles: Profile[]): void {
+    setStorage(STORAGE_KEYS.PROFILES, profiles);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('dpsbuzz:content_updated', {
+          detail: { type: 'profiles_updated' },
+        })
+      );
+    }
+  },
+
   getCurrentUser(): Profile {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('dpsbuzz_user');
@@ -1713,6 +1724,52 @@ export const DataStore = {
     return newPost;
   },
 
+  mergePosts(serverPosts: Post[]): void {
+    if (!Array.isArray(serverPosts) || serverPosts.length === 0) return;
+    const current = getStorage<Post[]>(STORAGE_KEYS.POSTS, []);
+    const postMap = new Map<string, Post>();
+
+    for (const p of current) {
+      if (p && p.id) postMap.set(p.id, p);
+    }
+
+    let changed = false;
+    for (const sp of serverPosts) {
+      if (!sp || !sp.id) continue;
+      if (!postMap.has(sp.id)) {
+        postMap.set(sp.id, sp);
+        changed = true;
+      } else {
+        const existing = postMap.get(sp.id)!;
+        const updated = {
+          ...existing,
+          ...sp,
+          likes: Math.max(existing.likes || 0, sp.likes || 0),
+          comments: Math.max(existing.comments || 0, sp.comments || 0),
+          imageUrl: sp.imageUrl || existing.imageUrl,
+          images: sp.images && sp.images.length > 0 ? sp.images : existing.images,
+        };
+        postMap.set(sp.id, updated);
+      }
+    }
+
+    if (changed) {
+      const merged = Array.from(postMap.values()).sort((a, b) => {
+        const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return tb - ta;
+      });
+      setStorage(STORAGE_KEYS.POSTS, merged);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('dpsbuzz:content_updated', {
+            detail: { type: 'posts_synced' },
+          })
+        );
+      }
+    }
+  },
+
   incrementPostViews(postId: string): number {
     const posts = this.getPosts(true);
     let newViews = 1;
@@ -1828,6 +1885,12 @@ export const DataStore = {
     }
 
     if (typeof window !== 'undefined') {
+      fetch('/api/posts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ post: repostedPost }),
+      }).catch((e) => console.warn('Failed to sync repost to server:', e));
+
       window.dispatchEvent(
         new CustomEvent('dpsbuzz:content_updated', {
           detail: { type: 'repost_feed', post: repostedPost, originalPostId: postId },
@@ -6512,14 +6575,17 @@ export const DataStore = {
         const cleanT = tUser.toLowerCase().trim();
         if (!cleanT || cleanT === cur) return;
 
-        const convId = `conv-${cleanT}`;
-        const canonicalId = [cur, cleanT].sort().join('__');
-        const targetProf = profiles.find((p) => (p.username || '').toLowerCase() === cleanT);
-        const targetName = targetProf ? targetProf.fullName : tUser;
+        const isGroup = cleanT.startsWith('conv-group-') || cleanT.startsWith('group-');
+        const convId = isGroup ? (cleanT.startsWith('conv-') ? cleanT : `conv-${cleanT}`) : `conv-${cleanT}`;
+        const canonicalId = isGroup ? convId : [cur, cleanT].sort().join('__');
+
+        const targetProf = !isGroup ? profiles.find((p) => (p.username || '').toLowerCase() === cleanT) : null;
+        const groupObj = isGroup ? this.getGroups().find((g) => g.id === cleanT.replace(/^conv-/, '')) : null;
+        const targetName = isGroup ? (groupObj?.name || 'Class Group') : (targetProf ? targetProf.fullName : tUser);
 
         // 1. Update Sender's Conversations list
         const existingIdx = storedConv.findIndex(
-          (c: any) => (c.username || '').toLowerCase() === cleanT || c.id === convId || c.id === canonicalId
+          (c: any) => c.id === convId || c.id === canonicalId || (!isGroup && (c.username || '').toLowerCase() === cleanT)
         );
         const senderPreview = customMsg ? `You: ${customMsg}` : `You shared a post 📸`;
         if (existingIdx >= 0) {
@@ -6529,9 +6595,11 @@ export const DataStore = {
           storedConv.unshift({
             id: convId,
             name: targetName,
-            username: cleanT,
-            avatar: targetProf?.avatar || null,
-            studentClass: targetProf?.class ? `${targetProf.class}-${targetProf.section || ''}` : '8-A',
+            username: isGroup ? targetName.toLowerCase().replace(/\s+/g, '_') : cleanT,
+            avatar: isGroup ? null : (targetProf?.avatar || null),
+            studentClass: isGroup ? (groupObj?.class ? `Class ${groupObj.class}` : 'Group') : (targetProf?.class ? `${targetProf.class}-${targetProf.section || ''}` : '8-A'),
+            isGroup: Boolean(isGroup),
+            type: isGroup ? 'group' : 'direct',
             lastMessage: senderPreview,
             timeAgo: timeNow,
             isUnread: false,
@@ -6540,17 +6608,29 @@ export const DataStore = {
 
         const newMsg = {
           id: `msg-share-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+          client_id: `msg-share-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
           text: customMsg || `Shared a post 📸`,
           sender: 'me' as const,
           senderUsername: cur,
           senderName: senderName,
           time: timeStr,
           timestamp: Date.now(),
+          message_type: 'post_share',
+          post_id: post.id,
           sharedPost: {
             id: post.id,
             username: post.username,
             imageUrl: postImageUrl,
             caption: post.caption || '',
+          },
+          post_preview: {
+            id: post.id,
+            username: post.username,
+            fullName: post.fullName || post.username,
+            avatar: post.avatar || null,
+            class: post.class,
+            caption: post.caption || '',
+            imageUrl: postImageUrl,
           },
         };
 
@@ -6559,51 +6639,53 @@ export const DataStore = {
         storedMsgs[canonicalId] = [...(storedMsgs[canonicalId] || []), newMsg];
 
         // 3. Update Recipient's local conversation & message store (for multi-account login on same browser)
-        try {
-          const targetConvKey = `dpsbuzz_chat_conversations_${cleanT}_v3`;
-          const targetMsgKey = `dpsbuzz_chat_messages_${cleanT}_v3`;
-          const recipientConv = JSON.parse(localStorage.getItem(targetConvKey) || '[]');
-          const recipientMsgs = JSON.parse(localStorage.getItem(targetMsgKey) || '{}');
+        if (!isGroup) {
+          try {
+            const targetConvKey = `dpsbuzz_chat_conversations_${cleanT}_v3`;
+            const targetMsgKey = `dpsbuzz_chat_messages_${cleanT}_v3`;
+            const recipientConv = JSON.parse(localStorage.getItem(targetConvKey) || '[]');
+            const recipientMsgs = JSON.parse(localStorage.getItem(targetMsgKey) || '{}');
 
-          const rConvId = `conv-${cur}`;
-          const rExistingIdx = recipientConv.findIndex(
-            (c: any) => (c.username || '').toLowerCase() === cur || c.id === rConvId || c.id === canonicalId
-          );
-          const incomingTier = this.getInboxTier(cleanT, cur);
-          const recipientPreview = customMsg ? `${senderName}: ${customMsg}` : `${senderName} shared a post 📸`;
+            const rConvId = `conv-${cur}`;
+            const rExistingIdx = recipientConv.findIndex(
+              (c: any) => (c.username || '').toLowerCase() === cur || c.id === rConvId || c.id === canonicalId
+            );
+            const incomingTier = this.getInboxTier(cleanT, cur);
+            const recipientPreview = customMsg ? `${senderName}: ${customMsg}` : `${senderName} shared a post 📸`;
 
-          if (rExistingIdx >= 0) {
-            recipientConv[rExistingIdx].lastMessage = recipientPreview;
-            recipientConv[rExistingIdx].timeAgo = timeNow;
-            recipientConv[rExistingIdx].isUnread = true;
-            recipientConv[rExistingIdx].unreadCount = (recipientConv[rExistingIdx].unreadCount || 0) + 1;
-            recipientConv[rExistingIdx].inboxTier = incomingTier;
-          } else {
-            recipientConv.unshift({
-              id: rConvId,
-              name: senderName,
-              username: cur,
-              avatar: curProfile?.avatar || null,
-              studentClass: curProfile?.class ? `${curProfile.class}-${curProfile.section || ''}` : 'Student',
-              lastMessage: recipientPreview,
-              timeAgo: timeNow,
-              inboxTier: incomingTier,
-              isUnread: true,
-              unreadCount: 1,
-            });
-          }
+            if (rExistingIdx >= 0) {
+              recipientConv[rExistingIdx].lastMessage = recipientPreview;
+              recipientConv[rExistingIdx].timeAgo = timeNow;
+              recipientConv[rExistingIdx].isUnread = true;
+              recipientConv[rExistingIdx].unreadCount = (recipientConv[rExistingIdx].unreadCount || 0) + 1;
+              recipientConv[rExistingIdx].inboxTier = incomingTier;
+            } else {
+              recipientConv.unshift({
+                id: rConvId,
+                name: senderName,
+                username: cur,
+                avatar: curProfile?.avatar || null,
+                studentClass: curProfile?.class ? `${curProfile.class}-${curProfile.section || ''}` : 'Student',
+                lastMessage: recipientPreview,
+                timeAgo: timeNow,
+                inboxTier: incomingTier,
+                isUnread: true,
+                unreadCount: 1,
+              });
+            }
 
-          const recipientMsg = {
-            ...newMsg,
-            sender: 'other' as const,
-          };
+            const recipientMsg = {
+              ...newMsg,
+              sender: 'other' as const,
+            };
 
-          recipientMsgs[rConvId] = [...(recipientMsgs[rConvId] || []), recipientMsg];
-          recipientMsgs[canonicalId] = [...(recipientMsgs[canonicalId] || []), recipientMsg];
+            recipientMsgs[rConvId] = [...(recipientMsgs[rConvId] || []), recipientMsg];
+            recipientMsgs[canonicalId] = [...(recipientMsgs[canonicalId] || []), recipientMsg];
 
-          localStorage.setItem(targetConvKey, JSON.stringify(recipientConv));
-          localStorage.setItem(targetMsgKey, JSON.stringify(recipientMsgs));
-        } catch {}
+            localStorage.setItem(targetConvKey, JSON.stringify(recipientConv));
+            localStorage.setItem(targetMsgKey, JSON.stringify(recipientMsgs));
+          } catch {}
+        }
 
         // 4. Instant 0ms broadcast across all tabs and components
         this.broadcastChatEvent({
@@ -6611,7 +6693,7 @@ export const DataStore = {
           conversationId: canonicalId,
           message: newMsg,
           senderUsername: cur,
-          recipientUsername: cleanT,
+          recipientUsername: isGroup ? undefined : cleanT,
         });
 
         // 5. Sync to cloud chat store so recipient gets it over the cloud!
@@ -6621,19 +6703,21 @@ export const DataStore = {
           body: JSON.stringify({
             conversationId: canonicalId,
             senderUsername: cur,
-            recipientUsername: cleanT,
+            recipientUsername: isGroup ? undefined : cleanT,
             message: newMsg,
           }),
         }).catch((err) => console.warn('Failed to post shared post to cloud chat:', err));
 
         // 6. Create in-app notification for target user
-        this.addNotification({
-          userId: cleanT,
-          type: 'chat',
-          title: `💬 @${cur} shared a post with you`,
-          body: previewText,
-          link: `/chats?user=${cur}`,
-        });
+        if (!isGroup) {
+          this.addNotification({
+            userId: cleanT,
+            type: 'chat',
+            title: `💬 @${cur} shared a post with you`,
+            body: previewText,
+            link: `/chats?user=${cur}`,
+          });
+        }
       });
 
       if (cur) {

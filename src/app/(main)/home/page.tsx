@@ -207,11 +207,29 @@ function HomeContent() {
     loadData();
     // Synchronize with server so posts and stories uploaded on other devices appear immediately
     DataStore.syncWithServer().catch(() => {});
+    fetch('/api/posts')
+      .then((r) => r.json())
+      .then((data) => {
+        if (data && data.success && Array.isArray(data.posts)) {
+          DataStore.mergePosts(data.posts);
+          setPosts(DataStore.getPosts());
+        }
+      })
+      .catch(() => {});
 
     // Smart polling sync every 25 seconds when visible to pull fresh posts and stories across devices
     const syncInterval = setInterval(() => {
       if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
       DataStore.syncWithServer().catch(() => {});
+      fetch('/api/posts')
+        .then((r) => r.json())
+        .then((data) => {
+          if (data && data.success && Array.isArray(data.posts)) {
+            DataStore.mergePosts(data.posts);
+            setPosts(DataStore.getPosts());
+          }
+        })
+        .catch(() => {});
     }, 25000);
 
     const handleVisibility = () => {
@@ -300,7 +318,15 @@ function HomeContent() {
 
   const triggerPullToRefresh = async () => {
     setIsRefreshing(true);
-    await DataStore.syncWithServer();
+    try {
+      const [syncRes, postsRes] = await Promise.all([
+        DataStore.syncWithServer(true),
+        fetch('/api/posts').then((r) => r.json()).catch(() => null),
+      ]);
+      if (postsRes && postsRes.success && Array.isArray(postsRes.posts)) {
+        DataStore.mergePosts(postsRes.posts);
+      }
+    } catch {}
     setPosts(DataStore.getPosts());
     setNotices(DataStore.getNotices());
     setBroadcastAlert(DataStore.getBroadcastAlert());
@@ -436,8 +462,29 @@ function HomeContent() {
       if (isAMine && !isBMine) return -1;
       if (!isAMine && isBMine) return 1;
 
-      // Otherwise sort by likes/engagement
-      return (b.likes || 0) - (a.likes || 0);
+      // New posts / reposts from classmates marked "Just now" or newly shared
+      const isARecent = a.timeAgo === 'Just now' || a.id.startsWith('post-repost-');
+      const isBRecent = b.timeAgo === 'Just now' || b.id.startsWith('post-repost-');
+      if (isARecent && !isBRecent) return -1;
+      if (!isARecent && isBRecent) return 1;
+
+      const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      const now = Date.now();
+      const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
+      // Posts from the last 24 hours: newest first so followers see new posts & shares immediately
+      const isAFresh = timeA > 0 && now - timeA < ONE_DAY_MS;
+      const isBFresh = timeB > 0 && now - timeB < ONE_DAY_MS;
+
+      if (isAFresh && isBFresh) {
+        return timeB - timeA;
+      }
+      if (isAFresh && !isBFresh) return -1;
+      if (!isAFresh && isBFresh) return 1;
+
+      // Older posts: sort by likes/engagement combined with time
+      return (b.likes || 0) - (a.likes || 0) || timeB - timeA;
     };
 
     if (activeTab === 'following') {
@@ -445,7 +492,17 @@ function HomeContent() {
         const u = (p.username || '').toLowerCase().trim();
         return u === myUsername || followedUsernames.includes(u);
       });
-      return [...filtered].sort(sortFn);
+      const sorted = [...filtered].sort(sortFn);
+      const seenOriginalPostIds = new Set<string>();
+      const deduplicated: Post[] = [];
+      for (const p of sorted) {
+        const canonicalPostId = p.isRepost && p.repostedFrom?.postId ? p.repostedFrom.postId : p.id;
+        if (!seenOriginalPostIds.has(canonicalPostId)) {
+          seenOriginalPostIds.add(canonicalPostId);
+          deduplicated.push(p);
+        }
+      }
+      return deduplicated;
     }
 
     // Whole school: all public posts + private posts only if followed by viewer
@@ -473,7 +530,17 @@ function HomeContent() {
     };
 
     const publicAndFollowedPosts = posts.filter(isPostVisible);
-    return [...publicAndFollowedPosts].sort(sortFn);
+    const sorted = [...publicAndFollowedPosts].sort(sortFn);
+    const seenOriginalPostIds = new Set<string>();
+    const deduplicated: Post[] = [];
+    for (const p of sorted) {
+      const canonicalPostId = p.isRepost && p.repostedFrom?.postId ? p.repostedFrom.postId : p.id;
+      if (!seenOriginalPostIds.has(canonicalPostId)) {
+        seenOriginalPostIds.add(canonicalPostId);
+        deduplicated.push(p);
+      }
+    }
+    return deduplicated;
   }, [activeTab, posts, followedUsernames, currentUser.username, demoState]);
 
   // Reset pagination slice when switching tabs

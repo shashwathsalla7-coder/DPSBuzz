@@ -10,7 +10,8 @@ import {
 } from '@/lib/serverStore';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const rawKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseKey = (rawKey && !rawKey.includes('your-service')) ? rawKey : (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '');
 
 const NO_CACHE_HEADERS = {
   'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
@@ -98,7 +99,68 @@ export async function GET(req: NextRequest) {
 
       const messages = await getServerChatMessages(canonicalKey);
       const store = await getServerStore();
-      const recentMessages = messages.length > 50 ? messages.slice(-50) : messages;
+
+      // Hydrate & merge from Supabase messages table if configured
+      let mergedMessages = [...messages];
+      if (supabaseUrl && supabaseKey) {
+        try {
+          const sb = createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false } });
+          const altKey = canonicalKey.includes('__') ? canonicalKey.split('__').reverse().join('__') : canonicalKey;
+          const { data: dbRows, error: dbErr } = await sb
+            .from('messages')
+            .select('*')
+            .or(`chat_id.eq.${canonicalKey},chat_id.eq.${altKey}`)
+            .order('created_at', { ascending: true })
+            .limit(50);
+
+          if (!dbErr && Array.isArray(dbRows) && dbRows.length > 0) {
+            const seenIds = new Set(mergedMessages.map((m: any) => m.client_id || m.id));
+            for (const row of dbRows) {
+              const rowKey = row.client_id || row.id;
+              const previewObj = row.post_preview || ((row.post_id || row.message_type === 'post_share') ? { id: row.post_id || '', username: '', caption: '' } : undefined);
+              if (!seenIds.has(rowKey)) {
+                seenIds.add(rowKey);
+                mergedMessages.push({
+                  id: row.id,
+                  client_id: row.client_id,
+                  text: row.text,
+                  sender: (row.sender_id || '').toLowerCase() === (effectiveUser || '').toLowerCase() ? 'me' : 'them',
+                  senderUsername: row.sender_id,
+                  time: row.created_at ? new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date(row.created_at)) : 'Recently',
+                  createdAt: row.created_at,
+                  status: row.read_at ? 'read' : row.delivered_at ? 'delivered' : (row.status || 'sent'),
+                  is_read: Boolean(row.read_at || row.is_read),
+                  isSeen: Boolean(row.read_at || row.is_read),
+                  isDelivered: Boolean(row.delivered_at || row.read_at || row.status === 'delivered' || row.status === 'read'),
+                  sharedPost: previewObj,
+                  message_type: row.message_type || (previewObj ? 'post_share' : 'text'),
+                  post_id: row.post_id || previewObj?.id,
+                  post_preview: previewObj,
+                  isChatPhoto: Boolean(previewObj?.id?.startsWith('chat-photo-') || previewObj?.caption === 'Chat photo' || previewObj?.caption === 'Shared a photo'),
+                });
+              } else {
+                const existingIdx = mergedMessages.findIndex((m: any) => (m.client_id || m.id) === rowKey);
+                if (existingIdx >= 0 && previewObj && !mergedMessages[existingIdx].sharedPost) {
+                  mergedMessages[existingIdx].sharedPost = previewObj;
+                  mergedMessages[existingIdx].post_preview = previewObj;
+                  mergedMessages[existingIdx].post_id = row.post_id || previewObj.id;
+                  mergedMessages[existingIdx].message_type = row.message_type || 'post_share';
+                }
+              }
+            }
+          }
+        } catch (dbErr) {
+          console.warn('Supabase conversation fetch error:', dbErr);
+        }
+      }
+
+      mergedMessages.sort((a, b) => {
+        const ta = a.createdAt ? new Date(a.createdAt).getTime() : (a.timestamp || 0);
+        const tb = b.createdAt ? new Date(b.createdAt).getTime() : (b.timestamp || 0);
+        return ta - tb;
+      });
+
+      const recentMessages = mergedMessages.length > 50 ? mergedMessages.slice(-50) : mergedMessages;
       return NextResponse.json({ success: true, messages: recentMessages, unsentMessageIds: store.unsentMessageIds || [] }, { headers: NO_CACHE_HEADERS });
     }
 
@@ -130,6 +192,52 @@ export async function GET(req: NextRequest) {
         }
       } else {
         userMessages[key] = msgs;
+      }
+    }
+
+    // Also auto-discover conversations from Supabase messages table for cross-device & fresh logins
+    if (supabaseUrl && supabaseKey) {
+      try {
+        const sb = createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false } });
+        const { data: dbRows, error: dbErr } = await sb
+          .from('messages')
+          .select('*')
+          .or(`sender_id.eq.${username},chat_id.ilike.%${username}%`)
+          .order('created_at', { ascending: true })
+          .limit(200);
+
+        if (!dbErr && Array.isArray(dbRows)) {
+          for (const row of dbRows) {
+            const chatKey = row.chat_id;
+            if (!chatKey) continue;
+            if (!userMessages[chatKey]) {
+              userMessages[chatKey] = [];
+            }
+            if (!userMessages[chatKey].some((m: any) => m.id === row.id || (row.client_id && m.client_id === row.client_id))) {
+              const previewObj = row.post_preview || ((row.post_id || row.message_type === 'post_share') ? { id: row.post_id || '', username: '', caption: '' } : undefined);
+              userMessages[chatKey].push({
+                id: row.id,
+                client_id: row.client_id,
+                text: row.text,
+                sender: (row.sender_id || '').toLowerCase() === username ? 'me' : 'them',
+                senderUsername: row.sender_id,
+                time: row.created_at ? new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date(row.created_at)) : 'Recently',
+                createdAt: row.created_at,
+                status: row.read_at ? 'read' : row.delivered_at ? 'delivered' : (row.status || 'sent'),
+                is_read: Boolean(row.read_at || row.is_read),
+                isSeen: Boolean(row.read_at || row.is_read),
+                isDelivered: Boolean(row.delivered_at || row.read_at || row.status === 'delivered' || row.status === 'read'),
+                sharedPost: previewObj,
+                message_type: row.message_type || (previewObj ? 'post_share' : 'text'),
+                post_id: row.post_id || previewObj?.id,
+                post_preview: previewObj,
+                isChatPhoto: Boolean(previewObj?.id?.startsWith('chat-photo-') || previewObj?.caption === 'Chat photo' || previewObj?.caption === 'Shared a photo'),
+              });
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Supabase chat discovery query error:', err);
       }
     }
 
@@ -257,19 +365,31 @@ export async function POST(req: NextRequest) {
     const updated = await addServerChatMessage(conversationId, message);
 
     // Non-blocking background sync to Supabase messages table
-    if (supabaseUrl && supabaseKey && message.text) {
+    if (supabaseUrl && supabaseKey && (message.text || message.sharedPost)) {
       (async () => {
         try {
           const sb = createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false } });
-          await sb.from('messages').upsert(
-            {
-              client_id: message.client_id || message.id,
-              chat_id: conversationId,
-              sender_id: sender,
-              text: message.text,
-            },
-            { onConflict: 'client_id' }
-          );
+          const rowData: any = {
+            client_id: message.client_id || message.id,
+            chat_id: conversationId,
+            sender_id: sender,
+            text: message.text || (message.sharedPost ? 'Shared a post 📸' : ''),
+          };
+
+          if (message.sharedPost || message.post_id) {
+            rowData.message_type = 'post_share';
+            rowData.post_id = message.post_id || message.sharedPost?.id || null;
+            rowData.post_preview = message.post_preview || message.sharedPost || null;
+          }
+
+          const { error } = await sb.from('messages').upsert(rowData, { onConflict: 'client_id' });
+          if (error && error.message?.includes('does not exist')) {
+            // Fallback for when additive migration 011 is pending
+            delete rowData.message_type;
+            delete rowData.post_id;
+            delete rowData.post_preview;
+            await sb.from('messages').upsert(rowData, { onConflict: 'client_id' });
+          }
         } catch (sbErr) {
           console.warn('Server Supabase message sync warning:', sbErr);
         }

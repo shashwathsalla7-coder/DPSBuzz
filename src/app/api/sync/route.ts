@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 import { getServerStore, saveServerStore } from '@/lib/serverStore';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const rawKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseKey = (rawKey && !rawKey.includes('your-service')) ? rawKey : (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '');
 
 const NO_CACHE_HEADERS = {
   'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
@@ -292,6 +297,58 @@ export async function POST(req: NextRequest) {
     if (Array.isArray(body.removedFollowRequests)) {
       const removeReqSet = new Set(body.removedFollowRequests.map((r: any) => `${(r.requester || '').toLowerCase().trim()}__${(r.target || '').toLowerCase().trim()}`));
       mergedFollowRequests = mergedFollowRequests.filter((r) => !removeReqSet.has(`${(r.requester || '').toLowerCase().trim()}__${(r.target || '').toLowerCase().trim()}`));
+    }
+
+    // Non-blocking sync to Supabase follows and follow_requests tables
+    if (supabaseUrl && supabaseKey && (body.follows || body.removedFollows || body.followRequests || body.removedFollowRequests)) {
+      (async () => {
+        try {
+          const sb = createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false } });
+          if (Array.isArray(body.follows) && body.follows.length > 0) {
+            const rows = body.follows
+              .map((f: any) => ({
+                follower: (f.follower || '').toLowerCase().trim(),
+                following: (f.following || '').toLowerCase().trim(),
+              }))
+              .filter((f: any) => f.follower && f.following && f.follower !== f.following);
+            if (rows.length > 0) {
+              await sb.from('follows').upsert(rows, { onConflict: 'follower,following' });
+            }
+          }
+          if (Array.isArray(body.removedFollows) && body.removedFollows.length > 0) {
+            for (const rf of body.removedFollows) {
+              const fol = (rf.follower || '').toLowerCase().trim();
+              const fing = (rf.following || '').toLowerCase().trim();
+              if (fol && fing) {
+                await sb.from('follows').delete().match({ follower: fol, following: fing });
+              }
+            }
+          }
+          if (Array.isArray(body.followRequests) && body.followRequests.length > 0) {
+            const reqRows = body.followRequests
+              .map((r: any) => ({
+                requester: (r.requester || '').toLowerCase().trim(),
+                target: (r.target || '').toLowerCase().trim(),
+                status: 'pending',
+              }))
+              .filter((r: any) => r.requester && r.target && r.requester !== r.target);
+            if (reqRows.length > 0) {
+              await sb.from('follow_requests').upsert(reqRows, { onConflict: 'requester,target' });
+            }
+          }
+          if (Array.isArray(body.removedFollowRequests) && body.removedFollowRequests.length > 0) {
+            for (const rr of body.removedFollowRequests) {
+              const req = (rr.requester || '').toLowerCase().trim();
+              const tar = (rr.target || '').toLowerCase().trim();
+              if (req && tar) {
+                await sb.from('follow_requests').delete().match({ requester: req, target: tar });
+              }
+            }
+          }
+        } catch (sbErr) {
+          console.warn('Supabase follows sync warning:', sbErr);
+        }
+      })().catch(() => {});
     }
 
     // Merge groups

@@ -113,6 +113,42 @@ function SearchContent() {
     };
   }, []);
 
+  // Live Database & Server Search Hook: Guarantees brand new users appear immediately
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `/api/search?q=${encodeURIComponent(query.trim())}&class=${selectedClass}&section=${selectedSection}`
+        );
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && Array.isArray(data.profiles)) {
+            setAllProfiles((prev) => {
+              const map = new Map<string, Profile>();
+              for (const p of prev) {
+                if (p && p.username) map.set(p.username.toLowerCase(), p);
+              }
+              for (const sp of data.profiles) {
+                if (!sp || !sp.username) continue;
+                const u = sp.username.toLowerCase();
+                if (!map.has(u)) {
+                  map.set(u, sp);
+                } else {
+                  map.set(u, { ...map.get(u)!, ...sp });
+                }
+              }
+              const merged = Array.from(map.values());
+              DataStore.saveProfiles(merged);
+              return merged;
+            });
+          }
+        }
+      } catch {}
+    }, 200);
+
+    return () => clearTimeout(timer);
+  }, [query, selectedClass, selectedSection]);
+
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 2500);

@@ -1,10 +1,14 @@
 import { v2 as cloudinary } from 'cloudinary';
 
 // Configure Cloudinary server-side SDK
+const CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME || 'ogfaxmjw';
+const API_KEY = process.env.CLOUDINARY_API_KEY || '585871931796836';
+const API_SECRET = process.env.CLOUDINARY_API_SECRET || 'Fpudf-0uhRPjKpFdmQzOiXZTh1M';
+
 cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
+  cloud_name: CLOUD_NAME,
+  api_key: API_KEY,
+  api_secret: API_SECRET,
   secure: true,
 });
 
@@ -14,11 +18,7 @@ export type MediaFolder = 'posts' | 'stories' | 'avatars' | 'groups' | 'notices'
  * Checks if Cloudinary environment variables are configured.
  */
 export function isCloudinaryConfigured(): boolean {
-  return Boolean(
-    process.env.CLOUDINARY_CLOUD_NAME &&
-    process.env.CLOUDINARY_API_KEY &&
-    process.env.CLOUDINARY_API_SECRET
-  );
+  return Boolean(CLOUD_NAME && API_KEY && API_SECRET);
 }
 
 export interface CloudinarySignedUploadParams {
@@ -39,9 +39,9 @@ export function generateCloudinaryUploadSignature(
   folder: MediaFolder,
   entityId?: string
 ): CloudinarySignedUploadParams {
-  const cloudName = process.env.CLOUDINARY_CLOUD_NAME || 'dpsbuzz';
-  const apiKey = process.env.CLOUDINARY_API_KEY || '';
-  const apiSecret = process.env.CLOUDINARY_API_SECRET || '';
+  const cloudName = CLOUD_NAME;
+  const apiKey = API_KEY;
+  const apiSecret = API_SECRET;
 
   const timestamp = Math.round(new Date().getTime() / 1000);
   const targetFolder = entityId

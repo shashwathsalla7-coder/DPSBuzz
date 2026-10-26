@@ -71,16 +71,47 @@ export default function ProfileClient({ username }: { username: string }) {
   const [profile, setProfile] = useState<Profile>(initialProfile);
   const [activeTab, setActiveTab] = useState<'posts' | 'reposts' | 'tagged' | 'saved'>('posts');
   const [postsVersion, setPostsVersion] = useState(0);
+  const [isNotFound, setIsNotFound] = useState(false);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(false);
+
+  // Auto-fetch profile from database/server if not already in local browser storage
+  useEffect(() => {
+    const clean = (username || '').toLowerCase().trim();
+    if (!clean) {
+      setIsNotFound(true);
+      return;
+    }
+    if (DataStore.getDeletedUsernames().has(clean)) {
+      setIsNotFound(true);
+      return;
+    }
+    const local = DataStore.getProfileByUsername(clean);
+    if (!local) {
+      setIsLoadingProfile(true);
+      fetch(`/api/auth/profile?username=${encodeURIComponent(clean)}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success && data.profile) {
+            setProfile(data.profile);
+            const profiles = DataStore.getProfiles();
+            if (!profiles.some((p) => p.username.toLowerCase() === clean)) {
+              DataStore.saveProfiles([...profiles, data.profile]);
+            }
+          } else {
+            setIsNotFound(true);
+          }
+        })
+        .catch(() => setIsNotFound(true))
+        .finally(() => setIsLoadingProfile(false));
+    }
+  }, [username]);
 
   const isDeletedOrMissing = useMemo(() => {
     const clean = (username || '').toLowerCase().trim();
     if (!clean) return true;
     if (DataStore.getDeletedUsernames().has(clean)) return true;
-    const profileExists = DataStore.getProfiles().some(
-      (p) => p && p.username && p.username.toLowerCase().trim() === clean
-    );
-    return !profileExists;
-  }, [username, postsVersion]);
+    return isNotFound;
+  }, [username, isNotFound]);
 
   // Persistent follow status check for the viewer and the profile on load
   const [isFollowing, setIsFollowing] = useState<boolean>(() => {
@@ -845,6 +876,15 @@ export default function ProfileClient({ username }: { username: string }) {
     setPostsVersion((v) => v + 1);
     showToast(isNow ? `Following @${targetUsername}! 🤝` : `Unfollowed @${targetUsername}`);
   };
+
+  if (isLoadingProfile) {
+    return (
+      <div className="min-h-dvh flex flex-col items-center justify-center p-6 text-center select-none bg-[var(--surface)] text-[var(--text)]">
+        <div className="w-10 h-10 border-2 border-[var(--primary)] border-t-transparent rounded-full animate-spin mb-3" />
+        <p className="text-xs text-[var(--text-muted)]">Loading @{username}&apos;s profile...</p>
+      </div>
+    );
+  }
 
   if (isDeletedOrMissing) {
     return (
