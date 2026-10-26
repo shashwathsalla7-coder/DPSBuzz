@@ -44,6 +44,33 @@ export function SuggestedAccountsList({
   useEffect(() => {
     refreshSuggestions();
 
+    // Pull fresh registered classmates from server/database so new users appear in suggestions
+    fetch('/api/search')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.profiles)) {
+          const current = DataStore.getProfiles();
+          const map = new Map<string, any>();
+          for (const p of current) {
+            if (p && p.username) map.set(p.username.toLowerCase(), p);
+          }
+          let changed = false;
+          for (const sp of data.profiles) {
+            if (!sp || !sp.username) continue;
+            const u = sp.username.toLowerCase();
+            if (!map.has(u)) {
+              map.set(u, sp);
+              changed = true;
+            }
+          }
+          if (changed) {
+            DataStore.saveProfiles(Array.from(map.values()));
+            refreshSuggestions();
+          }
+        }
+      })
+      .catch(() => {});
+
     const handleUpdate = () => refreshSuggestions();
     window.addEventListener('dpsbuzz:content_updated', handleUpdate);
     window.addEventListener('storage', handleUpdate);

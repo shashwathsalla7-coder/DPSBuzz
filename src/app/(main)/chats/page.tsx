@@ -87,6 +87,9 @@ interface ChatMessage {
     imageUrl?: string | null;
     caption?: string;
   };
+  message_type?: string;
+  post_id?: string | null;
+  post_preview?: any;
   is_vanish_mode_message?: boolean;
   isVanishMode?: boolean;
   is_deleted?: boolean;
@@ -464,56 +467,87 @@ function ChatsContent() {
   };
 
   const refreshLiveStudents = () => {
-    try {
-      const all = DataStore.getProfiles();
-      const current = DataStore.getCurrentUser();
-      const isShashwath = current.username?.toLowerCase() === 'shashwath71845';
+    const doFormat = (profilesList: any[]) => {
+      try {
+        const current = DataStore.getCurrentUser();
+        const isShashwath = current.username?.toLowerCase() === 'shashwath71845';
 
-      const formatted: StudentContact[] = all
-        .filter(
-          (s) =>
-            s &&
-            s.username &&
-            s.username.toLowerCase() !== current.username.toLowerCase() &&
-            s.username.toLowerCase() !== 'admin' &&
-            // If the other user is shashwath71845, ALWAYS include him for all students!
-            (s.username.toLowerCase() === 'shashwath71845' || s.role !== 'admin' || isShashwath) &&
-            !DUMMY_TEST_USERNAMES.has(s.username.toLowerCase())
-        )
-        .map((s) => {
-          const isShash = s.username.toLowerCase() === 'shashwath71845';
-          return {
-            id: s.id,
-            name: s.fullName,
-            username: s.username,
-            studentClass: isShash ? 'School Admin' : `${s.class}-${s.section || 'A'}`,
-            avatarUrl: s.avatar,
-            isFollowing: isShashwath || isShash || s.class === current.class || DataStore.isFollowing(current.username, s.username),
-          };
-        });
+        const formatted: StudentContact[] = profilesList
+          .filter(
+            (s) =>
+              s &&
+              s.username &&
+              s.username.toLowerCase() !== current.username.toLowerCase() &&
+              s.username.toLowerCase() !== 'admin' &&
+              // If the other user is shashwath71845, ALWAYS include him for all students!
+              (s.username.toLowerCase() === 'shashwath71845' || s.role !== 'admin' || isShashwath) &&
+              !DUMMY_TEST_USERNAMES.has(s.username.toLowerCase())
+          )
+          .map((s) => {
+            const isShash = s.username.toLowerCase() === 'shashwath71845';
+            return {
+              id: s.id,
+              name: s.fullName || s.username,
+              username: s.username,
+              studentClass: isShash ? 'School Admin' : `${s.class || '8'}-${s.section || 'A'}`,
+              avatarUrl: s.avatar,
+              isFollowing: isShashwath || isShash || s.class === current.class || DataStore.isFollowing(current.username, s.username),
+            };
+          });
 
-      if (!isShashwath) {
-        formatted.sort((a, b) => {
-          if (a.username.toLowerCase() === 'shashwath71845') return -1;
-          if (b.username.toLowerCase() === 'shashwath71845') return 1;
-          return 0;
-        });
-      }
-
-      const seenUsernames = new Set<string>();
-      const deduplicated: StudentContact[] = [];
-      for (const s of formatted) {
-        const clean = s.username.toLowerCase().trim();
-        if (!seenUsernames.has(clean)) {
-          seenUsernames.add(clean);
-          deduplicated.push(s);
+        if (!isShashwath) {
+          formatted.sort((a, b) => {
+            if (a.username.toLowerCase() === 'shashwath71845') return -1;
+            if (b.username.toLowerCase() === 'shashwath71845') return 1;
+            return 0;
+          });
         }
-      }
 
-      setLiveStudents(deduplicated);
-    } catch {
-      setLiveStudents([]);
-    }
+        const seenUsernames = new Set<string>();
+        const deduplicated: StudentContact[] = [];
+        for (const s of formatted) {
+          const clean = s.username.toLowerCase().trim();
+          if (!seenUsernames.has(clean)) {
+            seenUsernames.add(clean);
+            deduplicated.push(s);
+          }
+        }
+
+        setLiveStudents(deduplicated);
+      } catch {
+        setLiveStudents([]);
+      }
+    };
+
+    doFormat(DataStore.getProfiles());
+
+    // Pull registered students from server/DB so new users appear in New Chat Sheet
+    fetch('/api/search')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.profiles)) {
+          const current = DataStore.getProfiles();
+          const pMap = new Map<string, any>();
+          for (const p of current) {
+            if (p && p.username) pMap.set(p.username.toLowerCase(), p);
+          }
+          let changed = false;
+          for (const sp of data.profiles) {
+            if (!sp || !sp.username) continue;
+            const u = sp.username.toLowerCase();
+            if (!pMap.has(u)) {
+              pMap.set(u, sp);
+              changed = true;
+            }
+          }
+          if (changed) {
+            const merged = Array.from(pMap.values());
+            DataStore.saveProfiles(merged);
+            doFormat(merged);
+          }
+        }
+      })
+      .catch(() => {});
   };
 
   useEffect(() => {
@@ -642,6 +676,90 @@ function ChatsContent() {
         if (savedBg) {
           setChatBackgrounds(JSON.parse(savedBg));
         }
+
+        // Auto-discover incoming conversations & post shares from server / Supabase
+        fetch(`/api/chats?username=${encodeURIComponent(uname)}`)
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.success && data.chatMessages && typeof data.chatMessages === 'object') {
+              const profiles = DataStore.getProfiles();
+              const pMap = new Map<string, any>(profiles.map((p) => [p.username.toLowerCase(), p]));
+              setConversations((prev) => {
+                const convMap = new Map<string, ConversationItem>();
+                for (const c of prev) {
+                  convMap.set(c.id, c);
+                }
+                for (const [key, msgs] of Object.entries(data.chatMessages as Record<string, any[]>)) {
+                  if (!Array.isArray(msgs) || msgs.length === 0) continue;
+                  const isGroup = key.startsWith('conv-group-') || key.startsWith('group-');
+                  let otherUser = '';
+                  if (!isGroup && key.includes('__')) {
+                    const parts = key.split('__').map((p) => p.trim().toLowerCase());
+                    otherUser = parts.find((p) => p !== uname) || parts[0];
+                  }
+                  const convId = isGroup ? key : `conv-${otherUser}`;
+                  const lastMsg = msgs[msgs.length - 1];
+                  const sender = (lastMsg?.senderUsername || '').toLowerCase();
+                  const isMe = sender === uname || lastMsg?.sender === 'me';
+                  const msgText = lastMsg?.text || (lastMsg?.sharedPost ? 'Shared a post 📸' : 'New message');
+                  const lastPreview = isMe ? `You: ${msgText}` : msgText;
+                  const otherProf = otherUser ? pMap.get(otherUser) : null;
+
+                  if (convMap.has(convId)) {
+                    const existing = convMap.get(convId)!;
+                    convMap.set(convId, {
+                      ...existing,
+                      lastMessage: lastPreview,
+                      timeAgo: lastMsg?.time || 'Recently',
+                    });
+                  } else if (convMap.has(key)) {
+                    const existing = convMap.get(key)!;
+                    convMap.set(key, {
+                      ...existing,
+                      lastMessage: lastPreview,
+                      timeAgo: lastMsg?.time || 'Recently',
+                    });
+                  } else if (!isGroup && otherUser) {
+                    convMap.set(convId, {
+                      id: convId,
+                      name: otherProf ? otherProf.fullName : `@${otherUser}`,
+                      username: otherUser,
+                      avatar: otherProf?.avatar || null,
+                      studentClass: otherProf?.class ? `Class ${otherProf.class}-${otherProf.section || 'A'}` : 'Student',
+                      isGroup: false,
+                      type: 'direct',
+                      lastMessage: lastPreview,
+                      timeAgo: lastMsg?.time || 'Recently',
+                      inboxTier: 'PRIMARY',
+                      isUnread: false,
+                    });
+                  }
+                }
+                const updatedList = Array.from(convMap.values()).filter((c) => !c.username || !DUMMY_TEST_USERNAMES.has(c.username.toLowerCase()));
+                try {
+                  localStorage.setItem(userConvKey, JSON.stringify(updatedList));
+                } catch {}
+                return updatedList;
+              });
+
+              // Also merge chatMessages into state so clicking the conversation loads immediately
+              setChatMessages((prev) => {
+                const next = { ...prev };
+                for (const [k, v] of Object.entries(data.chatMessages as Record<string, any[]>)) {
+                  if (Array.isArray(v) && v.length > 0) {
+                    const existingList = next[k] || [];
+                    const idSet = new Set(existingList.map((m) => m.client_id || m.id));
+                    const toAdd = v.filter((m) => !idSet.has(m.client_id || m.id));
+                    if (toAdd.length > 0) {
+                      next[k] = [...existingList, ...toAdd];
+                    }
+                  }
+                }
+                return next;
+              });
+            }
+          })
+          .catch(() => {});
       } catch {}
     }
   }, []);
@@ -3776,6 +3894,7 @@ function ChatsContent() {
             : (existing.status === 'sent' || rm.status === 'sent')
             ? 'sent'
             : (rm.status || existing.status || 'sent');
+          const mergedPreview = existing.sharedPost || (rm as any).post_preview || (rm as any).sharedPost || null;
           map.set(matchKey, {
             ...existing,
             id: rm.id,
@@ -3785,10 +3904,17 @@ function ChatsContent() {
             isDelivered,
             is_read: isRead,
             isSeen: isRead,
+            sharedPost: mergedPreview || undefined,
+            message_type: (rm as any).message_type || existing.message_type,
+            post_id: (rm as any).post_id || existing.post_id || mergedPreview?.id,
+            post_preview: mergedPreview || existing.post_preview,
+            isChatPhoto: existing.isChatPhoto || Boolean(mergedPreview?.id?.startsWith('chat-photo-') || mergedPreview?.caption === 'Chat photo'),
           });
         } else {
           const isRead = Boolean(rm.read_at || rm.is_read);
           const isDelivered = Boolean(rm.delivered_at || rm.isDelivered || isRead || rm.status === 'delivered' || rm.status === 'read');
+          const previewObj = (rm as any).post_preview || (rm as any).sharedPost || ((rm as any).post_id ? { id: (rm as any).post_id, username: '', caption: '' } : undefined);
+          const isChatPhoto = Boolean(previewObj?.id?.startsWith('chat-photo-') || previewObj?.caption === 'Chat photo' || previewObj?.caption === 'Shared a photo');
           const newMsgFromDb: ChatMessage = {
             id: rm.id,
             client_id: rm.client_id,
@@ -3802,6 +3928,11 @@ function ChatsContent() {
             isDelivered,
             is_read: isRead,
             isSeen: isRead,
+            sharedPost: previewObj,
+            message_type: (rm as any).message_type || (previewObj ? 'post_share' : 'text'),
+            post_id: (rm as any).post_id || previewObj?.id,
+            post_preview: previewObj,
+            isChatPhoto,
           };
           map.set(rm.client_id || rm.id, newMsgFromDb);
         }
