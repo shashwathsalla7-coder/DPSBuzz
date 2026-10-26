@@ -6,9 +6,11 @@
 import assert from 'node:assert';
 import {
   normalizeJamendoTrack,
+  normalizeITunesTrack,
   isTrackBlocked,
   CURATED_JAMENDO_TRACKS,
   DEFAULT_LIBRARY_TRACKS,
+  POPULAR_ITUNES_TRACKS,
 } from '../src/lib/music/providers.js';
 
 let passed = 0;
@@ -249,6 +251,40 @@ test('Test 11: Legacy stories with iTunes preview URLs remain valid without erro
   assert.strictEqual(legacyStory.song.clipDuration, 15);
   // Audio manager can accept legacy SongTrack format seamlessly
   assert.ok(legacyStory.song.title === 'Aaya Sher');
+});
+
+// Test 12: iTunes 30-second official preview normalization
+test('Test 12: iTunes tracks normalize with 30s preview duration and Apple CDN audio', () => {
+  const itunesRaw = {
+    trackId: 1882240655,
+    trackName: 'Aaya Sher',
+    artistName: 'Anirudh Ravichander',
+    artworkUrl100: 'https://is1-ssl.mzstatic.com/image/thumb/Music221/100x100bb.jpg',
+    previewUrl: 'https://audio-ssl.itunes.apple.com/preview.m4a',
+    trackExplicitness: 'notExplicit',
+  };
+
+  const normalized = normalizeITunesTrack(itunesRaw);
+  assert.ok(normalized !== null);
+  assert.strictEqual(normalized.id, 'itunes:1882240655');
+  assert.strictEqual(normalized.provider, 'itunes');
+  assert.strictEqual(normalized.duration, 30, 'iTunes preview must be 30s as before');
+  assert.ok(normalized.coverImage.includes('300x300bb.jpg'), 'Must upscale 100x100 artwork to crisp 300x300');
+  assert.strictEqual(normalized.audioUrl, 'https://audio-ssl.itunes.apple.com/preview.m4a');
+});
+
+// Test 13: Kid-safe filter drops explicit iTunes tracks
+test('Test 13: iTunes explicit tracks are dropped for child safety', () => {
+  const explicitRaw = {
+    trackId: 999999999,
+    trackName: 'Explicit Track',
+    artistName: 'Explicit Artist',
+    previewUrl: 'https://audio-ssl.itunes.apple.com/preview.m4a',
+    trackExplicitness: 'explicit',
+  };
+
+  const normalized = normalizeITunesTrack(explicitRaw);
+  assert.strictEqual(normalized, null, 'Must drop explicit iTunes tracks');
 });
 
 console.log(`\n========================================`);

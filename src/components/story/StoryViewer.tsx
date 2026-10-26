@@ -1310,7 +1310,13 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1 text-[11px] text-pink-400 hover:underline pt-1"
                   >
-                    <span>Listen on Jamendo</span>
+                    <span>
+                      {currentStory.song.provider === 'itunes'
+                        ? 'View on Apple Music / iTunes'
+                        : currentStory.song.provider === 'library'
+                        ? 'DPS School Library'
+                        : 'Listen on Jamendo'}
+                    </span>
                     <ExternalLink size={11} />
                   </a>
                 )}

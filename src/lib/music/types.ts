@@ -4,7 +4,7 @@
 // Compliant with Creative Commons and Child Safety Rules
 // =====================================================
 
-export type MusicProviderType = 'jamendo' | 'library' | 'legacy';
+export type MusicProviderType = 'jamendo' | 'itunes' | 'library' | 'legacy';
 
 export interface MusicTrack {
   id: string; // e.g. 'jamendo:1630628' or 'lib:track-1'
