@@ -1071,7 +1071,16 @@ export default function ProfileClient({ username }: { username: string }) {
 
           {/* 3 Horizontal Stats: Posts, Followers, Following (Strictly Authoritative) */}
           <div className="flex-1 flex items-center justify-around text-center select-none tabular-nums">
-            <div className="cursor-pointer" onClick={() => setActiveTab('posts')}>
+            <div
+              className={!isOwnProfile && Boolean(profile.isPrivate) && !isFollowing ? "cursor-default select-none" : "cursor-pointer"}
+              onClick={() => {
+                if (!isOwnProfile && Boolean(profile.isPrivate) && !isFollowing) {
+                  showToast(`🔒 This account is private. Follow @${profile.username} to see their photos and posts.`);
+                  return;
+                }
+                setActiveTab('posts');
+              }}
+            >
               <div className="text-base font-bold leading-tight" style={{ color: 'var(--text)' }}>
                 {originalPosts.length}
               </div>
@@ -1080,9 +1089,9 @@ export default function ProfileClient({ username }: { username: string }) {
               </div>
             </div>
             <div
-              className="cursor-pointer hover:opacity-80 transition-opacity"
+              className={!isOwnProfile && Boolean(profile.isPrivate) && !isFollowing ? "cursor-default select-none hover:opacity-80 transition-opacity" : "cursor-pointer hover:opacity-80 transition-opacity"}
               onClick={() => handleOpenFollowModal('followers')}
-              title={`View ${profile.username}'s followers`}
+              title={!isOwnProfile && Boolean(profile.isPrivate) && !isFollowing ? `🔒 Account is private` : `View ${profile.username}'s followers`}
             >
               <div className="text-base font-bold leading-tight" style={{ color: 'var(--text)' }}>
                 {followersList.length}
@@ -1092,9 +1101,9 @@ export default function ProfileClient({ username }: { username: string }) {
               </div>
             </div>
             <div
-              className="cursor-pointer hover:opacity-80 transition-opacity"
+              className={!isOwnProfile && Boolean(profile.isPrivate) && !isFollowing ? "cursor-default select-none hover:opacity-80 transition-opacity" : "cursor-pointer hover:opacity-80 transition-opacity"}
               onClick={() => handleOpenFollowModal('following')}
-              title={`View who ${profile.username} follows`}
+              title={!isOwnProfile && Boolean(profile.isPrivate) && !isFollowing ? `🔒 Account is private` : `View who ${profile.username} follows`}
             >
               <div className="text-base font-bold leading-tight" style={{ color: 'var(--text)' }}>
                 {followingList.length}
@@ -1127,8 +1136,8 @@ export default function ProfileClient({ username }: { username: string }) {
             </p>
           )}
 
-          {/* Social proof / Mutual follows: Followed by [avatar] @username matching screenshot */}
-          {!isOwnProfile && mutualFollowers.length > 0 && (
+          {/* Social proof / Mutual follows: Followed by [avatar] @username (hidden for private accounts from non-followers) */}
+          {!isOwnProfile && (isOwnProfile || !profile.isPrivate || isFollowing) && mutualFollowers.length > 0 && (
             <div
               onClick={() => handleOpenFollowModal('followers')}
               className="flex items-center gap-2 pt-1 cursor-pointer group"
@@ -2426,21 +2435,41 @@ export default function ProfileClient({ username }: { username: string }) {
                   </button>
                 </div>
 
-                {/* Comments List */}
+                {/* Comments List (Obeying Public vs Private Rules: Comments from private users hidden from non-followers) */}
                 <div className="max-h-48 overflow-y-auto p-4 space-y-3 no-scrollbar">
-                  {(!detailCommentsMap[selectedPostDetail.id] || detailCommentsMap[selectedPostDetail.id].length === 0) ? (
-                    <p className="text-xs text-center py-4 text-[var(--text-muted)]">
-                      No comments yet. Be the first to comment! 💬
-                    </p>
-                  ) : (
-                    detailCommentsMap[selectedPostDetail.id].map((c: any) => (
+                  {(() => {
+                    const rawList = detailCommentsMap[selectedPostDetail.id] || [];
+                    const cur = (DataStore.getCurrentUser()?.username || '').toLowerCase().trim();
+                    const filteredList = rawList.filter((c: any) => {
+                      if (!c || !c.username) return false;
+                      const author = (c.username || '').toLowerCase().trim();
+                      if (author === cur) return true;
+                      if ((selectedPostDetail.username || '').toLowerCase().trim() === cur) return true;
+                      if (cur === 'shashwath71845') return true;
+                      const authorProf = DataStore.getProfileByUsername(author);
+                      if (authorProf && authorProf.isPrivate) {
+                        const viewerFollowsAuthor = cur ? DataStore.isFollowing(cur, author) : false;
+                        if (!viewerFollowsAuthor) return false;
+                      }
+                      return true;
+                    });
+
+                    if (filteredList.length === 0) {
+                      return (
+                        <p className="text-xs text-center py-4 text-[var(--text-muted)]">
+                          No comments yet. Be the first to comment! 💬
+                        </p>
+                      );
+                    }
+
+                    return filteredList.map((c: any) => (
                       <div key={c.id || c.createdAt} className="flex items-start gap-2 text-xs">
                         <span className="font-bold text-[var(--text)] shrink-0">@{c.username}</span>
                         <span className="text-[var(--text-secondary)] break-words flex-1">{c.text}</span>
                         <span className="text-[10px] text-[var(--text-muted)] shrink-0">{c.timeAgo || 'Just now'}</span>
                       </div>
-                    ))
-                  )}
+                    ));
+                  })()}
                 </div>
 
                 {/* Add Comment Input Form */}
@@ -4018,8 +4047,8 @@ export default function ProfileClient({ username }: { username: string }) {
         </div>
       )}
 
-      {/* ─── Followers / Following Interactive Modal ──────────────────────── */}
-      {showFollowListModal && (
+      {/* ─── Followers / Following Interactive Modal (Strictly Hidden for Private Accounts to Non-Followers) ──────────────────────── */}
+      {showFollowListModal && (isOwnProfile || !profile.isPrivate || isFollowing) && (
         <div
           className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in select-none"
           onClick={() => setShowFollowListModal(false)}

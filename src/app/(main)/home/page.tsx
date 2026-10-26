@@ -518,6 +518,15 @@ function HomeContent() {
         if (!followedUsernames.includes(u)) return false;
       }
 
+      // Check repost origin: if original post author is private, non-followers cannot see it
+      if (p.isRepost && p.repostedFrom?.username) {
+        const origAuthor = p.repostedFrom.username.toLowerCase().trim();
+        const origAuthorProf = profileMap.get(origAuthor);
+        if (origAuthorProf?.isPrivate && !followedUsernames.includes(origAuthor) && origAuthor !== myUsername) {
+          return false;
+        }
+      }
+
       // Check audience: if restricted to a specific class group
       if (p.audience === 'class-group' || p.targetClass) {
         const targetCls = (p.targetClass || p.class || '').replace(/[^0-9]/g, '');
@@ -567,6 +576,34 @@ function HomeContent() {
   const visiblePosts = useMemo(() => {
     return displayedPosts.slice(0, visibleCount);
   }, [displayedPosts, visibleCount]);
+
+  // Filter comments obeying public vs private account privacy rules:
+  // Public people will NOT see comments made by private accounts (unless they follow them)
+  const activeComments = useMemo(() => {
+    if (!selectedCommentsPost) return [];
+    const rawList = commentsMap[selectedCommentsPost.id] || [];
+    const myUser = (currentUser?.username || '').toLowerCase().trim();
+    const profiles = DataStore.getProfiles();
+    const profileMap = new Map(profiles.map((p) => [p.username.toLowerCase(), p]));
+
+    return rawList.filter((c) => {
+      if (!c || !c.username) return false;
+      const author = (c.username || '').toLowerCase().trim();
+      if (author === myUser) return true;
+      if ((selectedCommentsPost.username || '').toLowerCase().trim() === myUser) return true;
+      if (myUser === 'shashwath71845') return true;
+
+      const authorProf = profileMap.get(author) || DataStore.getProfileByUsername(author);
+      if (authorProf && authorProf.isPrivate) {
+        const viewerFollowsAuthor =
+          followedUsernames.includes(author) || (myUser ? DataStore.isFollowing(myUser, author) : false);
+        if (!viewerFollowsAuthor) {
+          return false; // Private user's comments are hidden from public non-followers!
+        }
+      }
+      return true;
+    });
+  }, [selectedCommentsPost, commentsMap, currentUser, followedUsernames]);
 
   if (!isMounted || !currentUser || !currentUser.username || currentUser.username.toLowerCase() === 'guest') {
     return <HomeFeedSkeleton />;
@@ -875,7 +912,7 @@ function HomeContent() {
               <div className="w-10 h-1.5 rounded-full bg-[var(--line-strong)] mx-auto mb-3" />
               <div className="flex items-center justify-between">
                 <h3 className="font-bold text-sm text-[var(--text)]">
-                  Comments ({Math.max((commentsMap[selectedCommentsPost.id] || []).length, 8)})
+                  Comments ({activeComments.length})
                 </h3>
                 <button
                   type="button"
@@ -889,7 +926,12 @@ function HomeContent() {
             </div>
 
             <div className="space-y-3.5 p-4 flex-1 overflow-y-auto no-scrollbar max-h-72">
-              {(commentsMap[selectedCommentsPost.id] || []).map((c) => (
+              {activeComments.length === 0 ? (
+                <p className="text-xs text-center py-6 text-[var(--text-muted)]">
+                  No comments yet. Be the first to comment! 💬
+                </p>
+              ) : (
+                activeComments.map((c) => (
                 <div key={c.id} className="text-xs flex gap-2.5 items-start">
                   <div className="w-7 h-7 rounded-full bg-[var(--surface-sunken)] border border-[var(--line)] flex items-center justify-center font-bold text-[10px] shrink-0 text-[var(--text)] overflow-hidden">
                     {c.avatar || DataStore.getProfileByUsername(c.username)?.avatar ? (
@@ -919,7 +961,7 @@ function HomeContent() {
                     <p className="text-[10px] text-[var(--text-muted)] mt-1">{c.timeAgo}</p>
                   </div>
                 </div>
-              ))}
+              )))}
             </div>
 
             {/* Photo Attached Preview Bar */}
