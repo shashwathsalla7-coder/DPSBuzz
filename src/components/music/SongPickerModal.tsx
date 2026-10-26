@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { SongTrack } from '@/lib/dataStore';
 import { MusicTrack, MusicProviderType } from '@/lib/music/types';
-import { CURATED_JAMENDO_TRACKS, DEFAULT_LIBRARY_TRACKS } from '@/lib/music/providers';
+import { POPULAR_ITUNES_TRACKS, CURATED_JAMENDO_TRACKS, DEFAULT_LIBRARY_TRACKS } from '@/lib/music/providers';
 import { globalAudio, AudioPlayerState } from '@/lib/audioManager';
 import { ClipTrimSelector } from './ClipTrimSelector';
 
@@ -33,7 +33,7 @@ interface SongPickerModalProps {
   initialTrack?: SongTrack | null;
 }
 
-type TabType = 'popular' | 'genres' | 'library' | 'recent';
+type TabType = 'popular' | 'itunes' | 'genres' | 'library' | 'recent';
 
 const GENRE_CATEGORIES = [
   { id: 'study', label: '🎧 Study & Lofi', query: 'lofi study beats chill' },
@@ -119,6 +119,8 @@ export const SongPickerModal: React.FC<SongPickerModalProps> = ({
           endpoint += `q=${encodeURIComponent(query.trim())}&`;
         } else if (tab === 'popular') {
           endpoint += `category=popular&`;
+        } else if (tab === 'itunes') {
+          endpoint += `provider=itunes&`;
         } else if (tab === 'genres') {
           endpoint += `category=${encodeURIComponent(genreId)}&`;
         } else if (tab === 'library') {
@@ -131,15 +133,21 @@ export const SongPickerModal: React.FC<SongPickerModalProps> = ({
           if (Array.isArray(data.tracks) && data.tracks.length > 0) {
             setTracks(data.tracks);
           } else {
-            // Safe fallback to curated CC tracks
-            setTracks(tab === 'library' ? DEFAULT_LIBRARY_TRACKS : CURATED_JAMENDO_TRACKS);
+            // Safe fallback
+            setTracks(
+              tab === 'library'
+                ? DEFAULT_LIBRARY_TRACKS
+                : tab === 'itunes'
+                ? POPULAR_ITUNES_TRACKS
+                : CURATED_JAMENDO_TRACKS
+            );
           }
         } else {
-          setTracks(CURATED_JAMENDO_TRACKS);
+          setTracks(tab === 'itunes' ? POPULAR_ITUNES_TRACKS : CURATED_JAMENDO_TRACKS);
         }
       } catch (e) {
         console.warn('Track fetch fallback:', e);
-        setTracks(CURATED_JAMENDO_TRACKS);
+        setTracks(tab === 'itunes' ? POPULAR_ITUNES_TRACKS : CURATED_JAMENDO_TRACKS);
       } finally {
         setLoading(false);
       }
@@ -206,6 +214,7 @@ export const SongPickerModal: React.FC<SongPickerModalProps> = ({
     if (isThisTrackPlaying) {
       globalAudio.pauseTrack();
     } else {
+      const isItunes = track.provider === 'itunes' || track.duration <= 30;
       globalAudio.previewSegment(
         {
           id: track.id,
@@ -214,13 +223,36 @@ export const SongPickerModal: React.FC<SongPickerModalProps> = ({
           artworkUrl: track.coverImage,
           previewUrl: track.audioUrl,
           durationSeconds: track.duration,
-          startTime: 15,
-          clipDuration: 15,
+          startTime: isItunes ? 0 : 15,
+          clipDuration: isItunes ? 30 : 15,
         },
-        15,
-        15
+        isItunes ? 0 : 15,
+        isItunes ? 30 : 15
       );
     }
+  };
+
+  // Direct select 30s track without opening trimmer
+  const handleDirectSelect30s = (track: MusicTrack) => {
+    const formattedTrack: SongTrack = {
+      id: track.id,
+      title: track.title,
+      artist: track.artist,
+      artworkUrl: track.coverImage,
+      previewUrl: track.audioUrl,
+      durationSeconds: track.duration,
+      startTime: 0,
+      clipDuration: Math.min(30, track.duration),
+      provider: track.provider,
+      license: track.license,
+      creditText: track.creditText,
+      sourcePageUrl: track.sourcePageUrl,
+    };
+
+    saveToRecentTracks(track);
+    globalAudio.stop();
+    onSelectSong(formattedTrack);
+    onClose();
   };
 
   // Open the timeline trimmer screen for the chosen track
@@ -317,7 +349,7 @@ export const SongPickerModal: React.FC<SongPickerModalProps> = ({
             </div>
             <div>
               <h2 className="text-base font-bold">{title}</h2>
-              <p className="text-[11px] text-white/50">Full songs • Pick your 15s/30s clip</p>
+              <p className="text-[11px] text-white/50">Full songs & 30s iTunes hits • Pick your soundtrack</p>
             </div>
           </div>
           <button
@@ -365,7 +397,18 @@ export const SongPickerModal: React.FC<SongPickerModalProps> = ({
                   : 'bg-white/[0.04] text-white/60 hover:text-white'
               }`}
             >
-              <Flame size={13} /> Popular
+              <Flame size={13} /> Trending
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('itunes')}
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer ${
+                activeTab === 'itunes'
+                  ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow'
+                  : 'bg-white/[0.04] text-white/60 hover:text-white'
+              }`}
+            >
+              <Music size={13} /> iTunes (30s)
             </button>
             <button
               type="button"
@@ -477,8 +520,13 @@ export const SongPickerModal: React.FC<SongPickerModalProps> = ({
                       <p className="text-xs font-bold text-white truncate hover:text-pink-300 transition-colors">
                         {track.title}
                       </p>
+                      {track.provider === 'itunes' && (
+                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 shrink-0 font-medium border border-blue-500/30">
+                          iTunes 30s
+                        </span>
+                      )}
                       {track.provider === 'library' && (
-                        <span className="text-[9px] px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300 shrink-0 font-medium">
+                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 shrink-0 font-medium">
                           School
                         </span>
                       )}
@@ -506,13 +554,34 @@ export const SongPickerModal: React.FC<SongPickerModalProps> = ({
                       <Flag size={14} />
                     </button>
 
-                    <button
-                      type="button"
-                      onClick={() => handleSelectTrackForTrimming(track)}
-                      className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white text-xs font-bold shadow-md transition-transform active:scale-95 cursor-pointer"
-                    >
-                      <Scissors size={12} /> Trim
-                    </button>
+                    {track.provider === 'itunes' ? (
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => handleDirectSelect30s(track)}
+                          className="px-2.5 py-1.5 rounded-xl bg-white/[0.08] hover:bg-white/[0.15] text-white text-xs font-semibold border border-white/10 transition-transform active:scale-95 cursor-pointer"
+                          title="Use full 30 seconds"
+                        >
+                          Use 30s
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleSelectTrackForTrimming(track)}
+                          className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white text-xs font-bold shadow-md transition-transform active:scale-95 cursor-pointer"
+                          title="Trim custom clip"
+                        >
+                          <Scissors size={12} /> Trim
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleSelectTrackForTrimming(track)}
+                        className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white text-xs font-bold shadow-md transition-transform active:scale-95 cursor-pointer"
+                      >
+                        <Scissors size={12} /> Trim
+                      </button>
+                    )}
                   </div>
                 </div>
               );
@@ -522,7 +591,7 @@ export const SongPickerModal: React.FC<SongPickerModalProps> = ({
 
         {/* Footer Attribution Disclaimer */}
         <div className="px-5 py-2.5 bg-white/[0.02] border-t border-[#262626] text-[10px] text-white/40 text-center">
-          Licensed under Creative Commons & School Library • Commercial film tracks require enterprise licensing
+          Licensed under Creative Commons, School Library & Official 30s iTunes Previews
         </div>
       </div>
 

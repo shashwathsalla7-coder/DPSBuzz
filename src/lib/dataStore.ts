@@ -45,7 +45,7 @@ export interface SongTrack {
   durationSeconds?: number;
   startTime?: number; // Starting offset in seconds (e.g. 15s)
   clipDuration?: number; // Clip length in seconds (e.g. 15s or 30s)
-  provider?: 'jamendo' | 'library' | 'legacy';
+  provider?: 'jamendo' | 'itunes' | 'library' | 'legacy';
   license?: string;
   creditText?: string;
   sourcePageUrl?: string;
