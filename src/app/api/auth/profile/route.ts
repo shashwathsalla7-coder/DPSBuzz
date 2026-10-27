@@ -40,12 +40,12 @@ export async function GET(req: NextRequest) {
                 section: dp.section || existing?.section || 'A',
                 role: dp.role || existing?.role || 'student',
                 isVerified: dp.is_verified ?? existing?.isVerified ?? true,
-                isApproved: existing?.isApproved ?? true,
-                isPrivate: existing?.isPrivate ?? false,
+                isApproved: dp.is_approved ?? existing?.isApproved ?? true,
+                isPrivate: dp.is_private ?? existing?.isPrivate ?? false,
                 followerCount: dp.follower_count || existing?.followerCount || 0,
                 followingCount: dp.following_count || existing?.followingCount || 0,
                 postCount: dp.post_count || existing?.postCount || 0,
-                spiritPoints: existing?.spiritPoints || 50,
+                spiritPoints: dp.spirit_points || existing?.spiritPoints || 50,
                 createdAt: dp.created_at || existing?.createdAt,
               });
             }
@@ -56,13 +56,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: true, profiles: store.profiles });
     }
 
-    // 1. Check local serverStore
-    const match = store.profiles.find((p) => p.username.toLowerCase() === username);
-    if (match) {
-      return NextResponse.json({ success: true, profile: match });
-    }
-
-    // 2. Fallback to Supabase profiles
+    // 1. Direct fetch from Supabase profiles as source of truth
     const supabase = getSupabase();
     if (supabase) {
       const { data: dbProfile } = await supabase
@@ -82,17 +76,24 @@ export async function GET(req: NextRequest) {
           section: dbProfile.section || 'A',
           role: dbProfile.role || 'student',
           isVerified: Boolean(dbProfile.is_verified),
-          isApproved: true,
+          isApproved: Boolean(dbProfile.is_approved ?? true),
+          isPrivate: Boolean(dbProfile.is_private ?? false),
           followerCount: dbProfile.follower_count || 0,
           followingCount: dbProfile.following_count || 0,
           postCount: dbProfile.post_count || 0,
-          spiritPoints: 50,
+          spiritPoints: dbProfile.spirit_points || 50,
           createdAt: dbProfile.created_at,
         };
         // Auto-cache to server store
         upsertServerProfile(mapped as any).catch(() => {});
         return NextResponse.json({ success: true, profile: mapped });
       }
+    }
+
+    // 2. Check local serverStore fallback
+    const match = store.profiles.find((p) => p.username.toLowerCase() === username);
+    if (match) {
+      return NextResponse.json({ success: true, profile: match });
     }
 
     return NextResponse.json({ success: false, error: 'User not found' }, { status: 404 });
@@ -114,7 +115,7 @@ export async function POST(req: NextRequest) {
     // 1. Persist to serverStore
     await upsertServerProfile({ ...profile, username: cleanUser });
 
-    // 2. Persist to Supabase profiles table
+    // 2. Direct persistence to Supabase profiles table
     const supabase = getSupabase();
     if (supabase) {
       try {
@@ -129,9 +130,12 @@ export async function POST(req: NextRequest) {
           section: profile.section || 'A',
           role: profile.role || 'student',
           is_verified: Boolean(profile.isVerified),
+          is_approved: Boolean(profile.isApproved ?? true),
+          is_private: Boolean(profile.isPrivate ?? false),
           follower_count: profile.followerCount || 0,
           following_count: profile.followingCount || 0,
           post_count: profile.postCount || 0,
+          spirit_points: profile.spiritPoints || 50,
           updated_at: new Date().toISOString(),
         }, { onConflict: 'username' });
       } catch (sbErr) {

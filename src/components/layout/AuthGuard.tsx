@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, Suspense } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
+import { DataStore } from '@/lib/dataStore';
 
 function AuthGuardInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -66,6 +67,7 @@ function AuthGuardInner({ children }: { children: React.ReactNode }) {
         }
 
         setIsAuthorized((prev) => (prev ? prev : true));
+        DataStore.syncWithServer().catch(() => {});
       } catch {
         setIsAuthorized(false);
         router.replace('/login');
