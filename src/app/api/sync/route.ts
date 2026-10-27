@@ -12,6 +12,11 @@ const NO_CACHE_HEADERS = {
   'Expires': '0',
 };
 
+function getSupabase() {
+  if (!supabaseUrl || !supabaseKey) return null;
+  return createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false } });
+}
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
@@ -111,14 +116,25 @@ export async function GET(req: NextRequest) {
 
     let syncFollows = Array.isArray(store.follows) ? [...store.follows] : [];
     let syncFollowRequests = Array.isArray(store.followRequests) ? [...store.followRequests] : [];
+    let syncProfiles = Array.isArray(store.profiles) ? [...store.profiles] : [];
+    let syncPosts = Array.isArray(store.posts) ? [...store.posts] : [];
 
-    if (supabaseUrl && supabaseKey) {
+    // DIRECT READ FROM SUPABASE DATABASE
+    const sb = getSupabase();
+    if (sb) {
       try {
-        const sb = createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false } });
-        const [{ data: dbFollows }, { data: dbReqs }] = await Promise.all([
-          sb.from('follows').select('*').limit(500),
-          sb.from('follow_requests').select('*').eq('status', 'pending').limit(500),
+        const [
+          { data: dbFollows },
+          { data: dbReqs },
+          { data: dbProfiles },
+          { data: dbPosts },
+        ] = await Promise.all([
+          sb.from('follows').select('*').limit(1000),
+          sb.from('follow_requests').select('*').eq('status', 'pending').limit(1000),
+          sb.from('profiles').select('*').limit(500),
+          sb.from('posts').select('*').order('created_at', { ascending: false }).limit(100),
         ]);
+
         if (Array.isArray(dbFollows)) {
           const followSet = new Set(syncFollows.map((f: any) => `${(f.follower || '').toLowerCase().trim()}__${(f.following || '').toLowerCase().trim()}`));
           for (const df of dbFollows) {
@@ -130,16 +146,76 @@ export async function GET(req: NextRequest) {
             }
           }
         }
+
         if (Array.isArray(dbReqs)) {
           const reqSet = new Set(syncFollowRequests.map((r: any) => `${(r.requester || '').toLowerCase().trim()}__${(r.target || '').toLowerCase().trim()}`));
           for (const dr of dbReqs) {
-            const req = (dr.requester || '').toLowerCase().trim();
-            const tar = (dr.target || '').toLowerCase().trim();
-            if (req && tar && req !== tar && !reqSet.has(`${req}__${tar}`)) {
-              syncFollowRequests.push({ requester: req, target: tar });
-              reqSet.add(`${req}__${tar}`);
+            const reqUser = (dr.requester || '').toLowerCase().trim();
+            const tarUser = (dr.target || '').toLowerCase().trim();
+            if (reqUser && tarUser && reqUser !== tarUser && !reqSet.has(`${reqUser}__${tarUser}`)) {
+              syncFollowRequests.push({ requester: reqUser, target: tarUser });
+              reqSet.add(`${reqUser}__${tarUser}`);
             }
           }
+        }
+
+        if (Array.isArray(dbProfiles) && dbProfiles.length > 0) {
+          const profileMap = new Map<string, any>();
+          for (const sp of syncProfiles) profileMap.set(sp.username.toLowerCase().trim(), sp);
+          for (const dp of dbProfiles) {
+            const u = dp.username.toLowerCase().trim();
+            const existing = profileMap.get(u);
+            profileMap.set(u, {
+              id: dp.id,
+              username: dp.username,
+              fullName: dp.full_name || dp.username,
+              avatar: dp.avatar_url || existing?.avatar || null,
+              bio: dp.bio || existing?.bio || '',
+              class: dp.class || existing?.class || '8',
+              section: dp.section || existing?.section || 'A',
+              role: dp.role || existing?.role || 'student',
+              isVerified: dp.is_verified ?? existing?.isVerified ?? true,
+              isApproved: dp.is_approved ?? existing?.isApproved ?? true,
+              isPrivate: dp.is_private ?? existing?.isPrivate ?? false,
+              followerCount: dp.follower_count || existing?.followerCount || 0,
+              followingCount: dp.following_count || existing?.followingCount || 0,
+              postCount: dp.post_count || existing?.postCount || 0,
+              spiritPoints: dp.spirit_points || existing?.spiritPoints || 50,
+              createdAt: dp.created_at || existing?.createdAt,
+            });
+          }
+          syncProfiles = Array.from(profileMap.values());
+        }
+
+        if (Array.isArray(dbPosts) && dbPosts.length > 0) {
+          const postMap = new Map<string, any>();
+          for (const sp of syncPosts) postMap.set(sp.id, sp);
+          for (const dp of dbPosts) {
+            postMap.set(dp.id, {
+              id: dp.id,
+              userId: dp.user_id,
+              username: dp.username,
+              fullName: dp.full_name,
+              avatar: dp.user_avatar,
+              class: dp.class,
+              caption: dp.caption || '',
+              imageUrl: dp.image_url,
+              images: dp.images || (dp.image_url ? [dp.image_url] : []),
+              song: dp.song,
+              habitCategory: dp.habit_category,
+              habitTag: dp.habit_tag,
+              likes: dp.likes_count || 0,
+              comments: dp.comments_count || 0,
+              repostCount: dp.repost_count || 0,
+              isRepost: Boolean(dp.is_repost),
+              repostedFrom: dp.reposted_from,
+              createdAt: dp.created_at,
+              timeAgo: 'Just now',
+            });
+          }
+          syncPosts = Array.from(postMap.values()).sort(
+            (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+          );
         }
       } catch (err) {
         // Fallback to store
@@ -148,9 +224,9 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      posts: store.posts,
+      posts: syncPosts,
       stories: store.stories,
-      profiles: store.profiles,
+      profiles: syncProfiles,
       comments: store.comments,
       likes: store.likes,
       chatNotes: store.chatNotes,
@@ -182,21 +258,48 @@ export async function POST(req: NextRequest) {
     const current = await getServerStore({ forceRefresh: true });
     const deletedIds = new Set(current.deletedPostIds || []);
     const deletedUsernames = new Set((current.deletedUsernames || []).map((u) => u.toLowerCase().trim()));
+    const sb = getSupabase();
 
-    // Merge posts (keep unique by id, newest first, exclude deleted posts and deleted authors)
+    // 1. Merge posts (keep unique by id, newest first, exclude deleted posts and deleted authors)
     let mergedPosts = [...current.posts];
     if (Array.isArray(posts)) {
       const existingIds = new Set(mergedPosts.map((p) => p.id));
       for (const p of posts) {
         const author = (p.username || '').toLowerCase().trim();
-        if (!existingIds.has(p.id) && !deletedIds.has(p.id) && !deletedUsernames.has(author)) {
+        if (p && p.id && !deletedIds.has(p.id) && !existingIds.has(p.id) && !deletedUsernames.has(author)) {
           mergedPosts.unshift(p);
           existingIds.add(p.id);
+
+          // Direct write to Supabase posts table
+          if (sb) {
+            const firstImg = p.imageUrl || (p.images && p.images.length > 0 ? p.images[0] : null);
+            sb.from('posts').upsert({
+              id: p.id,
+              user_id: p.userId || p.username,
+              username: p.username,
+              full_name: p.fullName || p.username,
+              user_avatar: p.avatar || null,
+              class: p.class || null,
+              caption: p.caption || '',
+              image_url: firstImg,
+              images: Array.isArray(p.images) ? p.images : (firstImg ? [firstImg] : []),
+              song: p.song || null,
+              habit_category: p.habitCategory || null,
+              habit_tag: p.habitTag || null,
+              likes_count: p.likes || 0,
+              comments_count: p.comments || 0,
+              repost_count: p.repostCount || 0,
+              is_repost: Boolean(p.isRepost),
+              reposted_from: p.repostedFrom || null,
+              created_at: p.createdAt || new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            }, { onConflict: 'id' }).then(() => {}, () => {});
+          }
         }
       }
     }
 
-    // Merge stories (exclude deleted authors)
+    // 2. Merge stories (keep active only, deduplicate)
     let mergedStories = [...current.stories];
     if (Array.isArray(stories)) {
       const existingIds = new Set(mergedStories.map((s) => s.id));
@@ -205,11 +308,23 @@ export async function POST(req: NextRequest) {
         if (!existingIds.has(s.id) && !deletedUsernames.has(author)) {
           mergedStories.unshift(s);
           existingIds.add(s.id);
+
+          if (sb) {
+            sb.from('stories').upsert({
+              id: s.id,
+              user_id: s.userId || s.username,
+              username: s.username,
+              media_url: s.imageUrl || s.mediaUrl || '',
+              caption: s.caption || '',
+              expires_at: s.expiresAt || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+              created_at: s.createdAt || new Date().toISOString(),
+            }, { onConflict: 'id' }).then(() => {}, () => {});
+          }
         }
       }
     }
 
-    // Merge profiles (exclude deleted usernames, update existing ones)
+    // 3. Merge profiles (exclude deleted usernames, update existing ones)
     let mergedProfiles = [...current.profiles];
     if (Array.isArray(profiles)) {
       const userCookie = req.cookies.get('dpsbuzz_user')?.value;
@@ -234,7 +349,7 @@ export async function POST(req: NextRequest) {
         }
 
         if (existingMap.has(u)) {
-          // Update existing profile with new details (class, section, bio, avatar, etc.)
+          // Update existing profile with new details (class, section, bio, avatar, isPrivate, etc.)
           const existing = existingMap.get(u)!;
           if (pr.class) existing.class = pr.class;
           if (pr.section) existing.section = pr.section;
@@ -257,14 +372,48 @@ export async function POST(req: NextRequest) {
               }
             }
           }
+
+          // Direct write to Supabase profiles table
+          if (sb) {
+            sb.from('profiles').update({
+              full_name: existing.fullName,
+              avatar_url: existing.avatar || null,
+              bio: existing.bio || '',
+              class: existing.class || '8',
+              section: existing.section || 'A',
+              is_private: Boolean(existing.isPrivate),
+              spirit_points: existing.spiritPoints || 50,
+              updated_at: new Date().toISOString(),
+            }).eq('username', u).then(() => {}, () => {});
+          }
         } else {
           mergedProfiles.push(pr);
           existingMap.set(u, pr);
+
+          if (sb) {
+            sb.from('profiles').upsert({
+              username: u,
+              full_name: pr.fullName || u,
+              avatar_url: pr.avatar || null,
+              bio: pr.bio || '',
+              class: pr.class || '8',
+              section: pr.section || 'A',
+              role: pr.role || 'student',
+              is_verified: Boolean(pr.isVerified),
+              is_approved: true,
+              is_private: Boolean(pr.isPrivate),
+              follower_count: pr.followerCount || 0,
+              following_count: pr.followingCount || 0,
+              post_count: pr.postCount || 0,
+              spirit_points: pr.spiritPoints || 50,
+              updated_at: new Date().toISOString(),
+            }, { onConflict: 'username' }).then(() => {}, () => {});
+          }
         }
       }
     }
 
-    // Merge comments
+    // 4. Merge comments
     const mergedComments = { ...current.comments };
     if (comments && typeof comments === 'object') {
       for (const [postId, list] of Object.entries(comments)) {
@@ -275,6 +424,18 @@ export async function POST(req: NextRequest) {
             if (!currentCommentIds.has(c.id)) {
               currentList.push(c);
               currentCommentIds.add(c.id);
+
+              if (sb && c && c.username) {
+                sb.from('comments').upsert({
+                  id: c.id || `c-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+                  post_id: postId,
+                  username: c.username,
+                  user_avatar: c.userAvatar || null,
+                  text: c.text || '',
+                  image: c.image || null,
+                  created_at: new Date().toISOString(),
+                }, { onConflict: 'id' }).then(() => {}, () => {});
+              }
             }
           }
           mergedComments[postId] = currentList;
@@ -282,7 +443,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Merge notices
+    // 5. Merge notices
     let mergedNotices = Array.isArray(current.notices) ? [...current.notices] : [];
     if (Array.isArray(body.notices)) {
       const existingNoticeIds = new Set(mergedNotices.map((n) => n.id));
@@ -294,7 +455,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Merge follows
+    // 6. Merge follows
     let mergedFollows = Array.isArray(current.follows) ? [...current.follows] : [];
     if (Array.isArray(body.follows)) {
       const existingSet = new Set(mergedFollows.map((f) => `${(f.follower || '').toLowerCase().trim()}__${(f.following || '').toLowerCase().trim()}`));
@@ -315,17 +476,17 @@ export async function POST(req: NextRequest) {
       mergedFollows = mergedFollows.filter((f) => !removeSet.has(`${(f.follower || '').toLowerCase().trim()}__${(f.following || '').toLowerCase().trim()}`));
     }
 
-    // Merge followRequests
+    // 7. Merge followRequests
     let mergedFollowRequests = Array.isArray(current.followRequests) ? [...current.followRequests] : [];
     if (Array.isArray(body.followRequests)) {
       const existingReqs = new Set(mergedFollowRequests.map((r) => `${(r.requester || '').toLowerCase().trim()}__${(r.target || '').toLowerCase().trim()}`));
       for (const r of body.followRequests) {
-        const req = (r.requester || '').toLowerCase().trim();
-        const tar = (r.target || '').toLowerCase().trim();
-        if (req && tar && req !== tar && !deletedUsernames.has(req) && !deletedUsernames.has(tar)) {
-          const key = `${req}__${tar}`;
+        const reqUser = (r.requester || '').toLowerCase().trim();
+        const tarUser = (r.target || '').toLowerCase().trim();
+        if (reqUser && tarUser && reqUser !== tarUser && !deletedUsernames.has(reqUser) && !deletedUsernames.has(tarUser)) {
+          const key = `${reqUser}__${tarUser}`;
           if (!existingReqs.has(key)) {
-            mergedFollowRequests.push({ requester: req, target: tar });
+            mergedFollowRequests.push({ requester: reqUser, target: tarUser });
             existingReqs.add(key);
           }
         }
@@ -336,11 +497,10 @@ export async function POST(req: NextRequest) {
       mergedFollowRequests = mergedFollowRequests.filter((r) => !removeReqSet.has(`${(r.requester || '').toLowerCase().trim()}__${(r.target || '').toLowerCase().trim()}`));
     }
 
-    // Non-blocking sync to Supabase follows and follow_requests tables
-    if (supabaseUrl && supabaseKey && (body.follows || body.removedFollows || body.followRequests || body.removedFollowRequests)) {
+    // Direct write to Supabase follows and follow_requests tables
+    if (sb && (body.follows || body.removedFollows || body.followRequests || body.removedFollowRequests)) {
       (async () => {
         try {
-          const sb = createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false } });
           if (Array.isArray(body.follows) && body.follows.length > 0) {
             const rows = body.follows
               .map((f: any) => ({
@@ -375,10 +535,10 @@ export async function POST(req: NextRequest) {
           }
           if (Array.isArray(body.removedFollowRequests) && body.removedFollowRequests.length > 0) {
             for (const rr of body.removedFollowRequests) {
-              const req = (rr.requester || '').toLowerCase().trim();
-              const tar = (rr.target || '').toLowerCase().trim();
-              if (req && tar) {
-                await sb.from('follow_requests').delete().match({ requester: req, target: tar });
+              const reqUser = (rr.requester || '').toLowerCase().trim();
+              const tarUser = (rr.target || '').toLowerCase().trim();
+              if (reqUser && tarUser) {
+                await sb.from('follow_requests').delete().match({ requester: reqUser, target: tarUser });
               }
             }
           }
@@ -388,7 +548,7 @@ export async function POST(req: NextRequest) {
       })().catch(() => {});
     }
 
-    // Merge groups
+    // 8. Merge groups
     let mergedGroups = Array.isArray(current.groups) ? [...current.groups] : [];
     if (Array.isArray(body.groups)) {
       const groupMap = new Map(mergedGroups.map((g: any) => [g.id, g]));
@@ -406,7 +566,7 @@ export async function POST(req: NextRequest) {
       mergedGroups = Array.from(groupMap.values());
     }
 
-    // Merge group members
+    // 9. Merge group members
     const mergedGroupMembers: Record<string, string[]> = { ...(current.groupMembers || {}) };
     if (body.groupMembers && typeof body.groupMembers === 'object') {
       for (const [gid, members] of Object.entries(body.groupMembers)) {
@@ -418,7 +578,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Merge group join requests / invites
+    // 10. Merge group join requests / invites
     let mergedGroupRequests = Array.isArray(current.groupJoinRequests) ? [...current.groupJoinRequests] : [];
     if (Array.isArray(body.groupJoinRequests)) {
       const reqMap = new Map(mergedGroupRequests.map((r: any) => [r.id, r]));

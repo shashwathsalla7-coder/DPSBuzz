@@ -1080,53 +1080,27 @@ export const DataStore = {
         setStorage(STORAGE_KEYS.NOTICES, Array.from(noticeMap.values()));
       }
 
-      // 10. Merge server follows & followRequests
+      // 10. Merge server follows & followRequests (Database authoritative source of truth)
       if (Array.isArray(data.follows)) {
-        const localFollows = getStorage<Array<{ follower: string; following: string }>>(STORAGE_KEYS.FOLLOWS, []);
-        const followSet = new Set(localFollows.map((f) => `${f.follower.toLowerCase().trim()}__${f.following.toLowerCase().trim()}`));
-        let followsChanged = false;
-        for (const f of data.follows) {
-          if (f && f.follower && f.following) {
-            const fol = f.follower.toLowerCase().trim();
-            const fing = f.following.toLowerCase().trim();
-            if (fol && fing && fol !== fing) {
-              const key = `${fol}__${fing}`;
-              if (!followSet.has(key)) {
-                localFollows.push({ follower: fol, following: fing });
-                followSet.add(key);
-                followsChanged = true;
-              }
-            }
-          }
-        }
-        if (followsChanged) {
-          setStorage(STORAGE_KEYS.FOLLOWS, localFollows);
-          changed = true;
-        }
+        const validServerFollows = data.follows
+          .filter((f: any) => f && f.follower && f.following && f.follower.toLowerCase().trim() !== f.following.toLowerCase().trim())
+          .map((f: any) => ({
+            follower: f.follower.toLowerCase().trim(),
+            following: f.following.toLowerCase().trim(),
+          }));
+        setStorage(STORAGE_KEYS.FOLLOWS, validServerFollows);
+        changed = true;
       }
 
       if (Array.isArray(data.followRequests)) {
-        const localReqs = getStorage<Array<{ requester: string; target: string }>>(STORAGE_KEYS.FOLLOW_REQUESTS, []);
-        const reqSet = new Set(localReqs.map((r) => `${r.requester.toLowerCase().trim()}__${r.target.toLowerCase().trim()}`));
-        let reqsChanged = false;
-        for (const r of data.followRequests) {
-          if (r && r.requester && r.target) {
-            const req = r.requester.toLowerCase().trim();
-            const tar = r.target.toLowerCase().trim();
-            if (req && tar && req !== tar) {
-              const key = `${req}__${tar}`;
-              if (!reqSet.has(key)) {
-                localReqs.push({ requester: req, target: tar });
-                reqSet.add(key);
-                reqsChanged = true;
-              }
-            }
-          }
-        }
-        if (reqsChanged) {
-          setStorage(STORAGE_KEYS.FOLLOW_REQUESTS, localReqs);
-          changed = true;
-        }
+        const validServerReqs = data.followRequests
+          .filter((r: any) => r && r.requester && r.target && r.requester.toLowerCase().trim() !== r.target.toLowerCase().trim())
+          .map((r: any) => ({
+            requester: r.requester.toLowerCase().trim(),
+            target: r.target.toLowerCase().trim(),
+          }));
+        setStorage(STORAGE_KEYS.FOLLOW_REQUESTS, validServerReqs);
+        changed = true;
       }
 
       // 11. Merge server groups & group requests
