@@ -399,12 +399,12 @@ export const DEFAULT_LAUNCH_POST: Post = {
   userAvatar: '/icons/logo.png',
   caption: 'launch video 🚀 • Welcome to the official DPS Buzz app! Tagged: @shashwath71845',
   images: [
-    'https://res.cloudinary.com/ogfaxmjw/video/upload/v1793212568/dpsbuzz/videos/dpsbuzz_launch_video.mp4',
+    'https://res.cloudinary.com/ogfaxmjw/video/upload/v1793214999/dpsbuzz/videos/dpsbuzz_launch_video_hd.mp4',
   ],
   imageUrl:
-    'https://res.cloudinary.com/ogfaxmjw/video/upload/v1793212568/dpsbuzz/videos/dpsbuzz_launch_video.mp4',
+    'https://res.cloudinary.com/ogfaxmjw/video/upload/v1793214999/dpsbuzz/videos/dpsbuzz_launch_video_hd.mp4',
   videoUrl:
-    'https://res.cloudinary.com/ogfaxmjw/video/upload/v1793212568/dpsbuzz/videos/dpsbuzz_launch_video.mp4',
+    'https://res.cloudinary.com/ogfaxmjw/video/upload/v1793214999/dpsbuzz/videos/dpsbuzz_launch_video_hd.mp4',
   isVideo: true,
   taggedUsers: ['shashwath71845'],
   isPinned: true,
@@ -1780,40 +1780,44 @@ export const DataStore = {
       if (p && p.id) postMap.set(p.id, p);
     }
 
-    let changed = false;
     for (const sp of serverPosts) {
       if (!sp || !sp.id) continue;
-      if (!postMap.has(sp.id)) {
+      const existing = postMap.get(sp.id);
+      if (!existing) {
         postMap.set(sp.id, sp);
-        changed = true;
       } else {
-        const existing = postMap.get(sp.id)!;
         const updated = {
           ...existing,
           ...sp,
+          caption: sp.caption !== undefined ? sp.caption : existing.caption,
           likes: Math.max(existing.likes || 0, sp.likes || 0),
           comments: Math.max(existing.comments || 0, sp.comments || 0),
           imageUrl: sp.imageUrl || existing.imageUrl,
           images: sp.images && sp.images.length > 0 ? sp.images : existing.images,
+          videoUrl: sp.videoUrl || existing.videoUrl,
+          isVideo: sp.isVideo !== undefined ? sp.isVideo : existing.isVideo,
         };
         postMap.set(sp.id, updated);
       }
     }
 
-    if (changed) {
-      const merged = Array.from(postMap.values()).sort((a, b) => {
-        const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-        const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-        return tb - ta;
-      });
-      setStorage(STORAGE_KEYS.POSTS, merged);
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(
-          new CustomEvent('dpsbuzz:content_updated', {
-            detail: { type: 'posts_synced' },
-          })
-        );
-      }
+    const merged = Array.from(postMap.values()).sort((a, b) => {
+      const aPinned = Boolean(a.isPinned);
+      const bPinned = Boolean(b.isPinned);
+      if (aPinned && !bPinned) return -1;
+      if (!aPinned && bPinned) return 1;
+      const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return tb - ta;
+    });
+
+    setStorage(STORAGE_KEYS.POSTS, merged);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('dpsbuzz:content_updated', {
+          detail: { type: 'posts_synced' },
+        })
+      );
     }
   },
 

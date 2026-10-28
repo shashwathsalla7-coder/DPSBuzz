@@ -92,6 +92,26 @@ export const PostImage: React.FC<PostImageProps> = ({
     (images.length > 0 ? images.find(isVideoUrl) : null) ||
     (isVideo ? (post.imageUrl || images[0]) : null);
 
+  const [videoSrc, setVideoSrc] = useState(effectiveVideoUrl);
+  const [retryCount, setRetryCount] = useState(0);
+
+  useEffect(() => {
+    setVideoSrc(effectiveVideoUrl);
+    setRetryCount(0);
+  }, [effectiveVideoUrl]);
+
+  const handleVideoError = () => {
+    if (retryCount === 0 && effectiveVideoUrl && !effectiveVideoUrl.startsWith('/videos/')) {
+      console.warn('Retrying video with local fallback...');
+      setRetryCount(1);
+      setVideoSrc('/videos/launch_video.mp4');
+      setIsLoading(true);
+      return;
+    }
+    setIsLoading(false);
+    setHasError(true);
+  };
+
   const isOfficial =
     post.username.toLowerCase() === 'dpsbuzz' ||
     post.username.toLowerCase() === 'dps_official' ||
@@ -106,32 +126,59 @@ export const PostImage: React.FC<PostImageProps> = ({
     null;
   const [avatarLoadError, setAvatarLoadError] = useState(false);
 
-  // Synchronize playback between inline and fullscreen modal
-  useEffect(() => {
-    if (isFullscreenModalOpen) {
-      if (modalVideoRef.current && videoRef.current) {
-        modalVideoRef.current.currentTime = videoRef.current.currentTime;
-        modalVideoRef.current.muted = isVideoMuted;
-        if (!videoRef.current.paused) {
-          modalVideoRef.current.play().catch(() => {});
+  // Stop background audio and other videos on the page when this video starts playing
+  const handleVideoPlaying = () => {
+    setIsVideoPlaying(true);
+    if (globalAudio.getState().isPlaying) {
+      globalAudio.pauseTrack();
+    }
+    if (typeof document !== 'undefined') {
+      document.querySelectorAll('video').forEach((v) => {
+        if (v !== videoRef.current && v !== modalVideoRef.current) {
+          v.pause();
         }
-      }
-    } else {
-      if (modalVideoRef.current && videoRef.current) {
-        videoRef.current.currentTime = modalVideoRef.current.currentTime;
+      });
+    }
+  };
+
+  // Synchronize playback without double audio (resounding / echo prevention)
+  const handleToggleFullscreen = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (videoRef.current) {
+      const curTime = videoRef.current.currentTime;
+      setVideoCurrentTime(curTime);
+      videoRef.current.pause();
+      videoRef.current.muted = true;
+    }
+    setIsFullscreenModalOpen(true);
+  };
+
+  const handleExitFullscreen = () => {
+    if (modalVideoRef.current) {
+      const curTime = modalVideoRef.current.currentTime;
+      const wasPlaying = !modalVideoRef.current.paused;
+      modalVideoRef.current.pause();
+      modalVideoRef.current.muted = true;
+      setVideoCurrentTime(curTime);
+      setIsFullscreenModalOpen(false);
+
+      if (videoRef.current) {
+        videoRef.current.currentTime = curTime;
         videoRef.current.muted = isVideoMuted;
-        if (!modalVideoRef.current.paused) {
+        if (wasPlaying) {
           videoRef.current.play().catch(() => {});
         }
       }
+    } else {
+      setIsFullscreenModalOpen(false);
     }
-  }, [isFullscreenModalOpen, isVideoMuted]);
+  };
 
   // Handle ESC key to exit fullscreen modal
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isFullscreenModalOpen) {
-        setIsFullscreenModalOpen(false);
+        handleExitFullscreen();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -165,20 +212,6 @@ export const PostImage: React.FC<PostImageProps> = ({
     }
   };
 
-  const handleToggleFullscreen = (e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
-    setIsFullscreenModalOpen(true);
-
-    try {
-      if (videoRef.current) {
-        if (videoRef.current.requestFullscreen) {
-          videoRef.current.requestFullscreen().catch(() => {});
-        } else if ((videoRef.current as any).webkitEnterFullscreen) {
-          (videoRef.current as any).webkitEnterFullscreen();
-        }
-      }
-    } catch {}
-  };
 
   const formatTime = (seconds: number) => {
     if (!seconds || isNaN(seconds)) return '0:00';
@@ -224,19 +257,16 @@ export const PostImage: React.FC<PostImageProps> = ({
             )}
             <video
               ref={videoRef}
-              src={effectiveVideoUrl}
+              src={videoSrc || effectiveVideoUrl}
               playsInline
               preload="metadata"
               muted={isVideoMuted}
               onLoadedData={() => setIsLoading(false)}
-              onPlay={() => setIsVideoPlaying(true)}
+              onPlay={handleVideoPlaying}
               onPause={() => setIsVideoPlaying(false)}
               onTimeUpdate={(e) => setVideoCurrentTime(e.currentTarget.currentTime)}
               onLoadedMetadata={(e) => setVideoDuration(e.currentTarget.duration)}
-              onError={() => {
-                setIsLoading(false);
-                setHasError(true);
-              }}
+              onError={handleVideoError}
               className="w-full h-full object-contain"
             />
 
@@ -563,7 +593,7 @@ export const PostImage: React.FC<PostImageProps> = ({
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => setIsFullscreenModalOpen(false)}
+                onClick={handleExitFullscreen}
                 className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 text-white flex items-center justify-center transition-all cursor-pointer backdrop-blur-md"
                 title="Exit Full Screen (Esc)"
                 aria-label="Exit Full Screen"
@@ -578,22 +608,26 @@ export const PostImage: React.FC<PostImageProps> = ({
             className="relative flex-1 flex items-center justify-center px-2 sm:px-6 py-2 overflow-hidden"
             onClick={() => {
               if (modalVideoRef.current) {
-                if (modalVideoRef.current.paused) modalVideoRef.current.play().catch(() => {});
-                else modalVideoRef.current.pause();
+                if (modalVideoRef.current.paused) {
+                  modalVideoRef.current.play().catch(() => {});
+                  handleVideoPlaying();
+                } else {
+                  modalVideoRef.current.pause();
+                }
               }
             }}
           >
             <video
               ref={modalVideoRef}
-              src={effectiveVideoUrl}
+              src={videoSrc || effectiveVideoUrl}
               playsInline
-              autoPlay
               controls={false}
               muted={isVideoMuted}
               onTimeUpdate={(e) => setVideoCurrentTime(e.currentTarget.currentTime)}
               onLoadedMetadata={(e) => setVideoDuration(e.currentTarget.duration)}
-              onPlay={() => setIsVideoPlaying(true)}
+              onPlay={handleVideoPlaying}
               onPause={() => setIsVideoPlaying(false)}
+              onError={handleVideoError}
               className="max-w-full max-h-[75vh] w-auto h-auto rounded-2xl shadow-2xl object-contain cursor-pointer"
             />
 
@@ -671,7 +705,7 @@ export const PostImage: React.FC<PostImageProps> = ({
 
               <button
                 type="button"
-                onClick={() => setIsFullscreenModalOpen(false)}
+                onClick={handleExitFullscreen}
                 className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/15 hover:bg-white/25 text-white text-xs font-bold transition-all cursor-pointer backdrop-blur-md active:scale-95"
               >
                 <Minimize size={16} />
