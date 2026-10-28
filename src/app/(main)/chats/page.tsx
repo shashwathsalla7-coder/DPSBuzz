@@ -4214,13 +4214,38 @@ function ChatsContent() {
                         fontWeight: 600,
                       }}
                     >
-                      {msg.sharedPost && (() => {
+                      {(() => {
+                        let shared = msg.sharedPost || msg.post_preview || null;
+                        if (!shared && msg.post_id) {
+                          const p = DataStore.getPostById(msg.post_id);
+                          if (p) {
+                            shared = {
+                              id: p.id,
+                              username: p.username,
+                              fullName: p.fullName || p.username,
+                              avatar: p.avatar || null,
+                              imageUrl: p.imageUrl || (p.images && p.images[0]) || null,
+                              videoUrl: p.videoUrl || null,
+                              isVideo: Boolean(p.isVideo || p.videoUrl),
+                              caption: p.caption || '',
+                            };
+                          }
+                        }
+                        if (!shared && msg.message_type === 'post_share' && msg.mediaUrl) {
+                          shared = {
+                            id: msg.post_id || 'post-shared',
+                            username: 'DPS Buzz',
+                            imageUrl: msg.mediaUrl,
+                            caption: msg.text || '',
+                          };
+                        }
+                        if (!shared) return null;
+
                         const isChatPhoto =
                           msg.isChatPhoto ||
-                          msg.sharedPost.id.startsWith('chat-photo-') ||
-                          msg.sharedPost.id.startsWith('img-') ||
-                          msg.sharedPost.caption === 'Chat photo' ||
-                          msg.sharedPost.caption === 'Shared a photo';
+                          (shared.id && (shared.id.startsWith('chat-photo-') || shared.id.startsWith('img-'))) ||
+                          shared.caption === 'Chat photo' ||
+                          shared.caption === 'Shared a photo';
 
                         const TEN_DAYS_MS = 10 * 24 * 60 * 60 * 1000;
                         const msgTime =
@@ -4229,7 +4254,7 @@ function ChatsContent() {
                           (msg.id && msg.id.startsWith('msg-') ? parseInt(msg.id.split('-')[1]) : null);
                         const isExpired =
                           isChatPhoto &&
-                          (msg.isPhotoExpired || !msg.sharedPost.imageUrl || (msgTime && Date.now() - msgTime > TEN_DAYS_MS));
+                          (msg.isPhotoExpired || !shared.imageUrl || (msgTime && Date.now() - msgTime > TEN_DAYS_MS));
 
                         if (isChatPhoto) {
                           if (isExpired) {
@@ -4257,13 +4282,13 @@ function ChatsContent() {
 
                           return (
                             <div className="mb-2 relative group overflow-hidden rounded-2xl max-w-xs">
-                              {msg.sharedPost.imageUrl && (
+                              {shared.imageUrl && (
                                 <img
-                                  src={msg.sharedPost.imageUrl}
+                                  src={shared.imageUrl}
                                   alt="Chat photo"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    setSelectedFullPhoto(msg.sharedPost?.imageUrl || null);
+                                    setSelectedFullPhoto(shared.imageUrl || null);
                                   }}
                                   className="w-full max-h-64 object-cover rounded-2xl border border-black/10 dark:border-white/10 cursor-pointer hover:opacity-95 transition-opacity"
                                 />
@@ -4276,35 +4301,66 @@ function ChatsContent() {
                           );
                         }
 
-                        // Regular shared feed post (permanent, never expires!)
+                        // Regular shared feed post (photo or video! permanent, never expires!)
+                        const isVideo = Boolean(
+                          shared.isVideo ||
+                          shared.videoUrl ||
+                          (shared.imageUrl && (shared.imageUrl.endsWith('.mp4') || shared.imageUrl.includes('/video/upload/')))
+                        );
+                        const mediaSrc = shared.videoUrl || shared.imageUrl;
+
                         return (
                           <div
-                            className={`mb-2 p-2.5 rounded-2xl border overflow-hidden flex flex-col gap-2 max-w-xs text-left ${
+                            className={`mb-2 p-3 rounded-2xl border overflow-hidden flex flex-col gap-2 max-w-xs text-left shadow-xs transition-transform active:scale-[0.99] ${
                               isMe
-                                ? 'bg-black/20 border-white/20 text-white'
-                                : 'bg-slate-100 border-slate-200 text-slate-900'
+                                ? 'bg-black/30 border-white/20 text-white'
+                                : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100'
                             }`}
                           >
-                            <div className="flex items-center gap-1.5 text-xs font-bold">
-                              <span>📸</span>
-                              <span>@{msg.sharedPost.username}&apos;s Post</span>
+                            <div className="flex items-center justify-between gap-1.5 text-xs font-bold">
+                              <span className="flex items-center gap-1.5 truncate">
+                                <span>{isVideo ? '🎥' : '📸'}</span>
+                                <span className="truncate">@{shared.username}&apos;s {isVideo ? 'Video' : 'Post'}</span>
+                              </span>
+                              {isVideo && (
+                                <span className="text-[10px] uppercase tracking-wider font-mono px-1.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                                  Video
+                                </span>
+                              )}
                             </div>
-                            {msg.sharedPost.imageUrl && (
+
+                            {isVideo && mediaSrc ? (
+                              <div className="relative w-full rounded-xl overflow-hidden bg-black/40 border border-black/10 aspect-video flex items-center justify-center group">
+                                <video
+                                  src={mediaSrc}
+                                  className="w-full h-full object-cover rounded-xl"
+                                  controls
+                                  playsInline
+                                  preload="metadata"
+                                />
+                              </div>
+                            ) : mediaSrc ? (
                               <img
-                                src={msg.sharedPost.imageUrl}
+                                src={mediaSrc}
                                 alt="Shared post"
-                                className="w-full max-h-48 object-cover rounded-xl border border-black/5"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedFullPhoto(mediaSrc);
+                                }}
+                                className="w-full max-h-52 object-cover rounded-xl border border-black/5 cursor-pointer hover:opacity-95 transition-opacity"
                               />
-                            )}
-                            {msg.sharedPost.caption && (
+                            ) : null}
+
+                            {shared.caption && (
                               <p className="text-xs line-clamp-2 italic leading-relaxed opacity-90">
-                                &ldquo;{msg.sharedPost.caption}&rdquo;
+                                &ldquo;{shared.caption}&rdquo;
                               </p>
                             )}
+
                             <Link
-                              href={`/home#post-${msg.sharedPost.id}`}
-                              className={`inline-flex items-center gap-1 text-[11px] font-bold underline ${
-                                isMe ? 'text-blue-200 hover:text-white' : 'text-blue-600 hover:text-blue-700'
+                              href={`/home#post-${shared.id}`}
+                              className={`inline-flex items-center gap-1 text-[11px] font-bold underline transition-colors ${
+                                isMe ? 'text-blue-200 hover:text-white' : 'text-blue-600 hover:text-blue-700 dark:text-blue-400'
                               }`}
                             >
                               <span>View Post in Feed</span>
@@ -4367,11 +4423,13 @@ function ChatsContent() {
                             </div>
                           );
                         }
-                        if (msg.sharedPost) {
+                        const hasSharedContent = Boolean(msg.sharedPost || msg.post_preview || msg.post_id || msg.message_type === 'post_share');
+                        if (hasSharedContent) {
                           const isAutoGenerated =
                             !msg.text ||
                             msg.text.startsWith('Shared @') ||
                             msg.text === 'Shared a post 📸' ||
+                            msg.text === 'Shared a video 🎥' ||
                             msg.text.trim() === '';
                           if (isAutoGenerated) return null;
                           return <span className="block pt-1 font-normal leading-relaxed">{msg.text}</span>;

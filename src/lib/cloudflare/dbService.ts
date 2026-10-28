@@ -235,19 +235,68 @@ export async function getD1MessagesForUser(username: string): Promise<Record<str
     }
 
     if (!grouped[key]) grouped[key] = [];
+    let previewObj: any = null;
+    let isPhoto = false;
+    if (r.media_url) {
+      if (r.media_url.startsWith('{') && r.media_url.endsWith('}')) {
+        try { previewObj = JSON.parse(r.media_url); } catch {}
+      } else if (r.media_url.startsWith('http') || r.media_url.startsWith('/')) {
+        isPhoto = true;
+      }
+    }
     grouped[key].push({
       id: r.id,
+      client_id: r.id,
       conversationId: r.chat_id,
       text: r.content,
       senderUsername: r.sender_id,
       recipientUsername: r.recipient_id,
-      mediaUrl: r.media_url,
+      mediaUrl: isPhoto ? r.media_url : (previewObj?.imageUrl || null),
+      sharedPost: previewObj,
+      post_preview: previewObj,
+      post_id: previewObj?.id || null,
+      message_type: previewObj ? 'post_share' : (isPhoto ? 'photo' : 'text'),
       time: r.created_at,
       createdAt: r.created_at,
     });
   }
 
   return grouped;
+}
+
+export async function getD1MessagesForConversation(chatId: string): Promise<any[]> {
+  if (!isD1Configured() || !chatId) return [];
+  const alt = chatId.includes('__') ? chatId.split('__').reverse().join('__') : chatId;
+  const rows = await d1Query<any>(
+    'SELECT * FROM messages WHERE chat_id = ? OR chat_id = ? ORDER BY created_at ASC LIMIT 500;',
+    [chatId, alt]
+  );
+  return rows.map((r) => {
+    let previewObj: any = null;
+    let isPhoto = false;
+    if (r.media_url) {
+      if (r.media_url.startsWith('{') && r.media_url.endsWith('}')) {
+        try { previewObj = JSON.parse(r.media_url); } catch {}
+      } else if (r.media_url.startsWith('http') || r.media_url.startsWith('/')) {
+        isPhoto = true;
+      }
+    }
+    return {
+      id: r.id,
+      client_id: r.id,
+      text: r.content,
+      senderUsername: r.sender_id,
+      recipientUsername: r.recipient_id,
+      mediaUrl: isPhoto ? r.media_url : (previewObj?.imageUrl || null),
+      createdAt: r.created_at,
+      time: r.created_at ? new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date(r.created_at)) : 'Recently',
+      message_type: previewObj ? 'post_share' : (isPhoto ? 'photo' : 'text'),
+      sharedPost: previewObj,
+      post_preview: previewObj,
+      post_id: previewObj?.id || null,
+      status: 'sent',
+    };
+  });
 }
 
 export async function insertD1Message(msg: {

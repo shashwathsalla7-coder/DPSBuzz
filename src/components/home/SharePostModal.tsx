@@ -13,6 +13,7 @@ import {
   MessageSquare,
   Sparkles,
   ArrowRight,
+  Play,
 } from 'lucide-react';
 import { DataStore, type Post, type Profile } from '@/lib/dataStore';
 import { getAvatarColorPair } from '@/config/tokens';
@@ -98,10 +99,17 @@ export const SharePostModal: React.FC<SharePostModalProps> = ({
     }, 4500);
   };
 
+  const isVideo = Boolean(
+    post?.isVideo ||
+    post?.videoUrl ||
+    (post?.imageUrl && (post.imageUrl.endsWith('.mp4') || post.imageUrl.includes('/video/upload/')))
+  );
+
   const postImage =
-    post.imageUrl ||
-    (post.images && post.images.length > 0 ? post.images[0] : null) ||
-    (post.postImages && post.postImages.length > 0 ? post.postImages[0].url : null);
+    post?.imageUrl ||
+    post?.videoUrl ||
+    (post?.images && post.images.length > 0 ? post.images[0] : null) ||
+    (post?.postImages && post.postImages.length > 0 ? post.postImages[0].url : null);
 
   const handleSendToUser = (targetUsername: string) => {
     const cleanTarget = targetUsername.toLowerCase().trim();
@@ -238,7 +246,22 @@ export const SharePostModal: React.FC<SharePostModalProps> = ({
 
         {/* Post Preview Thumbnail Card */}
         <div className="p-2 rounded-2xl bg-[var(--surface-sunken)] border border-[var(--line)] flex items-center gap-3">
-          {postImage ? (
+          {isVideo ? (
+            <div className="w-12 h-12 rounded-xl bg-slate-900 border border-cyan-500/30 flex items-center justify-center shrink-0 relative overflow-hidden">
+              {postImage ? (
+                <video
+                  src={postImage}
+                  className="w-full h-full object-cover"
+                  muted
+                  playsInline
+                  preload="metadata"
+                />
+              ) : null}
+              <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                <Play size={14} className="text-white fill-white" />
+              </div>
+            </div>
+          ) : postImage ? (
             <img
               src={postImage}
               alt={post.caption || 'Post image'}
@@ -251,10 +274,10 @@ export const SharePostModal: React.FC<SharePostModalProps> = ({
           )}
           <div className="min-w-0 flex-1">
             <p className="text-xs font-bold text-[var(--text)] truncate">
-              @{post.username}&apos;s Post
+              @{post.username}&apos;s {isVideo ? 'Video' : 'Post'}
             </p>
             <p className="text-[11px] text-[var(--text-muted)] truncate mt-0.5">
-              {post.caption ? post.caption : 'Photo post on DPS Buzz'}
+              {post.caption ? post.caption : (isVideo ? 'Video post on DPS Buzz' : 'Photo post on DPS Buzz')}
             </p>
           </div>
         </div>

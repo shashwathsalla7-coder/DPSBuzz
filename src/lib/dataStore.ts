@@ -1699,6 +1699,15 @@ export const DataStore = {
     });
   },
 
+  getPostById(postId: string): Post | null {
+    if (!postId) return null;
+    const posts = this.getPosts(true);
+    const found = posts.find((p) => p.id === postId);
+    if (found) return found;
+    if (postId === 'post-launch-video') return DEFAULT_LAUNCH_POST;
+    return null;
+  },
+
   addPost(post: Omit<Post, 'id' | 'createdAt' | 'timeAgo' | 'likes' | 'comments'>): Post {
     const posts = this.getPosts(true);
     const firstImage = post.imageUrl || (post.images && post.images.length > 0 ? post.images[0] : undefined);
@@ -6885,11 +6894,20 @@ export const DataStore = {
       const timeNow = 'Just now';
       const timeStr = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date());
 
+      const isVideoPost = Boolean(
+        post.isVideo ||
+        post.videoUrl ||
+        (post.imageUrl && (post.imageUrl.endsWith('.mp4') || post.imageUrl.includes('/video/upload/')))
+      );
+
       const postImageUrl =
         post.imageUrl ||
+        post.videoUrl ||
         (post.images && post.images.length > 0 ? post.images[0] : null) ||
         (post.postImages && post.postImages.length > 0 ? post.postImages[0].url : null) ||
         null;
+
+      const resolvedVideoUrl = post.videoUrl || (isVideoPost ? postImageUrl : null);
 
       targetUsernames.forEach((tUser) => {
         const cleanT = tUser.toLowerCase().trim();
@@ -6907,7 +6925,7 @@ export const DataStore = {
         const existingIdx = storedConv.findIndex(
           (c: any) => c.id === convId || c.id === canonicalId || (!isGroup && (c.username || '').toLowerCase() === cleanT)
         );
-        const senderPreview = customMsg ? `You: ${customMsg}` : `You shared a post 📸`;
+        const senderPreview = customMsg ? `You: ${customMsg}` : (isVideoPost ? `You shared a video 🎥` : `You shared a post 📸`);
         if (existingIdx >= 0) {
           storedConv[existingIdx].lastMessage = senderPreview;
           storedConv[existingIdx].timeAgo = timeNow;
@@ -6929,7 +6947,7 @@ export const DataStore = {
         const newMsg = {
           id: `msg-share-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
           client_id: `msg-share-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-          text: customMsg || `Shared a post 📸`,
+          text: customMsg || (isVideoPost ? `Shared a video 🎥` : `Shared a post 📸`),
           sender: 'me' as const,
           senderUsername: cur,
           senderName: senderName,
@@ -6937,10 +6955,16 @@ export const DataStore = {
           timestamp: Date.now(),
           message_type: 'post_share',
           post_id: post.id,
+          mediaUrl: postImageUrl,
           sharedPost: {
             id: post.id,
             username: post.username,
+            fullName: post.fullName || post.username,
+            avatar: post.avatar || null,
+            class: post.class,
             imageUrl: postImageUrl,
+            videoUrl: resolvedVideoUrl,
+            isVideo: isVideoPost,
             caption: post.caption || '',
           },
           post_preview: {
@@ -6951,6 +6975,8 @@ export const DataStore = {
             class: post.class,
             caption: post.caption || '',
             imageUrl: postImageUrl,
+            videoUrl: resolvedVideoUrl,
+            isVideo: isVideoPost,
           },
         };
 
