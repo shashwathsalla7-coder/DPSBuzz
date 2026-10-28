@@ -211,23 +211,14 @@ function HomeContent() {
     };
 
     loadData();
-    // Synchronize with server so posts and stories uploaded on other devices appear immediately
-    DataStore.syncWithServer().catch(() => {});
-    fetch('/api/posts')
-      .then((r) => r.json())
-      .then((data) => {
-        if (data && data.success && Array.isArray(data.posts)) {
-          DataStore.mergePosts(data.posts);
-          setPosts(DataStore.getPosts());
-        }
-      })
-      .catch(() => {});
 
-    // Smart polling sync every 25 seconds when visible to pull fresh posts and stories across devices
-    const syncInterval = setInterval(() => {
-      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+    // Auto-fetch fresh posts from server without requiring user to pull-to-refresh or retry
+    const fetchFreshPosts = () => {
       DataStore.syncWithServer().catch(() => {});
-      fetch('/api/posts')
+      fetch(`/api/posts?t=${Date.now()}`, {
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache, no-store, max-age=0' },
+      })
         .then((r) => r.json())
         .then((data) => {
           if (data && data.success && Array.isArray(data.posts)) {
@@ -236,11 +227,20 @@ function HomeContent() {
           }
         })
         .catch(() => {});
-    }, 25000);
+    };
+
+    fetchFreshPosts();
+
+    // Smart polling sync every 12 seconds when visible to automatically pull fresh posts
+    const syncInterval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+      fetchFreshPosts();
+    }, 12000);
 
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
-        DataStore.syncWithServer().then(() => loadData()).catch(() => {});
+        fetchFreshPosts();
+        loadData();
       }
     };
 

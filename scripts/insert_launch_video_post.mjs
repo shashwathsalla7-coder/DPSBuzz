@@ -26,7 +26,7 @@ async function executeSql(sql, params = []) {
 async function main() {
   console.log('Inserting Launch Video post under DPS Buzz...');
 
-  const videoUrl = 'https://res.cloudinary.com/ogfaxmjw/video/upload/v1793212568/dpsbuzz/videos/dpsbuzz_launch_video.mp4';
+  const videoUrl = 'https://res.cloudinary.com/ogfaxmjw/video/upload/v1793214999/dpsbuzz/videos/dpsbuzz_launch_video_hd.mp4';
   const postId = 'post-launch-video';
   const nowIso = new Date().toISOString();
 
