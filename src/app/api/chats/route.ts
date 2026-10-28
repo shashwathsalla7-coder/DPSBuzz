@@ -9,7 +9,7 @@ import {
   purgeVanishServerChatMessages,
   markServerChatMessagesRead,
 } from '@/lib/serverStore';
-import { getD1MessagesForUser, insertD1Message, isD1Configured } from '@/lib/cloudflare/dbService';
+import { getD1MessagesForUser, getD1MessagesForConversation, insertD1Message, isD1Configured } from '@/lib/cloudflare/dbService';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const rawKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -120,8 +120,31 @@ export async function GET(req: NextRequest) {
       const messages = await getServerChatMessages(canonicalKey);
       const store = await getServerStore();
 
-      // Hydrate & merge from Supabase messages table if configured
+      // Hydrate & merge from Cloudflare D1 first (never pauses)
       let mergedMessages = [...messages];
+      if (isD1Configured()) {
+        try {
+          const d1Msgs = await getD1MessagesForConversation(canonicalKey);
+          for (const dm of d1Msgs) {
+            const idx = mergedMessages.findIndex((m: any) => (m.client_id && m.client_id === dm.client_id) || m.id === dm.id);
+            if (idx >= 0) {
+              if (!mergedMessages[idx].sharedPost && dm.sharedPost) {
+                mergedMessages[idx].sharedPost = dm.sharedPost;
+                mergedMessages[idx].post_preview = dm.post_preview;
+                mergedMessages[idx].post_id = dm.post_id;
+                mergedMessages[idx].message_type = 'post_share';
+              }
+            } else {
+              dm.sender = (dm.senderUsername || '').toLowerCase() === (effectiveUser || '').toLowerCase() ? 'me' : 'them';
+              mergedMessages.push(dm);
+            }
+          }
+        } catch (d1Err) {
+          console.warn('Cloudflare D1 conversation messages fetch notice:', d1Err);
+        }
+      }
+
+      // Hydrate & merge from Supabase messages table if configured
       if (supabaseUrl && supabaseKey) {
         try {
           const sb = createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false } });
@@ -456,17 +479,23 @@ export async function POST(req: NextRequest) {
     const updated = await addServerChatMessage(conversationId, message);
 
     // Directly persist to Cloudflare D1 for permanent cross-device chat sync
-    if (isD1Configured() && (message.text || message.sharedPost || message.image || message.mediaUrl)) {
+    if (isD1Configured() && (message.text || message.sharedPost || message.post_preview || message.image || message.mediaUrl)) {
       try {
         const msgId = message.id || message.client_id || `msg_${Date.now()}`;
-        const content = message.text || (message.sharedPost ? 'Shared a post 📸' : (message.image ? '📷 Photo' : ''));
+        const content = message.text || (message.sharedPost || message.post_preview ? 'Shared a post 📸' : (message.image ? '📷 Photo' : ''));
+        let mediaPayload: string | null = null;
+        if (message.sharedPost || message.post_preview) {
+          mediaPayload = JSON.stringify(message.sharedPost || message.post_preview);
+        } else if (message.mediaUrl || message.image) {
+          mediaPayload = message.mediaUrl || message.image;
+        }
         await insertD1Message({
           id: msgId,
           chatId: conversationId,
           senderId: sender,
           recipientId: conversationId.includes('__') ? conversationId.split('__').find((p: string) => p !== sender) : null,
           content,
-          mediaUrl: message.mediaUrl || message.image || null,
+          mediaUrl: mediaPayload,
           createdAt: message.createdAt || new Date().toISOString(),
         });
       } catch (d1Err) {

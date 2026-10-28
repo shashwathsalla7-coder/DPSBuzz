@@ -49,6 +49,7 @@ lighthouse-baseline.json
 scratch/
 1.png
 data/active_calls.json
+data/backups/
 launch*.mp4
 *.mp4
 !public/videos/*.mp4
