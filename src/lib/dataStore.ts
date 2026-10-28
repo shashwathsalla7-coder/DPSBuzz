@@ -399,12 +399,12 @@ export const DEFAULT_LAUNCH_POST: Post = {
   userAvatar: '/icons/logo.png',
   caption: 'launch video 🚀 • Welcome to the official DPS Buzz app! Tagged: @shashwath71845',
   images: [
-    'https://res.cloudinary.com/ogfaxmjw/video/upload/v1793214999/dpsbuzz/videos/dpsbuzz_launch_video_hd.mp4',
+    'https://res.cloudinary.com/ogfaxmjw/video/upload/v1793215617/dpsbuzz/videos/dpsbuzz_launch_video.mp4',
   ],
   imageUrl:
-    'https://res.cloudinary.com/ogfaxmjw/video/upload/v1793214999/dpsbuzz/videos/dpsbuzz_launch_video_hd.mp4',
+    'https://res.cloudinary.com/ogfaxmjw/video/upload/v1793215617/dpsbuzz/videos/dpsbuzz_launch_video.mp4',
   videoUrl:
-    'https://res.cloudinary.com/ogfaxmjw/video/upload/v1793214999/dpsbuzz/videos/dpsbuzz_launch_video_hd.mp4',
+    'https://res.cloudinary.com/ogfaxmjw/video/upload/v1793215617/dpsbuzz/videos/dpsbuzz_launch_video.mp4',
   isVideo: true,
   taggedUsers: ['shashwath71845'],
   isPinned: true,
