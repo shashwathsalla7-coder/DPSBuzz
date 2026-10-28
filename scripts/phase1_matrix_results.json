@@ -1,0 +1,154 @@
+[
+  {
+    "id": "F1",
+    "symptom": "Friend requests not sent / nothing happens for other person",
+    "action": "A sends friend request to B; check request row and notification creation in Supabase",
+    "status": "FAIL",
+    "evidence": "follow_requests insert: OK, but notifications insert FAILED with error: \"null value in column \"id\" of relation \"notifications\" violates not-null constraint\" (1446ms). Recipient receives no database notification or live badge.",
+    "cause": "notifications table in Supabase has a NOT NULL constraint on \"id\" with no default UUID generator, and notifications are only saved to localStorage on sender's device."
+  },
+  {
+    "id": "F2",
+    "symptom": "When request is sent, other student cannot accept it",
+    "action": "B accepts request; verify single-step atomic transaction and live friends list update",
+    "status": "FAIL",
+    "evidence": "friendships table does not exist (PGRST205); accept_friend_request RPC does not exist (PGRST202). Acceptance is executed via client-side DataStore.acceptFollowRequest and partial /api/sync POST.",
+    "cause": "No atomic database function (RPC) for accepting requests. State is split across client localStorage, /api/sync memory, and non-atomic follows table updates."
+  },
+  {
+    "id": "F3",
+    "symptom": "Friend request edge cases (self-request, decline, cancel, blocked, deactivated)",
+    "action": "Probe database constraints and edge-case validation for self-request and blocked users",
+    "status": "FAIL",
+    "evidence": "Database allowed inserting a self-request (requester=target=\"test_self_probe\"). No check constraint (requester <> target) on follow_requests table. No rate-limiting or mutual auto-accept trigger.",
+    "cause": "Missing database check constraint (requester <> target) and lack of RPC enforcing business logic for blocked, pending-approval, or duplicate requests."
+  },
+  {
+    "id": "F4",
+    "symptom": "Requests on unapproved or special-case account shapes",
+    "action": "Send request to pending-approval / unverified student account",
+    "status": "FAIL",
+    "evidence": "follow_requests table accepts requests to unapproved student account (test_pending_dummy) without verifying is_approved status.",
+    "cause": "Database has no foreign key check or trigger ensuring requester and target are approved active students."
+  },
+  {
+    "id": "F5",
+    "symptom": "People who are requested (request pending) cannot send messages",
+    "action": "Inspect chat send permissions and inbox tier for pending requests",
+    "status": "FAIL",
+    "evidence": "When user A requests user B, A is not yet followed by B. In DataStore.canChatAndShare, messages are classified as REQUESTS tier, but UI composer requires target to be an accepted follow before direct chat bubble is opened seamlessly.",
+    "cause": "Chat inbox tier routing classifies non-mutual follows as REQUESTS, but chats/page.tsx lacks clear next-step CTA for pending friend requests."
+  },
+  {
+    "id": "F6",
+    "symptom": "Unfriend: both lists update, friendship row removed for both",
+    "action": "Check unfriend logic across client and database",
+    "status": "FAIL",
+    "evidence": "DataStore.toggleFollow only deletes the single direction (follower=cur, following=target). The reverse follow remains intact unless target also unfollows. No atomic unfriend RPC exists.",
+    "cause": "Asymmetric follow model used instead of atomic bidirectional friendship removal."
+  },
+  {
+    "id": "F7",
+    "symptom": "Friend request rate-limiting and abuse prevention",
+    "action": "Check request limits per minute and per day",
+    "status": "FAIL",
+    "evidence": "Zero rate limits in follow_requests table, /api/sync, or client DataStore. A client can loop-send unlimited friend requests without rejection or throttle message.",
+    "cause": "No rate limiter or daily limit counter enforced in database or API."
+  },
+  {
+    "id": "G1",
+    "symptom": "Groups are not being created / create-group glitches",
+    "action": "Verify group creation across database and client",
+    "status": "FAIL",
+    "evidence": "group_members table does not exist in Supabase (PGRST205: Could not find the table 'public.group_members' in the schema cache). DataStore.createGroup saves group to localStorage and only sends to /api/sync, which does not persist to Supabase groups. Groups are invisible to other devices.",
+    "cause": "Supabase database lacks group_members and group_invitations tables, and /api/sync never writes groups to Supabase."
+  },
+  {
+    "id": "G2",
+    "symptom": "Create-group edge cases: solo creator group disallowed, screen glitches",
+    "action": "Verify UI modal validation and edge case handling in groups/page.tsx",
+    "status": "FAIL",
+    "evidence": "groups/page.tsx enforces \"disabled={selectedGroupMembers.length === 0}\" and alerts \"Please select at least one student to invite\". A student cannot create a personal group. No image upload button for group avatar.",
+    "cause": "Hardcoded UI restriction requiring at least 1 invitee, and absence of Cloudflare group icon upload."
+  },
+  {
+    "id": "G3",
+    "symptom": "Group chat security & non-member isolation",
+    "action": "Check /api/chats sender authorization for group conversation IDs",
+    "status": "FAIL",
+    "evidence": "In src/app/api/chats/route.ts POST, sender check \"conversationId.includes('__')\" only executes for direct 1-to-1 chats. For group chats (conv-group-*), any user can POST messages to any group conversation ID without membership verification.",
+    "cause": "api/chats/route.ts does not verify sender membership for group conversation IDs."
+  },
+  {
+    "id": "G4",
+    "symptom": "Add person into a group afterwards / admin adds friend D",
+    "action": "Verify member addition to existing groups",
+    "status": "FAIL",
+    "evidence": "Because groups and memberships are not stored in Supabase, newly accepted friends cannot be added from another device. DataStore.addMemberToGroup only updates local storage.",
+    "cause": "No persistent database table or RPC to add members to groups."
+  },
+  {
+    "id": "G5",
+    "symptom": "Group invitations end-to-end",
+    "action": "Check group_invitations storage and live delivery",
+    "status": "FAIL",
+    "evidence": "group_invitations table does not exist (PGRST205). Invitations live in memory in serverStore and local storage; other devices do not receive invitations.",
+    "cause": "Missing group_invitations table in Supabase."
+  },
+  {
+    "id": "G6",
+    "symptom": "Group management: leave, remove member, change admin",
+    "action": "Inspect group management methods in DataStore and API",
+    "status": "FAIL",
+    "evidence": "No functions or UI exist for a member to leave a group, for an admin to remove a member, or to reassign admin role when the last admin departs.",
+    "cause": "Group management features are incomplete and lack database backing."
+  },
+  {
+    "id": "G7",
+    "symptom": "Existing groups persistence and reload across devices",
+    "action": "Query Supabase groups table for real student groups",
+    "status": "FAIL",
+    "evidence": "Supabase groups table contains 1 rows (only the probe test group). Real student groups were never persisted to Supabase and disappear on browser cache clear or device change.",
+    "cause": "Groups were stored exclusively in client localStorage and ephemeral serverStore."
+  },
+  {
+    "id": "X1",
+    "symptom": "RLS policies on friends, groups, group_members, notifications",
+    "action": "Audit live database policies and missing tables",
+    "status": "FAIL",
+    "evidence": "RLS on groups has no DELETE policy; group_members and friendships tables do not exist; notifications table rejects inserts without an explicit id.",
+    "cause": "Incomplete database schema and missing RLS policies."
+  },
+  {
+    "id": "X2",
+    "symptom": "Privacy: non-participant cannot read/post to groups or requests of others",
+    "action": "Verify API route gating against non-members",
+    "status": "FAIL",
+    "evidence": "POST /api/chats does not check group membership for group chats. Any student who knows or guesses a group conversation ID can post into it.",
+    "cause": "Missing group membership authorization check in /api/chats."
+  },
+  {
+    "id": "X3",
+    "symptom": "Realtime updates for friend requests and group invitations",
+    "action": "Check Supabase Realtime publication for friend requests and groups",
+    "status": "FAIL",
+    "evidence": "No Supabase Realtime channel subscriptions active for follow_requests, groups, or group invitations. Incoming requests only appear upon page reload or manual sync.",
+    "cause": "Absence of Realtime listeners for friendship and group events."
+  },
+  {
+    "id": "X4",
+    "symptom": "Create-group screen glitches and mobile viewport issues",
+    "action": "Inspect create-group modal rendering and state handling",
+    "status": "FAIL",
+    "evidence": "Create group modal re-renders liveFollowing on every tick interval; submit button lacks loading indicator; modal does not account for soft keyboard on mobile viewport causing layout jumps.",
+    "cause": "Unmemoized tick dependency and missing mobile keyboard handling."
+  },
+  {
+    "id": "X5",
+    "symptom": "Current resource limits check vs free-tier quotas",
+    "action": "Evaluate current usage: DB rows, storage, API requests",
+    "status": "PASS",
+    "evidence": "Supabase DB: 12 profiles, 319 messages, 1 groups (<1% of 500MB limit). Well within all free-tier quotas.",
+    "cause": null
+  }
+]

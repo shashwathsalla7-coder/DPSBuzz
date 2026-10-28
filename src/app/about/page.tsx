@@ -7,9 +7,9 @@ import { getBaseUrl } from '@/lib/site-url';
 const baseUrl = getBaseUrl();
 
 export const metadata: Metadata = {
-  title: 'About Community & School',
+  title: 'About DPSBus — School Social Media App | Dilsukhnagar Public School',
   description:
-    'Learn about DPS Buzz, a dedicated student community platform for classes 6 to 10 at Dilsukhnagar Public School in Hyderabad.',
+    'Learn about DPSBus, the official school social media app for classes 6 to 10 at Dilsukhnagar Public School in Hyderabad.',
   alternates: {
     canonical: `${baseUrl}/about`,
   },
@@ -18,11 +18,11 @@ export const metadata: Metadata = {
     follow: true,
   },
   openGraph: {
-    title: 'About DPS Buzz | Dilsukhnagar Public School',
+    title: 'About DPSBus — School Social Media App | Dilsukhnagar Public School',
     description:
-      'Learn about DPS Buzz, a dedicated student community platform for classes 6 to 10 at Dilsukhnagar Public School in Hyderabad.',
+      'Learn about DPSBus, the official school social media app for classes 6 to 10 at Dilsukhnagar Public School in Hyderabad.',
     url: `${baseUrl}/about`,
-    siteName: 'DPS Buzz',
+    siteName: 'DPSBus',
     locale: 'en_IN',
     type: 'website',
     images: [
@@ -30,14 +30,14 @@ export const metadata: Metadata = {
         url: `${baseUrl}/opengraph-image`,
         width: 1200,
         height: 630,
-        alt: 'About DPS Buzz',
+        alt: 'About DPSBus',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'About DPS Buzz | Dilsukhnagar Public School',
-    description: 'Learn about the student community platform for DPS students in Hyderabad.',
+    title: 'About DPSBus — School Social Media App | Dilsukhnagar Public School',
+    description: 'Learn about DPSBus, the official school social media app for DPS students in Hyderabad.',
     images: [`${baseUrl}/opengraph-image`],
   },
 };
@@ -49,14 +49,14 @@ export default function AboutPage() {
 
       <main className="flex-1 max-w-3xl mx-auto px-4 py-12 space-y-10">
         <div className="space-y-4">
-          <span className="text-xs font-semibold tracking-wider uppercase text-purple-400">
-            Community Profile
+          <span className="text-xs font-semibold tracking-wider uppercase text-cyan-400">
+            Official Community Profile
           </span>
           <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
-            About DPS Buzz
+            About DPSBus
           </h1>
-          <p className="text-neutral-400 text-base sm:text-lg leading-relaxed">
-            DPS Buzz is an independent, positive community space created exclusively for students of classes 6 to 10 at Dilsukhnagar Public School in Hyderabad.
+          <p className="text-neutral-300 text-base sm:text-lg leading-relaxed">
+            <strong className="text-white font-semibold">DPSBus is the official school social media app</strong> created exclusively for students of classes 6 to 10 at Dilsukhnagar Public School in Hyderabad.
           </p>
         </div>
 

@@ -56,7 +56,7 @@ export default function LoginPage() {
 
     setIsLoading(true);
 
-    const cleanInput = usernameInput.trim().toLowerCase();
+    const cleanInput = usernameInput.trim().toLowerCase().replace(/^@+/, '');
 
     // Shashwath Super Administrator credentials check (restricted strictly to true admin)
     if (cleanInput === 'shashwath71845') {
@@ -123,21 +123,38 @@ export default function LoginPage() {
     let profiles = JSON.parse(localStorage.getItem('dpsbuzz_profiles_v2') || '[]');
     let match = profiles.find(
       (p: any) =>
-        p.username.toLowerCase() === cleanInput ||
-        p.fullName.toLowerCase() === cleanInput
+        (p.username || '').toLowerCase().replace(/^@+/, '') === cleanInput ||
+        (p.fullName || '').toLowerCase() === cleanInput
     );
 
-    // If not found in localStorage, fetch from server store to sync account from Web
+    // If not found in localStorage, fetch from Supabase database via authoritative /api/auth/profile
     if (!match) {
       try {
-        const res = await fetch('/api/sync');
+        const profRes = await fetch(`/api/auth/profile?username=${encodeURIComponent(cleanInput)}`, { cache: 'no-store' });
+        if (profRes.ok) {
+          const profData = await profRes.json();
+          if (profData.success && profData.profile) {
+            match = profData.profile;
+            const updated = [...profiles.filter((p: any) => (p.username || '').toLowerCase() !== cleanInput), match];
+            localStorage.setItem('dpsbuzz_profiles_v2', JSON.stringify(updated));
+          }
+        }
+      } catch (e) {
+        console.warn('Database profile lookup notice:', e);
+      }
+    }
+
+    // If still not found, fetch from server store to sync account from Web
+    if (!match) {
+      try {
+        const res = await fetch('/api/sync', { cache: 'no-store' });
         if (res.ok) {
           const syncData = await res.json();
           if (syncData.profiles && Array.isArray(syncData.profiles)) {
             match = syncData.profiles.find(
               (p: any) =>
-                p.username.toLowerCase() === cleanInput ||
-                p.fullName.toLowerCase() === cleanInput
+                (p.username || '').toLowerCase().replace(/^@+/, '') === cleanInput ||
+                (p.fullName || '').toLowerCase() === cleanInput
             );
             if (match) {
               localStorage.setItem('dpsbuzz_profiles_v2', JSON.stringify(syncData.profiles));

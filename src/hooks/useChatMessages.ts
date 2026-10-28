@@ -122,16 +122,17 @@ export function useChatMessages(chatId: string, currentUserId: string) {
     inFlightRef.current.clear();
   }, [chatId]);
 
-  // 2. Fetch latest 30 messages with indexed pagination & ordering
+  // 2. Fetch latest messages with indexed pagination & ordering
   const fetchHistoricalPayload = useCallback(async () => {
     if (!chatId) return;
     try {
+      const altChatId = chatId.includes('__') ? chatId.split('__').reverse().join('__') : chatId;
       const { data, error } = await supabase
         .from('messages')
         .select('*')
-        .eq('chat_id', chatId)
+        .or(`chat_id.eq.${chatId},chat_id.eq.${altChatId}`)
         .order('created_at', { ascending: false })
-        .limit(30);
+        .limit(200);
 
       if (error) {
         console.warn('Historical chat fetch warning:', error.message);

@@ -7,6 +7,58 @@ export default function robots(): MetadataRoute.Robots {
   return {
     rules: [
       {
+        userAgent: 'Google-Extended',
+        allow: [
+          '/',
+          '/about',
+          '/safety',
+          '/privacy',
+          '/terms',
+          '/contact',
+          '/download',
+          '/login',
+          '/signup',
+        ],
+        disallow: [
+          '/api/',
+          '/api/*',
+          '/admin',
+          '/admin/*',
+          '/chats',
+          '/chats/*',
+          '/settings',
+          '/settings/*',
+          '/u/*',
+          '/post/*',
+        ],
+      },
+      {
+        userAgent: 'Googlebot',
+        allow: [
+          '/',
+          '/about',
+          '/safety',
+          '/privacy',
+          '/terms',
+          '/contact',
+          '/download',
+          '/login',
+          '/signup',
+        ],
+        disallow: [
+          '/api/',
+          '/api/*',
+          '/admin',
+          '/admin/*',
+          '/chats',
+          '/chats/*',
+          '/settings',
+          '/settings/*',
+          '/u/*',
+          '/post/*',
+        ],
+      },
+      {
         userAgent: '*',
         allow: [
           '/',

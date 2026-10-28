@@ -41,7 +41,18 @@ export async function showBackgroundNotification(
     vibrate?: number[];
   }
 ): Promise<boolean> {
-  if (typeof window === 'undefined' || !('Notification' in window)) {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  // Hardware vibration on mobile devices
+  if ('vibrate' in navigator) {
+    try {
+      navigator.vibrate(options.vibrate || [200, 100, 200]);
+    } catch {}
+  }
+
+  if (!('Notification' in window)) {
     return false;
   }
 
@@ -54,13 +65,16 @@ export async function showBackgroundNotification(
     icon: options.icon || '/icons/icon-192.png',
     badge: '/icons/icon-192.png',
     tag: options.tag || 'dpsbuzz-alert',
-    vibrate: options.vibrate || [100, 50, 100],
+    vibrate: options.vibrate || [200, 100, 200],
     data: { url: options.url || '/home' },
   };
 
   try {
     if ('serviceWorker' in navigator) {
-      const reg = await navigator.serviceWorker.ready;
+      const reg = await Promise.race([
+        navigator.serviceWorker.ready,
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 800)),
+      ]);
       if (reg && 'showNotification' in reg) {
         await reg.showNotification(title, payload);
         return true;
@@ -69,7 +83,12 @@ export async function showBackgroundNotification(
     new Notification(title, payload);
     return true;
   } catch (err) {
-    console.warn('Failed to show notification:', err);
-    return false;
+    try {
+      new Notification(title, payload);
+      return true;
+    } catch {
+      console.warn('Failed to show notification:', err);
+      return false;
+    }
   }
 }

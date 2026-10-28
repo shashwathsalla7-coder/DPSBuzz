@@ -453,7 +453,7 @@ export const StoryCreatorModal: React.FC<StoryCreatorModalProps> = ({
             ]
           : undefined;
 
-        DataStore.addStory({
+        const created = DataStore.addStory({
           userId: currentUser.id || 'user-me',
           username: activeUsername,
           fullName: activeFullName,
@@ -473,6 +473,19 @@ export const StoryCreatorModal: React.FC<StoryCreatorModalProps> = ({
               }
             : undefined,
         });
+
+        // Await server persistence to Supabase so story is immediately visible across all devices
+        try {
+          await fetch('/api/stories', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ story: created }),
+            keepalive: true,
+          });
+        } catch (syncErr) {
+          console.warn('Server story sync failed:', syncErr);
+        }
+
         window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated'));
         onStoryCreated();
         onClose();
@@ -499,7 +512,7 @@ export const StoryCreatorModal: React.FC<StoryCreatorModalProps> = ({
 
       setIsSubmitting(true);
       try {
-        DataStore.addStory({
+        const created = DataStore.addStory({
           userId: currentUser.id || 'user-me',
           username: activeUsername,
           fullName: activeFullName,
@@ -514,6 +527,18 @@ export const StoryCreatorModal: React.FC<StoryCreatorModalProps> = ({
           textColor: '#FFFFFF',
           song: selectedSong || undefined,
         });
+
+        try {
+          await fetch('/api/stories', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ story: created }),
+            keepalive: true,
+          });
+        } catch (syncErr) {
+          console.warn('Server story sync failed:', syncErr);
+        }
+
         window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated'));
         onStoryCreated();
         onClose();
@@ -536,7 +561,7 @@ export const StoryCreatorModal: React.FC<StoryCreatorModalProps> = ({
 
       setIsSubmitting(true);
       try {
-        DataStore.addStory({
+        const created = DataStore.addStory({
           userId: currentUser.id || 'user-me',
           username: activeUsername,
           fullName: activeFullName,
@@ -546,6 +571,18 @@ export const StoryCreatorModal: React.FC<StoryCreatorModalProps> = ({
           textColor: selectedPreset.textColor,
           song: selectedSong || undefined,
         });
+
+        try {
+          await fetch('/api/stories', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ story: created }),
+            keepalive: true,
+          });
+        } catch (syncErr) {
+          console.warn('Server story sync failed:', syncErr);
+        }
+
         window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated'));
         onStoryCreated();
         onClose();

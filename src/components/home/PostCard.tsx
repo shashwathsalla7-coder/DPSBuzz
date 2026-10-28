@@ -153,7 +153,20 @@ const PostCardComponent: React.FC<PostCardProps> = ({
   const renderCaption = (text: string) => {
     const parts = text.split(/(#[a-zA-Z0-9_]+|@[a-zA-Z0-9_]+)/g);
     return parts.map((part, index) => {
-      if (part.startsWith('#') || part.startsWith('@')) {
+      if (part.startsWith('@')) {
+        const username = part.slice(1);
+        return (
+          <Link
+            key={index}
+            href={`/u/${username}`}
+            className="font-bold hover:underline cursor-pointer"
+            style={{ color: 'var(--primary)' }}
+          >
+            {part}
+          </Link>
+        );
+      }
+      if (part.startsWith('#')) {
         return (
           <span
             key={index}

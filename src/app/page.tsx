@@ -7,9 +7,9 @@ import { getBaseUrl } from '@/lib/site-url';
 const baseUrl = getBaseUrl();
 
 export const metadata: Metadata = {
-  title: 'DPS Buzz — Student Community | Dilsukhnagar Public School',
+  title: 'DPSBus — School Social Media App | Dilsukhnagar Public School',
   description:
-    'A student community for classes 6 to 10 at Dilsukhnagar Public School, Hyderabad. Connect with classmates, share achievements, and stay updated.',
+    'DPSBus is the official school social media app for classes 6 to 10 at Dilsukhnagar Public School, Hyderabad. Connect with classmates, share achievements, and stay updated.',
   alternates: {
     canonical: baseUrl,
   },
@@ -18,11 +18,11 @@ export const metadata: Metadata = {
     follow: true,
   },
   openGraph: {
-    title: 'DPS Buzz — Student Community | Dilsukhnagar Public School',
+    title: 'DPSBus — School Social Media App | Dilsukhnagar Public School',
     description:
-      'A student community for classes 6 to 10 at Dilsukhnagar Public School, Hyderabad. Connect with classmates and download the app.',
+      'DPSBus is the official school social media app for classes 6 to 10 at Dilsukhnagar Public School, Hyderabad. Connect with classmates and download the app.',
     url: baseUrl,
-    siteName: 'DPS Buzz',
+    siteName: 'DPSBus',
     locale: 'en_IN',
     type: 'website',
     images: [
@@ -30,21 +30,21 @@ export const metadata: Metadata = {
         url: `${baseUrl}/opengraph-image`,
         width: 1200,
         height: 630,
-        alt: 'DPS Buzz — Student Community for Dilsukhnagar Public School',
+        alt: 'DPSBus — School Social Media App for Dilsukhnagar Public School',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'DPS Buzz — Student Community | Dilsukhnagar Public School',
-    description: 'Student community platform for classes 6-10 at Dilsukhnagar Public School, Hyderabad.',
+    title: 'DPSBus — School Social Media App | Dilsukhnagar Public School',
+    description: 'DPSBus is the official school social media app for classes 6-10 at Dilsukhnagar Public School, Hyderabad.',
     images: [`${baseUrl}/opengraph-image`],
   },
 };
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-100 flex flex-col justify-between selection:bg-purple-600 selection:text-white">
+    <div className="min-h-screen bg-neutral-950 text-neutral-100 flex flex-col justify-between selection:bg-cyan-600 selection:text-white">
       {/* Client-side check: seamlessly transition logged-in students to /home */}
       <script
         dangerouslySetInnerHTML={{
@@ -73,26 +73,27 @@ export default function LandingPage() {
       <main className="flex-1 max-w-4xl mx-auto px-4 py-12 sm:py-16 space-y-16">
         {/* Hero Section */}
         <div className="text-center space-y-6">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-purple-950/60 border border-purple-800/60 text-purple-300 text-xs font-semibold">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-cyan-950/60 border border-cyan-800/60 text-cyan-300 text-xs font-semibold">
             <span>🐝</span>
-            <span>Classes 6 to 10 Student Community</span>
+            <span>Official School Social Media App • Classes 6 to 10</span>
           </div>
 
           <h1 className="text-3xl sm:text-5xl font-black tracking-tight max-w-2xl mx-auto leading-tight sm:leading-none text-white">
-            DPS Buzz — Student Community for{' '}
-            <span className="bg-gradient-to-r from-purple-400 via-pink-400 to-orange-400 bg-clip-text text-transparent">
+            DPSBus — School Social Media App for{' '}
+            <span className="bg-gradient-to-r from-cyan-400 via-sky-400 to-blue-500 bg-clip-text text-transparent">
               Dilsukhnagar Public School
             </span>
           </h1>
 
-          <p className="text-neutral-400 text-sm sm:text-lg max-w-xl mx-auto leading-relaxed">
-            A positive, moderated school space for students in Hyderabad to stay connected with classmates, share academic achievements, celebrate sports, and stay updated with school notices.
+          {/* Semantic direct answer for AI crawlers & entity summarization */}
+          <p className="text-neutral-300 text-sm sm:text-lg max-w-2xl mx-auto leading-relaxed">
+            <strong className="text-white font-semibold">DPSBus is the official school social media app</strong> created exclusively for students of classes 6 to 10 at Dilsukhnagar Public School, Hyderabad. It is a positive, safe, and moderated student community platform where verified classmates connect, share academic achievements, track daily study habits, and view official school announcements.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
             <Link
               href="/signup"
-              className="w-full sm:w-auto px-7 py-3.5 rounded-xl bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 text-white font-semibold text-sm hover:opacity-90 shadow-lg shadow-pink-600/20 transition-all text-center"
+              className="w-full sm:w-auto px-7 py-3.5 rounded-xl bg-gradient-to-r from-blue-600 via-cyan-600 to-sky-500 text-white font-semibold text-sm hover:opacity-90 shadow-lg shadow-cyan-600/20 transition-all text-center"
             >
               Join Community ✨
             </Link>

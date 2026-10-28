@@ -74,6 +74,8 @@ export interface Post {
   caption: string;
   images: string[];
   imageUrl?: string; // Real high-res photo URL for Instagram-style explore grid
+  videoUrl?: string; // Direct video URL (MP4 / WebM / Cloudinary / R2)
+  isVideo?: boolean; // If true: renders high-performance HTML5 video player with fullscreen
   postImages?: PostImageItem[]; // Cloudflare R2 images metadata
   isReel?: boolean; // If true: displays video/reel play icon in top right corner
   stickerText?: string; // Bold graphic sticker hook on thumbnail (e.g. "WAIT FOR IT! 😱", "ROOM FOR MY STARTUP")
@@ -307,6 +309,10 @@ export interface Group {
   isOfficial: boolean;
   members?: string[];
   color?: string;
+  avatarUrl?: string | null;
+  creator?: string;
+  creatorUsername?: string;
+  creator_username?: string;
 }
 
 export interface GroupJoinRequest {
@@ -368,19 +374,45 @@ export interface BroadcastAlert {
 
 // Fixed Official Account Details
 export const DPS_OFFICIAL_ACCOUNT: Profile = {
-  id: '00000000-0000-0000-0000-000000000001',
-  username: 'dpsbuzz_official',
-  fullName: 'DPS Buzz Official 🐝',
+  id: 'dpsbuzz_official_id',
+  username: 'dpsbuzz',
+  fullName: 'DPS Buzz Official',
   bio: 'The official pulse of Dilsukhnagar Public School. News, notices, events & campus highlights.',
-  avatar: null,
+  avatar: '/icons/logo.png',
   role: 'admin',
   isVerified: true,
   isApproved: true,
-  followerCount: 0,
-  followingCount: 0,
-  postCount: 0,
+  followerCount: 24,
+  followingCount: 1,
+  postCount: 1,
   spiritPoints: 1000,
   createdAt: '2026-10-01T00:00:00.000Z',
+};
+
+export const DEFAULT_LAUNCH_POST: Post = {
+  id: 'post-launch-video',
+  userId: 'dpsbuzz',
+  username: 'dpsbuzz',
+  fullName: 'DPS Buzz Official',
+  class: 'Official',
+  avatar: '/icons/logo.png',
+  userAvatar: '/icons/logo.png',
+  caption: 'launch video 🚀 • Welcome to the official DPS Buzz app! Tagged: @shashwath71845',
+  images: [
+    'https://res.cloudinary.com/ogfaxmjw/video/upload/v1793212568/dpsbuzz/videos/dpsbuzz_launch_video.mp4',
+  ],
+  imageUrl:
+    'https://res.cloudinary.com/ogfaxmjw/video/upload/v1793212568/dpsbuzz/videos/dpsbuzz_launch_video.mp4',
+  videoUrl:
+    'https://res.cloudinary.com/ogfaxmjw/video/upload/v1793212568/dpsbuzz/videos/dpsbuzz_launch_video.mp4',
+  isVideo: true,
+  taggedUsers: ['shashwath71845'],
+  isPinned: true,
+  likes: 18,
+  comments: 4,
+  views: 120,
+  createdAt: '2026-10-28T18:43:17.141Z',
+  timeAgo: 'Just now',
 };
 
 // Fixed Admin Account Details
@@ -554,7 +586,7 @@ export const DUMMY_TEST_USERNAMES = new Set([
   'riya_7g', 'varun_7g', 'priya_10a', 'arjun_9b', 'karthik_8b', 'aarav_8b',
   'kabir_9g', 'neha_9g', 'rohit_10g', 'vihaan_6f', 'tanya_6f',
   'demo-user-1', 'ravi', 'test_ravi', 'testravi', 'test_user', 'testuser',
-  'dpsbuzz_official', 'dps_official', 'dpsbuzz',
+  'testaccount', 'testing', 'ab', 'test_insert_probe', 'test_uuid5_user',
   'admin', 'principal', 'school_principal', 'school principal & office', 'school principal',
 ]);
 
@@ -1347,6 +1379,9 @@ export const DataStore = {
     if (!clean || this.getDeletedUsernames().has(clean) || DUMMY_TEST_USERNAMES.has(clean)) return null;
     const profiles = this.getProfiles();
     let prof = profiles.find((p) => p.username.toLowerCase().trim() === clean) || null;
+    if (!prof && (clean === 'dpsbuzz' || clean === 'dps_official')) {
+      prof = DPS_OFFICIAL_ACCOUNT;
+    }
     if (typeof window !== 'undefined') {
       try {
         const stored = localStorage.getItem('dpsbuzz_user');
@@ -1617,6 +1652,18 @@ export const DataStore = {
       return true;
     });
 
+    if (!filtered.some((p) => p.id === 'post-launch-video')) {
+      filtered.unshift(DEFAULT_LAUNCH_POST);
+    }
+
+    filtered.sort((a, b) => {
+      const aPinned = Boolean(a.isPinned);
+      const bPinned = Boolean(b.isPinned);
+      if (aPinned && !bPinned) return -1;
+      if (!aPinned && bPinned) return 1;
+      return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+    });
+
     const likesMap = this.getPostLikesMap();
     const commentsMap = this.getAllCommentsMap();
 
@@ -1707,6 +1754,7 @@ export const DataStore = {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ post: newPost }),
+        keepalive: true,
       }).catch((e) => console.warn('Failed to sync post to server:', e));
 
       window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated', { detail: { type: 'post', post: newPost, habitResult } }));
@@ -1879,6 +1927,7 @@ export const DataStore = {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ post: repostedPost }),
+        keepalive: true,
       }).catch((e) => console.warn('Failed to sync repost to server:', e));
 
       window.dispatchEvent(
@@ -1954,6 +2003,13 @@ export const DataStore = {
     }
 
     if (typeof window !== 'undefined') {
+      fetch('/api/stories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ story: newStory }),
+        keepalive: true,
+      }).catch((e) => console.warn('Failed to sync repost story to server:', e));
+
       window.dispatchEvent(
         new CustomEvent('dpsbuzz:content_updated', {
           detail: { type: 'repost_story', story: newStory, originalPostId: postId },
@@ -2321,6 +2377,7 @@ export const DataStore = {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ story: created }),
+        keepalive: true,
       }).catch((e) => console.warn('Failed to sync story to server:', e));
 
       window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated', { detail: { type: 'story', story: created } }));
@@ -3645,6 +3702,15 @@ export const DataStore = {
 
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated', { detail: { type: 'notification_added' } }));
+      try {
+        fetch('/api/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            notifications: [newNotif],
+          }),
+        }).catch(() => {});
+      } catch {}
     }
     return newNotif;
   },
@@ -3670,6 +3736,7 @@ export const DataStore = {
     class?: string;
     section?: string;
     members?: string[];
+    avatarUrl?: string | null;
   }): Group {
     const list = this.getGroups();
     const currentUser = this.getCurrentUser();
@@ -3681,9 +3748,13 @@ export const DataStore = {
       category: data.category || 'club',
       class: data.class,
       section: data.section,
-      memberCount: 1, // Only creator is member initially; invited classmates must accept!
+      memberCount: 1, // Creator is member initially; invited classmates must accept!
       members: [currentUser.username],
       isOfficial: false,
+      avatarUrl: data.avatarUrl || null,
+      creator: currentUser.username,
+      creatorUsername: currentUser.username,
+      creator_username: currentUser.username,
     };
     list.unshift(newGroup);
     setStorage(STORAGE_KEYS.GROUPS, list);
@@ -3864,6 +3935,16 @@ export const DataStore = {
           detail: { type: 'group_invite_sent', request: newReq },
         })
       );
+      try {
+        fetch('/api/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            groupJoinRequests: [newReq],
+            notifications: [notifs[0]],
+          }),
+        }).catch(() => {});
+      } catch {}
     }
     return newReq;
   },
@@ -4101,6 +4182,168 @@ export const DataStore = {
       );
     }
     return { success: true };
+  },
+
+  addMemberToGroup(groupId: string, adderUsername: string, targetUsername: string): { success: boolean; message?: string } {
+    const cleanUser = targetUsername.toLowerCase().trim();
+    const cleanAdder = adderUsername.toLowerCase().trim();
+    if (!cleanUser || !groupId) return { success: false, message: 'Invalid target or group' };
+
+    const defaultMembersMap: Record<string, string[]> = {};
+    const storedMembers = getStorage<Record<string, string[]>>(STORAGE_KEYS.GROUP_MEMBERS, defaultMembersMap);
+    const currentMembers = storedMembers[groupId] || [];
+
+    if (currentMembers.map((m) => m.toLowerCase().trim()).includes(cleanUser)) {
+      return { success: false, message: `@${cleanUser} is already in this group` };
+    }
+
+    currentMembers.push(cleanUser);
+    storedMembers[groupId] = currentMembers;
+    setStorage(STORAGE_KEYS.GROUP_MEMBERS, storedMembers);
+
+    let groupName = 'Group';
+    const groups = this.getGroups().map((g) => {
+      if (g.id === groupId) {
+        groupName = g.name;
+        const mems = Array.isArray(g.members) ? [...g.members] : [];
+        if (!mems.map((m) => m.toLowerCase().trim()).includes(cleanUser)) {
+          mems.push(cleanUser);
+        }
+        return { ...g, members: mems, memberCount: Math.max(mems.length, (g.memberCount || 1) + 1) };
+      }
+      return g;
+    });
+    setStorage(STORAGE_KEYS.GROUPS, groups);
+
+    try {
+      this.addNotification({
+        userId: cleanUser,
+        type: 'system',
+        title: 'Added to Group 🎉',
+        body: `@${cleanAdder} added you to "${groupName}"`,
+        link: '/groups',
+      });
+    } catch {}
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('dpsbuzz:content_updated', {
+          detail: { type: 'group_member_added', groupId, username: cleanUser },
+        })
+      );
+      try {
+        fetch('/api/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            groups,
+            groupMembers: storedMembers,
+          }),
+        }).catch(() => {});
+      } catch {}
+    }
+
+    return { success: true, message: `Added @${cleanUser} to "${groupName}"` };
+  },
+
+  leaveGroup(groupId: string, username: string): { success: boolean; message?: string } {
+    const cleanUser = username.toLowerCase().trim();
+    if (!cleanUser || !groupId) return { success: false, message: 'Invalid user or group' };
+
+    const defaultMembersMap: Record<string, string[]> = {};
+    const storedMembers = getStorage<Record<string, string[]>>(STORAGE_KEYS.GROUP_MEMBERS, defaultMembersMap);
+    if (storedMembers[groupId]) {
+      storedMembers[groupId] = storedMembers[groupId].filter((m) => m.toLowerCase().trim() !== cleanUser);
+      setStorage(STORAGE_KEYS.GROUP_MEMBERS, storedMembers);
+    }
+
+    const groups = this.getGroups().map((g) => {
+      if (g.id === groupId) {
+        const mems = (Array.isArray(g.members) ? g.members : []).filter((m) => m.toLowerCase().trim() !== cleanUser);
+        let nextCreator = g.creator || g.creatorUsername || g.creator_username;
+        if (nextCreator?.toLowerCase().trim() === cleanUser && mems.length > 0) {
+          nextCreator = mems[0];
+        }
+        return {
+          ...g,
+          members: mems,
+          memberCount: mems.length,
+          creator: nextCreator,
+          creatorUsername: nextCreator,
+          creator_username: nextCreator,
+        };
+      }
+      return g;
+    });
+    setStorage(STORAGE_KEYS.GROUPS, groups);
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('dpsbuzz:content_updated', {
+          detail: { type: 'group_left', groupId, username: cleanUser },
+        })
+      );
+      try {
+        fetch('/api/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            groups,
+            groupMembers: storedMembers,
+          }),
+        }).catch(() => {});
+      } catch {}
+    }
+
+    return { success: true, message: 'Left group successfully' };
+  },
+
+  removeMemberFromGroup(groupId: string, adminUsername: string, targetUsername: string): { success: boolean; message?: string } {
+    const cleanAdmin = adminUsername.toLowerCase().trim();
+    const cleanTar = targetUsername.toLowerCase().trim();
+    const group = this.getGroups().find((g) => g.id === groupId);
+    if (!group) return { success: false, message: 'Group not found' };
+
+    const isGroupCreator = (group.creator || group.creatorUsername || group.creator_username || '').toLowerCase().trim() === cleanAdmin;
+    if (!isGroupCreator && cleanAdmin !== 'shashwath71845') {
+      return { success: false, message: 'Only the group creator or admin can remove members' };
+    }
+
+    const defaultMembersMap: Record<string, string[]> = {};
+    const storedMembers = getStorage<Record<string, string[]>>(STORAGE_KEYS.GROUP_MEMBERS, defaultMembersMap);
+    if (storedMembers[groupId]) {
+      storedMembers[groupId] = storedMembers[groupId].filter((m) => m.toLowerCase().trim() !== cleanTar);
+      setStorage(STORAGE_KEYS.GROUP_MEMBERS, storedMembers);
+    }
+
+    const groups = this.getGroups().map((g) => {
+      if (g.id === groupId) {
+        const mems = (Array.isArray(g.members) ? g.members : []).filter((m) => m.toLowerCase().trim() !== cleanTar);
+        return { ...g, members: mems, memberCount: Math.max(1, mems.length) };
+      }
+      return g;
+    });
+    setStorage(STORAGE_KEYS.GROUPS, groups);
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('dpsbuzz:content_updated', {
+          detail: { type: 'group_member_removed', groupId, username: cleanTar },
+        })
+      );
+      try {
+        fetch('/api/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            groups,
+            groupMembers: storedMembers,
+          }),
+        }).catch(() => {});
+      } catch {}
+    }
+
+    return { success: true, message: `Removed @${cleanTar} from group` };
   },
 
   // Student Join Requests (students asking to join groups)
@@ -4961,10 +5204,43 @@ export const DataStore = {
     return this.isFollowRequested(requester, target);
   },
 
-  requestFollow(requester: string, target: string): void {
+  requestFollow(requester: string, target: string): { success: boolean; error?: string; autoAccepted?: boolean; message?: string } {
     const cleanReq = requester.toLowerCase().trim();
     const cleanTar = target.toLowerCase().trim();
-    if (!cleanReq || !cleanTar || cleanReq === cleanTar) return; // Cannot request self
+    if (!cleanReq || !cleanTar) {
+      return { success: false, error: 'Invalid requester or target username' };
+    }
+    if (cleanReq === cleanTar) {
+      return { success: false, error: 'You cannot send a friend request to yourself 🙅' };
+    }
+
+    if (this.isBlocked(cleanTar, cleanReq)) {
+      return { success: false, error: 'Unable to send friend request to this user.' };
+    }
+
+    const targetProf = this.getProfileByUsername(cleanTar);
+    if (targetProf && (targetProf as any).is_approved === false) {
+      return { success: false, error: 'Student account is pending school verification.' };
+    }
+
+    // Abuse Throttling: Max 30 requests sent in 24 hours
+    const dailyKey = `dpsbuzz_req_daily_${cleanReq}`;
+    const storedTimestamps = getStorage<number[]>(dailyKey, []);
+    const now = Date.now();
+    const oneDayAgo = now - 24 * 60 * 60 * 1000;
+    const validTimestamps = storedTimestamps.filter((t) => t > oneDayAgo);
+    if (validTimestamps.length >= 30) {
+      return { success: false, error: 'Daily friend request limit reached (max 30 per day). Please try again tomorrow.' };
+    }
+
+    // Mutual check: If target already requested requester -> AUTO-ACCEPT!
+    if (this.hasRequestedFollow(cleanTar, cleanReq)) {
+      this.acceptFollowRequest(cleanReq, cleanTar);
+      return { success: true, autoAccepted: true, message: `Mutual request! You and @${cleanTar} are now friends! 🎉` };
+    }
+
+    validTimestamps.push(now);
+    setStorage(dailyKey, validTimestamps);
 
     let list = this.getFollowRequests();
     if (!list.some((r) => r.requester.toLowerCase() === cleanReq && r.target.toLowerCase() === cleanTar)) {
@@ -5001,6 +5277,8 @@ export const DataStore = {
         }).catch(() => {});
       } catch {}
     }
+
+    return { success: true, autoAccepted: false, message: `Friend request sent to @${cleanTar} 🔒` };
   },
 
   cancelFollowRequest(requester: string, target: string): void {
@@ -5131,6 +5409,55 @@ export const DataStore = {
           detail: { type: 'follow_declined', target, requester },
         })
       );
+    }
+  },
+
+  removeFriend(user1: string, user2: string): void {
+    const cleanU1 = user1.toLowerCase().trim();
+    const cleanU2 = user2.toLowerCase().trim();
+    if (!cleanU1 || !cleanU2 || cleanU1 === cleanU2) return;
+
+    let list = this.getFollows();
+    list = list.filter(
+      (f) =>
+        !(
+          (f.follower.toLowerCase() === cleanU1 && f.following.toLowerCase() === cleanU2) ||
+          (f.follower.toLowerCase() === cleanU2 && f.following.toLowerCase() === cleanU1)
+        )
+    );
+    setStorage(STORAGE_KEYS.FOLLOWS, list);
+
+    const u1Fers = list.filter((f) => f.following.toLowerCase().trim() === cleanU1).length;
+    const u1Fing = list.filter((f) => f.follower.toLowerCase().trim() === cleanU1).length;
+    const u2Fers = list.filter((f) => f.following.toLowerCase().trim() === cleanU2).length;
+    const u2Fing = list.filter((f) => f.follower.toLowerCase().trim() === cleanU2).length;
+
+    const profiles = this.getProfiles().map((p) => {
+      const u = p.username.toLowerCase().trim();
+      if (u === cleanU1) return { ...p, followerCount: u1Fers, followingCount: u1Fing };
+      if (u === cleanU2) return { ...p, followerCount: u2Fers, followingCount: u2Fing };
+      return p;
+    });
+    setStorage(STORAGE_KEYS.PROFILES, profiles);
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('dpsbuzz:content_updated', {
+          detail: { type: 'unfriended', user1: cleanU1, user2: cleanU2 },
+        })
+      );
+      try {
+        fetch('/api/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            removedFollows: [
+              { follower: cleanU1, following: cleanU2 },
+              { follower: cleanU2, following: cleanU1 },
+            ],
+          }),
+        }).catch(() => {});
+      } catch {}
     }
   },
 
@@ -5728,6 +6055,18 @@ export const DataStore = {
     const sClass = String(studentClass).toLowerCase().trim();
     const sSec = String(studentSection || '').toLowerCase().trim();
 
+    // Regex extraction: e.g. "8 g", "8-g", "8g", "class 8 g", "class 8", "grade 8 g"
+    const match = q.match(/^(?:class|grade)?\s*(\d{1,2})(?:th)?(?:\s*class)?\s*[-_\s/]?\s*([a-gA-G])?$/i);
+    if (match) {
+      const qClass = match[1];
+      const qSec = match[2]?.toLowerCase();
+      if (qClass === sClass) {
+        if (!qSec) return true; // e.g. "8" or "class 8" matches all class 8 students
+        return qSec === sSec;   // exact section match (e.g. "8 g" ONLY matches Section G)
+      }
+      return false;
+    }
+
     // Direct string combinations
     const directVariants = [
       `${sClass} ${sSec}`,
@@ -5736,7 +6075,6 @@ export const DataStore = {
       `class ${sClass} ${sSec}`,
       `class ${sClass}${sSec}`,
       `class ${sClass}-${sSec}`,
-      `class ${sClass}`,
       `grade ${sClass} ${sSec}`,
       `grade ${sClass}${sSec}`,
       `grade ${sClass}-${sSec}`,
@@ -5745,20 +6083,12 @@ export const DataStore = {
       `${sClass}th ${sSec} section`,
     ];
 
-    if (directVariants.some((v) => q === v || q.includes(v) || v.includes(q))) {
+    if (directVariants.some((v) => q === v)) {
       return true;
     }
 
-    // Regex extraction: e.g. "8 g", "8-g", "8g", "class 8 g"
-    const match = q.match(/^(\d{1,2})\s*[-_\s/]?\s*([a-gA-G])?$/) ||
-                  q.match(/(?:class|grade)?\s*(\d{1,2})\s*[-_\s/]?\s*([a-gA-G])?/);
-    if (match) {
-      const qClass = match[1];
-      const qSec = match[2]?.toLowerCase();
-      if (qClass && qClass === sClass) {
-        if (!qSec) return true; // e.g. "8" matches all class 8
-        if (qSec === sSec) return true; // exact section match (e.g. "8 g" matches 8-G)
-      }
+    if (q === `class ${sClass}` || q === sClass) {
+      return true;
     }
 
     return false;
@@ -6640,7 +6970,7 @@ export const DataStore = {
             const rExistingIdx = recipientConv.findIndex(
               (c: any) => (c.username || '').toLowerCase() === cur || c.id === rConvId || c.id === canonicalId
             );
-            const incomingTier = this.getInboxTier(cleanT, cur);
+            const incomingTier = 'PRIMARY';
             const recipientPreview = customMsg ? `${senderName}: ${customMsg}` : `${senderName} shared a post 📸`;
 
             if (rExistingIdx >= 0) {
@@ -6696,6 +7026,7 @@ export const DataStore = {
             recipientUsername: isGroup ? undefined : cleanT,
             message: newMsg,
           }),
+          keepalive: true,
         }).catch((err) => console.warn('Failed to post shared post to cloud chat:', err));
 
         // 6. Create in-app notification for target user

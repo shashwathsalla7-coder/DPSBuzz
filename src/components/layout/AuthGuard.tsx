@@ -75,8 +75,38 @@ function AuthGuardInner({ children }: { children: React.ReactNode }) {
     };
 
     verifySession();
+
+    // Auto-refresh session and reload data seamlessly when returning from idle
+    const handleReturnFromIdle = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        verifySession();
+        DataStore.syncWithServer(true).catch(() => {});
+        window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated', { detail: { type: 'resume_from_idle' } }));
+      }
+    };
+
+    // Automatic silent recovery on deployment ChunkLoadError
+    const handleGlobalError = (event: ErrorEvent) => {
+      if (event?.message && /Loading chunk|ChunkLoadError/i.test(event.message)) {
+        const reloaded = sessionStorage.getItem('dpsbuzz_chunk_reloaded');
+        if (!reloaded) {
+          sessionStorage.setItem('dpsbuzz_chunk_reloaded', 'true');
+          window.location.reload();
+        }
+      }
+    };
+
     window.addEventListener('storage', verifySession);
-    return () => window.removeEventListener('storage', verifySession);
+    document.addEventListener('visibilitychange', handleReturnFromIdle);
+    window.addEventListener('focus', handleReturnFromIdle);
+    window.addEventListener('error', handleGlobalError);
+
+    return () => {
+      window.removeEventListener('storage', verifySession);
+      document.removeEventListener('visibilitychange', handleReturnFromIdle);
+      window.removeEventListener('focus', handleReturnFromIdle);
+      window.removeEventListener('error', handleGlobalError);
+    };
   }, [isPublicRoute, router]);
 
   if (isPublicRoute) {
@@ -87,7 +117,7 @@ function AuthGuardInner({ children }: { children: React.ReactNode }) {
     return (
       <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4 select-none">
         <div className="relative flex items-center justify-center">
-          <div className="w-14 h-14 rounded-full bg-gradient-to-tr from-purple-600 via-pink-600 to-amber-500 p-[3px] animate-spin">
+          <div className="w-14 h-14 rounded-full bg-gradient-to-tr from-blue-600 via-cyan-500 to-emerald-500 p-[3px] animate-spin">
             <div className="w-full h-full bg-black rounded-full" />
           </div>
           <span className="absolute text-2xl">🐝</span>

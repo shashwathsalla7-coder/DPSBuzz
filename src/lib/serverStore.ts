@@ -5,7 +5,8 @@ import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import type { Post, Story, Profile, ChatNote, Notice, NotificationItem, NotificationType, CallSession } from './dataStore';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const rawKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const SUPABASE_KEY = (rawKey && !rawKey.includes('your-service')) ? rawKey : (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '');
 
 function getSupabase() {
   return createSupabaseClient(
@@ -138,7 +139,7 @@ export function normalizeStore(parsed: any): ServerStoreData {
 
   const deletedUsernamesList: string[] = Array.isArray(parsed.deletedUsernames) ? parsed.deletedUsernames : [];
   const deletedUsernamesSet = new Set(deletedUsernamesList.map((u: string) => (u || '').toLowerCase().trim()));
-  const TEST_DUMMIES = new Set(['arjun_8a', 'priya_7b', 'arjun', 'priya', 'demo-user-1', 'test_user', 'testuser']);
+  const TEST_DUMMIES = new Set(['arjun_8a', 'priya_7b', 'arjun', 'priya', 'demo-user-1', 'test_user', 'testuser', 'testaccount', 'testing', 'ab', 'test_insert_probe', 'test_uuid5_user']);
 
   // Clean follows (exclude deleted users and test dummies)
   const rawFollows = Array.isArray(parsed.follows) ? parsed.follows : [];

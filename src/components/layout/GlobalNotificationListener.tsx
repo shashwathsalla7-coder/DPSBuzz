@@ -10,6 +10,7 @@ import {
   requestNotificationPermission,
   getNotificationPermission,
 } from '@/lib/pushNotifications';
+import { supabase } from '@/hooks/useChatMessages';
 
 interface IncomingChatToast {
   id: string;
@@ -493,6 +494,134 @@ export function GlobalNotificationListener() {
     let channel: BroadcastChannel | null = null;
     let c4Channel: BroadcastChannel | null = null;
     let cricketChannel: BroadcastChannel | null = null;
+    let sbChannel: any = null;
+
+    // Live Cross-Device Supabase Realtime Listener (Instant notification across phone, tablet & PC)
+    const currentUser = DataStore.getCurrentUser();
+    const uname = (currentUser?.username || '').toLowerCase().trim();
+
+    if (uname && uname !== 'guest') {
+      try {
+        sbChannel = supabase
+          .channel(`realtime:global_student_notifs:${uname}`)
+          .on(
+            'postgres_changes',
+            { event: 'INSERT', schema: 'public', table: 'messages' },
+            (payload) => {
+              const freshMessage = payload.new as any;
+              if (!freshMessage || !freshMessage.chat_id) return;
+              const senderId = (freshMessage.sender_id || '').toLowerCase().trim();
+              if (senderId === uname) return;
+
+              // Check if current user is participant
+              const chatId = freshMessage.chat_id;
+              let isRecipient = false;
+              let otherUser = '';
+
+              if (chatId.includes('__')) {
+                const parts = chatId.split('__').map((p: string) => p.trim().toLowerCase());
+                if (parts.includes(uname)) {
+                  isRecipient = true;
+                  otherUser = parts.find((p: string) => p !== uname) || senderId;
+                }
+              } else if (chatId.startsWith('conv-group-') || chatId.startsWith('group-')) {
+                const groupId = chatId.replace(/^conv-/, '');
+                const groupMembers = DataStore.getGroupMembers(groupId).map((m: any) =>
+                  typeof m === 'string' ? m.toLowerCase().trim() : (m.username || '').toLowerCase().trim()
+                );
+                if (groupMembers.includes(uname) || uname === 'shashwath71845') {
+                  isRecipient = true;
+                  otherUser = 'group';
+                }
+              } else if (chatId.startsWith('conv-')) {
+                const cleanTarget = chatId.replace(/^conv-/, '').toLowerCase().trim();
+                if (cleanTarget === uname || senderId !== uname) {
+                  isRecipient = true;
+                  otherUser = senderId;
+                }
+              }
+
+              if (!isRecipient) return;
+              if (seenMessageIdsRef.current.has(freshMessage.id) || (freshMessage.client_id && seenMessageIdsRef.current.has(freshMessage.client_id))) {
+                return;
+              }
+              seenMessageIdsRef.current.add(freshMessage.id);
+              if (freshMessage.client_id) seenMessageIdsRef.current.add(freshMessage.client_id);
+
+              const allProfiles = DataStore.getProfiles();
+              const senderProf = allProfiles.find((p) => (p.username || '').toLowerCase() === senderId);
+              const senderName = senderProf ? senderProf.fullName : senderId;
+
+              let previewText = freshMessage.text || 'Sent an attachment 📸';
+              let notifTitle = `💬 New Message from @${senderId}`;
+              let isGameInvite = false;
+              let gameType: 'connect4' | 'cricket' | undefined = undefined;
+
+              if (typeof freshMessage.text === 'string' && freshMessage.text.startsWith('🔴 [CONNECT4_GAME]:')) {
+                isGameInvite = true;
+                gameType = 'connect4';
+                previewText = '🔴 Challenged you to a Connect 4 duel! 🎮';
+                notifTitle = `🔴 @${senderId} challenged you to Connect 4!`;
+              } else if (typeof freshMessage.text === 'string' && freshMessage.text.startsWith('🎮 [CRICKET_GAME]:')) {
+                isGameInvite = true;
+                gameType = 'cricket';
+                previewText = '🏏 Challenged you to Guess the Cricketer! 🏆';
+                notifTitle = `🎮 @${senderId} challenged you to Guess the Cricketer!`;
+              }
+
+              // Sound & physical vibration
+              playNotificationChime();
+              if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+                try { navigator.vibrate([200, 100, 200]); } catch {}
+              }
+
+              // System OS push notification on device
+              showBackgroundNotification(`DPS Buzz • ${senderName}`, {
+                body: previewText,
+                icon: senderProf?.avatar || '/icons/icon-192.png',
+                tag: `chat-${senderId}`,
+                url: `/chats?user=${encodeURIComponent(senderId)}`,
+                vibrate: [200, 100, 200],
+              }).catch(() => {});
+
+              // In-app toast banner
+              const activeChatUser = (typeof window !== 'undefined' ? (sessionStorage.getItem('dpsbuzz_active_chat_user') || '') : '').toLowerCase().trim();
+              const isCurrentlyInThisChat =
+                pathnameRef.current === '/chats' &&
+                activeChatUser !== '' &&
+                activeChatUser === senderId;
+
+              if (!isCurrentlyInThisChat) {
+                setActiveToast({
+                  id: freshMessage.id,
+                  senderUsername: senderId,
+                  senderName,
+                  senderAvatar: senderProf?.avatar || null,
+                  text: previewText,
+                  time: freshMessage.created_at ? new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date(freshMessage.created_at)) : 'Just now',
+                  conversationId: chatId,
+                  isGameInvite,
+                  gameType,
+                });
+              }
+
+              // Notification center history
+              DataStore.addNotification({
+                userId: uname,
+                type: isGameInvite ? 'connect4' : 'chat',
+                title: notifTitle,
+                body: previewText,
+                link: `/chats?user=${senderId}`,
+              });
+
+              window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated'));
+            }
+          )
+          .subscribe();
+      } catch (err) {
+        console.warn('Supabase Realtime notification channel error:', err);
+      }
+    }
 
     if (typeof BroadcastChannel !== 'undefined') {
       try {
@@ -536,6 +665,9 @@ export function GlobalNotificationListener() {
       if (channel) channel.close();
       if (c4Channel) c4Channel.close();
       if (cricketChannel) cricketChannel.close();
+      if (sbChannel) {
+        try { supabase.removeChannel(sbChannel); } catch {}
+      }
       window.removeEventListener('dpsbuzz:chat_event', handleCustomChatEvent);
     };
   }, [pathname, playNotificationChime]);
@@ -563,7 +695,7 @@ export function GlobalNotificationListener() {
             className="rounded-2xl border p-3 shadow-xl backdrop-blur-2xl flex items-center justify-between gap-3"
             style={{
               backgroundColor: 'rgba(18, 18, 18, 0.95)',
-              borderColor: 'rgba(236, 72, 153, 0.35)',
+              borderColor: 'rgba(6, 182, 212, 0.4)',
               boxShadow: '0 10px 30px rgba(0, 0, 0, 0.6)',
             }}
           >
@@ -605,8 +737,8 @@ export function GlobalNotificationListener() {
             className="rounded-2xl border p-3 shadow-2xl backdrop-blur-2xl flex items-center gap-3 transition-all cursor-pointer hover:scale-[1.01] active:scale-[0.99]"
             style={{
               backgroundColor: 'rgba(18, 18, 18, 0.96)',
-              borderColor: 'rgba(236, 72, 153, 0.45)',
-              boxShadow: '0 16px 40px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(236, 72, 153, 0.3)',
+              borderColor: 'rgba(6, 182, 212, 0.45)',
+              boxShadow: '0 16px 40px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(6, 182, 212, 0.25)',
             }}
             onClick={() => handleOpenChatFromToast(activeToast.senderUsername)}
           >
@@ -626,7 +758,7 @@ export function GlobalNotificationListener() {
                   activeToast.senderName.slice(0, 2).toUpperCase()
                 )}
               </div>
-              <span className={`absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full ${activeToast.isGameInvite ? 'bg-gradient-to-r from-[#833AB4] to-[#F77737]' : 'bg-emerald-500'} border-2 border-[#121212] flex items-center justify-center`}>
+              <span className={`absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full ${activeToast.isGameInvite ? 'bg-gradient-to-r from-cyan-500 to-blue-600' : 'bg-emerald-500'} border-2 border-[#121212] flex items-center justify-center`}>
                 {activeToast.isGameInvite ? (
                   <Gamepad2 size={9} className="text-white" />
                 ) : (
@@ -642,7 +774,7 @@ export function GlobalNotificationListener() {
                   <span>{activeToast.senderName}</span>
                   <span className="text-[11px] text-zinc-400 font-normal">@{activeToast.senderUsername}</span>
                   {activeToast.isGameInvite && (
-                    <span className="px-1.5 py-0.5 rounded-full bg-gradient-to-r from-[#833AB4] to-[#F77737] text-[9px] font-black text-white shrink-0">
+                    <span className="px-1.5 py-0.5 rounded-full bg-gradient-to-r from-cyan-500 to-blue-600 text-[9px] font-black text-white shrink-0">
                       GAME
                     </span>
                   )}

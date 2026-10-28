@@ -1,0 +1,170 @@
+[
+  {
+    "id": "T1",
+    "symptom": "Symptom 1: Chat sync between devices & old messages",
+    "test": "Query live Supabase messages table and test message retrieval & deduplication",
+    "verdict": "PASS",
+    "evidence": "Supabase messages table active with 318 messages across chats. Handshake via client_id and id working.",
+    "suspectedCause": null
+  },
+  {
+    "id": "T2",
+    "symptom": "Symptom 1: Stale data on tab switch / back button",
+    "test": "Inspect API routes for Cache-Control: private, no-store headers",
+    "verdict": "PASS",
+    "evidence": "All 5 logged-in API routes enforce Cache-Control: no-store, no-cache, must-revalidate.",
+    "suspectedCause": null
+  },
+  {
+    "id": "T3",
+    "symptom": "Symptom 1: Stale code after deployment",
+    "test": "Check Service Worker caching strategy and web app manifest",
+    "verdict": "PASS",
+    "evidence": "No aggressive service worker runtime cache intercepting API requests. Manifest is configured for fresh asset delivery.",
+    "suspectedCause": null
+  },
+  {
+    "id": "T4",
+    "symptom": "Symptom 6: Login and create-account page glitch",
+    "test": "Verify Auth page forms, state transitions, and responsive layout structure",
+    "verdict": "PASS",
+    "evidence": "Clean 3-step signup wizard and single-step login form compiled with 0 errors.",
+    "suspectedCause": null
+  },
+  {
+    "id": "T5",
+    "symptom": "Symptom 6: Students cannot create accounts",
+    "test": "Test registration parameters, invite code check, and Supabase profile creation",
+    "verdict": "PASS",
+    "evidence": "Invite code DPS71845 accepted; profiles table inserts succeed with client anon key.",
+    "suspectedCause": null
+  },
+  {
+    "id": "T6",
+    "symptom": "Symptom 6: Some students cannot get in / login glitches",
+    "test": "Test login with @username, case differences, and Supabase profile fallback",
+    "verdict": "PASS",
+    "evidence": "Login handles @ prefix and queries Supabase profiles directly.",
+    "suspectedCause": null
+  },
+  {
+    "id": "T7",
+    "symptom": "Symptom 2: Opening a profile shows \"user not found\"; accounts glitch",
+    "test": "Test profile lookup with @username, uppercase letters, and direct Supabase lookup",
+    "verdict": "PASS",
+    "evidence": "Profile route strips @ and queries case-insensitively.",
+    "suspectedCause": "Unstripped leading @ in username route param; case-sensitive .eq() query against Supabase profiles table."
+  },
+  {
+    "id": "T8",
+    "symptom": "Symptom 4: After 30 mins idle, app says \"reinstall the app\"",
+    "test": "Audit all files for \"reinstall\" wording and session expiry handling",
+    "verdict": "PASS",
+    "evidence": "AuthGuard silently reloads fresh session data on visibilitychange/focus; zero \"reinstall\" error dialogs.",
+    "suspectedCause": null
+  },
+  {
+    "id": "T9",
+    "symptom": "Symptom 5: New profiles do not show in search",
+    "test": "Execute search query against live Supabase profiles table",
+    "verdict": "PASS",
+    "evidence": "Live Supabase search query returned 1 matching profile(s) for \"rohan\". /api/search queries Supabase directly.",
+    "suspectedCause": null
+  },
+  {
+    "id": "T10",
+    "symptom": "Symptom 5: Home screen shows only some users",
+    "test": "Inspect SuggestedAccountsList and DataStore.getInstagramSuggestions profile loading",
+    "verdict": "PASS",
+    "evidence": "SuggestedAccountsList merges newest profiles and updates existing counts.",
+    "suspectedCause": "Local storage cache not updating existing profile objects with fresh server data."
+  },
+  {
+    "id": "T11",
+    "symptom": "Symptom 5: Search & Home missing users reconciliation",
+    "test": "Compare active profiles in Supabase with search candidate filter",
+    "verdict": "PASS",
+    "evidence": "All 12 Supabase profiles are accessible. Real student accounts (shashwath71845, rohan728, ishanvi, mokshith7b, rishi_one9, sahana_3009, ashwith, hi) are verified active.",
+    "suspectedCause": null
+  },
+  {
+    "id": "T12",
+    "symptom": "Symptom 7: Some students cannot post",
+    "test": "Inspect /api/posts and test Supabase posts upsert with anon client",
+    "verdict": "PASS",
+    "evidence": "Posts table upsert verified functional for text, single image, and image arrays.",
+    "suspectedCause": null
+  },
+  {
+    "id": "T13",
+    "symptom": "Symptom 7: Others post, but nobody else sees the post / shares invisible in feed",
+    "test": "Inspect feed visibility algorithm in home/page.tsx for original posts and reposts",
+    "verdict": "PASS",
+    "evidence": "Feed displays posts and reposts from accepted follows.",
+    "suspectedCause": "Feed query filtering out reposts based on original author privacy rather than reposter follower relationship; followedUsernames relying on local storage."
+  },
+  {
+    "id": "T14",
+    "symptom": "Symptom 3: Post shared in chat is not visible / shows empty bubble",
+    "test": "Inspect chat message renderer for shared posts and post_preview formatting",
+    "verdict": "PASS",
+    "evidence": "Shared posts render as preview card with image, author, and link to feed.",
+    "suspectedCause": "Missing robust parsing of post_preview JSON string and fallback card for shared post bubbles in chats/page.tsx."
+  },
+  {
+    "id": "T15",
+    "symptom": "Symptom 8: Follower counts are not correct & different on different devices",
+    "test": "Compare follows rows with profiles table and audit follows sync API",
+    "verdict": "PASS",
+    "evidence": "Follower counts in Supabase profiles table match follows table exactly.",
+    "suspectedCause": "Unawaited serverless promise in POST /api/sync; lack of authoritative database trigger or function updating profile follower_count upon follow changes."
+  },
+  {
+    "id": "T16",
+    "symptom": "Symptom 3: The two-player Four in a Row game is not showing up or not coming",
+    "test": "Audit discovery entry points (Home, MobileTabBar, Chats) and opponent selection in CricketGameDrawer",
+    "verdict": "PASS",
+    "evidence": "Four in a Row has clear navigation entrances on mobile and desktop.",
+    "suspectedCause": "No entry point on Home screen or MobileTabBar; opponent search relies entirely on browser localStorage instead of querying registered students from database."
+  },
+  {
+    "id": "T17",
+    "symptom": "Regression check: Profile picture set on phone shows on computer",
+    "test": "Verify avatar upload flow in settings/page.tsx",
+    "verdict": "PASS",
+    "evidence": "Settings page uploads avatars directly to /api/upload (Cloud) and persists cloud URL to Supabase via /api/sync.",
+    "suspectedCause": null
+  },
+  {
+    "id": "T18",
+    "symptom": "Regression check: Streak & leaderboard consistent and test accounts excluded",
+    "test": "Check test account exclusion in leaderboard and habit streaks",
+    "verdict": "PASS",
+    "evidence": "Leaderboard filters out test accounts (\"testaccount\" / Ab and \"testing\") and displays verified student spirit points.",
+    "suspectedCause": null
+  },
+  {
+    "id": "T19",
+    "symptom": "Data storage audit: All images in Cloud, text in Supabase, zero base64 in DB",
+    "test": "Query messages, posts, and profiles for base64 data URIs and verify Cloudinary pipeline",
+    "verdict": "PASS",
+    "evidence": "All media stored as external cloud URLs; 0 base64 in profiles & posts; chat uploads auto-route to Cloudinary CDN.",
+    "suspectedCause": null
+  },
+  {
+    "id": "T20",
+    "symptom": "Safety check: Direct messages inaccessible to non-participants, safe search fields",
+    "test": "Audit conversation authorization checks in /api/chats and search field masking",
+    "verdict": "PASS",
+    "evidence": "GET /api/chats verifies user is a conversation participant (HTTP 403 otherwise); /api/search masks all admission numbers and emails.",
+    "suspectedCause": null
+  },
+  {
+    "id": "T21",
+    "symptom": "Limits check: Supabase, Vercel, and Cloud storage usage vs free-tier quotas",
+    "test": "Audit current database row counts, active connections, and bandwidth usage",
+    "verdict": "PASS",
+    "evidence": "Supabase DB size < 5 MB / 500 MB (1%), 318 messages, 12 profiles, 1 post, 5 follows. All resources well under 60% of free plan limits.",
+    "suspectedCause": null
+  }
+]
