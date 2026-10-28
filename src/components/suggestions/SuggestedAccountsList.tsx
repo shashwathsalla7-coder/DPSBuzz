@@ -67,8 +67,18 @@ export function SuggestedAccountsList({
           for (const sp of data.profiles) {
             if (!sp || !sp.username) continue;
             const u = sp.username.toLowerCase();
-            if (!map.has(u)) {
+            const existing = map.get(u);
+            if (!existing) {
               map.set(u, sp);
+              changed = true;
+            } else if (
+              existing.avatar !== sp.avatar ||
+              existing.followerCount !== sp.followerCount ||
+              existing.followingCount !== sp.followingCount ||
+              existing.fullName !== sp.fullName ||
+              existing.isVerified !== sp.isVerified
+            ) {
+              map.set(u, { ...existing, ...sp });
               changed = true;
             }
           }

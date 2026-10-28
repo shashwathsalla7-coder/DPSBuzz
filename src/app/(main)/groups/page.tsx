@@ -44,6 +44,9 @@ export default function GroupsPage() {
   const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
   const [selectedGroupMembers, setSelectedGroupMembers] = useState<string[]>([]);
+  const [groupAvatarUrl, setGroupAvatarUrl] = useState<string | null>(null);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [isSubmittingGroup, setIsSubmittingGroup] = useState(false);
 
   // Join Requests, Invites, and Groups State
   const [joinRequests, setJoinRequests] = useState<GroupJoinRequest[]>(() => (typeof window !== 'undefined' ? DataStore.getGroupJoinRequests() : []));
@@ -130,27 +133,40 @@ export default function GroupsPage() {
     }
   };
 
-  const handleCreateGroupSubmit = () => {
-    const name = newGroupName.trim() || 'New Study Group';
-    if (selectedGroupMembers.length === 0) {
-      showToast('Please select at least one student to invite to the group.');
+  const handleCreateGroupSubmit = async () => {
+    const name = newGroupName.trim();
+    if (!name) {
+      showToast('Please enter a name for your group 📝');
       return;
     }
 
-    // Create group in DataStore (registers only creator as enrolled member, sends invitations to classmates)
-    DataStore.createGroup({
-      name,
-      description: `Student study group created by @${currentUser.username}`,
-      category: 'Study Group',
-      members: selectedGroupMembers,
-    });
+    if (isSubmittingGroup) return;
+    setIsSubmittingGroup(true);
 
-    setIsCreateGroupOpen(false);
-    setNewGroupName('');
-    setSelectedGroupMembers([]);
-    reloadData();
-    showToast(`Created group "${name}"! Invitations sent to ${selectedGroupMembers.length} classmate${selectedGroupMembers.length > 1 ? 's' : ''}. 📬`);
-    router.push('/chats');
+    try {
+      // Create group in DataStore (registers only creator as enrolled member, sends invitations to classmates if selected)
+      DataStore.createGroup({
+        name,
+        description: `Student study group created by @${currentUser.username}`,
+        category: 'Study Group',
+        members: selectedGroupMembers,
+        avatarUrl: groupAvatarUrl || null,
+      });
+
+      setIsCreateGroupOpen(false);
+      setNewGroupName('');
+      setGroupAvatarUrl(null);
+      setSelectedGroupMembers([]);
+      reloadData();
+      if (selectedGroupMembers.length > 0) {
+        showToast(`Created group "${name}"! Invitations sent to ${selectedGroupMembers.length} classmate${selectedGroupMembers.length > 1 ? 's' : ''}. 📬`);
+      } else {
+        showToast(`Created group "${name}"! 🎉 You can invite classmates anytime.`);
+      }
+      router.push('/chats');
+    } finally {
+      setIsSubmittingGroup(false);
+    }
   };
 
   // Group Invitation Handlers ("Yes, I want to join" / "No, I don't want to join")
@@ -1116,6 +1132,64 @@ export default function GroupsPage() {
                 />
               </div>
 
+              {/* Group Icon (Cloudflare Media CDN) */}
+              <div
+                className="flex items-center gap-3 p-3 rounded-[16px] border"
+                style={{ borderColor: 'var(--line)', backgroundColor: 'var(--surface-sunken)' }}
+              >
+                <div
+                  className="w-11 h-11 rounded-full flex items-center justify-center font-bold text-xs shrink-0 border overflow-hidden"
+                  style={{ borderColor: 'var(--line)', backgroundColor: 'var(--surface)' }}
+                >
+                  {groupAvatarUrl ? (
+                    <img src={groupAvatarUrl} alt="Group Icon" className="w-full h-full object-cover" />
+                  ) : (
+                    <span style={{ color: 'var(--primary)' }}>
+                      {newGroupName.trim().slice(0, 2).toUpperCase() || 'GP'}
+                    </span>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold" style={{ color: 'var(--text)' }}>
+                    Group Icon
+                  </p>
+                  <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
+                    {groupAvatarUrl ? 'Photo uploaded' : 'Optional group picture'}
+                  </p>
+                </div>
+                <label
+                  className="px-3 py-1.5 rounded-full text-xs font-semibold border cursor-pointer hover:bg-[var(--surface)] transition-colors"
+                  style={{ borderColor: 'var(--line)', color: 'var(--text)' }}
+                >
+                  {isUploadingAvatar ? 'Uploading...' : groupAvatarUrl ? 'Change' : 'Upload'}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    disabled={isUploadingAvatar}
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      setIsUploadingAvatar(true);
+                      try {
+                        const formData = new FormData();
+                        formData.append('file', file);
+                        const res = await fetch('/api/upload', { method: 'POST', body: formData });
+                        const data = await res.json();
+                        if (data.url) {
+                          setGroupAvatarUrl(data.url);
+                          showToast('Group icon uploaded! 📸');
+                        }
+                      } catch {
+                        showToast('Failed to upload image. Please try again.');
+                      } finally {
+                        setIsUploadingAvatar(false);
+                      }
+                    }}
+                  />
+                </label>
+              </div>
+
               {/* Add All Students Button with Apple Pill */}
               <div className="pt-1">
                 <button
@@ -1238,14 +1312,20 @@ export default function GroupsPage() {
               <button
                 type="button"
                 onClick={handleCreateGroupSubmit}
-                disabled={selectedGroupMembers.length === 0}
-                className="px-5 py-2 rounded-full text-xs font-bold btn-press cursor-pointer transition-all disabled:opacity-50 shadow-sm"
+                disabled={isSubmittingGroup || !newGroupName.trim()}
+                className="px-5 py-2 rounded-full text-xs font-bold btn-press cursor-pointer transition-all disabled:opacity-50 shadow-sm flex items-center gap-1.5"
                 style={{
                   backgroundColor: 'var(--primary)',
                   color: 'var(--on-primary)',
                 }}
               >
-                Create Group ({selectedGroupMembers.length}) ✨
+                {isSubmittingGroup ? (
+                  <span>Creating...</span>
+                ) : selectedGroupMembers.length > 0 ? (
+                  <span>Create Group ({selectedGroupMembers.length}) ✨</span>
+                ) : (
+                  <span>Create Group ✨</span>
+                )}
               </button>
             </div>
           </div>

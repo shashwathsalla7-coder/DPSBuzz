@@ -8,6 +8,7 @@ import {
   ArrowLeftRight,
   ChevronRight,
   Shield,
+  ShieldCheck,
   LifeBuoy,
   UserX,
   FileText,
@@ -119,19 +120,57 @@ export default function SettingsPage() {
     setTimeout(() => setCopiedRefLink(false), 3000);
   };
 
-  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !currentUser) return;
+
+    // 1. Instant optimistic local preview
     const reader = new FileReader();
     reader.onload = () => {
-      const dataUrl = reader.result as string;
-      const updatedUser = { ...currentUser, avatar: dataUrl };
-      setCurrentUser(updatedUser);
-      localStorage.setItem('dpsbuzz_user', JSON.stringify(updatedUser));
-      DataStore.updateProfile(currentUser.username, { avatar: dataUrl });
-      showToast('Profile photo updated from gallery! 📸');
+      const previewUrl = reader.result as string;
+      setCurrentUser((prev: any) => prev ? { ...prev, avatar: previewUrl } : prev);
     };
     reader.readAsDataURL(file);
+
+    showToast('Uploading profile picture to cloud storage... ⏳');
+
+    try {
+      // 2. Upload file to Cloudinary cloud storage
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('folder', 'avatars');
+
+      const uploadRes = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const uploadData = await uploadRes.json();
+      if (!uploadRes.ok || !uploadData.success || !uploadData.url) {
+        showToast('Upload failed. Please try again.');
+        return;
+      }
+
+      const cloudUrl = uploadData.url;
+      const updatedUser = { ...currentUser, avatar: cloudUrl };
+      setCurrentUser(updatedUser);
+      localStorage.setItem('dpsbuzz_user', JSON.stringify(updatedUser));
+      DataStore.updateProfile(currentUser.username, { avatar: cloudUrl });
+
+      // 3. Persist permanently to Supabase profiles table
+      await fetch('/api/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          profiles: [{ username: currentUser.username, avatar: cloudUrl }],
+        }),
+      });
+
+      showToast('Profile photo updated and synced across all devices! 🎉');
+    } catch (err) {
+      console.error('Profile photo upload error:', err);
+      showToast('Could not save photo to cloud. Please try again.');
+    }
   };
 
   const [cameraPermissionGranted, setCameraPermissionGranted] = useState<boolean | null>(null);
@@ -880,6 +919,27 @@ export default function SettingsPage() {
               </div>
               <ChevronRight size={18} className="text-[var(--text-muted)]" />
             </button>
+
+            <Link
+              href="/safety"
+              className="w-full p-3.5 flex items-center justify-between text-left hover:bg-[var(--surface-sunken)] transition-colors cursor-pointer"
+            >
+              <div className="flex items-center gap-2.5">
+                <ShieldCheck size={18} className="text-emerald-500 shrink-0" />
+                <div>
+                  <span className="text-sm font-semibold text-[var(--text)] flex items-center gap-1.5 flex-wrap">
+                    Safety &amp; Cyber Rules
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-blue-500/15 text-blue-400 border border-blue-500/20">
+                      DPDPA &amp; CERT-In
+                    </span>
+                  </span>
+                  <p className="text-[11px] text-[var(--text-muted)] leading-tight mt-0.5">
+                    Zero tracking, 24h grievance response &amp; student protection
+                  </p>
+                </div>
+              </div>
+              <ChevronRight size={18} className="text-[var(--text-muted)] shrink-0" />
+            </Link>
 
             <button
               onClick={() => setShowHelpSheet(true)}

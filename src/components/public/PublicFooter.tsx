@@ -9,9 +9,9 @@ export default function PublicFooter() {
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <span className="text-xl">🐝</span>
-            <span className="font-bold text-neutral-200 text-sm">DPS Buzz</span>
+            <span className="font-bold text-neutral-200 text-sm">DPSBus</span>
             <span className="text-neutral-500">•</span>
-            <span className="text-neutral-400">Student Community</span>
+            <span className="text-neutral-400">School Social Media App</span>
           </div>
 
           <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs" aria-label="Footer links">
@@ -22,7 +22,7 @@ export default function PublicFooter() {
               About
             </Link>
             <Link href="/safety" className="hover:text-neutral-200 transition-colors">
-              Safety Guidelines
+              Safety &amp; Cyber Rules
             </Link>
             <Link href="/privacy" className="hover:text-neutral-200 transition-colors">
               Privacy Policy
@@ -40,7 +40,7 @@ export default function PublicFooter() {
         </div>
 
         <div className="pt-6 border-t border-neutral-900 flex flex-col sm:flex-row items-center justify-between gap-3 text-neutral-400 text-xs">
-          <p>© {year} DPS Buzz. A student community for Dilsukhnagar Public School students, Hyderabad.</p>
+          <p>© {year} DPSBus. The official school social media app for Dilsukhnagar Public School students, Hyderabad.</p>
           <p>Private &amp; moderated space for classes 6–10.</p>
         </div>
       </div>

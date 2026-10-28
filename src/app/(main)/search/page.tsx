@@ -182,24 +182,35 @@ function SearchContent() {
     }
 
     const isCurrentlyFollowing = isFollowing(targetUsername);
-    if (!isCurrentlyFollowing) {
-      const targetProf =
-        allProfiles.find((p) => p.username.toLowerCase() === targetUsername.toLowerCase()) ||
-        DataStore.getProfileByUsername(targetUsername);
-      if (targetProf && targetProf.isPrivate) {
-        const hasReq = DataStore.hasRequestedFollow(currentUser.username, targetUsername);
-        if (hasReq) {
-          DataStore.cancelFollowRequest(currentUser.username, targetUsername);
-          showToast(`Cancelled follow request to @${targetUsername}`);
-        } else {
-          DataStore.requestFollow(currentUser.username, targetUsername);
-          showToast(`Follow request sent to @${targetUsername} 🔒`);
-        }
-        setFollows([...DataStore.getFollows()]);
-        setFollowRequests([...DataStore.getFollowRequests()]);
-        return;
-      }
+    if (isCurrentlyFollowing) {
+      DataStore.removeFriend(currentUser.username, targetUsername);
+      setFollows([...DataStore.getFollows()]);
+      setFollowRequests([...DataStore.getFollowRequests()]);
+      showToast(`Unfollowed @${targetUsername}`);
+      return;
     }
+
+    const targetProf =
+      allProfiles.find((p) => p.username.toLowerCase() === targetUsername.toLowerCase()) ||
+      DataStore.getProfileByUsername(targetUsername);
+    if (targetProf && targetProf.isPrivate) {
+      const hasReq = DataStore.hasRequestedFollow(currentUser.username, targetUsername);
+      if (hasReq) {
+        DataStore.cancelFollowRequest(currentUser.username, targetUsername);
+        showToast(`Cancelled follow request to @${targetUsername}`);
+      } else {
+        const res = DataStore.requestFollow(currentUser.username, targetUsername);
+        if (!res.success) {
+          showToast(res.error || 'Cannot send request 🙅');
+          return;
+        }
+        showToast(res.message || `Friend request sent to @${targetUsername} 🔒`);
+      }
+      setFollows([...DataStore.getFollows()]);
+      setFollowRequests([...DataStore.getFollowRequests()]);
+      return;
+    }
+
     const isNow = DataStore.toggleFollow(currentUser.username, targetUsername);
     setFollows([...DataStore.getFollows()]);
     setFollowRequests([...DataStore.getFollowRequests()]);
@@ -350,8 +361,10 @@ function SearchContent() {
           fullClass === q ||
           classSec === q ||
           classDashSec === q ||
+          `${c} ${s}` === q ||
           `class ${classSec}` === q ||
-          `class ${classDashSec}` === q;
+          `class ${classDashSec}` === q ||
+          `class ${c} ${s}` === q;
 
         matchKeyword = matchUser || matchName || matchBio || matchClassSec;
       }
@@ -961,12 +974,12 @@ function SearchContent() {
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-[var(--text)]">Section</label>
               <div className="flex gap-2 overflow-x-auto no-scrollbar py-1">
-                {['All', 'A', 'B', 'C', 'D'].map((sec) => (
+                {['All', 'A', 'B', 'C', 'D', 'E', 'F', 'G'].map((sec) => (
                   <button
                     key={sec}
                     type="button"
                     onClick={() => setSelectedSection(sec)}
-                    className="px-3.5 py-1.5 rounded-full text-xs font-semibold cursor-pointer border"
+                    className="px-3.5 py-1.5 rounded-full text-xs font-semibold cursor-pointer border shrink-0"
                     style={{
                       backgroundColor: selectedSection === sec ? 'var(--primary)' : 'var(--surface-sunken)',
                       color: selectedSection === sec ? 'var(--on-primary)' : 'var(--text-muted)',

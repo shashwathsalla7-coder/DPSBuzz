@@ -751,10 +751,22 @@ function ChatsContent() {
                     const idSet = new Set(existingList.map((m) => m.client_id || m.id));
                     const toAdd = v.filter((m) => !idSet.has(m.client_id || m.id));
                     if (toAdd.length > 0) {
-                      next[k] = [...existingList, ...toAdd];
+                      const mergedList = [...existingList, ...toAdd];
+                      next[k] = mergedList;
+                      // Also mirror under conv-otherUser for instant 0ms access
+                      if (k.includes('__')) {
+                        const parts = k.split('__').map((p) => p.trim().toLowerCase());
+                        const other = parts.find((p) => p !== uname) || parts[0];
+                        if (other) {
+                          next[`conv-${other}`] = mergedList;
+                        }
+                      }
                     }
                   }
                 }
+                try {
+                  localStorage.setItem(userMsgKey, JSON.stringify(next));
+                } catch {}
                 return next;
               });
             }
@@ -2075,24 +2087,11 @@ function ChatsContent() {
       if (!target || target === currentUsername) return false;
       if (DataStore.isBlocked(currentUsername, target)) return false;
 
-      // Instagram Architecture: In PRIMARY ('all') inbox, hide incoming message requests from strangers
-      if (activeChip !== 'requests') {
+      // Message Requests Filtering: In requests chip, show requests only. In all/primary, show all school chats.
+      if (activeChip === 'requests') {
         const tier = c.inboxTier || DataStore.getInboxTier(currentUsername, target);
-        if (tier === 'REQUESTS') {
-          const msgs = chatMessages[c.id] || chatMessages[[currentUsername, target].sort().join('__')] || [];
-          const lastMsg = msgs[msgs.length - 1];
-          const lastMsgIsMe = lastMsg
-            ? (lastMsg.senderUsername ? lastMsg.senderUsername.toLowerCase() === currentUsername : lastMsg.sender === 'me')
-            : false;
-          const isGameInvite = Boolean(
-            lastMsg?.gameInvite ||
-            lastMsg?.connect4Invite ||
-            lastMsg?.text?.includes('[CRICKET_GAME]:') ||
-            lastMsg?.text?.includes('[CONNECT4_GAME]:')
-          );
-          if (!isGameInvite && !lastMsgIsMe && !DataStore.getAcceptedMessageRequests(currentUsername).includes(target)) {
-            return false;
-          }
+        if (tier !== 'REQUESTS') {
+          return false;
         }
       }
 

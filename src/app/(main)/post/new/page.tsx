@@ -408,60 +408,52 @@ export default function NewPostPage() {
       // 1. Fast Client-Side Compression & EXIF removal (Max 960px wide, ~75KB WebP payload)
       const processed = await processImageForUpload(file, 960, 0.78);
 
-      // 2. Request Signed Upload Authorization from Server
-      const res = await fetch('/api/upload/presign', {
+      let finalPhotoUrl = '';
+
+      // 2. Direct upload to server / cloud storage endpoint
+      const uploadFormData = new FormData();
+      uploadFormData.append('file', processed.blob, file.name || 'photo.jpg');
+      uploadFormData.append('folder', 'posts');
+
+      const uploadRes = await fetch('/api/upload', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          folder: 'posts',
-          contentType: processed.file.type,
-          fileSize: processed.sizeBytes,
-          currentStorageGB: storageAnalytics?.storageUsedGB ?? 0,
-        }),
+        body: uploadFormData,
       });
 
-      const data = await res.json();
-      let finalPhotoUrl = processed.previewUrl;
-
-      // 3. Direct upload to Cloudinary (if configured)
-      if (res.ok && data.success && data.provider === 'cloudinary' && !data.isMock && data.uploadUrl && data.signature) {
-        const formData = new FormData();
-        formData.append('file', processed.blob);
-        formData.append('api_key', data.apiKey);
-        formData.append('timestamp', String(data.timestamp));
-        formData.append('signature', data.signature);
-        formData.append('folder', data.folder);
-
-        const cloudRes = await fetch(data.uploadUrl, {
-          method: 'POST',
-          body: formData,
-        });
-
-        const cloudData = await cloudRes.json();
-        if (cloudData.secure_url) {
-          finalPhotoUrl = cloudData.secure_url;
-        }
+      const uploadData = await uploadRes.json();
+      if (uploadRes.ok && uploadData.success && uploadData.url) {
+        finalPhotoUrl = uploadData.url;
       } else {
-        // Fast local persistent server upload: saves to public/uploads/posts/
-        try {
-          const localFormData = new FormData();
-          localFormData.append('file', processed.blob, processed.file.name);
-          localFormData.append('folder', 'posts');
+        // Fallback: try presigned direct if available
+        const res = await fetch('/api/upload/presign', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            folder: 'posts',
+            contentType: processed.file.type,
+            fileSize: processed.sizeBytes,
+            currentStorageGB: storageAnalytics?.storageUsedGB ?? 0,
+          }),
+        });
+        const data = await res.json();
+        if (res.ok && data.success && data.uploadUrl && data.signature) {
+          const cloudFormData = new FormData();
+          cloudFormData.append('file', processed.blob);
+          cloudFormData.append('api_key', data.apiKey);
+          cloudFormData.append('timestamp', String(data.timestamp));
+          cloudFormData.append('signature', data.signature);
+          cloudFormData.append('folder', data.folder);
 
-          const localUploadRes = await fetch('/api/upload', {
-            method: 'POST',
-            body: localFormData,
-          });
-
-          if (localUploadRes.ok) {
-            const localData = await localUploadRes.json();
-            if (localData.success && localData.url) {
-              finalPhotoUrl = localData.url;
-            }
+          const cloudRes = await fetch(data.uploadUrl, { method: 'POST', body: cloudFormData });
+          const cloudData = await cloudRes.json();
+          if (cloudData.secure_url) {
+            finalPhotoUrl = cloudData.secure_url;
           }
-        } catch {
-          finalPhotoUrl = processed.previewUrl;
         }
+      }
+
+      if (!finalPhotoUrl) {
+        finalPhotoUrl = processed.previewUrl;
       }
 
       // Replace the temporary blob URL with final persistent URL
@@ -474,12 +466,17 @@ export default function NewPostPage() {
     }
   };
 
-  const handlePost = (e: React.FormEvent) => {
+  const handlePost = async (e: React.FormEvent) => {
     e.preventDefault();
 
     // 1. Mandatory Image Check
     if (selectedPhotos.length === 0) {
       setPhotoError('📸 Photo is mandatory! You must attach at least 1 photo showing what you are studying or doing.');
+      return;
+    }
+
+    if (isUploadingPhoto || selectedPhotos.some((u) => u.startsWith('blob:'))) {
+      setPhotoError('Photos are still uploading to cloud storage. Please wait a moment.');
       return;
     }
     setPhotoError(null);
@@ -517,6 +514,18 @@ export default function NewPostPage() {
       song: selectedSong || undefined,
     });
 
+    // Await server persistence to Supabase so post appears instantly across all devices
+    try {
+      await fetch('/api/posts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ post: newPost }),
+        keepalive: true,
+      });
+    } catch (err) {
+      console.warn('Server post sync failed:', err);
+    }
+
     if (typeof window !== 'undefined') {
       window.dispatchEvent(
         new CustomEvent('dpsbuzz:content_updated', {
@@ -525,7 +534,7 @@ export default function NewPostPage() {
       );
     }
 
-    // Instant redirect without artificial delay
+    // Redirect to home feed once post is securely synced to cloud
     router.push('/home');
     router.refresh();
   };
@@ -597,10 +606,10 @@ export default function NewPostPage() {
 
         <button
           onClick={handlePost}
-          disabled={submitting || selectedPhotos.length === 0}
+          disabled={submitting || isUploadingPhoto || selectedPhotos.length === 0}
           className="px-5 py-2 rounded-full bg-[var(--primary)] text-[var(--on-primary)] text-xs font-bold hover:opacity-90 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shadow-[0_4px_14px_rgba(43,75,255,0.35)]"
         >
-          {submitting ? 'Posting...' : 'Share'}
+          {submitting ? 'Posting...' : isUploadingPhoto ? 'Uploading...' : 'Share'}
         </button>
       </div>
 

@@ -32,7 +32,37 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
-        // Enforce noindex, nofollow, noarchive on all private student and admin routes
+        // Global CERT-In & OWASP Security Headers applied to every route
+        source: '/:path*',
+        headers: [
+          {
+            key: 'X-Frame-Options',
+            value: 'SAMEORIGIN',
+          },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'strict-origin-when-cross-origin',
+          },
+          {
+            key: 'Permissions-Policy',
+            value: 'camera=(self), microphone=(self), geolocation=(), interest-cohort=()',
+          },
+          {
+            key: 'Strict-Transport-Security',
+            value: 'max-age=31536000; includeSubDomains; preload',
+          },
+          {
+            key: 'X-XSS-Protection',
+            value: '1; mode=block',
+          },
+        ],
+      },
+      {
+        // Enforce noindex, nofollow, noarchive on all private student and admin routes (DPDPA Student Privacy)
         source: '/:path(api|admin|home|u|chats|groups|notices|leaderboard|search|settings|post|cricket|game|games|preview|styleguide)/:rest*',
         headers: [
           {
@@ -55,6 +85,11 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
+      {
+        source: '/rules',
+        destination: '/safety',
+        permanent: false,
+      },
       {
         source: '/game',
         destination: '/chats?view=games',

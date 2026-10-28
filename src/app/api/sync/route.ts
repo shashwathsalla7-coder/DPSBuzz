@@ -1,6 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getServerStore, saveServerStore } from '@/lib/serverStore';
+import {
+  getD1Profiles,
+  getD1Follows,
+  getD1FollowRequests,
+  getD1Groups,
+  getD1GroupMembers,
+  getD1MessagesForUser,
+  getD1NotificationsForUser,
+  insertD1Message,
+  insertD1Notification,
+  insertD1Group,
+  addD1Follow,
+  removeD1Friendship,
+  addD1FollowRequest,
+  removeD1FollowRequest,
+  isD1Configured,
+} from '@/lib/cloudflare/dbService';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const rawKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -48,6 +65,135 @@ export async function GET(req: NextRequest) {
           }
         }
       }
+
+      // DIRECT READ FROM CLOUDFLARE D1 for permanent fast cross-device sync
+      if (isD1Configured() && username) {
+        try {
+          const d1Msgs = await getD1MessagesForUser(username);
+          for (const [chatKey, msgs] of Object.entries(d1Msgs)) {
+            if (chatKey.includes('__')) {
+              const parts = chatKey.split('__').map((p: string) => p.trim().toLowerCase());
+              if (!parts.includes(username) && username !== 'shashwath71845') continue;
+            }
+            if (!filteredChatMessages[chatKey]) {
+              filteredChatMessages[chatKey] = [];
+            }
+            for (const m of msgs) {
+              if (!filteredChatMessages[chatKey].some((existing: any) => existing.id === m.id)) {
+                filteredChatMessages[chatKey].push({
+                  ...m,
+                  sender: (m.senderUsername || '').toLowerCase() === username ? 'me' : 'them',
+                });
+              }
+            }
+          }
+        } catch (d1Err) {
+          console.warn('Cloudflare D1 sync messages notice:', d1Err);
+        }
+      }
+
+      // DIRECT READ FROM SUPABASE messages table for cross-device & incoming message sync
+      if (supabaseUrl && supabaseKey) {
+        try {
+          const sb = createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false } });
+          const { data: dbRows } = await sb
+            .from('messages')
+            .select('*')
+            .or(`sender_id.eq.${username},chat_id.ilike.%${username}%`)
+            .order('created_at', { ascending: true })
+            .limit(300);
+
+          if (Array.isArray(dbRows)) {
+            for (const row of dbRows) {
+              const chatKey = row.chat_id;
+              if (!chatKey) continue;
+              if (chatKey.includes('__')) {
+                const parts = chatKey.split('__').map((p: string) => p.trim().toLowerCase());
+                if (!parts.includes(username) && username !== 'shashwath71845') continue; // STRICT PRIVACY
+              }
+              if (!filteredChatMessages[chatKey]) {
+                filteredChatMessages[chatKey] = [];
+              }
+              if (!filteredChatMessages[chatKey].some((m: any) => m.id === row.id || (row.client_id && m.client_id === row.client_id))) {
+                let previewObj: any = null;
+                if (row.post_preview && typeof row.post_preview === 'object') {
+                  previewObj = row.post_preview;
+                } else if (typeof row.post_preview === 'string') {
+                  try { previewObj = JSON.parse(row.post_preview); } catch {}
+                }
+                if (!previewObj && (row.post_id || row.message_type === 'post_share')) {
+                  previewObj = { id: row.post_id || '', username: '', caption: '' };
+                }
+                filteredChatMessages[chatKey].push({
+                  id: row.id,
+                  client_id: row.client_id,
+                  text: row.text,
+                  sender: (row.sender_id || '').toLowerCase() === username ? 'me' : 'them',
+                  senderUsername: row.sender_id,
+                  time: row.created_at ? new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date(row.created_at)) : 'Recently',
+                  createdAt: row.created_at,
+                  status: row.read_at ? 'read' : row.delivered_at ? 'delivered' : (row.status || 'sent'),
+                  is_read: Boolean(row.read_at || row.is_read),
+                  isSeen: Boolean(row.read_at || row.is_read),
+                  isDelivered: Boolean(row.delivered_at || row.read_at || row.status === 'delivered' || row.status === 'read'),
+                  sharedPost: previewObj,
+                  message_type: row.message_type || (previewObj ? 'post_share' : 'text'),
+                  post_id: row.post_id || previewObj?.id,
+                  post_preview: previewObj,
+                  isChatPhoto: Boolean(previewObj?.id?.startsWith('chat-photo-') || previewObj?.caption === 'Chat photo' || previewObj?.caption === 'Shared a photo'),
+                });
+              }
+            }
+          }
+        } catch (err) {
+          console.warn('Supabase sync messages error:', err);
+        }
+      }
+    }
+
+    // Hydrate groups and group memberships directly from Supabase for cross-device consistency
+    const sb = getSupabase();
+    if (sb) {
+      try {
+        const { data: dbGroups } = await sb.from('groups').select('*').limit(200);
+        if (Array.isArray(dbGroups) && dbGroups.length > 0) {
+          const groupMap = new Map((store.groups || []).map((g: any) => [g.id, g]));
+          for (const dg of dbGroups) {
+            const existing = groupMap.get(dg.id);
+            groupMap.set(dg.id, {
+              id: dg.id,
+              name: dg.name,
+              description: dg.description || '',
+              creator: dg.creator_username,
+              creatorUsername: dg.creator_username,
+              creator_username: dg.creator_username,
+              memberCount: dg.member_count || 1,
+              members: existing?.members || [dg.creator_username],
+              category: dg.category || 'Study Group',
+              avatarUrl: dg.avatar_url || null,
+              isOfficial: dg.is_official || false,
+              createdAt: dg.created_at,
+            });
+          }
+          store.groups = Array.from(groupMap.values());
+        }
+
+        const { data: memSetting } = await sb.from('app_settings').select('value').eq('key', 'group_members_registry').maybeSingle();
+        if (memSetting?.value && typeof memSetting.value === 'object') {
+          store.groupMembers = { ...(store.groupMembers || {}), ...memSetting.value };
+        }
+
+        const { data: invSetting } = await sb.from('app_settings').select('value').eq('key', 'group_invitations_registry').maybeSingle();
+        if (Array.isArray(invSetting?.value)) {
+          const reqMap = new Map((store.groupJoinRequests || []).map((r: any) => [r.id, r]));
+          for (const r of invSetting.value) {
+            if (r && r.id) reqMap.set(r.id, r);
+          }
+          store.groupJoinRequests = Array.from(reqMap.values());
+        }
+      } catch (grpErr) {
+        console.warn('Supabase groups hydration error:', grpErr);
+      }
     }
 
     // Filter groups strictly: NEVER leak private groups to uninvited non-members!
@@ -88,12 +234,55 @@ export async function GET(req: NextRequest) {
     }
     const reqUsername = authUser || username;
 
-    const filteredNotifications = reqUsername
+    let filteredNotifications = reqUsername
       ? (store.notifications || []).filter((n: any) => {
           const target = (n.recipientUsername || n.userId || '').toLowerCase().trim();
           return target === reqUsername || target === '' || reqUsername === 'shashwath71845';
         })
       : [];
+
+    // DIRECT READ FROM CLOUDFLARE D1 for notifications
+    if (isD1Configured() && reqUsername) {
+      try {
+        const d1Notifs = await getD1NotificationsForUser(reqUsername);
+        for (const dn of d1Notifs) {
+          if (!filteredNotifications.some((n: any) => n.id === dn.id)) {
+            filteredNotifications.unshift(dn);
+          }
+        }
+      } catch (d1NotifErr) {
+        console.warn('Cloudflare D1 notification sync error:', d1NotifErr);
+      }
+    }
+
+    if (sb && reqUsername) {
+      try {
+        const { data: dbNotifs } = await sb
+          .from('notifications')
+          .select('*')
+          .or(`user_id.eq.${reqUsername},recipient_username.eq.${reqUsername}`)
+          .order('created_at', { ascending: false })
+          .limit(50);
+        if (Array.isArray(dbNotifs) && dbNotifs.length > 0) {
+          for (const dn of dbNotifs) {
+            if (!filteredNotifications.some((n: any) => n.id === dn.id)) {
+              filteredNotifications.unshift({
+                id: dn.id,
+                type: dn.type || 'system',
+                title: dn.title,
+                body: dn.body,
+                link: dn.link,
+                isRead: Boolean(dn.is_read),
+                createdAt: dn.created_at,
+                timeAgo: 'Recently',
+              } as any);
+            }
+          }
+        }
+      } catch (notifErr) {
+        console.warn('Supabase notifications sync error:', notifErr);
+      }
+    }
 
     const mode = searchParams.get('mode');
     if (mode === 'incoming' || mode === 'alerts') {
@@ -118,9 +307,65 @@ export async function GET(req: NextRequest) {
     let syncFollowRequests = Array.isArray(store.followRequests) ? [...store.followRequests] : [];
     let syncProfiles = Array.isArray(store.profiles) ? [...store.profiles] : [];
     let syncPosts = Array.isArray(store.posts) ? [...store.posts] : [];
+    let syncStories = Array.isArray(store.stories) ? [...store.stories] : [];
+
+    // DIRECT READ FROM CLOUDFLARE D1 DATABASE (never pauses, permanent)
+    if (isD1Configured()) {
+      try {
+        const [d1Follows, d1Reqs, d1Profs, d1Grps, d1GrpMembers] = await Promise.all([
+          getD1Follows(),
+          getD1FollowRequests(),
+          getD1Profiles(),
+          getD1Groups(),
+          getD1GroupMembers(),
+        ]);
+
+        if (d1Follows.length > 0) {
+          const followSet = new Set(syncFollows.map((f: any) => `${(f.follower || '').toLowerCase().trim()}__${(f.following || '').toLowerCase().trim()}`));
+          for (const df of d1Follows) {
+            const fol = df.follower;
+            const fing = df.following;
+            if (fol && fing && fol !== fing && !followSet.has(`${fol}__${fing}`)) {
+              syncFollows.push({ follower: fol, following: fing });
+              followSet.add(`${fol}__${fing}`);
+            }
+          }
+        }
+
+        if (d1Reqs.length > 0) {
+          const reqSet = new Set(syncFollowRequests.map((r: any) => `${(r.requester || '').toLowerCase().trim()}__${(r.target || '').toLowerCase().trim()}`));
+          for (const dr of d1Reqs) {
+            const reqUser = dr.requester;
+            const tarUser = dr.target;
+            if (reqUser && tarUser && reqUser !== tarUser && !reqSet.has(`${reqUser}__${tarUser}`)) {
+              syncFollowRequests.push({ requester: reqUser, target: tarUser });
+              reqSet.add(`${reqUser}__${tarUser}`);
+            }
+          }
+        }
+
+        if (d1Profs.length > 0) {
+          const profileMap = new Map<string, any>();
+          for (const sp of syncProfiles) profileMap.set(sp.username.toLowerCase().trim(), sp);
+          for (const dp of d1Profs) profileMap.set(dp.username.toLowerCase().trim(), dp);
+          syncProfiles = Array.from(profileMap.values());
+        }
+
+        if (d1Grps.length > 0) {
+          const existingGroupIds = new Set((store.groups || []).map((g: any) => g.id));
+          for (const dg of d1Grps) {
+            if (!existingGroupIds.has(dg.id)) {
+              if (!store.groups) store.groups = [];
+              store.groups.push(dg);
+            }
+          }
+        }
+      } catch (d1SyncErr) {
+        console.warn('Cloudflare D1 sync error:', d1SyncErr);
+      }
+    }
 
     // DIRECT READ FROM SUPABASE DATABASE
-    const sb = getSupabase();
     if (sb) {
       try {
         const [
@@ -128,11 +373,13 @@ export async function GET(req: NextRequest) {
           { data: dbReqs },
           { data: dbProfiles },
           { data: dbPosts },
+          { data: dbStories },
         ] = await Promise.all([
           sb.from('follows').select('*').limit(1000),
           sb.from('follow_requests').select('*').eq('status', 'pending').limit(1000),
           sb.from('profiles').select('*').limit(500),
           sb.from('posts').select('*').order('created_at', { ascending: false }).limit(100),
+          sb.from('stories').select('*').gt('expires_at', new Date().toISOString()).order('created_at', { ascending: false }).limit(100),
         ]);
 
         if (Array.isArray(dbFollows)) {
@@ -217,6 +464,43 @@ export async function GET(req: NextRequest) {
             (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
           );
         }
+
+        if (Array.isArray(dbStories) && dbStories.length > 0) {
+          const storyMap = new Map<string, any>();
+          for (const ss of syncStories) storyMap.set(ss.id, ss);
+          for (const ds of dbStories) {
+            let extra: any = {};
+            if (ds.caption && typeof ds.caption === 'string' && ds.caption.startsWith('{')) {
+              try { extra = JSON.parse(ds.caption); } catch {}
+            }
+            storyMap.set(ds.id, {
+              id: ds.id,
+              userId: ds.user_id,
+              username: ds.username,
+              fullName: extra.fullName || ds.username,
+              avatar: extra.avatar || null,
+              imageUrl: ds.media_url || extra.imageUrl || '',
+              caption: extra.caption || (!ds.caption?.startsWith('{') ? ds.caption : '') || '',
+              text: extra.text || (!ds.caption?.startsWith('{') ? ds.caption : '') || undefined,
+              background: extra.background || '#0F131B',
+              textColor: extra.textColor || '#FFFFFF',
+              song: extra.song || undefined,
+              filter: extra.filter || undefined,
+              stickers: extra.stickers || undefined,
+              textStyle: extra.textStyle || undefined,
+              template: extra.template || undefined,
+              templateData: extra.templateData || undefined,
+              expiresAt: ds.expires_at,
+              createdAt: ds.created_at,
+              hasStory: true,
+              isSeen: false,
+              isNew: true,
+            });
+          }
+          syncStories = Array.from(storyMap.values()).sort(
+            (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+          );
+        }
       } catch (err) {
         // Fallback to store
       }
@@ -225,7 +509,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       success: true,
       posts: syncPosts,
-      stories: store.stories,
+      stories: syncStories,
       profiles: syncProfiles,
       comments: store.comments,
       likes: store.likes,
@@ -497,55 +781,130 @@ export async function POST(req: NextRequest) {
       mergedFollowRequests = mergedFollowRequests.filter((r) => !removeReqSet.has(`${(r.requester || '').toLowerCase().trim()}__${(r.target || '').toLowerCase().trim()}`));
     }
 
-    // Direct write to Supabase follows and follow_requests tables
-    if (sb && (body.follows || body.removedFollows || body.followRequests || body.removedFollowRequests)) {
-      (async () => {
-        try {
-          if (Array.isArray(body.follows) && body.follows.length > 0) {
-            const rows = body.follows
-              .map((f: any) => ({
-                follower: (f.follower || '').toLowerCase().trim(),
-                following: (f.following || '').toLowerCase().trim(),
-              }))
-              .filter((f: any) => f.follower && f.following && f.follower !== f.following);
-            if (rows.length > 0) {
-              await sb.from('follows').upsert(rows, { onConflict: 'follower,following' });
-            }
+    // Direct write to Cloudflare D1 database (never pauses, permanent)
+    if (isD1Configured()) {
+      try {
+        if (Array.isArray(body.follows)) {
+          for (const f of body.follows) {
+            if (f.follower && f.following) addD1Follow(f.follower, f.following).catch(() => {});
           }
-          if (Array.isArray(body.removedFollows) && body.removedFollows.length > 0) {
-            for (const rf of body.removedFollows) {
-              const fol = (rf.follower || '').toLowerCase().trim();
-              const fing = (rf.following || '').toLowerCase().trim();
-              if (fol && fing) {
-                await sb.from('follows').delete().match({ follower: fol, following: fing });
-              }
-            }
-          }
-          if (Array.isArray(body.followRequests) && body.followRequests.length > 0) {
-            const reqRows = body.followRequests
-              .map((r: any) => ({
-                requester: (r.requester || '').toLowerCase().trim(),
-                target: (r.target || '').toLowerCase().trim(),
-                status: 'pending',
-              }))
-              .filter((r: any) => r.requester && r.target && r.requester !== r.target);
-            if (reqRows.length > 0) {
-              await sb.from('follow_requests').upsert(reqRows, { onConflict: 'requester,target' });
-            }
-          }
-          if (Array.isArray(body.removedFollowRequests) && body.removedFollowRequests.length > 0) {
-            for (const rr of body.removedFollowRequests) {
-              const reqUser = (rr.requester || '').toLowerCase().trim();
-              const tarUser = (rr.target || '').toLowerCase().trim();
-              if (reqUser && tarUser) {
-                await sb.from('follow_requests').delete().match({ requester: reqUser, target: tarUser });
-              }
-            }
-          }
-        } catch (sbErr) {
-          console.warn('Supabase follows sync warning:', sbErr);
         }
-      })().catch(() => {});
+        if (Array.isArray(body.removedFollows)) {
+          for (const rf of body.removedFollows) {
+            if (rf.follower && rf.following) removeD1Friendship(rf.follower, rf.following).catch(() => {});
+          }
+        }
+        if (Array.isArray(body.followRequests)) {
+          for (const r of body.followRequests) {
+            if (r.requester && r.target) addD1FollowRequest(r.requester, r.target).catch(() => {});
+          }
+        }
+        if (Array.isArray(body.removedFollowRequests)) {
+          for (const rr of body.removedFollowRequests) {
+            if (rr.requester && rr.target) removeD1FollowRequest(rr.requester, rr.target).catch(() => {});
+          }
+        }
+        if (Array.isArray(body.groups)) {
+          for (const g of body.groups) {
+            if (g && g.id) {
+              const creator = (g.creator_username || g.creator || g.creatorUsername || 'shashwath71845').toLowerCase().trim();
+              insertD1Group({
+                id: g.id,
+                name: g.name || 'Study Group',
+                description: g.description || '',
+                createdBy: creator,
+                iconUrl: g.icon_url || null,
+                members: Array.isArray(g.members) ? g.members : [creator],
+              }).catch(() => {});
+            }
+          }
+        }
+        if (Array.isArray(body.notifications)) {
+          for (const n of body.notifications) {
+            const target = (n.recipientUsername || n.userId || '').toLowerCase().trim();
+            if (target) {
+              insertD1Notification({
+                id: n.id || `notif-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+                userId: target,
+                type: n.type || 'system',
+                title: n.title || 'Notification',
+                body: n.body || '',
+                data: n.data || null,
+              }).catch(() => {});
+            }
+          }
+        }
+      } catch (d1PostErr) {
+        console.warn('Cloudflare D1 sync POST warning:', d1PostErr);
+      }
+    }
+
+    // Direct write to Supabase follows and follow_requests tables (reliably awaited)
+    if (sb && (body.follows || body.removedFollows || body.followRequests || body.removedFollowRequests)) {
+      try {
+        const affectedUsers = new Set<string>();
+
+        if (Array.isArray(body.follows) && body.follows.length > 0) {
+          const rows = body.follows
+            .map((f: any) => ({
+              follower: (f.follower || '').toLowerCase().trim(),
+              following: (f.following || '').toLowerCase().trim(),
+            }))
+            .filter((f: any) => f.follower && f.following && f.follower !== f.following);
+          if (rows.length > 0) {
+            await sb.from('follows').upsert(rows, { onConflict: 'follower,following' });
+            for (const r of rows) {
+              affectedUsers.add(r.follower);
+              affectedUsers.add(r.following);
+            }
+          }
+        }
+        if (Array.isArray(body.removedFollows) && body.removedFollows.length > 0) {
+          for (const rf of body.removedFollows) {
+            const fol = (rf.follower || '').toLowerCase().trim();
+            const fing = (rf.following || '').toLowerCase().trim();
+            if (fol && fing) {
+              await sb.from('follows').delete().match({ follower: fol, following: fing });
+              affectedUsers.add(fol);
+              affectedUsers.add(fing);
+            }
+          }
+        }
+        if (Array.isArray(body.followRequests) && body.followRequests.length > 0) {
+          const reqRows = body.followRequests
+            .map((r: any) => ({
+              requester: (r.requester || '').toLowerCase().trim(),
+              target: (r.target || '').toLowerCase().trim(),
+              status: 'pending',
+            }))
+            .filter((r: any) => r.requester && r.target && r.requester !== r.target);
+          if (reqRows.length > 0) {
+            await sb.from('follow_requests').upsert(reqRows, { onConflict: 'requester,target' });
+          }
+        }
+        if (Array.isArray(body.removedFollowRequests) && body.removedFollowRequests.length > 0) {
+          for (const rr of body.removedFollowRequests) {
+            const reqUser = (rr.requester || '').toLowerCase().trim();
+            const tarUser = (rr.target || '').toLowerCase().trim();
+            if (reqUser && tarUser) {
+              await sb.from('follow_requests').delete().match({ requester: reqUser, target: tarUser });
+            }
+          }
+        }
+
+        // Authoritative reconciliation of follower_count and following_count in Supabase profiles
+        for (const uname of affectedUsers) {
+          const { count: fersCount } = await sb.from('follows').select('id', { count: 'exact', head: true }).eq('following', uname);
+          const { count: fingCount } = await sb.from('follows').select('id', { count: 'exact', head: true }).eq('follower', uname);
+          await sb.from('profiles').update({
+            follower_count: fersCount || 0,
+            following_count: fingCount || 0,
+            updated_at: new Date().toISOString(),
+          }).eq('username', uname);
+        }
+      } catch (sbErr) {
+        console.warn('Supabase follows sync warning:', sbErr);
+      }
     }
 
     // 8. Merge groups
@@ -588,6 +947,67 @@ export async function POST(req: NextRequest) {
         }
       }
       mergedGroupRequests = Array.from(reqMap.values());
+    }
+
+    // Direct write of groups, memberships, and notifications to Supabase
+    if (sb) {
+      // (a) Groups table persistence
+      if (Array.isArray(body.groups) && body.groups.length > 0) {
+        for (const g of body.groups) {
+          if (g && g.id) {
+            const creator = (g.creator_username || g.creator || g.creatorUsername || '').toLowerCase().trim();
+            const groupRow = {
+              id: g.id,
+              name: g.name || 'Study Group',
+              description: g.description || '',
+              creator_username: creator || 'student',
+              member_count: Math.max(1, g.memberCount || (Array.isArray(g.members) ? g.members.length : 1)),
+            };
+            sb.from('groups').upsert(groupRow, { onConflict: 'id' }).then(() => {}, (e) => console.warn('Supabase group upsert error:', e));
+          }
+        }
+      }
+
+      // (b) Group members registry in app_settings for multi-server reliability
+      if (body.groupMembers && typeof body.groupMembers === 'object') {
+        sb.from('app_settings').upsert({
+          key: 'group_members_registry',
+          value: mergedGroupMembers,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'key' }).then(() => {}, () => {});
+      }
+
+      // (c) Group invitations registry in app_settings
+      if (body.groupJoinRequests && Array.isArray(body.groupJoinRequests)) {
+        sb.from('app_settings').upsert({
+          key: 'group_invitations_registry',
+          value: mergedGroupRequests,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'key' }).then(() => {}, () => {});
+      }
+
+      // (d) Notifications table persistence with guaranteed UUIDs
+      if (Array.isArray(body.notifications) && body.notifications.length > 0) {
+        for (const n of body.notifications) {
+          if (n && (n.userId || n.recipientUsername)) {
+            const notifId = n.id || `notif-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+            const targetUser = (n.recipientUsername || n.userId || '').toLowerCase().trim();
+            const actorUser = (n.actorUsername || n.actor || '').toLowerCase().trim();
+            sb.from('notifications').upsert({
+              id: notifId,
+              user_id: targetUser,
+              recipient_username: targetUser,
+              actor_username: actorUser || null,
+              type: n.type || 'system',
+              title: n.title || 'Notification',
+              body: n.body || '',
+              link: n.link || null,
+              is_read: Boolean(n.isRead),
+              created_at: n.createdAt || new Date().toISOString(),
+            }, { onConflict: 'id' }).then(() => {}, (e) => console.warn('Supabase notification upsert error:', e));
+          }
+        }
+      }
     }
 
     const updated = await saveServerStore({

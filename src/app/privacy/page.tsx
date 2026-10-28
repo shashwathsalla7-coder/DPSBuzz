@@ -94,10 +94,25 @@ export default function PrivacyPage() {
           </div>
 
           <div className="rounded-2xl bg-neutral-900/60 border border-neutral-800 p-6 space-y-3">
-            <h2 className="text-lg font-bold text-white">4. Account Deletion &amp; Data Rights</h2>
+            <h2 className="text-lg font-bold text-white">4. Account Deletion &amp; Data Rights (DPDPA Section 12)</h2>
             <p className="text-neutral-300 text-sm leading-relaxed">
-              Students and parents have the right to request deletion of an account at any time. Inside the app, navigate to <strong>Settings → Delete My Account</strong>, or contact our support team at <Link href="/contact" className="text-blue-400 hover:underline">our Contact page</Link> to permanently erase your profile and content from the database.
+              Students and parents have the right to request deletion of an account at any time. Inside the app, navigate to <strong>Settings → Delete My Account</strong>, or contact our support team at <Link href="/contact" className="text-blue-400 hover:underline">our Contact page</Link> to permanently erase your profile, photos, and messages from the database.
             </p>
+          </div>
+
+          <div className="rounded-2xl bg-neutral-900/60 border border-blue-900/50 p-6 space-y-3">
+            <h2 className="text-lg font-bold text-white flex items-center gap-2">
+              <span>🇮🇳</span> 5. DPDPA 2023 &amp; CERT-In Compliance Statement
+            </h2>
+            <p className="text-neutral-300 text-sm leading-relaxed">
+              DPS Buzz operates in full compliance with the Digital Personal Data Protection Act, 2023 and CERT-In directions:
+            </p>
+            <ul className="list-disc list-inside text-sm text-neutral-300 space-y-1.5 pl-2">
+              <li><strong>Zero Behavioral Profiling:</strong> We strictly refrain from tracking, profiling, or monetizing any child&apos;s online activity.</li>
+              <li><strong>Zero Dark Patterns:</strong> We comply with the Central Consumer Protection Authority (CCPA) Dark Patterns Guidelines 2023, with no deceptive UI tricks or forced opt-ins.</li>
+              <li><strong>72-Hour Breach Notification:</strong> In the unlikely event of any personal data breach, affected users and the Data Protection Board of India (DPBI) will be notified within 72 hours.</li>
+              <li><strong>Grievance Redressal:</strong> Grievance complaints are acknowledged within 24 hours at <a href="mailto:grievance@dpsbuzz.org" className="text-blue-400 hover:underline">grievance@dpsbuzz.org</a>.</li>
+            </ul>
           </div>
         </section>
       </main>

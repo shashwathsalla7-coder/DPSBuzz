@@ -2,10 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { v5 as uuidv5 } from 'uuid';
 import { getServerStore, upsertServerProfile, recordServerNewUserAlert } from '@/lib/serverStore';
+import { getD1Profiles, getD1ProfileByUsername, upsertD1Profile, isD1Configured } from '@/lib/cloudflare/dbService';
 
 const UUID_NAMESPACE = '6ba7b810-9dad-11d1-80b4-00c04fd430c8';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const rawKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseKey = (rawKey && !rawKey.includes('your-service')) ? rawKey : (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '');
+
+const NO_CACHE_HEADERS = {
+  'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+  'Pragma': 'no-cache',
+  'Expires': '0',
+};
 
 function getSupabase() {
   if (!supabaseUrl || !supabaseKey) return null;
@@ -15,11 +23,25 @@ function getSupabase() {
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const username = searchParams.get('username')?.toLowerCase()?.trim();
+    const rawParam = searchParams.get('username') || searchParams.get('id') || '';
+    const username = rawParam.toLowerCase().trim().replace(/^@+/, '');
     const store = await getServerStore();
 
     if (!username) {
-      // If querying all profiles, merge Supabase DB profiles with server store
+      // 1. Fetch from Cloudflare D1 first (never pauses)
+      if (isD1Configured()) {
+        try {
+          const d1Profiles = await getD1Profiles();
+          if (d1Profiles.length > 0) {
+            const map = new Map<string, any>();
+            for (const sp of store.profiles) map.set(sp.username.toLowerCase(), sp);
+            for (const dp of d1Profiles) map.set(dp.username.toLowerCase(), dp);
+            return NextResponse.json({ success: true, profiles: Array.from(map.values()) }, { headers: NO_CACHE_HEADERS });
+          }
+        } catch {}
+      }
+
+      // 2. Merge Supabase DB profiles with server store if available
       const supabase = getSupabase();
       if (supabase) {
         try {
@@ -49,21 +71,36 @@ export async function GET(req: NextRequest) {
                 createdAt: dp.created_at || existing?.createdAt,
               });
             }
-            return NextResponse.json({ success: true, profiles: Array.from(map.values()) });
+            return NextResponse.json({ success: true, profiles: Array.from(map.values()) }, { headers: NO_CACHE_HEADERS });
           }
         } catch {}
       }
-      return NextResponse.json({ success: true, profiles: store.profiles });
+      return NextResponse.json({ success: true, profiles: store.profiles }, { headers: NO_CACHE_HEADERS });
     }
 
-    // 1. Direct fetch from Supabase profiles as source of truth
+    // 1. Direct fetch from Cloudflare D1 (never pauses, fast edge)
+    if (isD1Configured()) {
+      try {
+        const d1Profile = await getD1ProfileByUsername(username);
+        if (d1Profile) {
+          upsertServerProfile(d1Profile as any).catch(() => {});
+          return NextResponse.json({ success: true, profile: d1Profile }, { headers: NO_CACHE_HEADERS });
+        }
+      } catch (d1Err) {
+        console.warn('Cloudflare D1 profile lookup notice:', d1Err);
+      }
+    }
+
+    // 2. Direct fetch from Supabase profiles as source of truth (tolerant of case & id)
     const supabase = getSupabase();
     if (supabase) {
-      const { data: dbProfile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('username', username)
-        .maybeSingle();
+      let query = supabase.from('profiles').select('*');
+      if (username.length === 36 && username.includes('-')) {
+        query = query.or(`id.eq.${username},username.ilike.${username}`);
+      } else {
+        query = query.ilike('username', username);
+      }
+      const { data: dbProfile } = await query.maybeSingle();
 
       if (dbProfile) {
         const mapped = {
@@ -86,19 +123,19 @@ export async function GET(req: NextRequest) {
         };
         // Auto-cache to server store
         upsertServerProfile(mapped as any).catch(() => {});
-        return NextResponse.json({ success: true, profile: mapped });
+        return NextResponse.json({ success: true, profile: mapped }, { headers: NO_CACHE_HEADERS });
       }
     }
 
     // 2. Check local serverStore fallback
-    const match = store.profiles.find((p) => p.username.toLowerCase() === username);
+    const match = store.profiles.find((p) => p.username.toLowerCase().replace(/^@+/, '') === username);
     if (match) {
-      return NextResponse.json({ success: true, profile: match });
+      return NextResponse.json({ success: true, profile: match }, { headers: NO_CACHE_HEADERS });
     }
 
-    return NextResponse.json({ success: false, error: 'User not found' }, { status: 404 });
+    return NextResponse.json({ success: false, error: 'User not found' }, { status: 404, headers: NO_CACHE_HEADERS });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: error.message }, { status: 500, headers: NO_CACHE_HEADERS });
   }
 }
 
@@ -115,7 +152,16 @@ export async function POST(req: NextRequest) {
     // 1. Persist to serverStore
     await upsertServerProfile({ ...profile, username: cleanUser });
 
-    // 2. Direct persistence to Supabase profiles table
+    // 2. Direct persistence to Cloudflare D1 (permanent text database)
+    if (isD1Configured()) {
+      try {
+        await upsertD1Profile({ ...profile, username: cleanUser });
+      } catch (d1Err) {
+        console.warn('Cloudflare D1 profile upsert warning:', d1Err);
+      }
+    }
+
+    // 3. Direct persistence to Supabase profiles table (optional fallback)
     const supabase = getSupabase();
     if (supabase) {
       try {

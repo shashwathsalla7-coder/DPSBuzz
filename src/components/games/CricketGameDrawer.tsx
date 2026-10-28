@@ -66,14 +66,51 @@ export function CricketGameDrawer({
 
   const currentCleanUser = (currentUser?.username || '').toLowerCase().trim();
 
-  // Load all profiles from DataStore
+  const [serverProfiles, setServerProfiles] = useState<UserProfile[]>([]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    let active = true;
+    (async () => {
+      try {
+        const res = await fetch('/api/search?q=&limit=50', { credentials: 'same-origin', cache: 'no-store' });
+        if (res.ok) {
+          const data = await res.json();
+          const list = Array.isArray(data) ? data : data?.users || data?.results || [];
+          if (active && Array.isArray(list) && list.length > 0) {
+            setServerProfiles(list);
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to fetch arena opponents:', err);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [isOpen]);
+
+  // Load all profiles from DataStore + Server
   const allProfiles = useMemo(() => {
     if (!isOpen) return [];
-    return DataStore.getProfiles().filter((p) => {
+    const local = DataStore.getProfiles();
+    const map = new Map<string, UserProfile>();
+    local.forEach((p) => {
+      const u = (p.username || '').toLowerCase().trim();
+      if (u) map.set(u, p);
+    });
+    serverProfiles.forEach((p) => {
+      const u = (p.username || '').toLowerCase().trim();
+      if (u && !map.has(u)) {
+        map.set(u, p);
+      }
+    });
+
+    return Array.from(map.values()).filter((p) => {
       const u = (p.username || '').toLowerCase().trim();
       return u && u !== currentCleanUser && u !== 'buzzbot';
     });
-  }, [isOpen, currentCleanUser]);
+  }, [isOpen, currentCleanUser, serverProfiles]);
 
   // Set default opponent if provided via props
   useEffect(() => {
@@ -158,24 +195,24 @@ export function CricketGameDrawer({
     >
       <div className="absolute inset-0" onClick={onClose} />
 
-      <div className="relative z-10 w-full max-w-[500px] bg-[#0A0D18]/98 border-t border-[#C13584]/30 rounded-t-[32px] shadow-[0_-15px_60px_rgba(193,53,132,0.25)] p-4 sm:p-5 space-y-4 animate-slide-up text-white max-h-[92vh] overflow-y-auto">
+      <div className="relative z-10 w-full max-w-[500px] bg-[#0A0D18]/98 border-t border-blue-500/30 rounded-t-[32px] shadow-[0_-15px_60px_rgba(37,99,235,0.25)] p-4 sm:p-5 space-y-4 animate-slide-up text-white max-h-[92vh] overflow-y-auto">
         {/* Handle bar with brand shine */}
-        <div className="w-12 h-1.5 rounded-full mx-auto bg-gradient-to-r from-[#833AB4] via-[#C13584] to-[#F77737]" />
+        <div className="w-12 h-1.5 rounded-full mx-auto bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500" />
 
         {/* Header - DPS Buzz Brand Identity */}
         <div className="flex items-center justify-between pb-3 border-b border-white/10">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#833AB4] via-[#C13584] to-[#F77737] p-0.5 shadow-lg shadow-[#C13584]/30 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-600 via-indigo-600 to-cyan-500 p-0.5 shadow-lg shadow-blue-500/30 flex items-center justify-center">
               <div className="w-full h-full bg-[#0D101D] rounded-[14px] flex items-center justify-center text-xl">
                 🐝
               </div>
             </div>
             <div>
               <h3 className="text-sm font-black text-white flex items-center gap-2">
-                <span className="bg-gradient-to-r from-[#833AB4] via-[#C13584] to-[#F77737] bg-clip-text text-transparent">
+                <span className="bg-gradient-to-r from-blue-400 via-indigo-300 to-cyan-400 bg-clip-text text-transparent">
                   DPS Buzz Games Arena
                 </span>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#C13584]/20 text-pink-300 font-extrabold border border-[#C13584]/40">
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/20 text-cyan-300 font-extrabold border border-blue-500/40">
                   Live Lobby
                 </span>
               </h3>
@@ -200,12 +237,11 @@ export function CricketGameDrawer({
             onClick={() => setSelectedGameTab('connect4')}
             className={`py-2 px-1.5 rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
               selectedGameTab === 'connect4'
-                ? 'bg-gradient-to-r from-[#833AB4] via-[#C13584] to-[#F77737] text-white shadow-lg shadow-[#C13584]/30'
+                ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-600 text-white shadow-lg shadow-blue-500/30'
                 : 'text-slate-400 hover:text-white hover:bg-white/5'
             }`}
           >
-            <span>🔴 C4</span>
-            <span className="text-[9px] px-1 py-0.2 rounded bg-white/20 text-white font-extrabold hidden sm:inline">DUEL</span>
+            <span>🔴 Four in a Row</span>
           </button>
 
           <button
@@ -213,7 +249,7 @@ export function CricketGameDrawer({
             onClick={() => setSelectedGameTab('cricket')}
             className={`py-2 px-1.5 rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
               selectedGameTab === 'cricket'
-                ? 'bg-gradient-to-r from-[#833AB4] via-[#C13584] to-[#F77737] text-white shadow-lg shadow-[#C13584]/30'
+                ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-600 text-white shadow-lg shadow-blue-500/30'
                 : 'text-slate-400 hover:text-white hover:bg-white/5'
             }`}
           >
@@ -225,20 +261,20 @@ export function CricketGameDrawer({
             onClick={() => setSelectedGameTab('solo2048')}
             className={`py-2 px-1.5 rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
               selectedGameTab === 'solo2048'
-                ? 'bg-gradient-to-r from-[#F77737] via-[#C13584] to-[#833AB4] text-white shadow-lg shadow-orange-500/30'
+                ? 'bg-gradient-to-r from-blue-600 via-cyan-600 to-teal-600 text-white shadow-lg shadow-cyan-500/30'
                 : 'text-slate-400 hover:text-white hover:bg-white/5'
             }`}
           >
             <span>👑 2048</span>
-            <span className="text-[9px] px-1 py-0.2 rounded bg-amber-400/20 text-amber-300 font-extrabold">SOLO</span>
+            <span className="text-[9px] px-1 py-0.2 rounded bg-cyan-400/20 text-cyan-300 font-extrabold">SOLO</span>
           </button>
         </div>
 
         {/* PLAYER SELECTION BOX - Required for Multiplayer Duels */}
         {selectedGameTab !== 'solo2048' && (
-          <div className="p-3.5 rounded-2xl bg-white/[0.03] border border-[#C13584]/20 space-y-3 relative" ref={searchContainerRef}>
+          <div className="p-3.5 rounded-2xl bg-white/[0.03] border border-blue-500/20 space-y-3 relative" ref={searchContainerRef}>
             <div className="flex items-center justify-between">
-              <span className="text-[11px] uppercase font-black tracking-widest text-[#F77737] flex items-center gap-1.5">
+              <span className="text-[11px] uppercase font-black tracking-widest text-cyan-400 flex items-center gap-1.5">
                 <Users size={13} />
                 <span>Choose Opponent</span>
               </span>
@@ -247,7 +283,7 @@ export function CricketGameDrawer({
                 <button
                   type="button"
                   onClick={() => setSelectedPlayer(null)}
-                  className="text-[11px] text-[#C13584] hover:underline font-bold cursor-pointer"
+                  className="text-[11px] text-blue-400 hover:underline font-bold cursor-pointer"
                 >
                   Change Player
                 </button>
@@ -256,9 +292,9 @@ export function CricketGameDrawer({
 
             {/* Currently Selected Player Card */}
             {selectedPlayer ? (
-              <div className="flex items-center justify-between p-2.5 rounded-xl bg-gradient-to-r from-[#833AB4]/20 via-[#C13584]/15 to-[#F77737]/15 border border-[#C13584]/40">
+              <div className="flex items-center justify-between p-2.5 rounded-xl bg-gradient-to-r from-blue-600/15 via-indigo-600/10 to-cyan-600/10 border border-blue-500/30">
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-10 h-10 rounded-full p-0.5 bg-gradient-to-tr from-[#833AB4] via-[#C13584] to-[#F77737] flex-shrink-0">
+                  <div className="w-10 h-10 rounded-full p-0.5 bg-gradient-to-tr from-blue-600 via-indigo-600 to-cyan-500 flex-shrink-0">
                     <div className="w-full h-full rounded-full bg-[#111422] flex items-center justify-center overflow-hidden">
                       {selectedPlayer.avatar ? (
                         <img src={selectedPlayer.avatar} alt={selectedPlayer.fullName} className="w-full h-full object-cover" />
@@ -274,7 +310,7 @@ export function CricketGameDrawer({
                       <span>{selectedPlayer.fullName}</span>
                       <CheckCircle2 size={13} className="text-emerald-400 flex-shrink-0" />
                     </p>
-                    <p className="text-[11px] text-[#C13584] font-semibold truncate">
+                    <p className="text-[11px] text-blue-400 font-semibold truncate">
                       @{selectedPlayer.username} {selectedPlayer.class ? `• Class ${selectedPlayer.class}-${selectedPlayer.section || 'A'}` : ''}
                     </p>
                   </div>
@@ -297,7 +333,7 @@ export function CricketGameDrawer({
                     onChange={(e) => setSearchQuery(e.target.value)}
                     onFocus={() => setIsSearchFocused(true)}
                     placeholder="Search player by @username or name..."
-                    className="w-full bg-[#111424] border border-white/15 focus:border-[#C13584] rounded-xl pl-9 pr-8 py-2 text-xs text-white placeholder-slate-400 outline-none transition-all shadow-inner"
+                    className="w-full bg-[#111424] border border-white/15 focus:border-blue-500 rounded-xl pl-9 pr-8 py-2 text-xs text-white placeholder-slate-400 outline-none transition-all shadow-inner"
                   />
                   {searchQuery && (
                     <button
@@ -322,7 +358,7 @@ export function CricketGameDrawer({
                           className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-white/10 transition-colors text-left cursor-pointer group"
                         >
                           <div className="flex items-center gap-2 min-w-0">
-                            <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-[#833AB4] to-[#F77737] p-0.5 flex-shrink-0">
+                            <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-blue-600 to-cyan-500 p-0.5 flex-shrink-0">
                               <div className="w-full h-full rounded-full bg-[#111424] flex items-center justify-center overflow-hidden">
                                 {p.avatar ? (
                                   <img src={p.avatar} alt={p.fullName} className="w-full h-full object-cover" />
@@ -334,7 +370,7 @@ export function CricketGameDrawer({
                               </div>
                             </div>
                             <div className="min-w-0">
-                              <p className="text-xs font-bold text-white truncate group-hover:text-pink-300">
+                              <p className="text-xs font-bold text-white truncate group-hover:text-cyan-300">
                                 {p.fullName}
                               </p>
                               <p className="text-[10px] text-slate-400 truncate">
@@ -342,7 +378,7 @@ export function CricketGameDrawer({
                               </p>
                             </div>
                           </div>
-                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-white font-bold group-hover:bg-[#C13584] transition-colors">
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-white font-bold group-hover:bg-blue-600 transition-colors">
                             Pick
                           </span>
                         </button>
@@ -361,17 +397,17 @@ export function CricketGameDrawer({
 
         {/* GAME 1: CONNECT 4 (REDESIGNED WITH BRAND COLORS) */}
         {selectedGameTab === 'connect4' && (
-          <div className="p-4 rounded-2xl bg-gradient-to-br from-[#160E26] via-[#101322] to-[#1C1022] border border-[#C13584]/35 space-y-3.5 relative overflow-hidden shadow-xl animate-fade-in">
+          <div className="p-4 rounded-2xl bg-gradient-to-br from-blue-950/40 via-slate-900 to-slate-950 border border-blue-500/30 space-y-3.5 relative overflow-hidden shadow-xl animate-fade-in">
             {/* Ambient Brand Orb */}
-            <div className="absolute top-0 right-0 w-36 h-36 bg-[#C13584]/15 rounded-full blur-2xl pointer-events-none" />
+            <div className="absolute top-0 right-0 w-36 h-36 bg-blue-500/15 rounded-full blur-2xl pointer-events-none" />
 
             <div className="flex items-start justify-between relative z-10">
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] uppercase font-black tracking-widest text-[#F77737]">
+                  <span className="text-[10px] uppercase font-black tracking-widest text-cyan-400">
                     Multiplayer Duel
                   </span>
-                  <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-[#C13584]/20 text-pink-300 font-extrabold border border-[#C13584]/35">
+                  <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-blue-500/20 text-cyan-300 font-extrabold border border-blue-500/35">
                     Hot ⭐
                   </span>
                 </div>
@@ -395,7 +431,7 @@ export function CricketGameDrawer({
                   <Bot size={13} className="text-cyan-400" />
                   <span>AI Bot Difficulty:</span>
                 </span>
-                <span className="text-[10px] text-pink-300 font-bold">
+                <span className="text-[10px] text-cyan-300 font-bold">
                   {botDifficulty === 'easy' ? '🟢 Easy (Casual Win)' : botDifficulty === 'hard' ? '🟡 Hard (Tough)' : '🟣 Impossible (Minimax)'}
                 </span>
               </div>
@@ -418,7 +454,7 @@ export function CricketGameDrawer({
                           ? lvl.id === 'easy'
                             ? 'bg-emerald-950/70 border-emerald-500 text-emerald-200 shadow-md ring-1 ring-emerald-400/50'
                             : lvl.id === 'hard'
-                            ? 'bg-amber-950/70 border-amber-500 text-amber-200 shadow-md ring-1 ring-amber-400/50'
+                            ? 'bg-sky-950/70 border-sky-500 text-sky-200 shadow-md ring-1 ring-sky-400/50'
                             : 'bg-purple-950/70 border-purple-500 text-purple-200 shadow-md ring-1 ring-purple-400/50'
                           : 'bg-white/5 border-white/10 text-slate-400 hover:text-white hover:bg-white/10'
                       }`}
@@ -438,7 +474,7 @@ export function CricketGameDrawer({
               <button
                 type="button"
                 onClick={() => handleStartDuelClick('connect4')}
-                className="flex-1 py-2.5 px-3 rounded-xl bg-gradient-to-r from-[#833AB4] via-[#C13584] to-[#F77737] hover:opacity-95 text-white text-xs font-black shadow-lg shadow-[#C13584]/35 flex items-center justify-center gap-1.5 active:scale-98 transition-all cursor-pointer"
+                className="flex-1 py-2.5 px-3 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-600 hover:opacity-95 text-white text-xs font-black shadow-lg shadow-blue-500/25 flex items-center justify-center gap-1.5 active:scale-98 transition-all cursor-pointer"
               >
                 <Swords size={15} />
                 <span className="truncate">
@@ -454,7 +490,7 @@ export function CricketGameDrawer({
                     onSendConnect4Challenge(true, undefined, botDifficulty); // vs BuzzBot with selected difficulty
                   }
                 }}
-                className="py-2.5 px-3.5 rounded-xl bg-gradient-to-r from-purple-900/60 to-pink-900/60 hover:opacity-95 text-white text-xs font-bold border border-[#C13584]/50 flex items-center gap-1.5 shadow-md transition-all cursor-pointer"
+                className="py-2.5 px-3.5 rounded-xl bg-gradient-to-r from-slate-800 to-blue-900/70 hover:opacity-95 text-white text-xs font-bold border border-blue-500/40 flex items-center gap-1.5 shadow-md transition-all cursor-pointer"
                 title={`Practice solo vs BuzzBot (${botDifficulty.toUpperCase()})`}
               >
                 <Bot size={15} className="text-cyan-300" />
@@ -466,13 +502,13 @@ export function CricketGameDrawer({
 
         {/* GAME 2: GUESS THE CRICKETER (REDESIGNED WITH BRAND COLORS) */}
         {selectedGameTab === 'cricket' && (
-          <div className="p-4 rounded-2xl bg-gradient-to-br from-[#121226] via-[#0E1528] to-[#1E1228] border border-[#833AB4]/40 space-y-3.5 relative overflow-hidden shadow-xl animate-fade-in">
+          <div className="p-4 rounded-2xl bg-gradient-to-br from-slate-900 via-indigo-950/30 to-slate-950 border border-indigo-500/30 space-y-3.5 relative overflow-hidden shadow-xl animate-fade-in">
             {/* Ambient Brand Orb */}
-            <div className="absolute top-0 right-0 w-36 h-36 bg-[#833AB4]/20 rounded-full blur-2xl pointer-events-none" />
+            <div className="absolute top-0 right-0 w-36 h-36 bg-indigo-500/20 rounded-full blur-2xl pointer-events-none" />
 
             <div className="flex items-start justify-between relative z-10">
               <div className="space-y-1">
-                <span className="text-[10px] uppercase font-black tracking-widest text-[#F77737] block">
+                <span className="text-[10px] uppercase font-black tracking-widest text-cyan-400 block">
                   Cricket Edition
                 </span>
                 <h4 className="text-base font-extrabold text-white flex items-center gap-2">
@@ -488,7 +524,7 @@ export function CricketGameDrawer({
             <button
               type="button"
               onClick={() => handleStartDuelClick('cricket')}
-              className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-[#833AB4] via-[#C13584] to-[#F77737] hover:opacity-95 text-white text-xs font-black shadow-lg shadow-[#C13584]/35 flex items-center justify-center gap-2 active:scale-98 transition-all cursor-pointer"
+              className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-600 hover:opacity-95 text-white text-xs font-black shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2 active:scale-98 transition-all cursor-pointer"
             >
               <Swords size={16} />
               <span className="truncate">
@@ -500,16 +536,16 @@ export function CricketGameDrawer({
 
         {/* GAME 3: 2048 SOLO RUSH */}
         {selectedGameTab === 'solo2048' && (
-          <div className="p-4 rounded-2xl bg-gradient-to-br from-[#1F1208] via-[#1A0E22] to-[#260E24] border border-[#F77737]/45 space-y-3.5 relative overflow-hidden shadow-xl animate-fade-in">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-[#F77737]/20 rounded-full blur-2xl pointer-events-none" />
+          <div className="p-4 rounded-2xl bg-gradient-to-br from-slate-900 via-slate-950 to-blue-950/40 border border-cyan-500/30 space-y-3.5 relative overflow-hidden shadow-xl animate-fade-in">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/20 rounded-full blur-2xl pointer-events-none" />
 
             <div className="flex items-start justify-between relative z-10">
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] uppercase font-black tracking-widest text-[#F77737]">
+                  <span className="text-[10px] uppercase font-black tracking-widest text-cyan-400">
                     Solo Arcade • Instant Play
                   </span>
-                  <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-[#F77737]/20 text-amber-300 font-extrabold border border-[#F77737]/35">
+                  <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-cyan-500/20 text-cyan-300 font-extrabold border border-cyan-500/35">
                     No Waiting
                   </span>
                 </div>
@@ -527,7 +563,7 @@ export function CricketGameDrawer({
                   <SoloTile3D value={1024} />
                   <SoloTile3D value={2048} />
                 </div>
-                <span className="text-[9px] text-[#F77737] font-bold tracking-tight">5 Levels • +500 Pts</span>
+                <span className="text-[9px] text-cyan-400 font-bold tracking-tight">5 Levels • +500 Pts</span>
               </div>
             </div>
 
@@ -539,7 +575,7 @@ export function CricketGameDrawer({
                   onOpenSoloGame('2048');
                 }
               }}
-              className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-[#F77737] via-[#C13584] to-[#833AB4] hover:opacity-95 text-white text-xs font-black shadow-lg shadow-orange-950/40 flex items-center justify-center gap-2 active:scale-98 transition-all cursor-pointer"
+              className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-blue-600 via-cyan-600 to-teal-600 hover:opacity-95 text-white text-xs font-black shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2 active:scale-98 transition-all cursor-pointer"
             >
               <Play size={16} fill="white" />
               <span>Play 2048 Solo Now (Instant) 🚀</span>
@@ -557,9 +593,9 @@ export function CricketGameDrawer({
             }}
             className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 flex items-center gap-3 transition-colors cursor-pointer text-slate-200"
           >
-            <Trophy size={18} className="text-[#F77737]" />
+            <Trophy size={18} className="text-cyan-400" />
             <span className="flex-1 text-left text-xs font-bold">Arena Leaderboard & Rankings</span>
-            <span className="text-[10px] text-pink-300 font-semibold">Top Masters →</span>
+            <span className="text-[10px] text-cyan-300 font-semibold">Top Masters →</span>
           </button>
 
           <button
@@ -570,9 +606,9 @@ export function CricketGameDrawer({
             }}
             className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 flex items-center gap-3 transition-colors cursor-pointer text-slate-200"
           >
-            <History size={18} className="text-[#833AB4]" />
+            <History size={18} className="text-indigo-400" />
             <span className="flex-1 text-left text-xs font-bold">Match History</span>
-            <span className="text-[10px] text-pink-300 font-semibold">Past Games →</span>
+            <span className="text-[10px] text-cyan-300 font-semibold">Past Games →</span>
           </button>
 
           <button
@@ -583,9 +619,9 @@ export function CricketGameDrawer({
             }}
             className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 flex items-center gap-3 transition-colors cursor-pointer text-slate-200"
           >
-            <HelpCircle size={18} className="text-[#C13584]" />
+            <HelpCircle size={18} className="text-blue-400" />
             <span className="flex-1 text-left text-xs font-bold">Scoring: +50 Win, +10 Match</span>
-            <span className="text-[10px] text-pink-300 font-semibold">Rules →</span>
+            <span className="text-[10px] text-cyan-300 font-semibold">Rules →</span>
           </button>
         </div>
       </div>

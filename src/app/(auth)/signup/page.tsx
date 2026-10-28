@@ -79,7 +79,7 @@ export default function SignupPage() {
     setStep(2);
   };
 
-  const handleStep2 = (e: React.FormEvent) => {
+  const handleStep2 = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -101,12 +101,23 @@ export default function SignupPage() {
       return;
     }
 
-    // Pre-validate duplicate username immediately on Step 2
+    // Pre-validate duplicate username immediately on Step 2 against local and server
     const profiles = DataStore.getProfiles();
     if (profiles.some((p) => p.username.toLowerCase() === cleanUser)) {
       setError('This username is already taken. Please choose another username.');
       return;
     }
+
+    try {
+      const checkRes = await fetch(`/api/auth/profile?username=${encodeURIComponent(cleanUser)}`, { cache: 'no-store' });
+      if (checkRes.ok) {
+        const checkData = await checkRes.json();
+        if (checkData.success && checkData.profile) {
+          setError('This username is already taken. Please choose another username.');
+          return;
+        }
+      }
+    } catch {}
 
     setStep(3);
   };
@@ -136,6 +147,22 @@ export default function SignupPage() {
         setError(result.error || 'Failed to complete registration.');
         setIsLoading(false);
         return;
+      }
+
+      // Authoritative database sync: Await Supabase registration BEFORE redirecting
+      try {
+        const resp = await fetch('/api/auth/profile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ profile: result.profile, isNewSignup: true }),
+        });
+
+        if (!resp.ok) {
+          const errData = await resp.json().catch(() => ({}));
+          console.warn('Initial server signup sync notice:', errData);
+        }
+      } catch (networkErr) {
+        console.warn('Network sync notice during registration:', networkErr);
       }
 
       localStorage.setItem('dpsbuzz_user', JSON.stringify(result.profile));

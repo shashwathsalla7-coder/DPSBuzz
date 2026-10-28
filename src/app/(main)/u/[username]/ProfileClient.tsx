@@ -46,13 +46,21 @@ import { getClassSections } from '@/config/school';
 import { SharePostModal } from '@/components/home/SharePostModal';
 
 export default function ProfileClient({ username }: { username: string }) {
+  const cleanUsername = useMemo(() => {
+    try {
+      return decodeURIComponent(username || '').toLowerCase().trim().replace(/^@+/, '');
+    } catch {
+      return (username || '').toLowerCase().trim().replace(/^@+/, '');
+    }
+  }, [username]);
+
   const initialProfile = useMemo(() => {
-    const found = DataStore.getProfileByUsername(username);
+    const found = DataStore.getProfileByUsername(cleanUsername);
     if (found) return found;
     return {
-      id: 'user-' + username,
-      username,
-      fullName: username,
+      id: 'user-' + cleanUsername,
+      username: cleanUsername,
+      fullName: cleanUsername,
       avatar: null,
       bio: 'Student • Classes 6–10',
       class: '8',
@@ -66,7 +74,7 @@ export default function ProfileClient({ username }: { username: string }) {
       spiritPoints: 0,
       createdAt: new Date().toISOString(),
     };
-  }, [username]);
+  }, [cleanUsername]);
 
   const [profile, setProfile] = useState<Profile>(initialProfile);
   const [activeTab, setActiveTab] = useState<'posts' | 'reposts' | 'tagged' | 'saved'>('posts');
@@ -74,44 +82,49 @@ export default function ProfileClient({ username }: { username: string }) {
   const [isNotFound, setIsNotFound] = useState(false);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
 
-  // Auto-fetch profile from database/server if not already in local browser storage
+  // Authoritative real-time fetch from Supabase database to guarantee latest profile data
   useEffect(() => {
-    const clean = (username || '').toLowerCase().trim();
-    if (!clean) {
+    if (!cleanUsername) {
       setIsNotFound(true);
       return;
     }
-    if (DataStore.getDeletedUsernames().has(clean)) {
+    if (DataStore.getDeletedUsernames().has(cleanUsername)) {
       setIsNotFound(true);
       return;
     }
-    const local = DataStore.getProfileByUsername(clean);
-    if (!local) {
-      setIsLoadingProfile(true);
-      fetch(`/api/auth/profile?username=${encodeURIComponent(clean)}`)
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.success && data.profile) {
-            setProfile(data.profile);
-            const profiles = DataStore.getProfiles();
-            if (!profiles.some((p) => p.username.toLowerCase() === clean)) {
-              DataStore.saveProfiles([...profiles, data.profile]);
-            }
-          } else {
+    const local = DataStore.getProfileByUsername(cleanUsername);
+    if (local) {
+      setProfile(local);
+    }
+    setIsLoadingProfile(true);
+    fetch(`/api/auth/profile?username=${encodeURIComponent(cleanUsername)}`, { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.profile) {
+          setProfile(data.profile);
+          setIsNotFound(false);
+          const profiles = DataStore.getProfiles();
+          const cleanList = profiles.filter((p) => (p.username || '').toLowerCase().replace(/^@+/, '') !== cleanUsername);
+          DataStore.saveProfiles([...cleanList, data.profile]);
+        } else {
+          if (!local) {
             setIsNotFound(true);
           }
-        })
-        .catch(() => setIsNotFound(true))
-        .finally(() => setIsLoadingProfile(false));
-    }
-  }, [username]);
+        }
+      })
+      .catch(() => {
+        if (!local) {
+          setIsNotFound(true);
+        }
+      })
+      .finally(() => setIsLoadingProfile(false));
+  }, [cleanUsername]);
 
   const isDeletedOrMissing = useMemo(() => {
-    const clean = (username || '').toLowerCase().trim();
-    if (!clean) return true;
-    if (DataStore.getDeletedUsernames().has(clean)) return true;
+    if (!cleanUsername) return true;
+    if (DataStore.getDeletedUsernames().has(cleanUsername)) return true;
     return isNotFound;
-  }, [username, isNotFound]);
+  }, [cleanUsername, isNotFound]);
 
   // Persistent follow status check for the viewer and the profile on load
   const [isFollowing, setIsFollowing] = useState<boolean>(() => {
@@ -905,16 +918,41 @@ export default function ProfileClient({ username }: { username: string }) {
         >
           <UserX size={38} className="text-[var(--text-muted)] opacity-70" />
         </div>
-        <h1 className="text-xl font-bold mb-2">User Not Found</h1>
+        <h1 className="text-xl font-bold mb-2">This Profile Isn&apos;t Available</h1>
         <p className="text-sm text-[var(--text-muted)] max-w-xs mb-6">
-          This account does not exist or has been permanently deleted from DPS Buzz.
+          The link may be outdated, or the student @{cleanUsername} may not be active on DPS Buzz right now.
         </p>
-        <Link
-          href="/home"
-          className="px-6 py-2.5 rounded-full font-semibold text-sm gradient-bg text-white shadow-md active:scale-95 transition-all"
-        >
-          Back to Home
-        </Link>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              setIsLoadingProfile(true);
+              setIsNotFound(false);
+              fetch(`/api/auth/profile?username=${encodeURIComponent(cleanUsername)}`, { cache: 'no-store' })
+                .then((r) => r.json())
+                .then((d) => {
+                  if (d.success && d.profile) {
+                    setProfile(d.profile);
+                    setIsNotFound(false);
+                  } else {
+                    setIsNotFound(true);
+                  }
+                })
+                .catch(() => setIsNotFound(true))
+                .finally(() => setIsLoadingProfile(false));
+            }}
+            className="px-5 py-2.5 rounded-full font-semibold text-sm border hover:bg-[var(--surface-sunken)] active:scale-95 transition-all cursor-pointer"
+            style={{ borderColor: 'var(--line)' }}
+          >
+            Retry
+          </button>
+          <Link
+            href="/home"
+            className="px-6 py-2.5 rounded-full font-semibold text-sm bg-[var(--primary)] text-white shadow-md active:scale-95 transition-all"
+          >
+            Back to Home
+          </Link>
+        </div>
       </div>
     );
   }
@@ -1293,15 +1331,16 @@ export default function ProfileClient({ username }: { username: string }) {
                     return;
                   }
 
-                  // If already following, unfollow directly
+                  // If already following, unfriend / unfollow directly
                   if (isFollowing) {
-                    const isNow = DataStore.toggleFollow(currentUser.username, profile.username);
-                    setIsFollowing(isNow);
+                    DataStore.removeFriend(currentUser.username, profile.username);
+                    setIsFollowing(false);
+                    setIsFollowedBy(false);
                     setIsRequested(false);
                     setPostsVersion((v) => v + 1);
                     const updated = DataStore.getProfileByUsername(profile.username);
                     if (updated) setProfile(updated);
-                    showToast(`Unfollowed @${profile.username}`);
+                    showToast(`Unfriended @${profile.username}`);
                     return;
                   }
 
@@ -1312,9 +1351,20 @@ export default function ProfileClient({ username }: { username: string }) {
                       setIsRequested(false);
                       showToast(`Follow request cancelled for @${profile.username}`);
                     } else {
-                      DataStore.requestFollow(currentUser.username, profile.username);
-                      setIsRequested(true);
-                      showToast(`Friend request sent to @${profile.username} 🔒`);
+                      const res = DataStore.requestFollow(currentUser.username, profile.username);
+                      if (!res.success) {
+                        showToast(res.error || 'Cannot send request 🙅');
+                        return;
+                      }
+                      if (res.autoAccepted) {
+                        setIsFollowing(true);
+                        setIsFollowedBy(true);
+                        setIsRequested(false);
+                        setHasIncomingRequest(false);
+                      } else {
+                        setIsRequested(true);
+                      }
+                      showToast(res.message || `Friend request sent to @${profile.username} 🔒`);
                     }
                     return;
                   }

@@ -4,7 +4,8 @@ import { deleteR2Object, deleteR2Objects } from '@/lib/r2';
 import { pruneExpiredServerChatPhotos, pruneExpiredServerStories } from '@/lib/serverStore';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const rawKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseKey = (rawKey && !rawKey.includes('your-service')) ? rawKey : (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '');
 
 /**
  * Cleanup job endpoint for free schedulers (GitHub Actions, Vercel Cron, or Admin trigger)

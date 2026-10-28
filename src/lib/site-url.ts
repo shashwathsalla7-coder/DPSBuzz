@@ -1,5 +1,5 @@
 /**
- * Centralized site URL resolver for DPS Buzz.
+ * Centralized site URL resolver for DPSBus.
  * Enables changing the custom domain via SITE_URL environment variable without code changes.
  */
 export function getBaseUrl(): string {
@@ -15,7 +15,7 @@ export function getBaseUrl(): string {
   if (process.env.VERCEL_URL) {
     return `https://${process.env.VERCEL_URL.replace(/\/$/, '')}`;
   }
-  return 'https://dpsbuzz.in';
+  return 'https://dpsbus.in';
 }
 
 export const siteUrl = getBaseUrl();
