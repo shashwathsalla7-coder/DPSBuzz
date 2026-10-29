@@ -6354,10 +6354,24 @@ export const DataStore = {
     const list = getStorage<HabitStreak[]>(STORAGE_KEYS.HABIT_STREAKS, []);
     const deletedUsers = this.getDeletedUsernames();
     const activeProfiles = new Set(this.getProfiles().map((p) => p.username.toLowerCase().trim()));
-    const todayStr = new Date().toISOString().slice(0, 10);
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = yesterday.toISOString().slice(0, 10);
+    const allPosts = this.getPosts();
+
+    // Helper to get YYYY-MM-DD in Asia/Kolkata (IST timezone)
+    const getISTDate = (isoOrMs?: string | number | Date): string => {
+      if (!isoOrMs) return '';
+      try {
+        const d = new Date(isoOrMs);
+        if (isNaN(d.getTime())) return '';
+        return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(d);
+      } catch {
+        return new Date(isoOrMs).toISOString().slice(0, 10);
+      }
+    };
+
+    const todayIST = getISTDate(new Date());
+    const yesterdayDate = new Date();
+    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+    const yesterdayIST = getISTDate(yesterdayDate);
 
     let needsSave = false;
     const cleanList = list
@@ -6367,26 +6381,81 @@ export const DataStore = {
         return !DUMMY_TEST_USERNAMES.has(u) && !deletedUsers.has(u) && activeProfiles.has(u);
       })
       .map((s) => {
-        const lastDate = s.lastPostedDate ? s.lastPostedDate.slice(0, 10) : '';
-        let streakDays = s.streakDays;
-        let postedToday = s.postedToday;
+        const u = s.username.toLowerCase().trim();
+        // Cross-reference user's verified posts
+        const userPosts = allPosts.filter(
+          (p) => (p.username || '').toLowerCase().trim() === u
+        );
 
-        if (lastDate === todayStr) {
-          postedToday = true;
-        } else if (lastDate === yesterdayStr) {
+        // Collect all distinct days this user posted on (in IST)
+        const postDates = new Set<string>();
+        for (const p of userPosts) {
+          const dt = getISTDate(p.createdAt);
+          if (dt) postDates.add(dt);
+        }
+        if (s.lastPostedDate) {
+          const sDate = getISTDate(s.lastPostedDate);
+          if (sDate) postDates.add(sDate);
+        }
+
+        const sortedDates = Array.from(postDates).sort().reverse();
+
+        let streakDays = s.streakDays;
+        let postedToday = false;
+
+        if (sortedDates.length === 0) {
+          // User has zero posts: streak is strictly 0
+          streakDays = 0;
           postedToday = false;
-        } else if (lastDate < yesterdayStr) {
-          // Missed posting for a day: streak is broken and resets to 0
-          if (streakDays > 0 || postedToday) {
+        } else {
+          const newestDate = sortedDates[0];
+          if (newestDate === todayIST) {
+            postedToday = true;
+            // Count consecutive days backwards from today
+            let count = 0;
+            let checkDate = new Date();
+            while (true) {
+              const checkStr = getISTDate(checkDate);
+              if (postDates.has(checkStr)) {
+                count++;
+                checkDate.setDate(checkDate.getDate() - 1);
+              } else {
+                break;
+              }
+            }
+            streakDays = Math.max(1, count);
+          } else if (newestDate === yesterdayIST) {
+            postedToday = false;
+            // Posted yesterday, but has not posted today yet
+            let count = 0;
+            let checkDate = new Date(yesterdayDate);
+            while (true) {
+              const checkStr = getISTDate(checkDate);
+              if (postDates.has(checkStr)) {
+                count++;
+                checkDate.setDate(checkDate.getDate() - 1);
+              } else {
+                break;
+              }
+            }
+            streakDays = Math.max(1, count);
+          } else {
+            // MISSED POSTING: Last post was before yesterday!
+            // Streak is completely broken and resets to 0!
             streakDays = 0;
             postedToday = false;
-            needsSave = true;
           }
         }
+
+        if (streakDays !== s.streakDays || postedToday !== s.postedToday) {
+          needsSave = true;
+        }
+
         return {
           ...s,
           streakDays,
           postedToday,
+          lastPostedDate: sortedDates[0] ? (s.lastPostedDate || new Date().toISOString()) : '',
         };
       });
 
@@ -6406,7 +6475,23 @@ export const DataStore = {
   getUserHabitStreak(username: string): HabitStreak | null {
     const list = this.getHabitStreaks();
     const clean = username.toLowerCase().trim();
-    return list.find((s) => s.username.toLowerCase() === clean) || null;
+    const found = list.find((s) => s.username.toLowerCase() === clean);
+    if (found) return found;
+
+    return {
+      id: 'streak-' + clean,
+      username: clean,
+      fullName: clean,
+      class: 'Student',
+      streakDays: 0,
+      habitPoints: 0,
+      primaryHabit: 'Studies',
+      habitTag: '#Studies',
+      lastPostedDate: '',
+      postedToday: false,
+      recentPostsCount: 0,
+      bestStreak: 0,
+    };
   },
 
   evaluateHabitPost(caption: string, category?: string): {

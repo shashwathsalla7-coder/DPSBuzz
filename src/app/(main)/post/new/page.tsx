@@ -98,14 +98,14 @@ export default function NewPostPage() {
         username: user.username,
         fullName: user.fullName,
         class: `Class ${user.class || '8'}-${user.section || 'A'}`,
-        streakDays: 4,
-        habitPoints: 120,
+        streakDays: 0,
+        habitPoints: 0,
         primaryHabit: 'Studies',
         habitTag: '#Studies',
-        lastPostedDate: new Date().toISOString(),
+        lastPostedDate: '',
         postedToday: false,
-        recentPostsCount: 4,
-        bestStreak: 6,
+        recentPostsCount: 0,
+        bestStreak: 0,
       }
     );
 

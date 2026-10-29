@@ -570,7 +570,7 @@ export default function ProfileClient({ username }: { username: string }) {
       habitPoints: 0,
       primaryHabit: 'Studies' as const,
       habitTag: '#Studies',
-      lastPostedDate: new Date().toISOString(),
+      lastPostedDate: '',
       postedToday: false,
       recentPostsCount: 0,
       bestStreak: 0,

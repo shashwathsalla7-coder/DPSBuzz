@@ -54,13 +54,20 @@ export const HomeStreakWidget: React.FC<HomeStreakWidgetProps> = ({
       const streak = DataStore.getUserHabitStreak(cleanUser);
       setUserStreak(streak);
 
-      // 2. Check if user posted today
-      const today = new Date().toDateString();
+      // 2. Check if user posted today (IST)
+      const getIST = (isoOrMs?: string | number | Date) => {
+        try {
+          return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date(isoOrMs || Date.now()));
+        } catch {
+          return new Date(isoOrMs || Date.now()).toISOString().slice(0, 10);
+        }
+      };
+      const todayIST = getIST();
       const userPosts = DataStore.getPosts().filter(
         (p) => (p.username || '').toLowerCase().trim() === cleanUser
       );
       const posted = userPosts.some(
-        (p) => new Date(p.createdAt).toDateString() === today
+        (p) => getIST(p.createdAt) === todayIST
       );
       setHasPostedToday(posted || Boolean(streak?.postedToday));
 
@@ -112,8 +119,8 @@ export const HomeStreakWidget: React.FC<HomeStreakWidgetProps> = ({
 
   if (isDismissed) return null;
 
-  const streakDays = userStreak ? userStreak.streakDays : 1;
-  const habitPoints = userStreak ? userStreak.habitPoints : 25;
+  const streakDays = userStreak ? userStreak.streakDays : 0;
+  const habitPoints = userStreak ? userStreak.habitPoints : 0;
   const spiritPoints = (currentUser?.spiritPoints || 0) + habitPoints;
   const primaryHabit = userStreak?.primaryHabit || 'Studies';
 
@@ -198,7 +205,20 @@ export const HomeStreakWidget: React.FC<HomeStreakWidgetProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => {
+              if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('dpsbuzz:open_intro'));
+              }
+            }}
+            className="btn-apple text-xs font-bold flex items-center gap-1 px-2.5 py-1 rounded-full transition-colors cursor-pointer bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white"
+            title="How Streaks & Leaderboard Work"
+          >
+            <span>Rules 📖</span>
+          </button>
+
           <Link
             href="/leaderboard"
             className="btn-apple text-xs font-bold flex items-center gap-1 px-2.5 py-1 rounded-full transition-colors"

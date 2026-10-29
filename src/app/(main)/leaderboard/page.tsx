@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { getAvatarColorPair } from '@/config/tokens';
 import { DataStore, HabitStreak, STARTER_HABIT_STREAKS, DUMMY_TEST_USERNAMES } from '@/lib/dataStore';
+import { NewUserIntroModal } from '@/components/home/NewUserIntroModal';
 
 export default function LeaderboardPage() {
   const [activeTab, setActiveTab] = useState<'streaks' | 'leaders'>('leaders');
@@ -143,7 +144,7 @@ export default function LeaderboardPage() {
         habitPoints: 0,
         primaryHabit: 'Studies',
         habitTag: '#Studies',
-        lastPostedDate: new Date().toISOString(),
+        lastPostedDate: '',
         postedToday: false,
         recentPostsCount: 0,
         bestStreak: 0,
@@ -403,6 +404,33 @@ export default function LeaderboardPage() {
           >
             <Zap size={15} />
             <span>Post Habit & Save Streak (+25 Pts)</span>
+          </button>
+        </div>
+
+        {/* Interactive Streaks & Leaderboard Explainer Banner */}
+        <div className="p-3.5 rounded-[22px] bg-gradient-to-r from-orange-500/15 via-pink-500/15 to-purple-500/15 border border-orange-500/30 flex items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-9 h-9 rounded-2xl bg-orange-500/20 text-orange-400 flex items-center justify-center text-lg shrink-0">
+              🔥
+            </div>
+            <div className="min-w-0">
+              <h4 className="text-xs font-black text-[var(--text)] flex items-center gap-1.5 flex-wrap">
+                <span>Daily Streak & Star Board Rules</span>
+                <span className="text-[9px] px-1.5 py-0.2 rounded-full font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                  Strict Reset
+                </span>
+              </h4>
+              <p className="text-[11px] text-[var(--text-muted)] mt-0.5 truncate">
+                Post daily before midnight. Miss a day and your streak resets to 0!
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowHowItWorks(true)}
+            className="btn-apple shrink-0 py-1.5 px-3 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold transition-all cursor-pointer shadow-xs"
+          >
+            Guide 📖
           </button>
         </div>
 
@@ -786,66 +814,13 @@ export default function LeaderboardPage() {
         </div>
       )}
 
-      {/* Rules / How It Works Sheet */}
-      {showHowItWorks && (
-        <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4 animate-fade-in"
-          onClick={() => setShowHowItWorks(false)}
-        >
-          <div
-            className="relative w-full max-w-md rounded-t-[28px] sm:rounded-[28px] border p-5 shadow-2xl z-10 space-y-4 max-h-[85vh] overflow-y-auto"
-            style={{
-              backgroundColor: 'var(--surface)',
-              borderColor: 'var(--line)',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="w-9 h-1 rounded-full bg-[var(--line-strong)] mx-auto sm:hidden" />
-            <div className="flex items-center justify-between">
-              <h3 className="font-bold text-sm text-[var(--text)]">Leaderboard & Streak Rules</h3>
-              <button
-                type="button"
-                onClick={() => setShowHowItWorks(false)}
-                className="btn-apple p-1 rounded-full text-[var(--text-muted)] hover:text-[var(--text)]"
-                aria-label="Close"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="space-y-3 text-xs leading-relaxed text-[var(--text)]">
-              <div className="p-3 rounded-[18px] bg-[var(--surface-sunken)] border border-[var(--line)] space-y-1">
-                <strong className="text-[var(--primary)] block">1. Daily Streak Rule</strong>
-                <p className="text-[var(--text-muted)]">
-                  Post once every single day about your studies, sports, or good habits. If you miss a day, your streak resets.
-                </p>
-              </div>
-
-              <div className="p-3 rounded-[18px] bg-[var(--surface-sunken)] border border-[var(--line)] space-y-1">
-                <strong className="text-amber-500 block">2. Earning Points</strong>
-                <p className="text-[var(--text-muted)]">
-                  Each valid habit post awards +25 habit points. Highest streak days take the top 1, 2, 3 podium spots!
-                </p>
-              </div>
-
-              <div className="p-3 rounded-[18px] bg-[var(--surface-sunken)] border border-[var(--line)] space-y-1">
-                <strong className="text-emerald-500 block">3. Safety & Respect</strong>
-                <p className="text-[var(--text-muted)]">
-                  Keep posts clean, inspiring, and respectful for all school classmates.
-                </p>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setShowHowItWorks(false)}
-              className="btn-apple w-full py-2.5 rounded-full text-xs font-bold text-white bg-[var(--primary)] cursor-pointer"
-            >
-              Got it!
-            </button>
-          </div>
-        </div>
-      )}
+      {/* Rules / Orientation Walkthrough Modal */}
+      <NewUserIntroModal
+        isOpen={showHowItWorks}
+        forceShow={showHowItWorks}
+        currentUsername={currentUser?.username}
+        onClose={() => setShowHowItWorks(false)}
+      />
 
       {/* Toast Notification */}
       {toastMessage && (
