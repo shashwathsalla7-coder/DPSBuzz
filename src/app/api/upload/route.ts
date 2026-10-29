@@ -4,10 +4,20 @@ import path from 'path';
 import { v2 as cloudinary } from 'cloudinary';
 import { isCloudinaryConfigured } from '@/lib/cloudinary';
 
-const ALLOWED_FOLDERS = ['posts', 'stories', 'avatars', 'groups', 'notices'];
-const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'];
+const ALLOWED_FOLDERS = ['posts', 'stories', 'avatars', 'groups', 'notices', 'reels', 'videos'];
+const ALLOWED_MIME_TYPES = [
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+  'application/pdf',
+  'video/mp4',
+  'video/webm',
+  'video/quicktime',
+];
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10 MB
 const MAX_PDF_BYTES = 10 * 1024 * 1024; // 10 MB
+const MAX_VIDEO_BYTES = 35 * 1024 * 1024; // 35 MB Reel video limit
 
 // Helper to configure Cloudinary dynamically
 function ensureCloudinary() {
@@ -51,7 +61,8 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: false, error: 'File format not supported' }, { status: 400 });
       }
 
-      const maxAllowed = mimeType === 'application/pdf' ? MAX_PDF_BYTES : MAX_IMAGE_BYTES;
+      const isVid = mimeType.startsWith('video/');
+      const maxAllowed = isVid ? MAX_VIDEO_BYTES : mimeType === 'application/pdf' ? MAX_PDF_BYTES : MAX_IMAGE_BYTES;
       if (file.size > maxAllowed) {
         return NextResponse.json(
           { success: false, error: `File size exceeds ${(maxAllowed / (1024 * 1024)).toFixed(0)}MB limit` },
@@ -61,7 +72,7 @@ export async function POST(req: NextRequest) {
 
       const bytes = await file.arrayBuffer();
       buffer = Buffer.from(bytes);
-      filename = file.name || `upload_${Date.now()}.jpg`;
+      filename = file.name || `upload_${Date.now()}.${isVid ? 'mp4' : 'jpg'}`;
     } else {
       // 2. Handle JSON with Base64 Data URL
       const body = await req.json();
@@ -83,14 +94,15 @@ export async function POST(req: NextRequest) {
       }
 
       buffer = Buffer.from(matches[2], 'base64');
-      const maxAllowed = mimeType === 'application/pdf' ? MAX_PDF_BYTES : MAX_IMAGE_BYTES;
+      const isVid = mimeType.startsWith('video/');
+      const maxAllowed = isVid ? MAX_VIDEO_BYTES : mimeType === 'application/pdf' ? MAX_PDF_BYTES : MAX_IMAGE_BYTES;
       if (buffer.length > maxAllowed) {
         return NextResponse.json(
           { success: false, error: `File size exceeds ${(maxAllowed / (1024 * 1024)).toFixed(0)}MB limit` },
           { status: 413 }
         );
       }
-      filename = customFilename || `upload_${Date.now()}.jpg`;
+      filename = customFilename || `upload_${Date.now()}.${isVid ? 'mp4' : 'jpg'}`;
     }
 
     if (!buffer) {
@@ -102,11 +114,12 @@ export async function POST(req: NextRequest) {
     if (hasCloudinary) {
       try {
         const base64DataUri = `data:${mimeType};base64,${buffer.toString('base64')}`;
+        const isVideo = mimeType.startsWith('video/');
         const uploadResult = await cloudinary.uploader.upload(base64DataUri, {
           folder: `dpsbuzz/${folder}`,
-          resource_type: mimeType.includes('pdf') ? 'raw' : 'image',
-          fetch_format: 'auto',
-          quality: 'auto',
+          resource_type: isVideo ? 'video' : mimeType.includes('pdf') ? 'raw' : 'image',
+          fetch_format: isVideo ? undefined : 'auto',
+          quality: isVideo ? undefined : 'auto',
         });
 
         if (uploadResult?.secure_url) {
@@ -130,7 +143,8 @@ export async function POST(req: NextRequest) {
         fs.mkdirSync(uploadsDir, { recursive: true });
       }
       const isPdf = mimeType.includes('pdf');
-      const ext = isPdf ? 'pdf' : mimeType.includes('png') ? 'png' : mimeType.includes('webp') ? 'webp' : 'jpg';
+      const isVid = mimeType.startsWith('video/');
+      const ext = isPdf ? 'pdf' : isVid ? (mimeType.includes('webm') ? 'webm' : 'mp4') : mimeType.includes('png') ? 'png' : mimeType.includes('webp') ? 'webp' : 'jpg';
       const cleanName = `${folder}_${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${ext}`;
       const filePath = path.join(uploadsDir, cleanName);
       fs.writeFileSync(filePath, buffer);
