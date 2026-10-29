@@ -45,6 +45,11 @@ const SoloGame2048Modal = dynamic(
   { ssr: false }
 );
 
+const NewUserIntroModal = dynamic(
+  () => import('@/components/home/NewUserIntroModal').then((m) => m.NewUserIntroModal),
+  { ssr: false }
+);
+
 export default function HomePage() {
   return (
     <Suspense fallback={<HomeFeedSkeleton />}>
@@ -98,6 +103,7 @@ function HomeContent() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [sentMap, setSentMap] = useState<Record<string, boolean>>({});
   const [isSolo2048Open, setIsSolo2048Open] = useState<boolean>(false);
+  const [isIntroModalOpen, setIsIntroModalOpen] = useState<boolean>(false);
 
   // Notice Read Suppression
   const [readNoticeIds, setReadNoticeIds] = useState<string[]>(() => DataStore.getReadNoticeIds());
@@ -207,6 +213,9 @@ function HomeContent() {
         if (searchParams.get('game') === '2048' || searchParams.get('solo') === '2048') {
           setIsSolo2048Open(true);
         }
+        if (searchParams.get('intro') === 'true' || searchParams.get('guide') === 'true') {
+          setIsIntroModalOpen(true);
+        }
       }
     };
 
@@ -257,11 +266,14 @@ function HomeContent() {
       loadData();
     };
 
+    const handleOpenIntro = () => setIsIntroModalOpen(true);
+    window.addEventListener('dpsbuzz:open_intro', handleOpenIntro);
     window.addEventListener('dpsbuzz:content_updated', handleContentUpdated);
     window.addEventListener('storage', loadData);
     document.addEventListener('visibilitychange', handleVisibility);
 
     return () => {
+      window.removeEventListener('dpsbuzz:open_intro', handleOpenIntro);
       window.removeEventListener('dpsbuzz:content_updated', handleContentUpdated);
       window.removeEventListener('storage', loadData);
       document.removeEventListener('visibilitychange', handleVisibility);
@@ -1297,6 +1309,13 @@ function HomeContent() {
           currentUsername={currentUser.username}
         />
       )}
+
+      {/* New User Orientation & Streaks / Leaderboard Walkthrough Modal */}
+      <NewUserIntroModal
+        isOpen={isIntroModalOpen || undefined}
+        currentUsername={currentUser?.username}
+        onClose={() => setIsIntroModalOpen(false)}
+      />
 
       {/* Toast Notification */}
       {toastMessage && (
