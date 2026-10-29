@@ -14,9 +14,11 @@ import {
   UserPlus,
   UserCheck,
   Sparkles,
+  Eye,
 } from 'lucide-react';
 import { DataStore, type Post, type Profile } from '@/lib/dataStore';
 import { getAvatarColorPair } from '@/config/tokens';
+import { UniqueLikeOverlay, playLikeChime, triggerLikeVibration } from '@/components/reels/UniqueLikeOverlay';
 
 interface ReelCardProps {
   reel: Post;
@@ -25,6 +27,7 @@ interface ReelCardProps {
   onToggleMute: () => void;
   onOpenComments: (reel: Post) => void;
   onOpenShare: (reel: Post) => void;
+  onOpenLikesViews?: (reel: Post) => void;
   currentUser: Profile | null;
 }
 
@@ -35,6 +38,7 @@ export const ReelCard: React.FC<ReelCardProps> = ({
   onToggleMute,
   onOpenComments,
   onOpenShare,
+  onOpenLikesViews,
   currentUser,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -42,8 +46,9 @@ export const ReelCard: React.FC<ReelCardProps> = ({
   const [showPlayIcon, setShowPlayIcon] = useState(false);
   const [showHeartAnim, setShowHeartAnim] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
-  const [likesCount, setLikesCount] = useState(reel.likes || 0);
-  const [commentsCount, setCommentsCount] = useState(reel.comments || 0);
+  const [likesCount, setLikesCount] = useState(0);
+  const [commentsCount, setCommentsCount] = useState(0);
+  const [viewsCount, setViewsCount] = useState(0);
   const [isFollowing, setIsFollowing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [isCaptionExpanded, setIsCaptionExpanded] = useState(false);
@@ -57,16 +62,31 @@ export const ReelCard: React.FC<ReelCardProps> = ({
   const color = getAvatarColorPair(reel.username);
   const initials = (authorProf?.fullName || reel.fullName || reel.username || 'ST').slice(0, 2).toUpperCase();
 
-  // Initialize liked & follow state
+  // Initialize liked, stats & follow state from real DataStore
   useEffect(() => {
     if (currentUser?.username) {
       const likedIds = DataStore.getUserLikedPostIds(currentUser.username);
       setIsLiked(likedIds.includes(reel.id));
       setIsFollowing(DataStore.isFollowing(currentUser.username, reel.username));
     }
-    setLikesCount(reel.likes || 0);
-    setCommentsCount(reel.comments || 0);
+    setLikesCount(DataStore.getPostLikes(reel.id));
+    setCommentsCount(DataStore.getAllCommentsMap()[reel.id]?.length || 0);
+    setViewsCount(DataStore.getPostViews(reel.id));
   }, [reel.id, currentUser?.username]);
+
+  // Increment real views when reel is actively watched for 1.2+ seconds
+  useEffect(() => {
+    let timer: NodeJS.Timeout | null = null;
+    if (isActive && isPlaying) {
+      timer = setTimeout(() => {
+        const v = DataStore.incrementPostViews(reel.id);
+        setViewsCount(v);
+      }, 1200);
+    }
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [isActive, isPlaying, reel.id]);
 
   // Video play/pause based on active reel in viewport
   useEffect(() => {
@@ -126,8 +146,9 @@ export const ReelCard: React.FC<ReelCardProps> = ({
         setIsLiked(res.liked);
         setLikesCount(res.likesCount);
       }
+      playLikeChime();
+      triggerLikeVibration();
       setShowHeartAnim(true);
-      setTimeout(() => setShowHeartAnim(false), 800);
       lastTapRef.current = 0;
     } else {
       lastTapRef.current = now;
@@ -146,6 +167,11 @@ export const ReelCard: React.FC<ReelCardProps> = ({
     const res = DataStore.toggleLikePost(reel.id, currentUser.username);
     setIsLiked(res.liked);
     setLikesCount(res.likesCount);
+    if (res.liked) {
+      playLikeChime();
+      triggerLikeVibration();
+      setShowHeartAnim(true);
+    }
   };
 
   const handleFollowClick = (e: React.MouseEvent) => {
@@ -180,12 +206,8 @@ export const ReelCard: React.FC<ReelCardProps> = ({
         </div>
       )}
 
-      {/* Center Double-Tap Pop Heart Animation */}
-      {showHeartAnim && (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-30">
-          <Heart size={100} className="fill-rose-500 text-rose-500 animate-heart-pop drop-shadow-2xl" />
-        </div>
-      )}
+      {/* Center Unique Multi-Particle & Gradient Heart Animation */}
+      <UniqueLikeOverlay isVisible={showHeartAnim} onFinished={() => setShowHeartAnim(false)} />
 
       {/* Top Subtle Gradient */}
       <div className="absolute top-0 inset-x-0 h-28 bg-gradient-to-b from-black/60 to-transparent pointer-events-none z-10 sm:max-w-[440px] sm:mx-auto" />
@@ -195,25 +217,55 @@ export const ReelCard: React.FC<ReelCardProps> = ({
 
       {/* Right Side Action Column (Instagram Reels Style) */}
       <div
-        className="absolute right-3 bottom-20 sm:bottom-12 z-20 flex flex-col items-center gap-5 sm:gap-6 text-white"
+        className="absolute right-3 bottom-20 sm:bottom-12 z-20 flex flex-col items-center gap-4 sm:gap-5 text-white"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Like Button */}
+        {/* Like Button & Tap-to-view Likes */}
+        <div className="flex flex-col items-center gap-1 group">
+          <button
+            type="button"
+            onClick={handleLikeClick}
+            className={`w-11 h-11 rounded-full flex items-center justify-center backdrop-blur-md transition-all active:scale-75 cursor-pointer ${
+              isLiked
+                ? 'bg-gradient-to-tr from-rose-600 via-pink-500 to-amber-500 text-white shadow-lg shadow-rose-500/50 scale-105'
+                : 'bg-black/40 hover:bg-black/60 text-white'
+            }`}
+            aria-label={isLiked ? 'Unlike reel' : 'Like reel'}
+          >
+            <Heart
+              size={22}
+              className={isLiked ? 'fill-white stroke-white animate-unique-heart drop-shadow' : ''}
+            />
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenLikesViews?.(reel);
+            }}
+            className="text-[11px] font-bold tracking-tight drop-shadow-sm hover:underline hover:text-rose-300 transition-colors cursor-pointer"
+            title="View who liked this reel"
+          >
+            {likesCount}
+          </button>
+        </div>
+
+        {/* Real Views Counter Button */}
         <button
           type="button"
-          onClick={handleLikeClick}
+          onClick={(e) => {
+            e.stopPropagation();
+            onOpenLikesViews?.(reel);
+          }}
           className="flex flex-col items-center gap-1 group active:scale-75 transition-transform cursor-pointer"
-          aria-label={isLiked ? 'Unlike reel' : 'Like reel'}
+          aria-label="View reel stats"
+          title="Total real views"
         >
-          <div
-            className={`w-11 h-11 rounded-full flex items-center justify-center backdrop-blur-md transition-colors ${
-              isLiked ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/50' : 'bg-black/40 hover:bg-black/60 text-white'
-            }`}
-          >
-            <Heart size={22} className={isLiked ? 'fill-white stroke-white animate-heart-pop' : ''} />
+          <div className="w-11 h-11 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-md text-white flex items-center justify-center transition-colors">
+            <Eye size={20} className="text-cyan-300" />
           </div>
-          <span className="text-[11px] font-bold tracking-tight drop-shadow-sm">
-            {likesCount}
+          <span className="text-[11px] font-bold tracking-tight drop-shadow-sm tabular-nums">
+            {viewsCount}
           </span>
         </button>
 

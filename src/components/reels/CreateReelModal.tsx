@@ -45,6 +45,8 @@ export const CreateReelModal: React.FC<CreateReelModalProps> = ({
   });
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadMode, setUploadMode] = useState<'file' | 'link'>('file');
+  const [externalVideoUrl, setExternalVideoUrl] = useState('');
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [videoDuration, setVideoDuration] = useState<number>(0);
   const [caption, setCaption] = useState('');
@@ -67,11 +69,12 @@ export const CreateReelModal: React.FC<CreateReelModalProps> = ({
       setError(null);
     } else {
       // Cleanup preview URL
-      if (previewUrl) {
+      if (previewUrl && uploadMode === 'file') {
         URL.revokeObjectURL(previewUrl);
-        setPreviewUrl(null);
       }
+      setPreviewUrl(null);
       setSelectedFile(null);
+      setExternalVideoUrl('');
       setCaption('');
       setSelectedSong(null);
       setVideoDuration(0);
@@ -140,10 +143,6 @@ export const CreateReelModal: React.FC<CreateReelModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedFile) {
-      setError('Please select a video for your reel.');
-      return;
-    }
 
     if (!currentUser || !currentUser.username || currentUser.username === 'guest') {
       setError('You must be logged in to post reels.');
@@ -153,6 +152,41 @@ export const CreateReelModal: React.FC<CreateReelModalProps> = ({
     const check = DataStore.canUserPostReel(currentUser.username);
     if (!check.allowed) {
       setError(`Daily reel limit reached (${check.max} reels/day). This keeps the school platform fast and free! Try again tomorrow.`);
+      return;
+    }
+
+    // 1. Link Mode: Free external video provider (Catbox, Streamable, direct MP4)
+    if (uploadMode === 'link') {
+      const link = externalVideoUrl.trim();
+      if (!link) {
+        setError('Please paste a valid video URL from Catbox, Streamable, or a direct .mp4 link.');
+        return;
+      }
+
+      const newPost = DataStore.addPost({
+        userId: currentUser.id || `user-${currentUser.username}`,
+        username: currentUser.username,
+        fullName: currentUser.fullName || currentUser.username,
+        class: `Class ${currentUser.class || '8'}-${currentUser.section || 'A'}`,
+        avatar: currentUser.avatar || null,
+        caption: caption.trim() || 'Check out my new reel! 🎬✨',
+        images: [link],
+        imageUrl: link,
+        videoUrl: link,
+        isVideo: true,
+        isReel: true,
+        habitCategory: habitCategory,
+        song: selectedSong || undefined,
+      });
+
+      onReelCreated?.(newPost);
+      onClose();
+      return;
+    }
+
+    // 2. File Upload Mode: Hosted on Cloudinary 25GB Free Media CDN
+    if (!selectedFile) {
+      setError('Please select a video file for your reel.');
       return;
     }
 
@@ -272,6 +306,40 @@ export const CreateReelModal: React.FC<CreateReelModalProps> = ({
           </span>
         </div>
 
+        {/* Source Provider Tabs: Cloudinary File vs Free External Link */}
+        <div className="grid grid-cols-2 gap-2 px-5 pt-3">
+          <button
+            type="button"
+            onClick={() => {
+              setUploadMode('file');
+              setError(null);
+            }}
+            className={`py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 border ${
+              uploadMode === 'file'
+                ? 'bg-[var(--primary)] text-white border-transparent shadow-xs'
+                : 'bg-[var(--surface-sunken)] text-[var(--text-muted)] border-[var(--line)] hover:text-[var(--text)]'
+            }`}
+          >
+            <Upload size={13} />
+            <span>Upload File (Cloudinary)</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setUploadMode('link');
+              setError(null);
+            }}
+            className={`py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 border ${
+              uploadMode === 'link'
+                ? 'bg-[var(--primary)] text-white border-transparent shadow-xs'
+                : 'bg-[var(--surface-sunken)] text-[var(--text-muted)] border-[var(--line)] hover:text-[var(--text)]'
+            }`}
+          >
+            <Film size={13} />
+            <span>Free Video Link (Catbox)</span>
+          </button>
+        </div>
+
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 space-y-4">
           {error && (
@@ -281,8 +349,60 @@ export const CreateReelModal: React.FC<CreateReelModalProps> = ({
             </div>
           )}
 
+          {/* Link Mode Input */}
+          {uploadMode === 'link' && !previewUrl && (
+            <div className="space-y-2 p-4 rounded-2xl bg-[var(--surface-sunken)] border border-[var(--line)]">
+              <div className="flex items-center justify-between text-xs font-bold text-[var(--text)]">
+                <span>Paste Video Link (Free Providers)</span>
+                <span className="text-[10px] text-emerald-400 font-semibold">0MB Server Cost</span>
+              </div>
+              <div className="flex gap-2">
+                <input
+                  type="url"
+                  value={externalVideoUrl}
+                  onChange={(e) => setExternalVideoUrl(e.target.value)}
+                  placeholder="https://files.catbox.moe/abc.mp4 or streamable..."
+                  className="flex-1 bg-[var(--surface)] border border-[var(--line)] rounded-xl px-3 py-2 text-xs text-[var(--text)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--primary)]"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const clean = externalVideoUrl.trim();
+                    if (!clean) {
+                      setError('Please paste a video URL first.');
+                      return;
+                    }
+                    setError(null);
+                    setPreviewUrl(clean);
+                  }}
+                  className="px-3.5 py-2 rounded-xl bg-[var(--primary)] text-white text-xs font-bold transition-colors cursor-pointer shrink-0"
+                >
+                  Load Preview
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-1.5 items-center pt-1 text-[10px] text-[var(--text-muted)]">
+                <span className="font-semibold">Free Hosts:</span>
+                <button
+                  type="button"
+                  onClick={() => window.open('https://catbox.moe', '_blank')}
+                  className="px-2 py-0.5 rounded bg-white/5 border border-white/10 hover:border-pink-400 hover:text-pink-300 transition-colors"
+                >
+                  Catbox.moe (200MB) ↗
+                </button>
+                <button
+                  type="button"
+                  onClick={() => window.open('https://streamable.com', '_blank')}
+                  className="px-2 py-0.5 rounded bg-white/5 border border-white/10 hover:border-pink-400 hover:text-pink-300 transition-colors"
+                >
+                  Streamable ↗
+                </button>
+                <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10">Direct MP4 URL</span>
+              </div>
+            </div>
+          )}
+
           {/* Video Picker or Video Preview */}
-          {!previewUrl ? (
+          {!previewUrl && uploadMode === 'file' ? (
             <div
               onClick={() => fileInputRef.current?.click()}
               className="w-full aspect-[9/10] max-h-64 sm:max-h-72 rounded-2xl border-2 border-dashed border-[var(--line)] hover:border-[var(--primary)] bg-[var(--surface-sunken)] flex flex-col items-center justify-center gap-3 p-6 text-center cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99] group"
@@ -307,7 +427,7 @@ export const CreateReelModal: React.FC<CreateReelModalProps> = ({
                 className="hidden"
               />
             </div>
-          ) : (
+          ) : previewUrl ? (
             <div className="relative w-full aspect-[9/12] max-h-72 rounded-2xl overflow-hidden bg-black border border-[var(--line)] flex items-center justify-center group">
               <video
                 ref={videoPreviewRef}
@@ -327,15 +447,18 @@ export const CreateReelModal: React.FC<CreateReelModalProps> = ({
                 {isPlayingPreview ? <Pause size={20} /> : <Play size={20} className="translate-x-0.5" />}
               </button>
               <div className="absolute top-2.5 right-2.5 flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded-md bg-black/70 backdrop-blur-sm text-[11px] font-mono font-bold text-white">
-                  ⏱️ {Math.round(videoDuration)}s
-                </span>
+                {videoDuration > 0 && (
+                  <span className="px-2 py-0.5 rounded-md bg-black/70 backdrop-blur-sm text-[11px] font-mono font-bold text-white">
+                    ⏱️ {Math.round(videoDuration)}s
+                  </span>
+                )}
                 <button
                   type="button"
                   onClick={() => {
                     setSelectedFile(null);
-                    if (previewUrl) URL.revokeObjectURL(previewUrl);
+                    if (previewUrl && uploadMode === 'file') URL.revokeObjectURL(previewUrl);
                     setPreviewUrl(null);
+                    setExternalVideoUrl('');
                   }}
                   className="w-7 h-7 rounded-full bg-black/70 text-white flex items-center justify-center hover:bg-rose-600 transition-colors cursor-pointer"
                   title="Remove video"
@@ -344,7 +467,7 @@ export const CreateReelModal: React.FC<CreateReelModalProps> = ({
                 </button>
               </div>
             </div>
-          )}
+          ) : null}
 
           {/* Caption Input */}
           <div className="space-y-1.5">
@@ -445,10 +568,21 @@ export const CreateReelModal: React.FC<CreateReelModalProps> = ({
             </div>
           )}
 
+          {/* Storage Provider Transparency Notice */}
+          <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/10 text-[11px] text-[var(--text-muted)] space-y-1">
+            <div className="flex items-center gap-1.5 font-bold text-[var(--text)]">
+              <Sparkles size={13} className="text-pink-400" />
+              <span>Free Hosting Infrastructure</span>
+            </div>
+            <p className="leading-relaxed">
+              Uploaded files are hosted on <strong>Cloudinary Free 25GB Media CDN</strong> (zero Cloudflare video storage used). Free external video links from <strong>Catbox.moe</strong> or <strong>Streamable</strong> use 0MB of server storage!
+            </p>
+          </div>
+
           {/* Submit Action Button */}
           <button
             type="submit"
-            disabled={!selectedFile || isUploading || (!quota.allowed && currentUser?.username !== 'shashwath71845')}
+            disabled={(!selectedFile && !externalVideoUrl.trim()) || isUploading || (!quota.allowed && currentUser?.username?.toLowerCase() !== 'shashwath71845')}
             className="w-full h-12 rounded-2xl bg-gradient-to-r from-pink-600 via-rose-600 to-blue-600 hover:opacity-95 active:scale-[0.99] text-white font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isUploading ? (

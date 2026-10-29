@@ -382,10 +382,10 @@ export const DPS_OFFICIAL_ACCOUNT: Profile = {
   role: 'admin',
   isVerified: true,
   isApproved: true,
-  followerCount: 24,
-  followingCount: 1,
-  postCount: 1,
-  spiritPoints: 1000,
+  followerCount: 0,
+  followingCount: 0,
+  postCount: 0,
+  spiritPoints: 0,
   createdAt: '2026-10-01T00:00:00.000Z',
 };
 
@@ -408,9 +408,9 @@ export const DEFAULT_LAUNCH_POST: Post = {
   isVideo: true,
   taggedUsers: ['shashwath71845'],
   isPinned: true,
-  likes: 18,
-  comments: 4,
-  views: 120,
+  likes: 0,
+  comments: 0,
+  views: 0,
   createdAt: '2026-10-28T18:43:17.141Z',
   timeAgo: 'Just now',
 };
@@ -1666,6 +1666,7 @@ export const DataStore = {
 
     const likesMap = this.getPostLikesMap();
     const commentsMap = this.getAllCommentsMap();
+    const viewsMap = this.getPostViewsMap();
 
     // Dynamically calculate repost counts based on actual reposted posts in system
     const repostCounts: Record<string, number> = {};
@@ -1687,16 +1688,33 @@ export const DataStore = {
           avatar: origProf?.avatar || repostedFrom.avatar || null,
         };
       }
+      // Zero fake metrics: Count ONLY real user interactions
+      const realLikes = Array.isArray(likesMap[p.id]) ? likesMap[p.id].length : 0;
+      const realComments = Array.isArray(commentsMap[p.id]) ? commentsMap[p.id].length : 0;
+      const realViews = viewsMap[p.id] !== undefined ? viewsMap[p.id] : 0;
+      const realReposts = repostCounts[p.id] !== undefined ? repostCounts[p.id] : 0;
+
       return {
         ...p,
         avatar: effectiveAvatar,
         userAvatar: effectiveAvatar || undefined,
         repostedFrom,
-        likes: Array.isArray(likesMap[p.id]) ? likesMap[p.id].length : (p.likes || 0),
-        comments: Array.isArray(commentsMap[p.id]) ? commentsMap[p.id].length : (p.comments || 0),
-        repostCount: repostCounts[p.id] !== undefined ? repostCounts[p.id] : (p.isRepost ? 0 : (p.repostCount || 0)),
+        likes: realLikes,
+        comments: realComments,
+        views: realViews,
+        repostCount: realReposts,
       };
     });
+  },
+
+  getPostViewsMap(): Record<string, number> {
+    return getStorage<Record<string, number>>('dpsbuzz_views_map_v1', {});
+  },
+
+  getPostViews(postId: string): number {
+    if (!postId) return 0;
+    const map = this.getPostViewsMap();
+    return typeof map[postId] === 'number' ? map[postId] : 0;
   },
 
   getPostById(postId: string): Post | null {
@@ -1704,7 +1722,17 @@ export const DataStore = {
     const posts = this.getPosts(true);
     const found = posts.find((p) => p.id === postId);
     if (found) return found;
-    if (postId === 'post-launch-video') return DEFAULT_LAUNCH_POST;
+    if (postId === 'post-launch-video') {
+      const likesMap = this.getPostLikesMap();
+      const commentsMap = this.getAllCommentsMap();
+      const viewsMap = this.getPostViewsMap();
+      return {
+        ...DEFAULT_LAUNCH_POST,
+        likes: Array.isArray(likesMap['post-launch-video']) ? likesMap['post-launch-video'].length : 0,
+        comments: Array.isArray(commentsMap['post-launch-video']) ? commentsMap['post-launch-video'].length : 0,
+        views: viewsMap['post-launch-video'] || 0,
+      };
+    }
     return null;
   },
 
@@ -1714,7 +1742,15 @@ export const DataStore = {
       (p) => Boolean(p.isReel || p.isVideo || (p.videoUrl && p.videoUrl.trim() !== ''))
     );
     if (!reels.some((r) => r.id === 'post-launch-video')) {
-      reels.unshift(DEFAULT_LAUNCH_POST);
+      const likesMap = this.getPostLikesMap();
+      const commentsMap = this.getAllCommentsMap();
+      const viewsMap = this.getPostViewsMap();
+      reels.unshift({
+        ...DEFAULT_LAUNCH_POST,
+        likes: Array.isArray(likesMap['post-launch-video']) ? likesMap['post-launch-video'].length : 0,
+        comments: Array.isArray(commentsMap['post-launch-video']) ? commentsMap['post-launch-video'].length : 0,
+        views: viewsMap['post-launch-video'] || 0,
+      });
     }
     return reels;
   },
@@ -1862,26 +1898,31 @@ export const DataStore = {
   },
 
   incrementPostViews(postId: string): number {
+    if (!postId) return 0;
+    const viewsMap = this.getPostViewsMap();
+    const currentViews = typeof viewsMap[postId] === 'number' ? viewsMap[postId] : 0;
+    const newViews = currentViews + 1;
+    viewsMap[postId] = newViews;
+    setStorage('dpsbuzz_views_map_v1', viewsMap);
+
     const posts = this.getPosts(true);
-    let newViews = 1;
     let found = false;
     const nextPosts = posts.map((p) => {
       if (p.id === postId) {
         found = true;
-        newViews = (p.views || 0) + 1;
         return { ...p, views: newViews };
       }
       return p;
     });
     if (found) {
       setStorage(STORAGE_KEYS.POSTS, nextPosts);
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(
-          new CustomEvent('dpsbuzz:content_updated', {
-            detail: { type: 'post_views', postId, views: newViews },
-          })
-        );
-      }
+    }
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('dpsbuzz:content_updated', {
+          detail: { type: 'post_views', postId, views: newViews },
+        })
+      );
     }
     return newViews;
   },
@@ -7321,6 +7362,43 @@ export const DataStore = {
       if (this.isPostLiked(id, username)) {
         this.toggleLikePost(id, username);
       }
+    });
+  },
+
+  getPostLikersWithStatus(
+    postId: string,
+    viewerUsername?: string
+  ): Array<{
+    username: string;
+    fullName: string;
+    avatar: string | null;
+    class?: string;
+    isFollowing: boolean;
+    isViewer: boolean;
+  }> {
+    if (!postId) return [];
+    const map = this.getPostLikesMap();
+    const rawLikers = map[postId] || [];
+    const deletedUserSet = this.getDeletedUsernames();
+    const cleanViewer = (viewerUsername || this.getCurrentUser()?.username || '').toLowerCase().trim();
+
+    const uniqueLikers = Array.from(new Set(rawLikers.map((u) => u.trim()))).filter(
+      (u) => Boolean(u) && !deletedUserSet.has(u.toLowerCase())
+    );
+
+    return uniqueLikers.map((u) => {
+      const prof = this.getProfileByUsername(u);
+      const isViewer = Boolean(cleanViewer && u.toLowerCase() === cleanViewer);
+      const isFollowing = cleanViewer && !isViewer ? this.isFollowing(cleanViewer, u) : false;
+
+      return {
+        username: u,
+        fullName: prof?.fullName || u,
+        avatar: prof?.avatar || null,
+        class: prof?.class ? `Class ${prof.class}` : undefined,
+        isFollowing,
+        isViewer,
+      };
     });
   },
 
