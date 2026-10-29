@@ -15,7 +15,8 @@ function AuthGuardInner({ children }: { children: React.ReactNode }) {
     pathname.startsWith('/admin/login');
 
   const [isAuthorized, setIsAuthorized] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return true;
+    // Never allow unauthorized SSR leaks for private app pages
+    if (typeof window === 'undefined') return false;
     if (isPublicRoute) return true;
 
     try {
@@ -41,17 +42,24 @@ function AuthGuardInner({ children }: { children: React.ReactNode }) {
 
     const verifySession = () => {
       try {
+        const currentPath =
+          typeof window !== 'undefined' ? window.location.pathname + window.location.search : '';
+        const loginRedirect =
+          currentPath && currentPath !== '/login' && currentPath !== '/signup'
+            ? `/login?redirect=${encodeURIComponent(currentPath)}`
+            : '/login';
+
         const stored = localStorage.getItem('dpsbuzz_user');
         if (!stored) {
           setIsAuthorized(false);
-          router.replace('/login');
+          router.replace(loginRedirect);
           return;
         }
 
         const u = JSON.parse(stored);
         if (!u || !u.username || u.username.toLowerCase() === 'guest') {
           setIsAuthorized(false);
-          router.replace('/login');
+          router.replace(loginRedirect);
           return;
         }
 
@@ -61,15 +69,29 @@ function AuthGuardInner({ children }: { children: React.ReactNode }) {
             setIsAuthorized(false);
             localStorage.removeItem('dpsbuzz_user');
             document.cookie = 'dpsbuzz_user=; path=/; max-age=0; SameSite=Lax';
-            router.replace('/login');
+            router.replace(loginRedirect);
             return;
           }
         }
 
-        setIsAuthorized((prev) => (prev ? prev : true));
+        // Keep session cookie synchronized with localStorage for server middleware
+        try {
+          const sessionPayload = encodeURIComponent(
+            JSON.stringify({ id: u.id, username: u.username, role: u.role || 'student' })
+          );
+          document.cookie = `dpsbuzz_user=${sessionPayload}; path=/; max-age=31536000; SameSite=Lax`;
+        } catch {}
+
+        setIsAuthorized(true);
       } catch {
+        const currentPath =
+          typeof window !== 'undefined' ? window.location.pathname + window.location.search : '';
+        const loginRedirect =
+          currentPath && currentPath !== '/login' && currentPath !== '/signup'
+            ? `/login?redirect=${encodeURIComponent(currentPath)}`
+            : '/login';
         setIsAuthorized(false);
-        router.replace('/login');
+        router.replace(loginRedirect);
       }
     };
 
