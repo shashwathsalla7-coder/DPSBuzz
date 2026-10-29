@@ -3,7 +3,7 @@
 import { useState, useEffect, type FC } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Search, SquarePlus, MessageCircle, User } from 'lucide-react';
+import { Home, Film, SquarePlus, MessageCircle, User } from 'lucide-react';
 import { DataStore, type Profile } from '@/lib/dataStore';
 import { getAvatarColorPair } from '@/config/tokens';
 
@@ -31,7 +31,7 @@ export const MobileTabBar: FC = () => {
   }, []);
 
   const isHomeActive = pathname === '/home';
-  const isSearchActive = pathname === '/search' || pathname.startsWith('/search');
+  const isReelsActive = pathname === '/reels' || pathname.startsWith('/reels');
   const isChatsActive = pathname === '/chats' || pathname.startsWith('/chats');
   const isProfileActive = pathname === '/profile' || pathname.startsWith('/u/');
 
@@ -82,23 +82,24 @@ export const MobileTabBar: FC = () => {
           </span>
         </Link>
 
-        {/* 2. Search Tab */}
+        {/* 2. Reels Tab */}
         <Link
-          href="/search"
+          href="/reels"
           prefetch={true}
           className="flex flex-col items-center justify-center flex-1 h-full py-1 transition-colors select-none"
           style={{
-            color: isSearchActive ? 'var(--primary)' : 'var(--text-muted)',
+            color: isReelsActive ? 'var(--primary)' : 'var(--text-muted)',
           }}
-          aria-label="Search"
-          aria-current={isSearchActive ? 'page' : undefined}
+          aria-label="Reels"
+          aria-current={isReelsActive ? 'page' : undefined}
         >
-          <Search
+          <Film
             size={22}
-            strokeWidth={isSearchActive ? 2.5 : 1.75}
+            strokeWidth={isReelsActive ? 2.5 : 1.75}
+            className={isReelsActive ? 'fill-current' : ''}
           />
-          <span className={`text-[12px] leading-tight mt-0.5 ${isSearchActive ? 'font-bold' : 'font-medium'}`}>
-            Search
+          <span className={`text-[12px] leading-tight mt-0.5 ${isReelsActive ? 'font-bold' : 'font-medium'}`}>
+            Reels
           </span>
         </Link>
 

@@ -3,7 +3,7 @@
 import { useState, useEffect, type FC } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Bell, Menu, X, Megaphone, Users, Trophy, Settings, Shield, Download } from 'lucide-react';
+import { Bell, Menu, X, Megaphone, Users, Trophy, Settings, Shield, Download, Search } from 'lucide-react';
 import { school } from '@/config/school';
 import { DataStore, type Notice } from '@/lib/dataStore';
 import { colors } from '@/config/tokens';
@@ -34,8 +34,8 @@ export const TopBar: FC<TopBarProps> = ({ notificationCount = 0 }) => {
     };
   }, []);
 
-  // Dedicated screen headers exist on Search and Chats
-  if (pathname.startsWith('/chats') || pathname.startsWith('/search')) {
+  // Dedicated screen headers exist on Search, Chats, and Fullscreen Reels
+  if (pathname.startsWith('/chats') || pathname.startsWith('/search') || pathname.startsWith('/reels')) {
     return null;
   }
 
@@ -67,7 +67,17 @@ export const TopBar: FC<TopBarProps> = ({ notificationCount = 0 }) => {
             <Logo size="md" />
           </Link>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            {/* Quick Search Button */}
+            <Link
+              href="/search"
+              className="w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center relative btn-press hover:bg-[var(--surface-sunken)] active:scale-95 transition-all border border-transparent hover:border-[var(--line)]"
+              style={{ color: 'var(--text)' }}
+              aria-label="Search"
+            >
+              <Search size={20} strokeWidth={1.8} />
+            </Link>
+
             {/* Notification Bell with like-rose badge or count up to 9+ */}
             <Link
               href="/notifications"

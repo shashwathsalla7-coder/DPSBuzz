@@ -4,7 +4,7 @@ import { useState, useEffect, type FC } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  Home, Search, PlusSquare, MessageCircle, Users,
+  Home, Search, Film, PlusSquare, MessageCircle, Users,
   Megaphone, Trophy, User, Settings, Bell, Shield, Smartphone, Download, Gamepad2
 } from 'lucide-react';
 import { schoolConfig } from '@/config/school';
@@ -14,6 +14,7 @@ import Logo from '@/components/ui/Logo';
 const navItems = [
   { href: '/home', icon: Home, label: 'Home' },
   { href: '/search', icon: Search, label: 'Search' },
+  { href: '/reels', icon: Film, label: 'Reels' },
   { href: '/post/new', icon: PlusSquare, label: 'Post' },
   { href: '/chats', icon: MessageCircle, label: 'Chats' },
   { href: '/chats?view=games', icon: Gamepad2, label: 'Games Arena' },

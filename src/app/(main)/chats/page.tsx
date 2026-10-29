@@ -31,7 +31,9 @@ import {
   Sparkles,
   Gamepad2,
   MessageCircle,
+  Share2,
 } from 'lucide-react';
+import { ForwardMessageModal } from '@/components/chats/ForwardMessageModal';
 import { ChatsHeader } from '@/components/chats/ChatsHeader';
 import { ChatSearch } from '@/components/chats/ChatSearch';
 import { ConversationRow, ConversationItem } from '@/components/chats/ConversationRow';
@@ -809,6 +811,7 @@ function ChatsContent() {
 
   const [readReceiptsEnabled, setReadReceiptsEnabled] = useState(true);
   const [selectedMessageInfo, setSelectedMessageInfo] = useState<ChatMessage | null>(null);
+  const [forwardingMessage, setForwardingMessage] = useState<any | null>(null);
 
   useEffect(() => {
     if (typeof window !== 'undefined' && currentUsername) {
@@ -4064,6 +4067,21 @@ function ChatsContent() {
                         </button>
                       ))}
 
+                      {/* Forward / Share Message Action */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setForwardingMessage(msg);
+                          setActiveReactionMsgId(null);
+                        }}
+                        className="ml-1 pl-2 pr-2.5 py-0.5 border-l border-zinc-200 dark:border-zinc-700 text-blue-500 hover:text-blue-600 hover:bg-blue-500/10 rounded-full text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                        title="Share / Forward message"
+                      >
+                        <Share2 size={12} strokeWidth={2.4} />
+                        <span>Share</span>
+                      </button>
+
                       {/* Unsend Protocol (Instagram Architecture Section 5) */}
                       {isMe && (
                         <>
@@ -4357,15 +4375,29 @@ function ChatsContent() {
                               </p>
                             )}
 
-                            <Link
-                              href={`/home#post-${shared.id}`}
-                              className={`inline-flex items-center gap-1 text-[11px] font-bold underline transition-colors ${
-                                isMe ? 'text-blue-200 hover:text-white' : 'text-blue-600 hover:text-blue-700 dark:text-blue-400'
-                              }`}
-                            >
-                              <span>View Post in Feed</span>
-                              <span>→</span>
-                            </Link>
+                            <div className="flex items-center justify-between pt-1">
+                              <Link
+                                href={`/home#post-${shared.id}`}
+                                className={`inline-flex items-center gap-1 text-[11px] font-bold underline transition-colors ${
+                                  isMe ? 'text-blue-200 hover:text-white' : 'text-blue-600 hover:text-blue-700 dark:text-blue-400'
+                                }`}
+                              >
+                                <span>View Post in Feed</span>
+                                <span>→</span>
+                              </Link>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setForwardingMessage(msg);
+                                }}
+                                className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-blue-500/15 hover:bg-blue-500/25 text-blue-400 transition-colors cursor-pointer"
+                                title="Share / Forward this post"
+                              >
+                                <Share2 size={11} strokeWidth={2.2} />
+                                <span>Share</span>
+                              </button>
+                            </div>
                           </div>
                         );
                       })()}
@@ -4468,6 +4500,18 @@ function ChatsContent() {
                     <span className="text-[10px] text-[var(--text-muted)] tabular-nums font-medium">
                       {msg.time}
                     </span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setForwardingMessage(msg);
+                      }}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 text-zinc-400 hover:text-blue-400 cursor-pointer"
+                      title="Share / Forward this message"
+                      aria-label="Share message"
+                    >
+                      <Share2 size={11} />
+                    </button>
                     {isMe && (
                       <span
                         className="inline-flex items-center shrink-0 cursor-pointer"
@@ -6054,6 +6098,18 @@ function ChatsContent() {
         initialTab={leaderboardDefaultTab}
         currentUsername={currentUsername}
       />
+      {/* Forward / Share Message Modal */}
+      {forwardingMessage && (
+        <ForwardMessageModal
+          isOpen={Boolean(forwardingMessage)}
+          message={forwardingMessage}
+          onClose={() => setForwardingMessage(null)}
+          currentUsername={currentUsername}
+          onForwardSuccess={() => {
+            // Forward feedback is directly shown inside modal
+          }}
+        />
+      )}
     </div>
   );
 }

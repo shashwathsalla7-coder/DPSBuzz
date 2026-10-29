@@ -1708,6 +1708,46 @@ export const DataStore = {
     return null;
   },
 
+  getReels(): Post[] {
+    const posts = this.getPosts(false);
+    const reels = posts.filter(
+      (p) => Boolean(p.isReel || p.isVideo || (p.videoUrl && p.videoUrl.trim() !== ''))
+    );
+    if (!reels.some((r) => r.id === 'post-launch-video')) {
+      reels.unshift(DEFAULT_LAUNCH_POST);
+    }
+    return reels;
+  },
+
+  canUserPostReel(username: string): { allowed: boolean; remaining: number; count: number; max: number } {
+    const cleanUser = (username || '').toLowerCase().trim();
+    if (!cleanUser || cleanUser === 'guest') {
+      return { allowed: false, remaining: 0, count: 0, max: 3 };
+    }
+    // Superadmin has unlimited reels
+    if (cleanUser === 'shashwath71845') {
+      return { allowed: true, remaining: 999, count: 0, max: 999 };
+    }
+    const posts = this.getPosts(true);
+    const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
+    const userReelsToday = posts.filter((p) => {
+      const isAuthor = (p.username || '').toLowerCase().trim() === cleanUser;
+      const isReel = Boolean(p.isReel || p.isVideo || p.videoUrl);
+      const isRecent = new Date(p.createdAt || 0).getTime() > oneDayAgo;
+      return isAuthor && isReel && isRecent;
+    });
+
+    const max = 3;
+    const count = userReelsToday.length;
+    const remaining = Math.max(0, max - count);
+    return {
+      allowed: count < max,
+      remaining,
+      count,
+      max,
+    };
+  },
+
   addPost(post: Omit<Post, 'id' | 'createdAt' | 'timeAgo' | 'likes' | 'comments'>): Post {
     const posts = this.getPosts(true);
     const firstImage = post.imageUrl || (post.images && post.images.length > 0 ? post.images[0] : undefined);
@@ -7289,6 +7329,41 @@ export const DataStore = {
   // =====================================================
   getAllCommentsMap(): Record<string, any[]> {
     return getStorage<Record<string, any[]>>('dpsbuzz_comments_v1', {});
+  },
+
+  addComment(postId: string, username: string, text: string): void {
+    if (!postId || !text.trim()) return;
+    const authorProf = this.getProfileByUsername(username);
+    const newComment = {
+      id: 'c-' + Date.now(),
+      username: username || 'student',
+      avatar: authorProf?.avatar || null,
+      text: text.trim(),
+      timeAgo: 'Just now',
+      createdAt: new Date().toISOString(),
+    };
+    const all = this.getAllCommentsMap();
+    all[postId] = [...(all[postId] || []), newComment];
+    setStorage('dpsbuzz_comments_v1', all);
+
+    // Update post comments count
+    const posts = this.getPosts(true);
+    for (const p of posts) {
+      if (p.id === postId) {
+        p.comments = (p.comments || 0) + 1;
+        break;
+      }
+    }
+    setStorage(STORAGE_KEYS.POSTS, posts);
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated', { detail: { type: 'comment', postId } }));
+      fetch(`/api/posts/${postId}/comment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ comment: newComment }),
+      }).catch(() => {});
+    }
   },
 
   getUserComments(username?: string): UserActivityComment[] {

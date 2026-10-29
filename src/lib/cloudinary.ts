@@ -12,7 +12,7 @@ cloudinary.config({
   secure: true,
 });
 
-export type MediaFolder = 'posts' | 'stories' | 'avatars' | 'groups' | 'notices';
+export type MediaFolder = 'posts' | 'stories' | 'avatars' | 'groups' | 'notices' | 'reels';
 
 /**
  * Checks if Cloudinary environment variables are configured.
