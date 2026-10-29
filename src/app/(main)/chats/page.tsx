@@ -153,6 +153,87 @@ function compressImageForChat(file: File, maxDim = 1000, quality = 0.75): Promis
   });
 }
 
+/**
+ * Formats a message timestamp into a clean 12-hour time in the user's exact local timezone (e.g. "9:25 PM")
+ */
+function formatChatMessageTime(msg?: { time?: string; createdAt?: string; timestamp?: number }): string {
+  if (!msg) return 'Just now';
+  const raw = msg.createdAt ? new Date(msg.createdAt).getTime() : (msg.timestamp || 0);
+  if (raw > 0) {
+    const d = new Date(raw);
+    if (!isNaN(d.getTime())) {
+      return new Intl.DateTimeFormat(undefined, {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+      }).format(d);
+    }
+  }
+  if (msg.time && msg.time !== 'Recently' && msg.time !== 'Just now') {
+    return msg.time;
+  }
+  return 'Just now';
+}
+
+/**
+ * Formats a conversation row's last activity timestamp for the inbox:
+ * - < 1 min: "Just now"
+ * - < 60 min: "5m", "35m"
+ * - Today: "9:25 PM"
+ * - Yesterday: "Yesterday"
+ * - Older: "2d", "5d", "Oct 25"
+ */
+function formatConversationTimeAgo(timestamp?: number, fallbackStr?: string): string {
+  if (!timestamp || timestamp <= 0) {
+    if (fallbackStr && fallbackStr !== 'Recently' && fallbackStr !== '2h') {
+      return fallbackStr;
+    }
+    return 'Just now';
+  }
+  const now = Date.now();
+  const diffMs = now - timestamp;
+  if (diffMs < 0) return 'Just now';
+
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHours = Math.floor(diffMin / 60);
+
+  if (diffMin < 1) return 'Just now';
+  if (diffMin < 60) return `${diffMin}m`;
+
+  const date = new Date(timestamp);
+  const nowDate = new Date(now);
+
+  const isToday =
+    date.getDate() === nowDate.getDate() &&
+    date.getMonth() === nowDate.getMonth() &&
+    date.getFullYear() === nowDate.getFullYear();
+
+  if (isToday) {
+    return new Intl.DateTimeFormat(undefined, {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    }).format(date);
+  }
+
+  const yesterday = new Date(now - 86400000);
+  const isYesterday =
+    date.getDate() === yesterday.getDate() &&
+    date.getMonth() === yesterday.getMonth() &&
+    date.getFullYear() === yesterday.getFullYear();
+
+  if (isYesterday) return 'Yesterday';
+
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 7) return `${diffDays}d`;
+
+  return new Intl.DateTimeFormat(undefined, {
+    month: 'short',
+    day: 'numeric',
+  }).format(date);
+}
+
 const INITIAL_CONVERSATIONS: ConversationItem[] = [];
 
 const INITIAL_REQUESTS: MessageRequestItem[] = [];
@@ -269,7 +350,12 @@ const ActiveChatHeader = React.memo(({
           className="min-w-0 cursor-pointer hover:opacity-85"
         >
           <h2 className="text-sm font-semibold truncate leading-tight" style={{ color: 'var(--text)' }}>
-            {conversation.name}
+            {isGroup
+              ? conversation.name
+              : (() => {
+                  const liveProf = targetUser ? DataStore.getProfileByUsername(targetUser) : null;
+                  return liveProf?.fullName || conversation.name || `@${targetUser}`;
+                })()}
           </h2>
           <p className="text-[11px] text-[var(--text-muted)] truncate">
             {typingText ? (
@@ -287,9 +373,14 @@ const ActiveChatHeader = React.memo(({
                   <span>Tap to view members</span>
                 </span>
               );
-            })() : (
-              `@${conversation.username} · Class ${conversation.studentClass || '8-A'}`
-            )}
+            })() : (() => {
+              const liveProf = targetUser ? DataStore.getProfileByUsername(targetUser) : null;
+              const rawClass = liveProf?.class || conversation.studentClass || conversation.class || '8-A';
+              const cleanClass = rawClass.toString().replace(/^class\s*/i, '').trim();
+              const section = liveProf?.section ? `-${liveProf.section}` : '';
+              const finalClass = cleanClass ? `Class ${cleanClass}${section && !cleanClass.includes('-') ? section : ''}` : 'DPS Student';
+              return `@${targetUser} · ${finalClass}`;
+            })()}
           </p>
         </div>
       </div>
@@ -2124,23 +2215,60 @@ function ChatsContent() {
       );
     }
 
-    // Deterministic stable sorting:
+    // Helper to get true latest activity timestamp for any conversation
+    const getConvLastTimestamp = (c: ConversationItem): number => {
+      const canonicalId = getCanonicalConvId(c);
+      const msgs = getListForConv(chatMessages, canonicalId, c.id);
+      let latestFromMsgs = 0;
+      if (msgs && msgs.length > 0) {
+        const last = msgs[msgs.length - 1];
+        latestFromMsgs = last.timestamp || (last.createdAt ? new Date(last.createdAt).getTime() : 0);
+      }
+      return Math.max(c.lastMessageTimestamp || 0, latestFromMsgs, (c as any).timestamp || 0);
+    };
+
+    // Enrich conversation items with accurate live preview & local formatted time
+    const enrichedList = list.map((c) => {
+      const ts = getConvLastTimestamp(c);
+      const canonicalId = getCanonicalConvId(c);
+      const msgs = getListForConv(chatMessages, canonicalId, c.id);
+      let latestPreview = c.lastMessage;
+      let isUnread = Boolean(c.isUnread);
+      if (msgs && msgs.length > 0) {
+        const last = msgs[msgs.length - 1];
+        const isMe = (last.senderUsername || '').toLowerCase() === currentUsername || last.sender === 'me';
+        const txt = last.text || (last.sharedPost ? 'Shared a post 📸' : (last.isChatPhoto ? 'Sent a photo 📸' : 'New message'));
+        latestPreview = isMe ? `You: ${txt}` : txt;
+        if (!isMe && !last.is_read && !last.isSeen && !last.readAt) {
+          isUnread = true;
+        }
+      }
+      return {
+        ...c,
+        lastMessage: latestPreview || c.lastMessage || 'Say hi to your classmate',
+        lastMessageTimestamp: ts,
+        timeAgo: formatConversationTimeAgo(ts, c.timeAgo),
+        isUnread,
+      };
+    });
+
+    // Deterministic sorting:
     // 1. Pinned conversations always first
-    // 2. Newest message timestamp first
-    // 3. Stable alphabetical fallback by conversation id
-    list.sort((a, b) => {
+    // 2. LATEST message timestamp FIRST (newest conversation is top of inbox)
+    // 3. Alphabetical fallback by name
+    enrichedList.sort((a, b) => {
       if (Boolean(a.isPinned) !== Boolean(b.isPinned)) {
         return a.isPinned ? -1 : 1;
       }
       const timeA = a.lastMessageTimestamp || 0;
       const timeB = b.lastMessageTimestamp || 0;
       if (timeA !== timeB) {
-        return timeB - timeA;
+        return timeB - timeA; // Latest is FIRST!
       }
-      return a.id.localeCompare(b.id);
+      return a.name.localeCompare(b.name);
     });
 
-    return list;
+    return enrichedList;
   }, [conversations, chatMessages, activeChip, searchQuery, demoState, currentUsername]);
 
   // Separate pinned, today, earlier
@@ -2163,12 +2291,8 @@ function ChatsContent() {
             earlier.push(conv);
           }
         } else {
-          const time = conv.timeAgo?.toLowerCase() || '';
-          if (time.includes('m') || time.includes('h') || time.includes('now') || time.includes('just')) {
-            today.push(conv);
-          } else {
-            earlier.push(conv);
-          }
+          // If no timestamp yet, place in today so it's immediately accessible
+          today.push(conv);
         }
       }
     });
@@ -4498,7 +4622,7 @@ function ChatsContent() {
                       </span>
                     )}
                     <span className="text-[10px] text-[var(--text-muted)] tabular-nums font-medium">
-                      {msg.time}
+                      {formatChatMessageTime(msg)}
                     </span>
                     <button
                       type="button"
