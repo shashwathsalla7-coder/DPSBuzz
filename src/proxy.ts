@@ -66,9 +66,14 @@ export function proxy(request: NextRequest) {
   const isAuthRoute = pathname === '/login' || pathname === '/signup';
   const isAdminLoginRoute = pathname === '/admin/login';
 
-  // If already logged in on this device and visiting /login or /signup, direct to /home
+  // If already logged in on this device and visiting /login or /signup, direct to requested link or /home
   if (isAuthRoute && hasValidUser && !isLogout) {
-    return NextResponse.redirect(new URL('/home', request.url));
+    const redirectTarget = request.nextUrl.searchParams.get('redirect');
+    const destination =
+      redirectTarget && redirectTarget.startsWith('/') && !redirectTarget.startsWith('//')
+        ? redirectTarget
+        : '/home';
+    return NextResponse.redirect(new URL(destination, request.url));
   }
 
   if (isAuthRoute || isAdminLoginRoute) {
@@ -108,34 +113,41 @@ export function proxy(request: NextRequest) {
     }
   }
 
-  // 6. Protected student routes - require saved user on this device
-  const isProtectedRoute =
-    pathname.startsWith('/home') ||
-    pathname.startsWith('/settings') ||
-    pathname.startsWith('/notifications') ||
-    pathname.startsWith('/chats') ||
-    pathname.startsWith('/game') ||
-    pathname.startsWith('/games') ||
-    pathname.startsWith('/cricket') ||
-    pathname.startsWith('/post') ||
-    pathname.startsWith('/profile') ||
-    pathname.startsWith('/u/') ||
-    pathname.startsWith('/groups') ||
-    pathname.startsWith('/notices') ||
-    pathname.startsWith('/leaderboard');
+  // 6. Public API endpoints that don't require an active student session
+  const isPublicApi =
+    pathname.startsWith('/api/download') ||
+    pathname === '/api/admin/login' ||
+    pathname === '/api/media/sign-read' ||
+    pathname === '/api/upload/presign';
 
-  if (isProtectedRoute && !hasValidUser) {
-    const res = NextResponse.redirect(new URL('/login', request.url));
+  // 7. Strict Wall: ALL other routes in the app require a registered, logged-in student account!
+  // Especially deep links (e.g. /u/[username], /reels, /chats, /leaderboard, /games, /notices, /post/new, /settings)
+  if (!hasValidUser) {
+    if (pathname.startsWith('/api')) {
+      if (!isPublicApi) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Authentication required. Please log in or create an account to access DPSBuzz.',
+          },
+          { status: 401, headers: { 'X-Robots-Tag': 'noindex, nofollow, noarchive' } }
+        );
+      }
+      return NextResponse.next();
+    }
+
+    // Direct web page requests: immediately redirect to /login with target URL preserved
+    const targetUrl = request.nextUrl.pathname + request.nextUrl.search;
+    const loginUrl = new URL('/login', request.url);
+    loginUrl.searchParams.set('redirect', targetUrl);
+    const res = NextResponse.redirect(loginUrl);
     res.headers.set('X-Robots-Tag', 'noindex, nofollow, noarchive');
     return res;
   }
 
-  // On all private / protected responses, always set X-Robots-Tag header
+  // Authenticated responses: apply noindex header to protect student privacy
   const response = NextResponse.next();
-  if (isProtectedRoute || pathname.startsWith('/api') || pathname.startsWith('/admin')) {
-    response.headers.set('X-Robots-Tag', 'noindex, nofollow, noarchive');
-  }
-
+  response.headers.set('X-Robots-Tag', 'noindex, nofollow, noarchive');
   return response;
 }
 

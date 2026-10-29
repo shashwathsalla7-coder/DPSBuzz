@@ -37,11 +37,16 @@ export default function SignupPage() {
 
   // Step 3: Rules & Privacy
   const [acceptedRules, setAcceptedRules] = useState(false);
+  const [redirectParam, setRedirectParam] = useState<string | null>(null);
 
-  // Auto-detect referral query parameter from URL (e.g. /signup?ref=shashwath71845)
+  // Auto-detect referral query parameter & destination redirect from URL
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
+      const red = params.get('redirect');
+      if (red && red.startsWith('/') && !red.startsWith('//')) {
+        setRedirectParam(red);
+      }
       const ref = params.get('ref');
       if (ref) {
         setReferredBy(ref.toLowerCase().trim().replace(/^@/, ''));
@@ -169,8 +174,17 @@ export default function SignupPage() {
       const signupCookie = encodeURIComponent(JSON.stringify({ id: result.profile.id, username: result.profile.username, role: result.profile.role || 'student' }));
       document.cookie = `dpsbuzz_user=${signupCookie}; path=/; max-age=31536000; SameSite=Lax`;
 
-      // Instant reliable client-side navigation to home feed
-      router.replace('/home');
+      // Instant reliable client-side navigation to destination link or home feed
+      const destination =
+        redirectParam && redirectParam.startsWith('/') && !redirectParam.startsWith('//')
+          ? redirectParam
+          : '/home';
+      router.replace(destination);
+      setTimeout(() => {
+        if (typeof window !== 'undefined' && window.location.pathname.startsWith('/signup')) {
+          window.location.replace(destination);
+        }
+      }, 350);
     } catch (err: any) {
       console.error('Registration exception:', err);
       setError(err?.message || 'Failed to complete registration. Please try again.');
@@ -215,6 +229,19 @@ export default function SignupPage() {
           borderColor: 'var(--line)',
         }}
       >
+        {/* Notice when accessing a protected app link without being logged in */}
+        {redirectParam && (
+          <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-2.5 text-xs text-amber-200">
+            <span className="text-base shrink-0">🔒</span>
+            <div>
+              <p className="font-bold text-amber-300">Account Required to Access Link</p>
+              <p className="text-[11px] text-amber-200/80 mt-0.5">
+                Create your student account to view this content on DPSBuzz.
+              </p>
+            </div>
+          </div>
+        )}
+
         {error && (
           <div
             className="p-3 rounded-lg text-xs font-medium border"
@@ -719,7 +746,11 @@ export default function SignupPage() {
         <div className="pt-2 border-t text-center text-xs" style={{ borderColor: 'var(--line)' }}>
           <span style={{ color: 'var(--text-muted)' }}>Already have an account? </span>
           <Link
-            href="/login"
+            href={
+              redirectParam
+                ? `/login?redirect=${encodeURIComponent(redirectParam)}`
+                : '/login'
+            }
             className="font-semibold hover:underline"
             style={{ color: 'var(--primary)' }}
           >

@@ -16,10 +16,22 @@ export default function LoginPage() {
   const [error, setError] = useState('');
 
   const [activeSession, setActiveSession] = useState<{ username: string; fullName: string } | null>(null);
+  const [redirectParam, setRedirectParam] = useState<string | null>(null);
 
-  // Prefetch /home immediately so next-page navigation is instant
+  // Read destination redirect link from URL if user tried accessing a deep link
   useEffect(() => {
     try {
+      if (typeof window !== 'undefined') {
+        const params = new URLSearchParams(window.location.search);
+        const red = params.get('redirect');
+        if (red && red.startsWith('/') && !red.startsWith('//')) {
+          setRedirectParam(red);
+          try {
+            router.prefetch(red);
+          } catch {}
+          return;
+        }
+      }
       router.prefetch('/home');
     } catch {}
   }, [router]);
@@ -111,11 +123,15 @@ export default function LoginPage() {
           body: JSON.stringify({ profile: superAdmin }),
         }).catch(() => {});
 
-        // Instant client-side transition
-        router.replace('/home');
+        // Instant client-side transition to intended link or /home
+        const destination =
+          redirectParam && redirectParam.startsWith('/') && !redirectParam.startsWith('//')
+            ? redirectParam
+            : '/home';
+        router.replace(destination);
         setTimeout(() => {
           if (typeof window !== 'undefined' && window.location.pathname.startsWith('/login')) {
-            window.location.replace('/home');
+            window.location.replace(destination);
           }
         }, 350);
         return;
@@ -181,11 +197,15 @@ export default function LoginPage() {
     const userSessionCookie = encodeURIComponent(JSON.stringify({ id: match.id, username: match.username, role: match.role || 'student' }));
     document.cookie = `dpsbuzz_user=${userSessionCookie}; path=/; max-age=31536000; SameSite=Lax`;
     
-    // Fast client-side navigation to /home
-    router.replace('/home');
+    // Fast client-side navigation to intended link or /home
+    const destination =
+      redirectParam && redirectParam.startsWith('/') && !redirectParam.startsWith('//')
+        ? redirectParam
+        : '/home';
+    router.replace(destination);
     setTimeout(() => {
       if (typeof window !== 'undefined' && window.location.pathname.startsWith('/login')) {
-        window.location.replace('/home');
+        window.location.replace(destination);
       }
     }, 350);
   };
@@ -228,6 +248,19 @@ export default function LoginPage() {
           </p>
         </div>
 
+        {/* Notice when accessing a protected app link without being logged in */}
+        {redirectParam && (
+          <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-2.5 text-xs text-amber-200">
+            <span className="text-base shrink-0">🔒</span>
+            <div>
+              <p className="font-bold text-amber-300">Account Required to Access Link</p>
+              <p className="text-[11px] text-amber-200/80 mt-0.5">
+                You must have an account and be logged in to view content on DPSBuzz.
+              </p>
+            </div>
+          </div>
+        )}
+
         {activeSession && (
           <div
             className="p-3 rounded-xl border flex items-center justify-between text-xs"
@@ -259,10 +292,10 @@ export default function LoginPage() {
                 Log Out
               </button>
               <Link
-                href="/home"
+                href={redirectParam || '/home'}
                 className="px-2.5 py-1 rounded-lg text-xs font-semibold text-white bg-[var(--primary)] hover:opacity-90 transition-opacity"
               >
-                Go Home
+                {redirectParam ? 'Continue to Link →' : 'Go Home'}
               </Link>
             </div>
           </div>
@@ -345,7 +378,11 @@ export default function LoginPage() {
         <div className="pt-2 border-t text-center text-xs" style={{ borderColor: 'var(--line)' }}>
           <span style={{ color: 'var(--text-muted)' }}>New student here? </span>
           <Link
-            href="/signup"
+            href={
+              redirectParam
+                ? `/signup?redirect=${encodeURIComponent(redirectParam)}`
+                : '/signup'
+            }
             className="font-semibold hover:underline"
             style={{ color: 'var(--primary)' }}
           >
