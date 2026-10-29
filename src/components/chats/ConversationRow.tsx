@@ -297,11 +297,16 @@ export const ConversationRow: React.FC<ConversationRowProps> = React.memo(({
                   Request
                 </span>
               )}
-              {conversation.class && (
-                <span className="text-xs text-[var(--text-muted)] shrink-0 font-medium font-sf-display">
-                  Class {conversation.class}
-                </span>
-              )}
+              {(() => {
+                const rawCls = liveProfile?.class || conversation.class || conversation.studentClass;
+                if (!rawCls) return null;
+                const cleanCls = rawCls.toString().replace(/^class\s*/i, '').trim();
+                return cleanCls ? (
+                  <span className="text-xs text-[var(--text-muted)] shrink-0 font-medium font-sf-display">
+                    Class {cleanCls}
+                  </span>
+                ) : null;
+              })()}
               {isMuted && (
                 <VolumeX size={13} className="text-[var(--text-muted)] shrink-0 ml-auto" />
               )}
@@ -323,8 +328,8 @@ export const ConversationRow: React.FC<ConversationRowProps> = React.memo(({
               ) : (
                 <>
                   <span>{conversation.lastMessage || 'Say hi to your classmate'}</span>
-                  <span className="text-xs text-[var(--text-muted)] ml-1.5">
-                    · {conversation.timeAgo || '2h'}
+                  <span className="text-xs text-[var(--text-muted)] ml-1.5 shrink-0">
+                    · {conversation.timeAgo || 'Just now'}
                   </span>
                 </>
               )}
