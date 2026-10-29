@@ -17,6 +17,8 @@ import { PostImage } from './PostImage';
 import { getAvatarColorPair } from '@/config/tokens';
 import { MusicTrackPill } from '@/components/music/MusicTrackPill';
 import { SongPickerModal } from '@/components/music/SongPickerModal';
+import { LikesViewsModal } from '@/components/reels/LikesViewsModal';
+import { UniqueLikeOverlay } from '@/components/reels/UniqueLikeOverlay';
 
 export interface PostCardProps {
   post: Post;
@@ -40,6 +42,7 @@ const PostCardComponent: React.FC<PostCardProps> = ({
   onOptionsClick,
 }) => {
   const [showHeartPop, setShowHeartPop] = useState(false);
+  const [showLikesModal, setShowLikesModal] = useState(false);
   const [isCaptionExpanded, setIsCaptionExpanded] = useState(false);
   const [showRepostSheet, setShowRepostSheet] = useState(false);
   const [repostToast, setRepostToast] = useState<string | null>(null);
@@ -331,10 +334,15 @@ const PostCardComponent: React.FC<PostCardProps> = ({
       {/* 3. Likes Row */}
       <div className="px-4 pt-0.5 space-y-1">
         {likesCount > 0 ? (
-          <p className="text-xs font-semibold text-[var(--text)] leading-tight">
+          <button
+            type="button"
+            onClick={() => setShowLikesModal(true)}
+            className="text-xs font-semibold text-[var(--text)] leading-tight hover:underline text-left cursor-pointer"
+            title="View who liked this post"
+          >
             <span className="tabular-nums font-bold">{likesCount}</span>{' '}
             {likesCount === 1 ? 'like' : 'likes'}
-          </p>
+          </button>
         ) : (
           <p className="text-xs text-[var(--text-muted)] leading-tight">
             Be the first to like this
@@ -531,6 +539,17 @@ const PostCardComponent: React.FC<PostCardProps> = ({
         }}
         title="Change Post Music 🎵"
       />
+
+      {/* Likes & Views Modal */}
+      {showLikesModal && (
+        <LikesViewsModal
+          isOpen={showLikesModal}
+          onClose={() => setShowLikesModal(false)}
+          postId={post.id}
+          postAuthor={post.username}
+          currentUser={currentUser}
+        />
+      )}
     </article>
   );
 };

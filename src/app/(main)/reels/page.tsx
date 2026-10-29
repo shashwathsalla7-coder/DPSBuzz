@@ -16,6 +16,7 @@ import { ReelCard } from '@/components/reels/ReelCard';
 import { CreateReelModal } from '@/components/reels/CreateReelModal';
 import { ReelCommentsDrawer } from '@/components/reels/ReelCommentsDrawer';
 import { SharePostModal } from '@/components/home/SharePostModal';
+import { LikesViewsModal } from '@/components/reels/LikesViewsModal';
 
 export default function ReelsPage() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -28,6 +29,7 @@ export default function ReelsPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedCommentsReel, setSelectedCommentsReel] = useState<Post | null>(null);
   const [selectedShareReel, setSelectedShareReel] = useState<Post | null>(null);
+  const [selectedLikesViewsReel, setSelectedLikesViewsReel] = useState<Post | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -197,6 +199,7 @@ export default function ReelsPage() {
               onToggleMute={() => setIsMuted((prev) => !prev)}
               onOpenComments={(r) => setSelectedCommentsReel(r)}
               onOpenShare={(r) => setSelectedShareReel(r)}
+              onOpenLikesViews={(r) => setSelectedLikesViewsReel(r)}
               currentUser={currentUser}
             />
           ))
@@ -234,6 +237,17 @@ export default function ReelsPage() {
             showToast('Reel sent to chat! ✈️');
             setSelectedShareReel(null);
           }}
+        />
+      )}
+
+      {/* Likes & Views Modal */}
+      {selectedLikesViewsReel && (
+        <LikesViewsModal
+          isOpen={Boolean(selectedLikesViewsReel)}
+          postId={selectedLikesViewsReel.id}
+          postAuthor={selectedLikesViewsReel.username}
+          currentUser={currentUser}
+          onClose={() => setSelectedLikesViewsReel(null)}
         />
       )}
 
