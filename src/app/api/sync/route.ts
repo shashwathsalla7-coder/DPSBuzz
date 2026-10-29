@@ -306,6 +306,21 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    // Truncate each conversation to the latest 35 messages and strip any oversized base64 to keep sync payload ultra-lightweight (<40KB)
+    for (const chatKey of Object.keys(filteredChatMessages)) {
+      if (filteredChatMessages[chatKey].length > 35) {
+        filteredChatMessages[chatKey] = filteredChatMessages[chatKey].slice(-35);
+      }
+      for (const m of filteredChatMessages[chatKey]) {
+        if (m.sharedPost?.imageUrl?.startsWith('data:image/')) {
+          m.sharedPost.imageUrl = 'https://res.cloudinary.com/ogfaxmjw/image/upload/v1793285817/dpsbuzz/chat_photos/photo_1793285817176.jpg';
+        }
+        if (m.post_preview?.imageUrl?.startsWith('data:image/')) {
+          m.post_preview.imageUrl = 'https://res.cloudinary.com/ogfaxmjw/image/upload/v1793285817/dpsbuzz/chat_photos/photo_1793285817176.jpg';
+        }
+      }
+    }
+
     // Hydrate groups and group memberships
     if (Array.isArray(dbGroups) && dbGroups.length > 0) {
       const groupMap = new Map<string, any>((store.groups || []).map((g: any) => [g.id, g]));
