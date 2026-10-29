@@ -112,7 +112,12 @@ export async function POST(req: NextRequest) {
       if (!res.success) {
         return NextResponse.json({ success: false, error: res.error }, { status: 400 });
       }
-      return NextResponse.json({ success: true, session: res.session }, { headers: NO_CACHE_HEADERS });
+      return NextResponse.json({
+        success: true,
+        session: res.session,
+        humanMove: res.humanMove,
+        botMove: res.botMove,
+      }, { headers: NO_CACHE_HEADERS });
     }
 
     // 5. Forfeit / Resign

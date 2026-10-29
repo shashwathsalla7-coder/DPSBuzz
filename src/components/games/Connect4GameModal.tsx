@@ -122,6 +122,7 @@ function Connect4GameModalContent({
   const [hoveredCol, setHoveredCol] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isDropping, setIsDropping] = useState<boolean>(false);
+  const [isBotThinking, setIsBotThinking] = useState<boolean>(false);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
   const [showRules, setShowRules] = useState<boolean>(false);
   const [showForfeitConfirm, setShowForfeitConfirm] = useState<boolean>(false);
@@ -131,6 +132,13 @@ function Connect4GameModalContent({
 
   const prevStatusRef = useRef<string | null>(null);
   const prevMoveCountRef = useRef<number>(0);
+  const isDroppingRef = useRef<boolean>(false);
+  const isBotThinkingRef = useRef<boolean>(false);
+  const sessionRef = useRef<Connect4Session | null>(null);
+
+  useEffect(() => {
+    sessionRef.current = session;
+  }, [session]);
 
   // Sync difficulty from session
   useEffect(() => {
@@ -147,6 +155,8 @@ function Connect4GameModalContent({
   // Fetch Session data
   const fetchSession = useCallback(async () => {
     if (!gameId) return;
+    if (isDroppingRef.current || isBotThinkingRef.current) return;
+
     try {
       const res = await fetch(
         `/api/games/connect4?gameId=${encodeURIComponent(gameId)}&username=${encodeURIComponent(cleanCurrent)}`,
@@ -155,6 +165,10 @@ function Connect4GameModalContent({
       const data = await res.json();
       if (data.success && data.session) {
         const s: Connect4Session = data.session;
+        // Never roll back to older move count or overwrite in-flight client drop
+        if (isDroppingRef.current || isBotThinkingRef.current) return;
+        if (s.moveCount < prevMoveCountRef.current) return;
+
         setSession(s);
         setBoard(s.board);
 
@@ -196,6 +210,10 @@ function Connect4GameModalContent({
       setShowCinematicWin(false);
       prevStatusRef.current = null;
       prevMoveCountRef.current = 0;
+      isDroppingRef.current = false;
+      isBotThinkingRef.current = false;
+      setIsDropping(false);
+      setIsBotThinking(false);
       return;
     }
 
@@ -222,11 +240,18 @@ function Connect4GameModalContent({
     };
     window.addEventListener('dpsbuzz_connect4_update', onCustomUpdate);
 
-    // Fast Real-Time Polling interval (600ms for instant move reception)
+    // Fast Real-Time Polling interval: 600ms for multiplayer duels with friends; 10s idle ping for bot games
+    const isBotGame = Boolean(
+      sessionRef.current?.player2?.isBot ||
+      sessionRef.current?.player2?.username.toLowerCase().trim() === 'buzzbot'
+    );
+    const pollInterval = isBotGame ? 10000 : 600;
+
     const interval = setInterval(() => {
       if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+      if (isDroppingRef.current || isBotThinkingRef.current) return;
       fetchSession();
-    }, 600);
+    }, pollInterval);
 
     return () => {
       clearInterval(interval);
@@ -262,7 +287,7 @@ function Connect4GameModalContent({
 
   // Handle column drop
   const handleDropPiece = async (col: number) => {
-    if (!session || session.status !== 'in_progress' || !isMyTurn || isDropping) return;
+    if (!session || session.status !== 'in_progress' || !isMyTurn || isDropping || isBotThinking) return;
 
     // Check if column is already full
     if (board[0][col] !== null) {
@@ -281,8 +306,9 @@ function Connect4GameModalContent({
     if (targetRow === -1) return;
 
     setIsDropping(true);
+    isDroppingRef.current = true;
 
-    // 0ms Optimistic UI Drop
+    // 0ms Optimistic UI Drop for human player
     if (soundEnabled) {
       playConnect4DropSound(targetRow);
     }
@@ -304,45 +330,87 @@ function Connect4GameModalContent({
       });
       const data = await res.json();
       if (data.success && data.session) {
-        setSession(data.session);
-        setBoard(data.session.board);
-        prevMoveCountRef.current = data.session.moveCount;
+        const isBotGame = Boolean(
+          session.player2.isBot || session.player2.username.toLowerCase().trim() === 'buzzbot'
+        );
 
-        // Broadcast to opponent
-        try {
-          if (typeof window !== 'undefined') {
-            if ('BroadcastChannel' in window) {
-              const bc = new BroadcastChannel('dpsbuzz_connect4_realtime');
-              bc.postMessage({ gameId: session.gameId, action: 'drop', col });
-              bc.close();
-            }
-            window.dispatchEvent(new CustomEvent('dpsbuzz_connect4_update', { detail: { gameId: session.gameId } }));
-          }
-        } catch {}
+        if (isBotGame && data.botMove) {
+          // Staged Bot Drop: Human move landed cleanly. Now BuzzBot deliberates for 550ms!
+          setIsBotThinking(true);
+          isBotThinkingRef.current = true;
+          prevMoveCountRef.current = data.session.moveCount - 1;
 
-        if (data.session.status === 'completed') {
-          if (soundEnabled) {
-            if (data.session.winningCells) playConnect4LaserSound();
-            if (data.session.winner === 'draw') {
-              playConnect4TurnChime();
-            } else if (data.session.winner?.toLowerCase().trim() === cleanCurrent) {
-              playConnect4WinFanfare();
-            } else {
-              playConnect4DefeatSound();
+          setTimeout(() => {
+            if (soundEnabled && data.botMove) {
+              playConnect4DropSound(data.botMove.row);
             }
+            setBoard(data.session.board);
+            setSession(data.session);
+            prevMoveCountRef.current = data.session.moveCount;
+            setIsBotThinking(false);
+            isBotThinkingRef.current = false;
+            setIsDropping(false);
+            isDroppingRef.current = false;
+
+            if (data.session.status === 'completed') {
+              if (soundEnabled) {
+                if (data.session.winningCells) playConnect4LaserSound();
+                if (data.session.winner === 'draw') {
+                  playConnect4TurnChime();
+                } else if (data.session.winner?.toLowerCase().trim() === cleanCurrent) {
+                  playConnect4WinFanfare();
+                } else {
+                  playConnect4DefeatSound();
+                }
+              }
+            }
+          }, 550);
+        } else {
+          // Human multiplayer match or immediate game-over move
+          setSession(data.session);
+          setBoard(data.session.board);
+          prevMoveCountRef.current = data.session.moveCount;
+          setIsDropping(false);
+          isDroppingRef.current = false;
+
+          // Broadcast to opponent
+          try {
+            if (typeof window !== 'undefined') {
+              if ('BroadcastChannel' in window) {
+                const bc = new BroadcastChannel('dpsbuzz_connect4_realtime');
+                bc.postMessage({ gameId: session.gameId, action: 'drop', col });
+                bc.close();
+              }
+              window.dispatchEvent(new CustomEvent('dpsbuzz_connect4_update', { detail: { gameId: session.gameId } }));
+            }
+          } catch {}
+
+          if (data.session.status === 'completed') {
+            if (soundEnabled) {
+              if (data.session.winningCells) playConnect4LaserSound();
+              if (data.session.winner === 'draw') {
+                playConnect4TurnChime();
+              } else if (data.session.winner?.toLowerCase().trim() === cleanCurrent) {
+                playConnect4WinFanfare();
+              } else {
+                playConnect4DefeatSound();
+              }
+            }
+            // DONT GO NEXT: stay directly on the board with the winning laser line visible!
           }
-          // DONT GO NEXT: stay directly on the board with the winning laser line visible!
         }
       } else {
         // Rollback on server error
+        setIsDropping(false);
+        isDroppingRef.current = false;
         fetchSession();
         triggerError(data.error || 'Failed to place disc');
       }
     } catch {
+      setIsDropping(false);
+      isDroppingRef.current = false;
       fetchSession();
       triggerError('Network error dropping piece');
-    } finally {
-      setIsDropping(false);
     }
   };
 
@@ -585,7 +653,12 @@ function Connect4GameModalContent({
                 <span>Waiting for opponent to accept challenge...</span>
               </div>
             ) : session.status === 'in_progress' ? (
-              isMyTurn ? (
+              isBotThinking ? (
+                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-300 text-xs font-bold shadow-[0_0_20px_rgba(245,158,11,0.3)] animate-pulse">
+                  <div className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+                  <span>BuzzBot is thinking... 🤖</span>
+                </div>
+              ) : isMyTurn ? (
                 <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-bold shadow-[0_0_20px_rgba(16,185,129,0.3)] animate-pulse">
                   <ArrowDown size={14} className="animate-bounce" />
                   <span>YOUR TURN: Tap any column to drop your {myColor.toUpperCase()} disc!</span>
@@ -689,19 +762,19 @@ function Connect4GameModalContent({
                   key={`col-arrow-${c}`}
                   type="button"
                   onClick={() => handleDropPiece(c)}
-                  onMouseEnter={() => setHoveredCol(c)}
+                  onMouseEnter={() => !isBotThinking && setHoveredCol(c)}
                   onMouseLeave={() => setHoveredCol(null)}
-                  disabled={!isMyTurn || isColFull || isDropping}
+                  disabled={!isMyTurn || isColFull || isDropping || isBotThinking}
                   className={`h-8 sm:h-10 rounded-t-lg flex items-center justify-center transition-all ${
-                    isMyTurn && !isColFull
+                    isMyTurn && !isColFull && !isDropping && !isBotThinking
                       ? 'cursor-pointer hover:bg-white/10 active:scale-90'
                       : 'cursor-not-allowed opacity-30'
                   }`}
                   aria-label={`Drop piece in column ${c + 1}`}
                 >
-                  {isMyTurn && !isColFull && isColHovered ? (
+                  {isMyTurn && !isColFull && !isBotThinking && isColHovered ? (
                     <Connect4Disc3D color={myColor} size="sm" isFloating />
-                  ) : isMyTurn && !isColFull ? (
+                  ) : isMyTurn && !isColFull && !isBotThinking ? (
                     <ArrowDown size={14} className="text-slate-400 hover:text-white" />
                   ) : null}
                 </button>
@@ -816,14 +889,16 @@ function Connect4GameModalContent({
                     return (
                       <div
                         key={`cell-${r}-${c}`}
-                        onClick={() => handleDropPiece(c)}
-                        onMouseEnter={() => setHoveredCol(c)}
+                        onClick={() => !isDropping && !isBotThinking && handleDropPiece(c)}
+                        onMouseEnter={() => !isBotThinking && setHoveredCol(c)}
                         onMouseLeave={() => setHoveredCol(null)}
-                        className={`aspect-square rounded-full flex items-center justify-center relative cursor-pointer select-none transition-transform ${
+                        className={`aspect-square rounded-full flex items-center justify-center relative select-none transition-transform ${
+                          !isMyTurn || isDropping || isBotThinking ? 'cursor-not-allowed' : 'cursor-pointer'
+                        } ${
                           cell === null
                             ? 'bg-[#04060B] shadow-[inset_0_4px_8px_rgba(0,0,0,0.9)] border border-white/5 hover:border-cyan-400/40'
                             : ''
-                        } ${isMyTurn && cell === null && isColHovered ? 'bg-[#070C18]' : ''}`}
+                        } ${isMyTurn && !isBotThinking && cell === null && isColHovered ? 'bg-[#070C18]' : ''}`}
                       >
                         {cell === 'p1' && (
                           <Connect4Disc3D color="red" isWinning={isWinning} size="md" />
