@@ -214,7 +214,6 @@ function HomeContent() {
 
     // Auto-fetch fresh posts from server without requiring user to pull-to-refresh or retry
     const fetchFreshPosts = () => {
-      DataStore.syncWithServer().catch(() => {});
       fetch(`/api/posts?t=${Date.now()}`, {
         cache: 'no-store',
         headers: { 'Cache-Control': 'no-cache, no-store, max-age=0' },
@@ -231,11 +230,16 @@ function HomeContent() {
 
     fetchFreshPosts();
 
-    // Smart polling sync every 12 seconds when visible to automatically pull fresh posts
+    // Defer background full sync so initial feed render & interactive hydration are instant
+    const syncTimeout = setTimeout(() => {
+      DataStore.syncWithServer().catch(() => {});
+    }, 1500);
+
+    // Smart polling sync every 15 seconds when visible to automatically pull fresh posts
     const syncInterval = setInterval(() => {
       if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
       fetchFreshPosts();
-    }, 12000);
+    }, 15000);
 
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
@@ -261,6 +265,7 @@ function HomeContent() {
       window.removeEventListener('dpsbuzz:content_updated', handleContentUpdated);
       window.removeEventListener('storage', loadData);
       document.removeEventListener('visibilitychange', handleVisibility);
+      clearTimeout(syncTimeout);
       clearInterval(syncInterval);
     };
   }, []);

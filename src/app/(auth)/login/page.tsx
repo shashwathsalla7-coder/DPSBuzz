@@ -2,11 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Eye, EyeOff } from 'lucide-react';
 import { school } from '@/config/school';
 import Logo from '@/components/ui/Logo';
 
 export default function LoginPage() {
+  const router = useRouter();
   const [usernameInput, setUsernameInput] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -14,6 +16,13 @@ export default function LoginPage() {
   const [error, setError] = useState('');
 
   const [activeSession, setActiveSession] = useState<{ username: string; fullName: string } | null>(null);
+
+  // Prefetch /home immediately so next-page navigation is instant
+  useEffect(() => {
+    try {
+      router.prefetch('/home');
+    } catch {}
+  }, [router]);
 
   // Check active session without forcing an auto-redirect away from login screen
   useEffect(() => {
@@ -102,7 +111,13 @@ export default function LoginPage() {
           body: JSON.stringify({ profile: superAdmin }),
         }).catch(() => {});
 
-        window.location.replace('/home');
+        // Instant client-side transition
+        router.replace('/home');
+        setTimeout(() => {
+          if (typeof window !== 'undefined' && window.location.pathname.startsWith('/login')) {
+            window.location.replace('/home');
+          }
+        }, 350);
         return;
       } else {
         setError('Incorrect password for administrator shashwath71845.');
@@ -127,7 +142,7 @@ export default function LoginPage() {
         (p.fullName || '').toLowerCase() === cleanInput
     );
 
-    // If not found in localStorage, fetch from Supabase database via authoritative /api/auth/profile
+    // If not found in localStorage, fetch from authoritative /api/auth/profile (checks Cloudflare D1 + Supabase + ServerStore fast)
     if (!match) {
       try {
         const profRes = await fetch(`/api/auth/profile?username=${encodeURIComponent(cleanInput)}`, { cache: 'no-store' });
@@ -141,28 +156,6 @@ export default function LoginPage() {
         }
       } catch (e) {
         console.warn('Database profile lookup notice:', e);
-      }
-    }
-
-    // If still not found, fetch from server store to sync account from Web
-    if (!match) {
-      try {
-        const res = await fetch('/api/sync', { cache: 'no-store' });
-        if (res.ok) {
-          const syncData = await res.json();
-          if (syncData.profiles && Array.isArray(syncData.profiles)) {
-            match = syncData.profiles.find(
-              (p: any) =>
-                (p.username || '').toLowerCase().replace(/^@+/, '') === cleanInput ||
-                (p.fullName || '').toLowerCase() === cleanInput
-            );
-            if (match) {
-              localStorage.setItem('dpsbuzz_profiles_v2', JSON.stringify(syncData.profiles));
-            }
-          }
-        }
-      } catch (e) {
-        console.warn('Server sync lookup failed:', e);
       }
     }
 
@@ -187,7 +180,14 @@ export default function LoginPage() {
     localStorage.setItem('dpsbuzz_user', JSON.stringify(match));
     const userSessionCookie = encodeURIComponent(JSON.stringify({ id: match.id, username: match.username, role: match.role || 'student' }));
     document.cookie = `dpsbuzz_user=${userSessionCookie}; path=/; max-age=31536000; SameSite=Lax`;
-    window.location.replace('/home');
+    
+    // Fast client-side navigation to /home
+    router.replace('/home');
+    setTimeout(() => {
+      if (typeof window !== 'undefined' && window.location.pathname.startsWith('/login')) {
+        window.location.replace('/home');
+      }
+    }, 350);
   };
 
   return (
