@@ -346,6 +346,12 @@ export default function ProfileClient({ username }: { username: string }) {
     return false;
   }, [profile.username]);
 
+  // Current logged-in viewer
+  const currentUser = useMemo(() => {
+    if (typeof window === 'undefined') return null;
+    return DataStore.getCurrentUser();
+  }, [postsVersion]);
+
   // Note on avatar: specifically for the profile being viewed
   const profileNote = useMemo(() => {
     return DataStore.getNoteForUser(profile.username);
@@ -2191,8 +2197,11 @@ export default function ProfileClient({ username }: { username: string }) {
                   </button>
                 )}
 
-                {/* Edit / Change Music button for post owner */}
-                {isOwnProfile && !selectedPostDetail.isRepost && (
+                {/* Edit / Change Music button (Strictly only for original post author) */}
+                {currentUser &&
+                  selectedPostDetail &&
+                  !selectedPostDetail.isRepost &&
+                  currentUser.username.toLowerCase() === selectedPostDetail.username.toLowerCase() && (
                   <button
                     type="button"
                     onClick={() => setShowPostSongPickerModal(true)}
@@ -2435,11 +2444,51 @@ export default function ProfileClient({ username }: { username: string }) {
               </div>
             </div>
 
-            {/* Attached Audio Track Pill */}
-            {selectedPostDetail.song && (
-              <div className="px-4 pt-2.5 pb-1">
-                <MusicTrackPill song={selectedPostDetail.song} compact />
+            {/* Attached Audio Track Pill (Author can change/trim; others can only play) */}
+            {selectedPostDetail.song ? (
+              <div className="px-4 pt-2.5 pb-1 flex items-center justify-between gap-2">
+                <div className="flex-1 min-w-0">
+                  <MusicTrackPill
+                    song={selectedPostDetail.song}
+                    compact
+                    onEditPart={
+                      currentUser &&
+                      !selectedPostDetail.isRepost &&
+                      currentUser.username.toLowerCase() === selectedPostDetail.username.toLowerCase()
+                        ? () => setShowPostSongPickerModal(true)
+                        : undefined
+                    }
+                  />
+                </div>
+                {currentUser &&
+                  !selectedPostDetail.isRepost &&
+                  currentUser.username.toLowerCase() === selectedPostDetail.username.toLowerCase() && (
+                    <button
+                      type="button"
+                      onClick={() => setShowPostSongPickerModal(true)}
+                      className="text-[10px] font-bold px-2 py-1 rounded-full bg-[var(--surface-sunken)] border border-[var(--line)] text-[var(--text-muted)] hover:text-pink-400 hover:border-pink-500/30 flex items-center gap-1 transition-colors cursor-pointer shrink-0"
+                      title="Change background music for this post 🎵"
+                    >
+                      <Music size={11} />
+                      <span>Change 🎵</span>
+                    </button>
+                  )}
               </div>
+            ) : (
+              currentUser &&
+              !selectedPostDetail.isRepost &&
+              currentUser.username.toLowerCase() === selectedPostDetail.username.toLowerCase() && (
+                <div className="px-4 pt-2.5 pb-1">
+                  <button
+                    type="button"
+                    onClick={() => setShowPostSongPickerModal(true)}
+                    className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-[var(--surface-sunken)] border border-dashed border-[var(--line)] text-[var(--text-muted)] hover:text-pink-400 hover:border-pink-500/30 flex items-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <Music size={12} className="text-pink-400" />
+                    <span>+ Add Background Music 🎵</span>
+                  </button>
+                </div>
+              )
             )}
 
             {/* Caption with Per-Slide Caption Support */}
@@ -3762,22 +3811,36 @@ export default function ProfileClient({ username }: { username: string }) {
         title="Add Song to Note 🎵"
       />
 
-      {/* Post Song Picker Modal for Post-Upload Music Changes */}
-      <SongPickerModal
-        isOpen={showPostSongPickerModal}
-        onClose={() => setShowPostSongPickerModal(false)}
-        initialTrack={selectedPostDetail?.song || undefined}
-        onSelectSong={(song) => {
-          if (selectedPostDetail) {
-            DataStore.updatePostSong(selectedPostDetail.id, song);
-            setSelectedPostDetail((prev) => (prev ? { ...prev, song } : null));
-            setPostsVersion((v) => v + 1);
-            showToast('Post background music updated! 🎵✨');
-          }
-          setShowPostSongPickerModal(false);
-        }}
-        title="Change Post Music 🎵"
-      />
+      {/* Post Song Picker Modal for Post-Upload Music Changes (Strict Author Only) */}
+      {selectedPostDetail &&
+        currentUser &&
+        !selectedPostDetail.isRepost &&
+        currentUser.username.toLowerCase() === selectedPostDetail.username.toLowerCase() && (
+        <SongPickerModal
+          isOpen={showPostSongPickerModal}
+          onClose={() => setShowPostSongPickerModal(false)}
+          initialTrack={selectedPostDetail?.song || undefined}
+          onSelectSong={(song) => {
+            if (
+              selectedPostDetail &&
+              currentUser &&
+              !selectedPostDetail.isRepost &&
+              currentUser.username.toLowerCase() === selectedPostDetail.username.toLowerCase()
+            ) {
+              const success = DataStore.updatePostSong(selectedPostDetail.id, song, currentUser.username);
+              if (success) {
+                setSelectedPostDetail((prev) => (prev ? { ...prev, song } : null));
+                setPostsVersion((v) => v + 1);
+                showToast('Post background music updated! 🎵✨');
+              } else {
+                showToast('Only the post author can change music!');
+              }
+            }
+            setShowPostSongPickerModal(false);
+          }}
+          title="Change Post Music 🎵"
+        />
+      )}
 
       {/* ─── Long Press Peek & Pop Modal (Instagram Style) ──────────────── */}
       {peekPost && (
@@ -4013,8 +4076,10 @@ export default function ProfileClient({ username }: { username: string }) {
                 </span>
               </button>
 
-              {/* Option 6: Change Post Music (for owner) */}
-              {isOwnProfile && (
+              {/* Option 6: Change Post Music (strictly for original post author) */}
+              {currentUser &&
+                !peekPost.isRepost &&
+                currentUser.username.toLowerCase() === peekPost.username.toLowerCase() && (
                 <button
                   type="button"
                   onClick={() => {

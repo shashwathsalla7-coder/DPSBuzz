@@ -50,11 +50,12 @@ const PostCardComponent: React.FC<PostCardProps> = ({
   const [showSongPicker, setShowSongPicker] = useState(false);
 
   const currentUser = DataStore.getCurrentUser();
+  // Strict post ownership: ONLY the original creator can change music and trim the clip.
+  // Neither admins nor other users can modify another student's post soundtrack.
   const isAuthor = Boolean(
     currentUser &&
-      (currentUser.username.toLowerCase() === post.username.toLowerCase() ||
-        currentUser.role === 'admin' ||
-        currentUser.username.toLowerCase() === 'shashwath71845')
+      !post.isRepost &&
+      currentUser.username.toLowerCase() === post.username.toLowerCase()
   );
   const currentCaption = (post.slideCaptions && post.slideCaptions[activeSlide]?.trim()) || post.caption;
   const totalImages = (post.images && post.images.length > 0 ? post.images : (post.imageUrl ? [post.imageUrl] : [])).length;
@@ -525,20 +526,27 @@ const PostCardComponent: React.FC<PostCardProps> = ({
         </div>
       )}
 
-      {/* Song Picker Modal for Post-Upload Music Changes */}
-      <SongPickerModal
-        isOpen={showSongPicker}
-        onClose={() => setShowSongPicker(false)}
-        initialTrack={post.song || undefined}
-        onSelectSong={(song) => {
-          DataStore.updatePostSong(post.id, song);
-          post.song = song;
-          setShowSongPicker(false);
-          setRepostToast('Post background music updated! 🎵✨');
-          setTimeout(() => setRepostToast(null), 2500);
-        }}
-        title="Change Post Music 🎵"
-      />
+      {/* Song Picker Modal for Post-Upload Music Changes (Strict Author Only) */}
+      {isAuthor && (
+        <SongPickerModal
+          isOpen={showSongPicker}
+          onClose={() => setShowSongPicker(false)}
+          initialTrack={post.song || undefined}
+          onSelectSong={(song) => {
+            if (!isAuthor) return;
+            const success = DataStore.updatePostSong(post.id, song, currentUser?.username);
+            if (success) {
+              post.song = song;
+              setRepostToast('Post background music updated! 🎵✨');
+            } else {
+              setRepostToast('Only the post author can change music!');
+            }
+            setShowSongPicker(false);
+            setTimeout(() => setRepostToast(null), 2500);
+          }}
+          title="Change Post Music 🎵"
+        />
+      )}
 
       {/* Likes & Views Modal */}
       {showLikesModal && (

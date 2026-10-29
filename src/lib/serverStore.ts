@@ -395,17 +395,27 @@ export async function addServerPost(post: Post): Promise<ServerStoreData> {
   if (current.deletedPostIds && current.deletedPostIds.includes(post.id)) {
     return current;
   }
-  const filtered = current.posts.filter((p) => p.id !== post.id);
-  filtered.unshift(post);
+  const isExisting = current.posts.some((p) => p.id === post.id);
 
-  const updatedProfiles = current.profiles.map((p) =>
-    p.username.toLowerCase() === post.username.toLowerCase()
-      ? { ...p, postCount: (p.postCount || 0) + 1 }
-      : p
-  );
+  let updatedPosts: Post[];
+  if (isExisting) {
+    updatedPosts = current.posts.map((p) => (p.id === post.id ? post : p));
+  } else {
+    const filtered = current.posts.filter((p) => p.id !== post.id);
+    filtered.unshift(post);
+    updatedPosts = filtered;
+  }
+
+  const updatedProfiles = isExisting
+    ? current.profiles
+    : current.profiles.map((p) =>
+        p.username.toLowerCase() === post.username.toLowerCase()
+          ? { ...p, postCount: (p.postCount || 0) + 1 }
+          : p
+      );
 
   return await saveServerStore({
-    posts: filtered,
+    posts: updatedPosts,
     profiles: updatedProfiles,
   });
 }

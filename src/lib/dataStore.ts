@@ -2366,8 +2366,20 @@ export const DataStore = {
   // ==========================================
   // POST-UPLOAD MUSIC & SLIDE CAPTIONS UPDATES
   // ==========================================
-  updatePostSong(postId: string, song: SongTrack | undefined): boolean {
+  updatePostSong(postId: string, song: SongTrack | undefined, requestUsername?: string): boolean {
     const posts = this.getPosts(true);
+    const targetPost = posts.find((p) => p.id === postId);
+    if (!targetPost) return false;
+
+    // Strict author ownership verification: Only the original post author can change or trim music!
+    const cleanRequester = (requestUsername || this.getCurrentUser()?.username || '').toLowerCase().trim();
+    const cleanAuthor = (targetPost.username || '').toLowerCase().trim();
+
+    if (!cleanRequester || cleanRequester !== cleanAuthor) {
+      console.warn(`[DataStore] Unauthorized updatePostSong: ${cleanRequester} is not post author ${cleanAuthor}`);
+      return false;
+    }
+
     let found = false;
     const nextPosts = posts.map((p) => {
       if (p.id === postId) {
@@ -2383,11 +2395,11 @@ export const DataStore = {
         fetch('/api/posts', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ post: updatedPost }),
+          body: JSON.stringify({ post: updatedPost, requester: cleanRequester }),
         }).catch((err) => console.warn('Failed to sync updated post song:', err));
         window.dispatchEvent(
           new CustomEvent('dpsbuzz:content_updated', {
-            detail: { type: 'post_song_updated', postId, song },
+            detail: { type: 'post_song_updated', postId, song, username: cleanAuthor },
           })
         );
       }

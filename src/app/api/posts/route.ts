@@ -152,10 +152,25 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { post } = body;
+    const { post, requester } = body;
     // Allow empty caption if photo or repost is present
     if (!post || !post.username) {
       return NextResponse.json({ success: false, error: 'Invalid post object' }, { status: 400 });
+    }
+
+    // Security check: If this is an existing post update (e.g. changing soundtrack / trimming),
+    // ensure that ONLY the original post author can modify it!
+    const store = await getServerStore();
+    const existingPost = store.posts?.find((p) => p && p.id === post.id);
+    if (existingPost) {
+      const origAuthor = (existingPost.username || '').toLowerCase().trim();
+      const cleanReq = (requester || post.username || '').toLowerCase().trim();
+      if (cleanReq !== origAuthor) {
+        return NextResponse.json(
+          { success: false, error: 'Unauthorized: Only the original post author can modify this post.' },
+          { status: 403, headers: NO_CACHE_HEADERS }
+        );
+      }
     }
 
     // 1. Persist to serverStore
