@@ -49,6 +49,24 @@ export const PostImage: React.FC<PostImageProps> = ({
   const [videoCurrentTime, setVideoCurrentTime] = useState(0);
   const [videoDuration, setVideoDuration] = useState(0);
   const [isFullscreenModalOpen, setIsFullscreenModalOpen] = useState(false);
+  const scrubberFillRef = useRef<HTMLDivElement>(null);
+  const lastReportedSecondRef = useRef<number>(-1);
+
+  const handleTimeUpdate = (e: React.SyntheticEvent<HTMLVideoElement>) => {
+    const v = e.currentTarget;
+    const cur = v.currentTime;
+    const dur = v.duration || videoDuration;
+
+    if (dur > 0 && scrubberFillRef.current) {
+      scrubberFillRef.current.style.width = `${(cur / dur) * 100}%`;
+    }
+
+    const sec = Math.floor(cur);
+    if (sec !== lastReportedSecondRef.current) {
+      lastReportedSecondRef.current = sec;
+      setVideoCurrentTime(cur);
+    }
+  };
 
   useEffect(() => {
     const unsub = globalAudio.subscribe((state) => {
@@ -259,12 +277,18 @@ export const PostImage: React.FC<PostImageProps> = ({
               ref={videoRef}
               src={videoSrc || effectiveVideoUrl}
               playsInline
-              preload="metadata"
+              preload="auto"
+              disablePictureInPicture
               muted={isVideoMuted}
               onLoadedData={() => setIsLoading(false)}
-              onPlay={handleVideoPlaying}
+              onCanPlay={() => setIsLoading(false)}
+              onWaiting={() => setIsLoading(true)}
+              onPlaying={() => {
+                setIsLoading(false);
+                handleVideoPlaying();
+              }}
               onPause={() => setIsVideoPlaying(false)}
-              onTimeUpdate={(e) => setVideoCurrentTime(e.currentTarget.currentTime)}
+              onTimeUpdate={handleTimeUpdate}
               onLoadedMetadata={(e) => setVideoDuration(e.currentTarget.duration)}
               onError={handleVideoError}
               className="w-full h-full object-contain"
@@ -303,7 +327,8 @@ export const PostImage: React.FC<PostImageProps> = ({
                   }}
                 >
                   <div
-                    className="h-full bg-blue-400 rounded-full transition-all"
+                    ref={scrubberFillRef}
+                    className="h-full bg-blue-400 rounded-full will-change-[width]"
                     style={{
                       width: `${videoDuration > 0 ? (videoCurrentTime / videoDuration) * 100 : 0}%`,
                     }}
@@ -621,9 +646,11 @@ export const PostImage: React.FC<PostImageProps> = ({
               ref={modalVideoRef}
               src={videoSrc || effectiveVideoUrl}
               playsInline
+              preload="auto"
+              disablePictureInPicture
               controls={false}
               muted={isVideoMuted}
-              onTimeUpdate={(e) => setVideoCurrentTime(e.currentTarget.currentTime)}
+              onTimeUpdate={handleTimeUpdate}
               onLoadedMetadata={(e) => setVideoDuration(e.currentTarget.duration)}
               onPlay={handleVideoPlaying}
               onPause={() => setIsVideoPlaying(false)}

@@ -397,21 +397,22 @@ export const DEFAULT_LAUNCH_POST: Post = {
   class: 'Official',
   avatar: '/icons/logo.png',
   userAvatar: '/icons/logo.png',
-  caption: 'launch video 🚀 • Welcome to the official DPS Buzz app! Tagged: @shashwath71845',
+  caption: 'Official Launch Video 🚀 • Welcome to DPS Buzz! Edited by Shashwath & Rishi 🐝✨ Tagged: @shashwath71845',
   images: [
-    'https://res.cloudinary.com/ogfaxmjw/video/upload/v1793215617/dpsbuzz/videos/dpsbuzz_launch_video.mp4',
+    'https://res.cloudinary.com/ogfaxmjw/video/upload/v1793295157/dpsbuzz/videos/dpsbuzz_launch_video_rishi_shashwath.mp4',
   ],
   imageUrl:
-    'https://res.cloudinary.com/ogfaxmjw/video/upload/v1793215617/dpsbuzz/videos/dpsbuzz_launch_video.mp4',
+    'https://res.cloudinary.com/ogfaxmjw/video/upload/v1793295157/dpsbuzz/videos/dpsbuzz_launch_video_rishi_shashwath.mp4',
   videoUrl:
-    'https://res.cloudinary.com/ogfaxmjw/video/upload/v1793215617/dpsbuzz/videos/dpsbuzz_launch_video.mp4',
+    'https://res.cloudinary.com/ogfaxmjw/video/upload/v1793295157/dpsbuzz/videos/dpsbuzz_launch_video_rishi_shashwath.mp4',
   isVideo: true,
+  isReel: true,
   taggedUsers: ['shashwath71845'],
   isPinned: true,
   likes: 0,
   comments: 0,
   views: 0,
-  createdAt: '2026-10-28T18:43:17.141Z',
+  createdAt: '2026-10-29T17:30:00.000Z',
   timeAgo: 'Just now',
 };
 
@@ -1643,14 +1644,29 @@ export const DataStore = {
     const stored = getStorage<Post[]>(STORAGE_KEYS.POSTS, []);
     const banned = this.getBannedUsers();
     const deletedUsers = this.getDeletedUsernames();
-    const filtered = stored.filter((p) => {
-      if (!p || !p.username) return false;
-      const clean = p.username.toLowerCase().trim();
-      if (DUMMY_TEST_USERNAMES.has(clean) || deletedUsers.has(clean)) return false;
-      if (p.repostedFrom?.username && deletedUsers.has(p.repostedFrom.username.toLowerCase().trim())) return false;
-      if (!includeBanned && banned.includes(clean)) return false;
-      return true;
-    });
+    const filtered = stored
+      .filter((p) => {
+        if (!p || !p.username) return false;
+        const clean = p.username.toLowerCase().trim();
+        if (DUMMY_TEST_USERNAMES.has(clean) || deletedUsers.has(clean)) return false;
+        if (p.repostedFrom?.username && deletedUsers.has(p.repostedFrom.username.toLowerCase().trim())) return false;
+        if (!includeBanned && banned.includes(clean)) return false;
+        // Strictly remove any video or reel authored by shashwath (only dpsbuzz official launch video is allowed)
+        if (clean === 'shashwath71845' && (p.isVideo || p.videoUrl || p.isReel)) return false;
+        return true;
+      })
+      .map((p) => {
+        if (p.id === 'post-launch-video') {
+          return {
+            ...p,
+            ...DEFAULT_LAUNCH_POST,
+            likes: p.likes || 0,
+            comments: p.comments || 0,
+            views: p.views || 0,
+          };
+        }
+        return p;
+      });
 
     if (!filtered.some((p) => p.id === 'post-launch-video')) {
       filtered.unshift(DEFAULT_LAUNCH_POST);
