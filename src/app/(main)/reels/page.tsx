@@ -51,8 +51,40 @@ export default function ReelsPage() {
 
   const loadReels = () => {
     try {
+      const user = DataStore.getCurrentUser();
+      const myUsername = (user?.username || '').toLowerCase().trim();
       const allReels = DataStore.getReels();
-      setReels(allReels);
+      const now = Date.now();
+      const OWN_REEL_LIFESPAN_HOURS = 48; // User's own reel shows in feed for 2 days, then profile only
+
+      // Filter out user's own reels older than 48 hours
+      const visibleReels = allReels.filter((r) => {
+        const author = (r.username || '').toLowerCase().trim();
+        if (author && author === myUsername) {
+          const reelTime = r.createdAt ? new Date(r.createdAt).getTime() : 0;
+          const ageHours = reelTime > 0 ? (now - reelTime) / (1000 * 60 * 60) : 0;
+          if (ageHours > OWN_REEL_LIFESPAN_HOURS) return false;
+        }
+        return true;
+      });
+
+      // Algorithm: Freshness first (today/yesterday), balanced with engagement
+      visibleReels.sort((a, b) => {
+        const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        const ageA = Math.max(0, (now - timeA) / (1000 * 60 * 60));
+        const ageB = Math.max(0, (now - timeB) / (1000 * 60 * 60));
+
+        const freshnessA = ageA < 24 ? 1200 - ageA * 35 : Math.max(0, 360 - ageA * 5);
+        const freshnessB = ageB < 24 ? 1200 - ageB * 35 : Math.max(0, 360 - ageB * 5);
+
+        const scoreA = freshnessA + (a.likes || 0) * 10 + (a.views || 0) * 0.3;
+        const scoreB = freshnessB + (b.likes || 0) * 10 + (b.views || 0) * 0.3;
+
+        return scoreB - scoreA || timeB - timeA;
+      });
+
+      setReels(visibleReels);
     } catch {
       setReels([]);
     }
