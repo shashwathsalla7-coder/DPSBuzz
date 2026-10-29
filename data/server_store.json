@@ -8,21 +8,22 @@
       "class": "Official",
       "avatar": "/icons/logo.png",
       "userAvatar": "/icons/logo.png",
-      "caption": "launch video 🚀 • Welcome to the official DPS Buzz app! Tagged: @shashwath71845",
+      "caption": "Official Launch Video 🚀 • Welcome to DPS Buzz! Edited by Shashwath & Rishi 🐝✨ Tagged: @shashwath71845",
       "images": [
-        "https://res.cloudinary.com/ogfaxmjw/video/upload/v1793215617/dpsbuzz/videos/dpsbuzz_launch_video.mp4"
+        "https://res.cloudinary.com/ogfaxmjw/video/upload/v1793295157/dpsbuzz/videos/dpsbuzz_launch_video_rishi_shashwath.mp4"
       ],
-      "imageUrl": "https://res.cloudinary.com/ogfaxmjw/video/upload/v1793215617/dpsbuzz/videos/dpsbuzz_launch_video.mp4",
-      "videoUrl": "https://res.cloudinary.com/ogfaxmjw/video/upload/v1793215617/dpsbuzz/videos/dpsbuzz_launch_video.mp4",
+      "imageUrl": "https://res.cloudinary.com/ogfaxmjw/video/upload/v1793295157/dpsbuzz/videos/dpsbuzz_launch_video_rishi_shashwath.mp4",
+      "videoUrl": "https://res.cloudinary.com/ogfaxmjw/video/upload/v1793295157/dpsbuzz/videos/dpsbuzz_launch_video_rishi_shashwath.mp4",
       "isVideo": true,
+      "isReel": true,
       "taggedUsers": [
         "shashwath71845"
       ],
       "isPinned": true,
-      "likes": 18,
-      "comments": 4,
-      "views": 120,
-      "createdAt": "2026-10-28T19:27:27.592Z",
+      "likes": 24,
+      "comments": 5,
+      "views": 180,
+      "createdAt": "2026-10-29T17:34:13.802Z",
       "timeAgo": "Just now"
     },
     {
@@ -261,7 +262,7 @@
       "isVerified": true,
       "bio": "Official pulse of Dilsukhnagar Public School. News, events, highlights and student life.",
       "postCount": 1,
-      "followerCount": 12,
+      "followerCount": 18,
       "followingCount": 1
     },
     {

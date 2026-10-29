@@ -50,10 +50,12 @@ export const ReelCard: React.FC<ReelCardProps> = ({
   const [commentsCount, setCommentsCount] = useState(0);
   const [viewsCount, setViewsCount] = useState(0);
   const [isFollowing, setIsFollowing] = useState(false);
-  const [progress, setProgress] = useState(0);
   const [isCaptionExpanded, setIsCaptionExpanded] = useState(false);
+  const [isBuffering, setIsBuffering] = useState(false);
 
+  const progressBarRef = useRef<HTMLDivElement>(null);
   const lastTapRef = useRef<number>(0);
+  const singleTapTimerRef = useRef<NodeJS.Timeout | null>(null);
   const playIconTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const videoUrl = reel.videoUrl || reel.imageUrl;
@@ -110,10 +112,12 @@ export const ReelCard: React.FC<ReelCardProps> = ({
   }, [isActive, isMuted]);
 
   const handleTimeUpdate = () => {
-    if (!videoRef.current) return;
-    const { currentTime, duration } = videoRef.current;
+    const video = videoRef.current;
+    if (!video || !progressBarRef.current) return;
+    const { currentTime, duration } = video;
     if (duration > 0) {
-      setProgress((currentTime / duration) * 100);
+      const pct = (currentTime / duration) * 100;
+      progressBarRef.current.style.width = `${pct}%`;
     }
   };
 
@@ -122,7 +126,7 @@ export const ReelCard: React.FC<ReelCardProps> = ({
     if (!video) return;
 
     if (video.paused) {
-      video.play();
+      video.play().catch(() => {});
       setIsPlaying(true);
     } else {
       video.pause();
@@ -134,13 +138,17 @@ export const ReelCard: React.FC<ReelCardProps> = ({
     playIconTimeoutRef.current = setTimeout(() => setShowPlayIcon(false), 650);
   };
 
-  // Double tap to like, single tap to play/pause
+  // Double tap to like, single tap to play/pause with reliable timeout clearing
   const handleTouchOrClick = (e: React.MouseEvent | React.TouchEvent) => {
     const now = Date.now();
-    const DOUBLE_TAP_DELAY = 300;
+    const DOUBLE_TAP_DELAY = 280;
 
     if (now - lastTapRef.current < DOUBLE_TAP_DELAY) {
-      // Double tap detected!
+      // Double tap detected! Clear pending single-tap play/pause
+      if (singleTapTimerRef.current) {
+        clearTimeout(singleTapTimerRef.current);
+        singleTapTimerRef.current = null;
+      }
       if (!isLiked && currentUser?.username) {
         const res = DataStore.toggleLikePost(reel.id, currentUser.username);
         setIsLiked(res.liked);
@@ -152,11 +160,11 @@ export const ReelCard: React.FC<ReelCardProps> = ({
       lastTapRef.current = 0;
     } else {
       lastTapRef.current = now;
-      setTimeout(() => {
-        if (Date.now() - lastTapRef.current >= DOUBLE_TAP_DELAY && lastTapRef.current !== 0) {
-          handleTogglePlay();
-          lastTapRef.current = 0;
-        }
+      if (singleTapTimerRef.current) clearTimeout(singleTapTimerRef.current);
+      singleTapTimerRef.current = setTimeout(() => {
+        handleTogglePlay();
+        lastTapRef.current = 0;
+        singleTapTimerRef.current = null;
       }, DOUBLE_TAP_DELAY);
     }
   };
@@ -194,8 +202,20 @@ export const ReelCard: React.FC<ReelCardProps> = ({
         playsInline
         loop
         muted={isMuted}
+        preload={isActive ? 'auto' : 'metadata'}
+        disablePictureInPicture
+        onWaiting={() => setIsBuffering(true)}
+        onPlaying={() => setIsBuffering(false)}
+        onCanPlay={() => setIsBuffering(false)}
         onTimeUpdate={handleTimeUpdate}
       />
+
+      {/* Buffering Indicator */}
+      {isBuffering && isPlaying && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
+          <div className="w-12 h-12 rounded-full border-2 border-white/20 border-t-white animate-spin shadow-lg" />
+        </div>
+      )}
 
       {/* Center Animated Play/Pause Feedback Icon */}
       {showPlayIcon && (
@@ -408,11 +428,12 @@ export const ReelCard: React.FC<ReelCardProps> = ({
         </div>
       </div>
 
-      {/* Bottom Progress Bar */}
+      {/* Bottom Progress Bar (DOM Ref Updated for 60fps Smoothness without React Re-renders) */}
       <div className="absolute bottom-0 inset-x-0 h-1 bg-white/20 z-30 sm:max-w-[440px] sm:mx-auto">
         <div
-          className="h-full bg-gradient-to-r from-pink-500 to-rose-500 transition-all duration-150"
-          style={{ width: `${progress}%` }}
+          ref={progressBarRef}
+          className="h-full bg-gradient-to-r from-pink-500 to-rose-500 will-change-[width]"
+          style={{ width: '0%' }}
         />
       </div>
     </div>

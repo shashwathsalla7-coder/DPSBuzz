@@ -1209,14 +1209,12 @@ function HomeContent() {
           >
             <div className="w-9 h-1 rounded-full bg-[var(--line-strong)] mx-auto mb-2" />
 
-            {/* 1. Delete Post Option (if author or admin) */}
-            {(selectedOptionsPost.username.toLowerCase() === currentUser.username.toLowerCase() ||
-              currentUser.username.toLowerCase() === 'shashwath71845' ||
-              currentUser.role === 'admin') && (
+            {/* 1. Delete Post Option (Strictly only if creator/owner of the post) */}
+            {selectedOptionsPost.username.toLowerCase() === currentUser.username.toLowerCase() && (
               <button
                 type="button"
                 onClick={() => {
-                  if (confirm('Are you sure you want to delete this post? This cannot be undone.')) {
+                  if (confirm('Are you sure you want to delete your post? This cannot be undone.')) {
                     DataStore.deletePost(selectedOptionsPost.id, currentUser.username);
                     showToast('Post deleted successfully 🗑️');
                     setSelectedOptionsPost(null);

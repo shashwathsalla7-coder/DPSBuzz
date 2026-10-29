@@ -1,8 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 
-const CF_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID || 'a674b4cebe06334d4a0e284e138cc6a1';
-const CF_DATABASE_ID = process.env.CLOUDFLARE_D1_DATABASE_ID || 'a88d4fa9-4472-4876-bf32-045b966b0f77';
+const CF_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID || '';
+const CF_DATABASE_ID = process.env.CLOUDFLARE_D1_DATABASE_ID || '';
 const CF_API_TOKEN = process.env.CLOUDFLARE_API_TOKEN || '';
 
 const ENDPOINT = `https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/d1/database/${CF_DATABASE_ID}/query`;
@@ -24,11 +24,12 @@ async function executeSql(sql, params = []) {
 }
 
 async function main() {
-  console.log('Inserting Launch Video post under DPS Buzz...');
+  console.log('Inserting Official Launch Video post under DPS Buzz...');
 
-  const videoUrl = 'https://res.cloudinary.com/ogfaxmjw/video/upload/v1793215617/dpsbuzz/videos/dpsbuzz_launch_video.mp4';
+  const videoUrl = 'https://res.cloudinary.com/ogfaxmjw/video/upload/v1793295157/dpsbuzz/videos/dpsbuzz_launch_video_rishi_shashwath.mp4';
   const postId = 'post-launch-video';
   const nowIso = new Date().toISOString();
+  const caption = 'Official Launch Video 🚀 • Welcome to DPS Buzz! Edited by Shashwath & Rishi 🐝✨ Tagged: @shashwath71845';
 
   const postObj = {
     id: postId,
@@ -38,16 +39,17 @@ async function main() {
     class: 'Official',
     avatar: '/icons/logo.png',
     userAvatar: '/icons/logo.png',
-    caption: 'launch video 🚀 • Welcome to the official DPS Buzz app! Tagged: @shashwath71845',
+    caption: caption,
     images: [videoUrl],
     imageUrl: videoUrl,
     videoUrl: videoUrl,
     isVideo: true,
+    isReel: true,
     taggedUsers: ['shashwath71845'],
     isPinned: true,
-    likes: 18,
-    comments: 4,
-    views: 120,
+    likes: 24,
+    comments: 5,
+    views: 180,
     createdAt: nowIso,
     timeAgo: 'Just now',
   };
@@ -61,10 +63,10 @@ async function main() {
       postId,
       'dpsbuzz',
       'dpsbuzz',
-      'launch video 🚀 • Welcome to the official DPS Buzz app! Tagged: @shashwath71845',
+      caption,
       JSON.stringify([videoUrl]),
-      18,
-      4,
+      24,
+      5,
       1,
       nowIso,
     ]
@@ -100,7 +102,12 @@ async function main() {
     const store = JSON.parse(raw);
 
     if (!Array.isArray(store.posts)) store.posts = [];
-    store.posts = store.posts.filter((p) => p.id !== postId);
+    // Remove old launch video or any video post under shashwath
+    store.posts = store.posts.filter((p) => {
+      if (p.id === postId) return false;
+      if (p.username?.toLowerCase() === 'shashwath71845' && (p.isVideo || p.videoUrl)) return false;
+      return true;
+    });
     store.posts.unshift(postObj);
 
     if (!Array.isArray(store.profiles)) store.profiles = [];
@@ -115,7 +122,7 @@ async function main() {
       isVerified: true,
       bio: 'Official pulse of Dilsukhnagar Public School. News, events, highlights and student life.',
       postCount: 1,
-      followerCount: 12,
+      followerCount: 18,
       followingCount: 1,
     };
     if (profIdx >= 0) {

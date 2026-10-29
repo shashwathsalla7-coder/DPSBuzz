@@ -2240,12 +2240,10 @@ export default function ProfileClient({ username }: { username: string }) {
                 )}
                 {(() => {
                   const cur = DataStore.getCurrentUser();
-                  const canDelete = cur && (
-                    cur.username.toLowerCase() === selectedPostDetail.username.toLowerCase() ||
-                    cur.username.toLowerCase() === 'shashwath71845' ||
-                    cur.role === 'admin'
+                  const isPostAuthor = cur && (
+                    cur.username.toLowerCase() === selectedPostDetail.username.toLowerCase()
                   );
-                  if (!canDelete) return null;
+                  if (!isPostAuthor) return null;
                   return (
                     <button
                       type="button"
@@ -4141,13 +4139,14 @@ export default function ProfileClient({ username }: { username: string }) {
                 </div>
               </button>
 
-              {/* Option 9: Delete post (if own profile) */}
-              {isOwnProfile && (
+              {/* Option 9: Delete post (strictly for original post author) */}
+              {currentUser &&
+                currentUser.username.toLowerCase() === peekPost.username.toLowerCase() && (
                 <button
                   type="button"
                   onClick={() => {
-                    if (confirm('Are you sure you want to delete this post?')) {
-                      DataStore.deletePost(peekPost.id);
+                    if (confirm('Are you sure you want to delete this post? This cannot be undone.')) {
+                      DataStore.deletePost(peekPost.id, currentUser.username);
                       setPeekPost(null);
                       setPostsVersion((v) => v + 1);
                       showToast('Post deleted 🗑️');

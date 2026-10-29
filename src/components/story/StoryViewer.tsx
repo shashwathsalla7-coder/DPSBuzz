@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import { X, ChevronLeft, ChevronRight, Pause, Play, Send, Heart, User, Music, Volume2, VolumeX, Eye, Users, ExternalLink, Flag } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Pause, Play, Send, Heart, User, Music, Volume2, VolumeX, Eye, Users, ExternalLink, Flag, Trash2 } from 'lucide-react';
 import { Story, UserStoryGroup, DataStore } from '@/lib/dataStore';
 import { getAvatarColorPair } from '@/config/tokens';
 import { globalAudio } from '@/lib/audioManager';
@@ -502,6 +502,28 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
     }
   };
 
+  const handleDeleteOwnStory = () => {
+    handlePause();
+    if (!currentStory?.id) return;
+    if (confirm('Delete this story? This cannot be undone.')) {
+      DataStore.deleteStory(currentStory.id);
+      setToastMessage('Story deleted 🗑️');
+      setTimeout(() => setToastMessage(''), 2200);
+      if (currentStories.length > 1) {
+        handleNext();
+      } else {
+        onClose();
+      }
+      window.dispatchEvent(
+        new CustomEvent('dpsbuzz:content_updated', {
+          detail: { type: 'story_deleted', storyId: currentStory.id },
+        })
+      );
+    } else {
+      handleResume();
+    }
+  };
+
   const touchStartY = useRef<number>(0);
   const touchStartX = useRef<number>(0);
 
@@ -744,6 +766,17 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
               >
                 {isPaused ? <Play size={18} /> : <Pause size={18} />}
               </button>
+              {isOwnStory && (
+                <button
+                  type="button"
+                  onClick={handleDeleteOwnStory}
+                  className="w-10 h-10 min-w-[40px] min-h-[40px] rounded-full flex items-center justify-center text-white bg-black/60 hover:bg-red-600/80 border border-white/30 cursor-pointer transition-all active:scale-95 shadow-md"
+                  aria-label="Delete my story"
+                  title="Delete story 🗑️"
+                >
+                  <Trash2 size={18} className="text-white" />
+                </button>
+              )}
               <button
                 type="button"
                 onClick={onClose}
