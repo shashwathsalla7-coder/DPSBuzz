@@ -67,7 +67,6 @@ function AuthGuardInner({ children }: { children: React.ReactNode }) {
         }
 
         setIsAuthorized((prev) => (prev ? prev : true));
-        DataStore.syncWithServer().catch(() => {});
       } catch {
         setIsAuthorized(false);
         router.replace('/login');
@@ -80,7 +79,6 @@ function AuthGuardInner({ children }: { children: React.ReactNode }) {
     const handleReturnFromIdle = () => {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
         verifySession();
-        DataStore.syncWithServer(true).catch(() => {});
         window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated', { detail: { type: 'resume_from_idle' } }));
       }
     };
