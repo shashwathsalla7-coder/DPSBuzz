@@ -26,6 +26,7 @@ function getSupabase() {
 declare global {
   var __dpsbuzz_connect4_games: Map<string, Connect4Session> | undefined;
   var __dpsbuzz_connect4_active: Map<string, string> | undefined;
+  var __dpsbuzz_connect4_timestamps: Map<string, number> | undefined;
 }
 
 if (!globalThis.__dpsbuzz_connect4_games) {
@@ -34,9 +35,13 @@ if (!globalThis.__dpsbuzz_connect4_games) {
 if (!globalThis.__dpsbuzz_connect4_active) {
   globalThis.__dpsbuzz_connect4_active = new Map<string, string>();
 }
+if (!globalThis.__dpsbuzz_connect4_timestamps) {
+  globalThis.__dpsbuzz_connect4_timestamps = new Map<string, number>();
+}
 
 const gamesCache = globalThis.__dpsbuzz_connect4_games;
 const activePointers = globalThis.__dpsbuzz_connect4_active;
+const cacheTimestamps = globalThis.__dpsbuzz_connect4_timestamps;
 
 export const CONNECT4_ROWS = 6;
 export const CONNECT4_COLS = 7;
@@ -52,6 +57,7 @@ export function createEmptyBoard(): Connect4Board {
  */
 async function saveRawGameSession(session: Connect4Session): Promise<void> {
   gamesCache.set(session.gameId, session);
+  cacheTimestamps.set(session.gameId, Date.now());
 
   const p1 = session.player1.username.toLowerCase().trim();
   const p2 = session.player2.username.toLowerCase().trim();
@@ -91,11 +97,16 @@ async function saveRawGameSession(session: Connect4Session): Promise<void> {
 }
 
 /**
- * Fetches Connect 4 game session
+ * Fetches Connect 4 game session with TTL-aware cache and Supabase sync
  */
-export async function getConnect4Session(gameId: string): Promise<Connect4Session | null> {
-  if (gamesCache.has(gameId)) {
-    return gamesCache.get(gameId)!;
+export async function getConnect4Session(gameId: string, forceFresh: boolean = false): Promise<Connect4Session | null> {
+  const cached = gamesCache.get(gameId);
+  const cachedAt = cacheTimestamps.get(gameId) || 0;
+  const isFresh = Date.now() - cachedAt < 1200;
+
+  // If cache is fresh and not forced, return immediately
+  if (!forceFresh && cached && (isFresh || cached.status === 'completed' || cached.status === 'declined')) {
+    return cached;
   }
 
   try {
@@ -108,14 +119,18 @@ export async function getConnect4Session(gameId: string): Promise<Connect4Sessio
 
     if (data?.value) {
       const parsed: Connect4Session = JSON.parse(data.value);
-      gamesCache.set(gameId, parsed);
-      return parsed;
+      // If parsed has equal or newer moveCount/updatedAt, update cache
+      if (!cached || parsed.updatedAt >= cached.updatedAt || parsed.moveCount >= cached.moveCount) {
+        gamesCache.set(gameId, parsed);
+        cacheTimestamps.set(gameId, Date.now());
+        return parsed;
+      }
     }
   } catch (err) {
     console.warn('[connect4GameStore] Failed to fetch session from Supabase:', err);
   }
 
-  return null;
+  return cached || null;
 }
 
 /**
@@ -195,8 +210,8 @@ export function checkConnect4Win(
 /**
  * Intelligent AI Bot move calculation with 3 distinct difficulty tiers:
  * - Easy: Casual & forgiving. Makes random moves 65% of the time, misses blocks, allows human to easily win.
- * - Hard: Tough and tactical. 100% takes immediate wins, 90% blocks opponent, avoids suicide columns, center control.
- * - Impossible: 5-ply Minimax with Alpha-Beta pruning. Evaluates forks, multi-move traps, center dominance. Gives no easy chances, but is 100% fair and beatable by skilled humans.
+ * - Hard: Tough and tactical. 100% takes immediate wins, 100% blocks opponent, avoids suicide columns, center control.
+ * - Impossible: 4-ply Minimax with Alpha-Beta pruning + instant win/block reflex. Evaluates forks, multi-move traps, center dominance. Gives no easy chances, but is 100% fair and beatable by skilled humans.
  */
 export function getConnect4BotMove(
   board: Connect4Board,
@@ -204,6 +219,9 @@ export function getConnect4BotMove(
   difficulty: Connect4Difficulty = 'hard'
 ): number {
   const oppDisc: Connect4Disc = botDisc === 'p1' ? 'p2' : 'p1';
+
+  // Work on a detached clone: NEVER mutate caller's live board
+  const bCopy: Connect4Board = board.map((r) => [...r]);
 
   // Helper to find lowest open row in column
   const getOpenRow = (b: Connect4Board, col: number): number => {
@@ -221,7 +239,7 @@ export function getConnect4BotMove(
     return valid;
   };
 
-  const validCols = getValidCols(board);
+  const validCols = getValidCols(bCopy);
   if (validCols.length === 0) return 3;
 
   // ==========================================
@@ -236,11 +254,11 @@ export function getConnect4BotMove(
 
     // 35% check for immediate bot win only (does not actively block human)
     for (const c of validCols) {
-      const r = getOpenRow(board, c);
+      const r = getOpenRow(bCopy, c);
       if (r !== -1) {
-        board[r][c] = botDisc;
-        const winCheck = checkConnect4Win(board, r, c);
-        board[r][c] = null;
+        bCopy[r][c] = botDisc;
+        const winCheck = checkConnect4Win(bCopy, r, c);
+        bCopy[r][c] = null;
         if (winCheck.hasWon) return c;
       }
     }
@@ -253,32 +271,30 @@ export function getConnect4BotMove(
   // LEVEL 2: HARD BOT
   // Solid, tough tactical play:
   // - 100% immediate win execution
-  // - 90% immediate block rate
+  // - 100% immediate block rate
   // - Avoids giving opponent an immediate win above
-  // - Prefers center columns (3, 2, 4)
+  // - Prefers center columns (3, 2, 4, 1, 5, 0, 6)
   // ==========================================
   if (difficulty === 'hard') {
-    // 1. Can Bot win this turn?
+    // 1. Can Bot win this turn? 100% Take it!
     for (const c of validCols) {
-      const r = getOpenRow(board, c);
+      const r = getOpenRow(bCopy, c);
       if (r !== -1) {
-        board[r][c] = botDisc;
-        const winCheck = checkConnect4Win(board, r, c);
-        board[r][c] = null;
+        bCopy[r][c] = botDisc;
+        const winCheck = checkConnect4Win(bCopy, r, c);
+        bCopy[r][c] = null;
         if (winCheck.hasWon) return c;
       }
     }
 
-    // 2. Can Opponent win next turn? Block them (90% chance)
-    if (Math.random() < 0.90) {
-      for (const c of validCols) {
-        const r = getOpenRow(board, c);
-        if (r !== -1) {
-          board[r][c] = oppDisc;
-          const winCheck = checkConnect4Win(board, r, c);
-          board[r][c] = null;
-          if (winCheck.hasWon) return c;
-        }
+    // 2. Can Opponent win next turn? 100% Block them!
+    for (const c of validCols) {
+      const r = getOpenRow(bCopy, c);
+      if (r !== -1) {
+        bCopy[r][c] = oppDisc;
+        const winCheck = checkConnect4Win(bCopy, r, c);
+        bCopy[r][c] = null;
+        if (winCheck.hasWon) return c;
       }
     }
 
@@ -288,14 +304,14 @@ export function getConnect4BotMove(
 
     for (const c of preferenceOrder) {
       if (!validCols.includes(c)) continue;
-      const r = getOpenRow(board, c);
+      const r = getOpenRow(bCopy, c);
       if (r !== -1) {
         if (r > 0) {
-          board[r][c] = botDisc;
-          board[r - 1][c] = oppDisc;
-          const wouldOppWin = checkConnect4Win(board, r - 1, c).hasWon;
-          board[r - 1][c] = null;
-          board[r][c] = null;
+          bCopy[r][c] = botDisc;
+          bCopy[r - 1][c] = oppDisc;
+          const wouldOppWin = checkConnect4Win(bCopy, r - 1, c).hasWon;
+          bCopy[r - 1][c] = null;
+          bCopy[r][c] = null;
           if (!wouldOppWin) {
             safeCols.push(c);
           }
@@ -314,10 +330,31 @@ export function getConnect4BotMove(
 
   // ==========================================
   // LEVEL 3: IMPOSSIBLE BOT
-  // Minimax with Alpha-Beta Pruning (depth 5).
-  // Evaluates complete 4-window lines, forks, and center dominance.
-  // Gives no cheap chances, but is 100% fair: human who plays center & double traps CAN win!
+  // Reflex win/block + 4-ply Minimax with Alpha-Beta Pruning.
+  // Evaluates complete 4-window lines, forks, and center dominance in ~5-15ms.
   // ==========================================
+  // 1. Immediate reflex win
+  for (const c of validCols) {
+    const r = getOpenRow(bCopy, c);
+    if (r !== -1) {
+      bCopy[r][c] = botDisc;
+      const winCheck = checkConnect4Win(bCopy, r, c);
+      bCopy[r][c] = null;
+      if (winCheck.hasWon) return c;
+    }
+  }
+
+  // 2. Immediate reflex block
+  for (const c of validCols) {
+    const r = getOpenRow(bCopy, c);
+    if (r !== -1) {
+      bCopy[r][c] = oppDisc;
+      const winCheck = checkConnect4Win(bCopy, r, c);
+      bCopy[r][c] = null;
+      if (winCheck.hasWon) return c;
+    }
+  }
+
   const evaluateWindow = (w: Connect4Disc[]): number => {
     let pCount = 0;
     let oppCount = 0;
@@ -449,8 +486,8 @@ export function getConnect4BotMove(
     }
   };
 
-  // Minimax depth 5 with alpha-beta pruning (evaluates in ~20-40ms)
-  const result = minimax(board, 5, -Infinity, Infinity, true);
+  // 4-ply Minimax with Alpha-Beta pruning (evaluates in ~5-15ms)
+  const result = minimax(bCopy, 4, -Infinity, Infinity, true);
   return result.col;
 }
 
@@ -555,8 +592,14 @@ export async function dropConnect4Piece(
   gameId: string,
   username: string,
   col: number
-): Promise<{ success: boolean; session?: Connect4Session; error?: string }> {
-  const session = await getConnect4Session(gameId);
+): Promise<{
+  success: boolean;
+  session?: Connect4Session;
+  humanMove?: { row: number; col: number; player: Connect4Disc };
+  botMove?: { row: number; col: number; player: Connect4Disc } | null;
+  error?: string;
+}> {
+  const session = await getConnect4Session(gameId, true);
   if (!session) return { success: false, error: 'Game session not found' };
 
   if (session.status !== 'in_progress') {
@@ -607,7 +650,12 @@ export async function dropConnect4Piece(
     session.winningCells = winCheck.winningCells;
     await recordConnect4MatchResults(session);
     await saveRawGameSession(session);
-    return { success: true, session };
+    return {
+      success: true,
+      session,
+      humanMove: { row: targetRow, col, player: currentDisc },
+      botMove: null,
+    };
   }
 
   if (winCheck.isDraw) {
@@ -615,17 +663,32 @@ export async function dropConnect4Piece(
     session.winner = 'draw';
     await recordConnect4MatchResults(session);
     await saveRawGameSession(session);
-    return { success: true, session };
+    return {
+      success: true,
+      session,
+      humanMove: { row: targetRow, col, player: currentDisc },
+      botMove: null,
+    };
   }
 
   // Switch turn
   const nextUser = isP1 ? session.player2.username : session.player1.username;
   session.currentTurn = nextUser;
 
+  let botMove: { row: number; col: number; player: Connect4Disc } | null = null;
+
   // Handle Bot Turn if next player is BuzzBot
-  if (session.player2.isBot && nextUser === 'buzzbot') {
+  const isP2Bot = Boolean(session.player2.isBot || session.player2.username.toLowerCase().trim() === 'buzzbot');
+  const isP1Bot = Boolean(session.player1.isBot || session.player1.username.toLowerCase().trim() === 'buzzbot');
+  const isBotNext =
+    (isP2Bot && nextUser.toLowerCase().trim() === session.player2.username.toLowerCase().trim()) ||
+    (isP1Bot && nextUser.toLowerCase().trim() === session.player1.username.toLowerCase().trim());
+
+  if (isBotNext) {
+    const botDisc: Connect4Disc =
+      isP2Bot && nextUser.toLowerCase().trim() === session.player2.username.toLowerCase().trim() ? 'p2' : 'p1';
     const botDiff = session.botDifficulty || 'hard';
-    const botCol = getConnect4BotMove(session.board, 'p2', botDiff);
+    const botCol = getConnect4BotMove(session.board, botDisc, botDiff);
     let botRow = -1;
     for (let r = CONNECT4_ROWS - 1; r >= 0; r--) {
       if (session.board[r][botCol] === null) {
@@ -635,14 +698,15 @@ export async function dropConnect4Piece(
     }
 
     if (botRow !== -1) {
-      session.board[botRow][botCol] = 'p2';
+      session.board[botRow][botCol] = botDisc;
       session.moveCount += 1;
-      session.lastMove = { row: botRow, col: botCol, player: 'p2' };
+      session.lastMove = { row: botRow, col: botCol, player: botDisc };
+      botMove = { row: botRow, col: botCol, player: botDisc };
 
       const botWinCheck = checkConnect4Win(session.board, botRow, botCol);
       if (botWinCheck.hasWon) {
         session.status = 'completed';
-        session.winner = 'buzzbot';
+        session.winner = nextUser;
         session.winningCells = botWinCheck.winningCells;
         await recordConnect4MatchResults(session);
       } else if (botWinCheck.isDraw) {
@@ -650,13 +714,18 @@ export async function dropConnect4Piece(
         session.winner = 'draw';
         await recordConnect4MatchResults(session);
       } else {
-        session.currentTurn = session.player1.username;
+        session.currentTurn = isP1 ? session.player1.username : session.player2.username;
       }
     }
   }
 
   await saveRawGameSession(session);
-  return { success: true, session };
+  return {
+    success: true,
+    session,
+    humanMove: { row: targetRow, col, player: currentDisc },
+    botMove,
+  };
 }
 
 /**
