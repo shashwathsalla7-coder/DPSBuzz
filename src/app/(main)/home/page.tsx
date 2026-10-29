@@ -467,53 +467,112 @@ function HomeContent() {
     return unread.find((n) => n.isUrgent || n.pinned) || unread[0] || null;
   }, [broadcastAlert, notices, readNoticeIds, dismissedNoticeIds]);
 
-  // Filter posts based on activeTab (new posts by current user come first, followed by engagement algorithm)
+  // Filter & rank posts with dynamic social algorithm (fresh posts, followed friends boost, own post 48h lifecycle)
   const displayedPosts = useMemo(() => {
     if (demoState === 'empty') return [];
 
-    const myUsername = currentUser.username.toLowerCase();
+    const myUsername = (currentUser.username || '').toLowerCase().trim();
+    const followedSet = new Set(followedUsernames.map((u) => u.toLowerCase().trim()));
+    const now = Date.now();
+    const OWN_POST_LIFESPAN_HOURS = 48; // User's own posts show in their feed for 2 days, then stay on profile only
+
+    // Dynamic Instagram/TikTok-style feed scoring algorithm
+    const computeFeedScore = (p: Post): number => {
+      // 1. Pinned announcements always stay on top
+      if (p.isPinned) return 10_000_000;
+
+      const author = (p.username || '').toLowerCase().trim();
+      const isMine = author === myUsername;
+      const postTime = p.createdAt ? new Date(p.createdAt).getTime() : now;
+      const ageHours = Math.max(0, (now - postTime) / (1000 * 60 * 60));
+
+      let score = 0;
+
+      // 2. Freshness Decay: High priority to today's and yesterday's latest posts
+      if (ageHours < 2) {
+        score += 2500 - ageHours * 200; // Just posted (0-2h)
+      } else if (ageHours < 12) {
+        score += 1800 - (ageHours - 2) * 50; // Earlier today (2-12h)
+      } else if (ageHours < 24) {
+        score += 1200 - (ageHours - 12) * 25; // Today (12-24h)
+      } else if (ageHours < 48) {
+        score += 700 - (ageHours - 24) * 12; // Yesterday (24-48h)
+      } else {
+        score += Math.max(0, 350 - (ageHours - 48) * 2); // Older posts decay smoothly
+      }
+
+      // 3. Social Graph / Followed Classmates Affinity:
+      if (followedSet.has(author)) {
+        score += 600; // Prioritize classmates and friends you follow
+      }
+
+      // 4. Same Class / Grade Affinity:
+      const authorCls = (p.class || '').replace(/[^0-9]/g, '');
+      const viewerCls = (currentUser?.class || '').toString().replace(/[^0-9]/g, '');
+      if (authorCls && viewerCls && authorCls === viewerCls) {
+        score += 160;
+      }
+
+      // 5. Official DPS Buzz Announcement Priority:
+      if (author === 'dpsbuzz' || author === 'dps_official' || author === 'admin') {
+        score += 400;
+      }
+
+      // 6. Genuine Engagement Signals (likes, comments, reposts):
+      const likes = p.likes || 0;
+      const comments = p.comments || 0;
+      const reposts = p.repostCount || 0;
+      score += likes * 6;       // 6 points per real like
+      score += comments * 18;   // 18 points per comment (conversation value)
+      score += reposts * 12;    // 12 points per repost
+
+      // 7. Video & Media Variety:
+      if (p.videoUrl || p.isVideo || p.isReel) {
+        score += 50;
+      }
+
+      // 8. User's Own Post Rule:
+      // Show near the top for the first 30 mins to confirm successful post,
+      // then naturally blend into feed for up to 48 hours.
+      if (isMine) {
+        if (ageHours < 0.5) {
+          score += 3000; // Instant post confirmation
+        } else {
+          score -= 100; // Don't monopolize own feed; leave room for classmates
+        }
+      }
+
+      return score;
+    };
 
     const sortFn = (a: Post, b: Post) => {
-      // If user just posted in this session, put their newest post at the very top
-      const isAMine = a.username.toLowerCase() === myUsername && (a.timeAgo === 'Just now' || a.id.startsWith('post-'));
-      const isBMine = b.username.toLowerCase() === myUsername && (b.timeAgo === 'Just now' || b.id.startsWith('post-'));
-      if (isAMine && !isBMine) return -1;
-      if (!isAMine && isBMine) return 1;
-
-      // New posts / reposts from classmates marked "Just now" or newly shared
-      const isARecent = a.timeAgo === 'Just now' || a.id.startsWith('post-repost-');
-      const isBRecent = b.timeAgo === 'Just now' || b.id.startsWith('post-repost-');
-      if (isARecent && !isBRecent) return -1;
-      if (!isARecent && isBRecent) return 1;
-
+      const scoreA = computeFeedScore(a);
+      const scoreB = computeFeedScore(b);
+      if (scoreA !== scoreB) {
+        return scoreB - scoreA;
+      }
       const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
       const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-      const now = Date.now();
-      const ONE_DAY_MS = 24 * 60 * 60 * 1000;
-
-      // Posts from the last 24 hours: newest first so followers see new posts & shares immediately
-      const isAFresh = timeA > 0 && now - timeA < ONE_DAY_MS;
-      const isBFresh = timeB > 0 && now - timeB < ONE_DAY_MS;
-
-      if (isAFresh && isBFresh) {
-        return timeB - timeA;
-      }
-      if (isAFresh && !isBFresh) return -1;
-      if (!isAFresh && isBFresh) return 1;
-
-      // Older posts: sort by likes/engagement combined with time
-      return (b.likes || 0) - (a.likes || 0) || timeB - timeA;
+      return timeB - timeA;
     };
 
     if (activeTab === 'following') {
       const filtered = posts.filter((p) => {
         const u = (p.username || '').toLowerCase().trim();
-        return u === myUsername || followedUsernames.includes(u);
+        const isMine = u === myUsername;
+        if (isMine) {
+          // Don't show user's own post after 48h
+          const postTime = p.createdAt ? new Date(p.createdAt).getTime() : 0;
+          const ageHours = postTime > 0 ? (now - postTime) / (1000 * 60 * 60) : 0;
+          if (ageHours > OWN_POST_LIFESPAN_HOURS) return false;
+          return true;
+        }
+        return followedSet.has(u);
       });
       if (filtered.length > 0) {
         return [...filtered].sort(sortFn);
       }
-      // Fallback: if student follows no one yet, fall through to whole school so feed is never blank
+      // Fallback: if student follows no one yet, fall through to whole school
     }
 
     // Whole school: all public posts + private posts only if followed by viewer
@@ -522,19 +581,38 @@ function HomeContent() {
 
     const isPostVisible = (p: Post) => {
       const u = (p.username || '').toLowerCase().trim();
-      if (!u || u === myUsername || u === 'dpsbuzz' || u === 'dps_official') return true;
+      const isMine = u === myUsername;
+
+      // User's own post rule:
+      // Show own post for up to 48 hours (2 days) so user sees confirmation,
+      // then hide from their own home feed! (Always preserved on /profile).
+      if (isMine) {
+        const postTime = p.createdAt ? new Date(p.createdAt).getTime() : 0;
+        const ageHours = postTime > 0 ? (now - postTime) / (1000 * 60 * 60) : 0;
+        if (ageHours > OWN_POST_LIFESPAN_HOURS) {
+          return false;
+        }
+        return true;
+      }
+
+      if (!u || u === 'dpsbuzz' || u === 'dps_official') return true;
       const authorProfile = profileMap.get(u);
       const isPrivate = Boolean(authorProfile?.isPrivate);
       if (isPrivate) {
-        if (!followedUsernames.includes(u)) return false;
+        if (!followedSet.has(u)) return false;
       }
 
-      // Check repost origin: if original post author is private, non-followers of both reposter and original author cannot see it
+      // Check repost origin: if original post author is private, non-followers cannot see it
       if (p.isRepost && p.repostedFrom?.username) {
         const reposter = (p.username || '').toLowerCase().trim();
         const origAuthor = p.repostedFrom.username.toLowerCase().trim();
         const origAuthorProf = profileMap.get(origAuthor);
-        if (origAuthorProf?.isPrivate && !followedUsernames.includes(origAuthor) && origAuthor !== myUsername && !followedUsernames.includes(reposter)) {
+        if (
+          origAuthorProf?.isPrivate &&
+          !followedSet.has(origAuthor) &&
+          origAuthor !== myUsername &&
+          !followedSet.has(reposter)
+        ) {
           return false;
         }
       }
@@ -562,7 +640,7 @@ function HomeContent() {
       }
     }
     return deduplicated;
-  }, [activeTab, posts, followedUsernames, currentUser.username, demoState]);
+  }, [activeTab, posts, followedUsernames, currentUser.username, currentUser.class, demoState]);
 
   // Reset pagination slice when switching tabs
   useEffect(() => {
