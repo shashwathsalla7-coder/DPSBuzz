@@ -18,7 +18,7 @@ import { getAvatarColorPair } from '@/config/tokens';
 import { MusicTrackPill } from '@/components/music/MusicTrackPill';
 import { SongPickerModal } from '@/components/music/SongPickerModal';
 import { LikesViewsModal } from '@/components/reels/LikesViewsModal';
-import { UniqueLikeOverlay } from '@/components/reels/UniqueLikeOverlay';
+import { UniqueLikeOverlay, playLikeChime, triggerLikeVibration } from '@/components/reels/UniqueLikeOverlay';
 
 export interface PostCardProps {
   post: Post;
@@ -120,6 +120,8 @@ const PostCardComponent: React.FC<PostCardProps> = ({
     setLocalLiked(nextLiked);
     setLocalLikesCount((prev) => Math.max(0, prev + (nextLiked ? 1 : -1)));
     if (nextLiked) {
+      playLikeChime();
+      triggerLikeVibration();
       setShowHeartPop(true);
       setTimeout(() => setShowHeartPop(false), 700);
     }
@@ -136,6 +138,8 @@ const PostCardComponent: React.FC<PostCardProps> = ({
     if (!localLiked) {
       handleLikeClick();
     } else {
+      playLikeChime();
+      triggerLikeVibration();
       setShowHeartPop(true);
       setTimeout(() => setShowHeartPop(false), 700);
     }

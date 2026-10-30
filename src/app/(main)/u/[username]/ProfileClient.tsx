@@ -317,6 +317,27 @@ export default function ProfileClient({ username }: { username: string }) {
     };
   }, [username]);
 
+  // Auto-open post detail modal if ?post=[postId] is present in URL
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const targetPostId = params.get('post');
+      if (targetPostId) {
+        const post = DataStore.getPostById(targetPostId);
+        if (post) {
+          setSelectedPostDetail(post);
+        } else {
+          const timer = setTimeout(() => {
+            const p = DataStore.getPostById(targetPostId);
+            if (p) setSelectedPostDetail(p);
+          }, 600);
+          return () => clearTimeout(timer);
+        }
+      }
+    } catch {}
+  }, [username]);
+
   // Check if active profile belongs to current logged-in user
   const isOwnProfile = useMemo(() => {
     if (typeof window === 'undefined') return false;
@@ -595,6 +616,10 @@ export default function ProfileClient({ username }: { username: string }) {
   const handleHabitSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!isOwnProfile || !habitCaption.trim() || !profile) return;
+    if (!habitPhoto) {
+      showToast('📸 Photo is mandatory! Please attach an image showing your activity.');
+      return;
+    }
     const result = DataStore.recordHabitPost(profile.username, habitCaption.trim(), habitCategory);
     DataStore.addPost({
       userId: profile.id || 'user-me',
@@ -602,8 +627,8 @@ export default function ProfileClient({ username }: { username: string }) {
       fullName: profile.fullName,
       class: `Class ${profile.class}-${profile.section || 'A'}`,
       avatar: profile.avatar || null,
-      images: habitPhoto ? [habitPhoto] : [],
-      imageUrl: habitPhoto || undefined,
+      images: [habitPhoto],
+      imageUrl: habitPhoto,
       caption: `[Habit: ${habitCategory.toUpperCase()}] ${habitCaption.trim()} 🐝🔥 #StarBoard #${habitCategory}`,
     });
     setStreaksList(DataStore.getHabitStreaks());
@@ -3702,8 +3727,11 @@ export default function ProfileClient({ username }: { username: string }) {
 
             {/* Gallery Photo Upload Option */}
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold block" style={{ color: 'var(--text)' }}>
-                Attach Photo from Gallery (Optional) 📸
+              <label className="text-xs font-semibold flex items-center justify-between" style={{ color: 'var(--text)' }}>
+                <span>Attach Photo from Gallery (Mandatory) 📸 *</span>
+                {!habitPhoto && (
+                  <span className="text-[10px] text-amber-500 font-medium">Photo required</span>
+                )}
               </label>
               <input
                 ref={habitPhotoInputRef}
@@ -3761,7 +3789,7 @@ export default function ProfileClient({ username }: { username: string }) {
               <button
                 type="button"
                 onClick={handleHabitSubmit}
-                disabled={!habitCaption.trim()}
+                disabled={!habitCaption.trim() || !habitPhoto}
                 className="px-4 py-2 rounded-[8px] text-xs font-bold btn-press cursor-pointer transition-opacity disabled:opacity-50"
                 style={{
                   backgroundColor: 'var(--primary)',

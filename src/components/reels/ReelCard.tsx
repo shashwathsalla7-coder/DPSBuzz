@@ -58,7 +58,16 @@ export const ReelCard: React.FC<ReelCardProps> = ({
   const singleTapTimerRef = useRef<NodeJS.Timeout | null>(null);
   const playIconTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const videoUrl = reel.videoUrl || reel.imageUrl;
+  const isVideoMedia = Boolean(
+    reel.videoUrl ||
+    (reel.imageUrl && (
+      reel.imageUrl.endsWith('.mp4') ||
+      reel.imageUrl.endsWith('.webm') ||
+      reel.imageUrl.includes('/video/upload/') ||
+      reel.imageUrl.includes('/videos/')
+    ))
+  );
+  const videoUrl = isVideoMedia ? (reel.videoUrl || reel.imageUrl) : '';
   const authorProf = DataStore.getProfileByUsername(reel.username);
   const authorAvatar = authorProf?.avatar || reel.avatar || null;
   const color = getAvatarColorPair(reel.username);
@@ -76,24 +85,27 @@ export const ReelCard: React.FC<ReelCardProps> = ({
     setViewsCount(DataStore.getPostViews(reel.id));
   }, [reel.id, currentUser?.username]);
 
-  // Increment real views when reel is actively watched for 1.2+ seconds
+  // Increment real views (strictly 1 unique view per user, never counted multiple times)
   useEffect(() => {
     let timer: NodeJS.Timeout | null = null;
     if (isActive && isPlaying) {
       timer = setTimeout(() => {
-        const v = DataStore.incrementPostViews(reel.id);
+        const v = DataStore.incrementPostViews(reel.id, currentUser?.username);
         setViewsCount(v);
-      }, 1200);
+      }, 1000);
     }
     return () => {
       if (timer) clearTimeout(timer);
     };
-  }, [isActive, isPlaying, reel.id]);
+  }, [isActive, isPlaying, reel.id, currentUser?.username]);
 
   // Video play/pause based on active reel in viewport
   useEffect(() => {
     const video = videoRef.current;
-    if (!video) return;
+    if (!video || !isVideoMedia) {
+      if (isActive) setIsPlaying(true);
+      return;
+    }
 
     if (isActive) {
       video.muted = isMuted;
@@ -109,7 +121,7 @@ export const ReelCard: React.FC<ReelCardProps> = ({
       video.pause();
       setIsPlaying(false);
     }
-  }, [isActive, isMuted]);
+  }, [isActive, isMuted, isVideoMedia]);
 
   const handleTimeUpdate = () => {
     const video = videoRef.current;
@@ -194,21 +206,37 @@ export const ReelCard: React.FC<ReelCardProps> = ({
       className="relative w-full h-[100dvh] snap-start snap-always overflow-hidden bg-black flex items-center justify-center select-none"
       onClick={handleTouchOrClick}
     >
-      {/* Background Video Player */}
-      <video
-        ref={videoRef}
-        src={videoUrl}
-        className="w-full h-full object-cover sm:object-contain sm:max-w-[440px]"
-        playsInline
-        loop
-        muted={isMuted}
-        preload={isActive ? 'auto' : 'metadata'}
-        disablePictureInPicture
-        onWaiting={() => setIsBuffering(true)}
-        onPlaying={() => setIsBuffering(false)}
-        onCanPlay={() => setIsBuffering(false)}
-        onTimeUpdate={handleTimeUpdate}
-      />
+      {/* Background Video Player / Image View */}
+      {isVideoMedia && videoUrl ? (
+        <video
+          ref={videoRef}
+          src={videoUrl}
+          className="w-full h-full object-cover sm:object-contain sm:max-w-[440px]"
+          playsInline
+          loop
+          muted={isMuted}
+          preload={isActive ? 'auto' : 'metadata'}
+          disablePictureInPicture
+          onWaiting={() => setIsBuffering(true)}
+          onPlaying={() => setIsBuffering(false)}
+          onCanPlay={() => setIsBuffering(false)}
+          onError={() => {
+            setIsBuffering(false);
+            if (videoRef.current && !videoRef.current.src.includes('launch_video.mp4')) {
+              videoRef.current.src = '/videos/launch_video.mp4';
+            }
+          }}
+          onTimeUpdate={handleTimeUpdate}
+        />
+      ) : (
+        <div className="w-full h-full relative overflow-hidden bg-black flex items-center justify-center">
+          <img
+            src={reel.imageUrl || (reel.images && reel.images[0]) || '/icons/logo.png'}
+            alt={reel.caption || reel.username}
+            className="w-full h-full object-cover sm:object-contain sm:max-w-[440px]"
+          />
+        </div>
+      )}
 
       {/* Buffering Indicator */}
       {isBuffering && isPlaying && (

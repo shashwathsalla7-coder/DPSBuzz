@@ -312,7 +312,8 @@ export function GlobalNotificationListener() {
           }
         }
 
-        // Check for new posts from other students and trigger direct device push notification
+        // Check for new posts or reels from other students and trigger direct device push notification
+        let hasNewPosts = false;
         if (Array.isArray(data.posts)) {
           const deletedUsers = DataStore.getDeletedUsernames();
           for (const post of data.posts) {
@@ -328,23 +329,27 @@ export function GlobalNotificationListener() {
                 !DUMMY_TEST_USERNAMES.has(postAuthor) &&
                 !deletedUsers.has(postAuthor)
               ) {
+                hasNewPosts = true;
                 const authorProf = allProfiles.find((p) => (p.username || '').toLowerCase() === postAuthor);
                 const authorName = authorProf?.fullName || post.username;
-                const postSnippet = post.caption ? post.caption.slice(0, 100) : 'Shared a new photo on DPS Buzz 📸';
+                const isReel = Boolean(post.isReel || post.isVideo);
+                const postSnippet = post.caption ? post.caption.slice(0, 100) : (isReel ? 'Shared a new reel on DPS Buzz 🎬' : 'Shared a new photo on DPS Buzz 📸');
+                const notifTitle = isReel ? `🎬 New Reel from @${post.username}` : `📸 New Post from @${post.username}`;
+                const targetLink = isReel ? `/reels?id=${post.id}` : `/u/${post.username}?post=${post.id}`;
 
                 DataStore.addNotification({
                   userId: uname,
-                  type: 'post',
-                  title: `📸 New Post from @${post.username}`,
+                  type: isReel ? 'reel' : 'post',
+                  title: notifTitle,
                   body: postSnippet,
-                  link: '/home',
+                  link: targetLink,
                 });
 
                 showBackgroundNotification(`DPS Buzz • ${authorName}`, {
                   body: postSnippet,
                   icon: post.avatar || authorProf?.avatar || '/icons/icon-192.png',
-                  tag: `post-${post.id}`,
-                  url: '/home',
+                  tag: `${isReel ? 'reel' : 'post'}-${post.id}`,
+                  url: targetLink,
                   vibrate: [150, 80, 150],
                 }).catch(() => {});
 
@@ -354,7 +359,7 @@ export function GlobalNotificationListener() {
           }
         }
 
-        if (hasNewMessages) {
+        if (hasNewMessages || hasNewPosts) {
           window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated'));
         }
       } catch {}

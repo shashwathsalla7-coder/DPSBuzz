@@ -7,7 +7,6 @@
       "fullName": "DPS Buzz Official",
       "class": "Official",
       "avatar": "/icons/logo.png",
-      "userAvatar": "/icons/logo.png",
       "caption": "Official Launch Video 🚀 • Welcome to DPS Buzz! Edited by Shashwath & Rishi 🐝✨ Tagged: @shashwath71845",
       "images": [
         "https://res.cloudinary.com/ogfaxmjw/video/upload/v1793295157/dpsbuzz/videos/dpsbuzz_launch_video_rishi_shashwath.mp4"
@@ -23,60 +22,98 @@
       "likes": 24,
       "comments": 5,
       "views": 180,
-      "createdAt": "2026-10-29T17:34:13.802Z",
+      "createdAt": "2026-10-29T17:30:00.000Z",
       "timeAgo": "Just now"
     },
     {
+      "id": "post-1793292350615",
+      "userId": "rohan728",
+      "username": "rohan728",
+      "fullName": "Rohan Sharma",
+      "class": "Class 8-A",
+      "avatar": "https://res.cloudinary.com/ogfaxmjw/image/upload/v1793285086/dpsbuzz/avatars/rohan728.jpg",
+      "caption": "Life |#nature #Sky",
+      "images": [
+        "https://res.cloudinary.com/ogfaxmjw/image/upload/v1793292246/dpsbuzz/posts/u6rm1qpbmtj74dx9bch5.jpg"
+      ],
+      "imageUrl": "https://res.cloudinary.com/ogfaxmjw/image/upload/v1793292246/dpsbuzz/posts/u6rm1qpbmtj74dx9bch5.jpg",
+      "likes": 12,
+      "comments": 2,
+      "views": 45,
+      "createdAt": "2026-10-29T16:44:06.000Z",
+      "timeAgo": "1d ago"
+    },
+    {
+      "id": "post-1793283391305",
+      "userId": "sreekrishna",
+      "username": "sreekrishna",
+      "fullName": "Sreekrishna V",
+      "class": "Class 9-B",
+      "avatar": null,
+      "caption": "Patrick Jane🥶😎",
+      "images": [
+        "https://res.cloudinary.com/ogfaxmjw/image/upload/v1793283221/dpsbuzz/posts/fzhfzpdpppoilsvvdfjb.jpg"
+      ],
+      "imageUrl": "https://res.cloudinary.com/ogfaxmjw/image/upload/v1793283221/dpsbuzz/posts/fzhfzpdpppoilsvvdfjb.jpg",
+      "likes": 19,
+      "comments": 3,
+      "views": 62,
+      "createdAt": "2026-10-29T14:14:00.000Z",
+      "timeAgo": "1d ago"
+    },
+    {
+      "id": "post-1793279427839",
+      "userId": "chandan",
+      "username": "chandan",
+      "fullName": "Chandan Kumar",
+      "class": "Class 10-A",
+      "avatar": "https://res.cloudinary.com/ogfaxmjw/image/upload/v1793285816/dpsbuzz/avatars/chandan.jpg",
+      "caption": "[Habit: SPORTS] 100 🐝🔥 #StarBoard #sports",
+      "images": [
+        "https://res.cloudinary.com/ogfaxmjw/image/upload/v1791900739/samples/woman-on-a-football-field.jpg"
+      ],
+      "imageUrl": "https://res.cloudinary.com/ogfaxmjw/image/upload/v1791900739/samples/woman-on-a-football-field.jpg",
+      "likes": 8,
+      "comments": 1,
+      "views": 38,
+      "createdAt": "2026-10-29T13:10:00.000Z",
+      "timeAgo": "1d ago"
+    },
+    {
       "id": "post-1793212851390",
-      "userId": "admin-shashwath-id",
+      "userId": "shashwath71845",
       "username": "shashwath71845",
       "fullName": "Shashwath Salla",
-      "class": "Class Staff-Admin",
-      "avatar": null,
-      "caption": "",
+      "class": "Class 10-A",
+      "avatar": "https://res.cloudinary.com/ogfaxmjw/image/upload/v1793285816/dpsbuzz/avatars/shashwath71845.jpg",
+      "caption": "DPS Buzz school vibes 🐝✨",
       "images": [
         "https://res.cloudinary.com/ogfaxmjw/image/upload/v1793212848/dpsbuzz/posts/tao2rdamgajrsbk7hmcl.webp"
       ],
       "imageUrl": "https://res.cloudinary.com/ogfaxmjw/image/upload/v1793212848/dpsbuzz/posts/tao2rdamgajrsbk7hmcl.webp",
-      "habitCategory": "studies",
-      "habitTag": "#Studies & Revision",
-      "likes": 1,
-      "comments": 0,
-      "views": 12,
-      "createdAt": "2026-10-28T18:40:51.390Z",
-      "timeAgo": "Just now"
+      "likes": 15,
+      "comments": 2,
+      "views": 74,
+      "createdAt": "2026-10-28T18:40:00.000Z",
+      "timeAgo": "2d ago"
     },
     {
-      "userId": "admin-shashwath-id",
+      "id": "post-1791976342088",
+      "userId": "shashwath71845",
       "username": "shashwath71845",
-      "fullName": "Shashwath (Admin)",
-      "class": "Class Staff-A",
-      "avatar": null,
+      "fullName": "Shashwath Salla",
+      "class": "Class 10-A",
+      "avatar": "https://res.cloudinary.com/ogfaxmjw/image/upload/v1793285816/dpsbuzz/avatars/shashwath71845.jpg",
       "caption": "\"Hey everyone, please check out my new app and let me know what you think! I’ve poured countless late nights into building this, so I’d really appreciate your feedback and support.\"",
       "images": [
         "https://res.cloudinary.com/ogfaxmjw/image/upload/v1791976299/dpsbuzz/posts/vou5x2twzxfsttgbemib.webp"
       ],
-      "habitCategory": "studies",
-      "song": {
-        "id": "1831237608",
-        "title": "Arz Kiya Hai  Coke Studio Bharat",
-        "artist": "Anuv Jain",
-        "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/02/e7/77/02e77709-a5f6-5470-9e5b-70a0d6ff45ed/25UM1IM13936.rgb.jpg/200x200bb.jpg",
-        "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/e7/37/24/e73724af-35c2-505c-5caa-9bb1b3b7c37c/mzaf_15804261838668939498.plus.aac.p.m4a",
-        "durationSeconds": 295,
-        "startTime": 0,
-        "clipDuration": 15
-      },
-      "id": "post-1791976342088",
-      "createdAt": "2026-10-14T11:12:22.088Z",
-      "timeAgo": "Just now",
-      "likes": 5,
-      "comments": 0,
-      "views": 0,
       "imageUrl": "https://res.cloudinary.com/ogfaxmjw/image/upload/v1791976299/dpsbuzz/posts/vou5x2twzxfsttgbemib.webp",
-      "habitPointsAwarded": 0,
-      "habitTag": "#Studies & Revision",
-      "userAvatar": null
+      "likes": 31,
+      "comments": 6,
+      "views": 112,
+      "createdAt": "2026-10-14T10:00:00.000Z",
+      "timeAgo": "2w ago"
     }
   ],
   "stories": [],

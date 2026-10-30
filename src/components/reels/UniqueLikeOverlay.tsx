@@ -8,9 +8,16 @@ interface UniqueLikeOverlayProps {
   onFinished?: () => void;
 }
 
+let lastLikeChimeTimestamp = 0;
+
 export const playLikeChime = () => {
   try {
     if (typeof window === 'undefined') return;
+    const now = Date.now();
+    // Guarantee 1 sound per like action - prevent duplicate audio instances overlapping on the same gesture
+    if (now - lastLikeChimeTimestamp < 160) return;
+    lastLikeChimeTimestamp = now;
+
     const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
     if (!AudioCtx) return;
     const ctx = new AudioCtx();

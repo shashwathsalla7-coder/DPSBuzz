@@ -139,6 +139,16 @@ export default function NotificationsPage() {
                 💬
               </span>
             )}
+            {notif.type === 'reel' && (
+              <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-rose-500 text-white flex items-center justify-center text-[9px] shadow-xs z-10">
+                🎬
+              </span>
+            )}
+            {notif.type === 'post' && (
+              <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-blue-500 text-white flex items-center justify-center text-[9px] shadow-xs z-10">
+                📸
+              </span>
+            )}
           </div>
           <div className="min-w-0">
             <p className="text-xs leading-snug truncate" style={{ color: 'var(--text)' }}>

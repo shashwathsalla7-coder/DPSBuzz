@@ -16,6 +16,7 @@ import {
   removeD1Friendship,
   addD1FollowRequest,
   removeD1FollowRequest,
+  getD1Posts,
   isD1Configured,
 } from '@/lib/cloudflare/dbService';
 
@@ -151,20 +152,21 @@ export async function GET(req: NextRequest) {
       }
     })();
 
-    const d1BatchPromise: Promise<[any[], any[], any[], any[], Record<string, string[]>]> = (async () => {
-      if (isLightweightMode || !isD1Configured()) return [[], [], [], [], {}];
+    const d1BatchPromise: Promise<[any[], any[], any[], any[], Record<string, string[]>, any[]]> = (async () => {
+      if (isLightweightMode || !isD1Configured()) return [[], [], [], [], {}, []];
       try {
-        const [f, fr, p, g, gm] = await Promise.all([
+        const [f, fr, p, g, gm, po] = await Promise.all([
           getD1Follows(),
           getD1FollowRequests(),
           getD1Profiles(),
           getD1Groups(),
           getD1GroupMembers(),
+          getD1Posts(100),
         ]);
-        return [f || [], fr || [], p || [], g || [], gm || {}];
+        return [f || [], fr || [], p || [], g || [], gm || {}, po || []];
       } catch (e: any) {
         console.warn('Cloudflare D1 sync error:', e);
-        return [[], [], [], [], {}];
+        return [[], [], [], [], {}, []];
       }
     })();
 
@@ -201,7 +203,7 @@ export async function GET(req: NextRequest) {
       invSettingValue,
       d1Notifs,
       dbNotifs,
-      [d1Follows, d1Reqs, d1Profs, d1Grps, d1GrpMembers],
+      [d1Follows, d1Reqs, d1Profs, d1Grps, d1GrpMembers, d1Posts],
       [dbFollows, dbReqs, dbProfiles, dbPosts, dbStories],
     ] = await Promise.all([
       storePromise,
@@ -419,11 +421,14 @@ export async function GET(req: NextRequest) {
     }
 
     if (isLightweightMode) {
-      const recentPosts = (store.posts || []).slice(0, 3).map((p: any) => ({
+      const recentPosts = (store.posts || []).slice(0, 5).map((p: any) => ({
         id: p.id,
         username: p.username,
         caption: p.caption,
         avatar: p.avatar,
+        isVideo: Boolean(p.isVideo),
+        isReel: Boolean(p.isReel),
+        createdAt: p.createdAt,
       }));
       return NextResponse.json({
         success: true,
@@ -566,6 +571,45 @@ export async function GET(req: NextRequest) {
           createdAt: dp.created_at,
           timeAgo: 'Just now',
         });
+      }
+      syncPosts = Array.from(postMap.values()).sort(
+        (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+      );
+    }
+
+    // Merge Cloudflare D1 Posts (never pauses, persistent)
+    if (Array.isArray(d1Posts) && d1Posts.length > 0) {
+      const postMap = new Map<string, any>();
+      for (const sp of syncPosts) postMap.set(sp.id, sp);
+      for (const dp of d1Posts) {
+        let mediaArr: string[] = [];
+        try { if (dp.media_urls) mediaArr = JSON.parse(dp.media_urls); } catch {}
+        const isVid = mediaArr.some((u: string) => typeof u === 'string' && (u.endsWith('.mp4') || u.includes('/video/upload/') || u.includes('/videos/')));
+        const vidUrl = mediaArr.find((u: string) => typeof u === 'string' && (u.endsWith('.mp4') || u.includes('/video/upload/') || u.includes('/videos/'))) || null;
+        const tagged = Array.from(new Set(((dp.content || '').match(/@([a-zA-Z0-9_]+)/g) || []).map((m: string) => m.slice(1))));
+
+        if (!postMap.has(dp.id)) {
+          postMap.set(dp.id, {
+            id: dp.id,
+            userId: dp.author_id || dp.author_username,
+            username: dp.author_username,
+            fullName: dp.author_username === 'dpsbuzz' ? 'DPS Buzz Official' : (dp.author_username === 'shashwath71845' ? 'Shashwath Salla' : dp.author_username),
+            avatar: dp.author_username === 'dpsbuzz' ? '/icons/logo.png' : null,
+            class: dp.author_username === 'dpsbuzz' ? 'Official' : 'DPS Student',
+            caption: dp.content || '',
+            imageUrl: mediaArr[0] || null,
+            images: mediaArr,
+            videoUrl: vidUrl,
+            isVideo: isVid,
+            isReel: isVid,
+            taggedUsers: tagged.length > 0 ? tagged : undefined,
+            isPinned: Boolean(dp.is_announcement),
+            likes: dp.likes_count || 0,
+            comments: dp.comments_count || 0,
+            createdAt: dp.created_at,
+            timeAgo: 'Just now',
+          });
+        }
       }
       syncPosts = Array.from(postMap.values()).sort(
         (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
