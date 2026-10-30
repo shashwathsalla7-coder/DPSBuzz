@@ -31,6 +31,7 @@ export default function ReelsPage() {
   const [selectedShareReel, setSelectedShareReel] = useState<Post | null>(null);
   const [selectedLikesViewsReel, setSelectedLikesViewsReel] = useState<Post | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const initialScrollDone = useRef(false);
 
   useEffect(() => {
     const user = DataStore.getCurrentUser();
@@ -48,6 +49,24 @@ export default function ReelsPage() {
       window.removeEventListener('storage', handleContentUpdated);
     };
   }, []);
+
+  // Deep link to specific reel if ?id=[reelId] is in the URL
+  useEffect(() => {
+    if (typeof window === 'undefined' || initialScrollDone.current) return;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const targetId = params.get('id');
+      if (targetId && reels.length > 0) {
+        const idx = reels.findIndex((r) => r.id === targetId);
+        if (idx !== -1) {
+          initialScrollDone.current = true;
+          setTimeout(() => {
+            scrollToIndex(idx);
+          }, 150);
+        }
+      }
+    } catch {}
+  }, [reels]);
 
   const loadReels = () => {
     try {
@@ -67,6 +86,16 @@ export default function ReelsPage() {
         }
         return true;
       });
+
+      // If a specific reel is requested in query params (?id=...), ensure it's included
+      if (typeof window !== 'undefined') {
+        const params = new URLSearchParams(window.location.search);
+        const targetId = params.get('id');
+        if (targetId && !visibleReels.some((r) => r.id === targetId)) {
+          const specific = allReels.find((r) => r.id === targetId) || DataStore.getPostById(targetId);
+          if (specific) visibleReels.unshift(specific);
+        }
+      }
 
       // Algorithm: Freshness first (today/yesterday), balanced with engagement
       visibleReels.sort((a, b) => {

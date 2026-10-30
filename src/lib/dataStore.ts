@@ -340,7 +340,7 @@ export interface RosterEntry {
   claimedBy?: string;
 }
 
-export type NotificationType = 'like' | 'comment' | 'follow' | 'notice' | 'badge' | 'system' | 'chat' | 'post' | 'cricket' | 'connect4';
+export type NotificationType = 'like' | 'comment' | 'follow' | 'notice' | 'badge' | 'system' | 'chat' | 'post' | 'reel' | 'cricket' | 'connect4';
 
 export interface NotificationItem {
   id: string;
@@ -1723,14 +1723,68 @@ export const DataStore = {
     });
   },
 
+  getPostViewersMap(): Record<string, string[]> {
+    return getStorage<Record<string, string[]>>('dpsbuzz_post_viewers_map_v1', {});
+  },
+
   getPostViewsMap(): Record<string, number> {
-    return getStorage<Record<string, number>>('dpsbuzz_views_map_v1', {});
+    const viewersMap = this.getPostViewersMap();
+    const legacyMap = getStorage<Record<string, number>>('dpsbuzz_views_map_v1', {});
+    const result: Record<string, number> = { ...legacyMap };
+    for (const [postId, viewers] of Object.entries(viewersMap)) {
+      if (Array.isArray(viewers)) {
+        result[postId] = Math.max(result[postId] || 0, viewers.length);
+      }
+    }
+    return result;
   },
 
   getPostViews(postId: string): number {
     if (!postId) return 0;
-    const map = this.getPostViewsMap();
+    const viewersMap = this.getPostViewersMap();
+    const list = viewersMap[postId];
+    if (Array.isArray(list) && list.length > 0) {
+      return list.length;
+    }
+    const map = getStorage<Record<string, number>>('dpsbuzz_views_map_v1', {});
     return typeof map[postId] === 'number' ? map[postId] : 0;
+  },
+
+  getPostViewersWithStatus(
+    postId: string,
+    viewerUsername?: string
+  ): Array<{
+    username: string;
+    fullName: string;
+    avatar: string | null;
+    class?: string;
+    isFollowing: boolean;
+    isViewer: boolean;
+  }> {
+    if (!postId) return [];
+    const viewersMap = this.getPostViewersMap();
+    const rawViewers = viewersMap[postId] || [];
+    const deletedUserSet = this.getDeletedUsernames();
+    const cleanViewer = (viewerUsername || this.getCurrentUser()?.username || '').toLowerCase().trim();
+
+    const uniqueViewers = Array.from(new Set(rawViewers.map((u) => u.trim()))).filter(
+      (u) => Boolean(u) && !deletedUserSet.has(u.toLowerCase()) && u.toLowerCase() !== 'anonymous'
+    );
+
+    return uniqueViewers.map((u) => {
+      const prof = this.getProfileByUsername(u);
+      const isViewer = Boolean(cleanViewer && u.toLowerCase() === cleanViewer);
+      const isFollowing = cleanViewer && !isViewer ? this.isFollowing(cleanViewer, u) : false;
+
+      return {
+        username: u,
+        fullName: prof?.fullName || u,
+        avatar: prof?.avatar || null,
+        class: prof?.class ? `Class ${prof.class}` : undefined,
+        isFollowing,
+        isViewer,
+      };
+    });
   },
 
   getPostById(postId: string): Post | null {
@@ -1802,7 +1856,9 @@ export const DataStore = {
 
   addPost(post: Omit<Post, 'id' | 'createdAt' | 'timeAgo' | 'likes' | 'comments'>): Post {
     const posts = this.getPosts(true);
-    const firstImage = post.imageUrl || (post.images && post.images.length > 0 ? post.images[0] : undefined);
+    const defaultSchoolImage = 'https://images.unsplash.com/photo-1577896851231-70ef18881754?w=800&auto=format&fit=crop&q=80';
+    const firstImage = post.imageUrl || (post.images && post.images.length > 0 ? post.images[0] : (post.videoUrl || defaultSchoolImage));
+    const resolvedImages = post.images && post.images.length > 0 ? post.images : [firstImage];
     const newPost: Post = {
       ...post,
       id: 'post-' + Date.now(),
@@ -1812,7 +1868,7 @@ export const DataStore = {
       comments: 0,
       views: 0,
       imageUrl: firstImage,
-      images: post.images && post.images.length > 0 ? post.images : (firstImage ? [firstImage] : []),
+      images: resolvedImages,
     };
     posts.unshift(newPost);
     setStorage(STORAGE_KEYS.POSTS, posts);
@@ -1913,34 +1969,50 @@ export const DataStore = {
     }
   },
 
-  incrementPostViews(postId: string): number {
+  incrementPostViews(postId: string, viewerUsername?: string): number {
     if (!postId) return 0;
-    const viewsMap = this.getPostViewsMap();
-    const currentViews = typeof viewsMap[postId] === 'number' ? viewsMap[postId] : 0;
-    const newViews = currentViews + 1;
-    viewsMap[postId] = newViews;
-    setStorage('dpsbuzz_views_map_v1', viewsMap);
+    const cur = viewerUsername || this.getCurrentUser()?.username || 'anonymous';
+    const cleanUser = cur.toLowerCase().trim();
 
-    const posts = this.getPosts(true);
-    let found = false;
-    const nextPosts = posts.map((p) => {
-      if (p.id === postId) {
-        found = true;
-        return { ...p, views: newViews };
+    const viewersMap = this.getPostViewersMap();
+    const list = Array.isArray(viewersMap[postId]) ? [...viewersMap[postId]] : [];
+
+    // UNIQUE VIEW ENFORCEMENT: A user viewing 100 times ONLY counts as 1 view!
+    if (!list.includes(cleanUser)) {
+      list.push(cleanUser);
+      viewersMap[postId] = list;
+      setStorage('dpsbuzz_post_viewers_map_v1', viewersMap);
+
+      const viewsMap = getStorage<Record<string, number>>('dpsbuzz_views_map_v1', {});
+      const count = Math.max(viewsMap[postId] || 0, list.length);
+      viewsMap[postId] = count;
+      setStorage('dpsbuzz_views_map_v1', viewsMap);
+
+      const posts = this.getPosts(true);
+      let found = false;
+      const nextPosts = posts.map((p) => {
+        if (p.id === postId) {
+          found = true;
+          return { ...p, views: count };
+        }
+        return p;
+      });
+      if (found) {
+        setStorage(STORAGE_KEYS.POSTS, nextPosts);
       }
-      return p;
-    });
-    if (found) {
-      setStorage(STORAGE_KEYS.POSTS, nextPosts);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('dpsbuzz:content_updated', {
+            detail: { type: 'post_views', postId, views: count },
+          })
+        );
+      }
+      return count;
     }
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(
-        new CustomEvent('dpsbuzz:content_updated', {
-          detail: { type: 'post_views', postId, views: newViews },
-        })
-      );
-    }
-    return newViews;
+
+    // Already viewed by this user: return unchanged unique count
+    const viewsMap = getStorage<Record<string, number>>('dpsbuzz_views_map_v1', {});
+    return Math.max(viewsMap[postId] || 0, list.length);
   },
 
   repostPost(postId: string, currentUsername: string): Post | null {

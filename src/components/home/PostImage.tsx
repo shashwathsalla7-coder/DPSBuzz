@@ -76,11 +76,12 @@ export const PostImage: React.FC<PostImageProps> = ({
     return unsub;
   }, [post.song?.id]);
 
+  const fallbackSchoolImage = 'https://images.unsplash.com/photo-1577896851231-70ef18881754?w=800&auto=format&fit=crop&q=80';
   const images = post.images && post.images.length > 0
     ? post.images
     : post.imageUrl
     ? [post.imageUrl]
-    : [];
+    : [fallbackSchoolImage];
 
   const totalImages = images.length;
 
@@ -369,11 +370,17 @@ export const PostImage: React.FC<PostImageProps> = ({
             </div>
           </div>
         ) : totalImages === 0 ? (
-          <div className="w-full h-full flex items-center justify-center text-xs text-[var(--text-muted)]">
-            No media attached
+          <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center bg-gradient-to-br from-indigo-950 via-slate-900 to-black text-white relative">
+            <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-xl mb-3 shadow-lg">
+              🐝
+            </div>
+            <p className="text-sm font-bold max-w-xs line-clamp-3 leading-snug">
+              {post.caption || 'DPS Buzz Campus Update'}
+            </p>
+            <span className="text-[11px] text-white/50 mt-2 font-medium">@{post.username}</span>
           </div>
         ) : totalImages === 1 ? (
-          /* Single Photo with Blur-up Placeholder */
+          /* Single Photo with Instant Cache Check & Zero Blank Glitch */
           <div className="w-full h-full relative">
             {isLoading && (
               <div className="absolute inset-0 bg-[var(--surface-sunken)] animate-pulse" />
@@ -381,14 +388,23 @@ export const PostImage: React.FC<PostImageProps> = ({
             <img
               src={images[0]}
               alt={`Photo by ${post.username}`}
-              loading="lazy"
-              onLoad={() => setIsLoading(false)}
-              onError={() => {
-                setIsLoading(false);
-                setHasError(true);
+              loading="eager"
+              ref={(img) => {
+                if (img && img.complete && isLoading) {
+                  setIsLoading(false);
+                }
               }}
-              className={`w-full h-full object-cover transition-opacity duration-300 ${
-                isLoading ? 'opacity-0' : 'opacity-100'
+              onLoad={() => setIsLoading(false)}
+              onError={(e) => {
+                setIsLoading(false);
+                if (e.currentTarget.src !== fallbackSchoolImage) {
+                  e.currentTarget.src = fallbackSchoolImage;
+                } else {
+                  setHasError(true);
+                }
+              }}
+              className={`w-full h-full object-cover transition-opacity duration-200 ${
+                isLoading ? 'opacity-80' : 'opacity-100'
               }`}
             />
           </div>
@@ -410,7 +426,13 @@ export const PostImage: React.FC<PostImageProps> = ({
                   decoding="async"
                   width={1080}
                   height={1350}
-                  onError={() => setHasError(true)}
+                  onError={(e) => {
+                    if (e.currentTarget.src !== fallbackSchoolImage) {
+                      e.currentTarget.src = fallbackSchoolImage;
+                    } else {
+                      setHasError(true);
+                    }
+                  }}
                   className="w-full h-full object-cover"
                 />
               </div>

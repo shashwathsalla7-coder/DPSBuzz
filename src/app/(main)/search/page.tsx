@@ -693,10 +693,13 @@ function SearchContent() {
           <div className="grid grid-cols-2 gap-2.5">
             {trendingPosts.map((post) => {
               const photo = post.imageUrl || (post.images && post.images[0]) || '';
+              const targetUrl = Boolean(post.isReel || post.isVideo)
+                ? `/reels?id=${post.id}`
+                : `/u/${post.username}?post=${post.id}`;
               return (
                 <Link
                   key={post.id}
-                  href={`/home#post-${post.id}`}
+                  href={targetUrl}
                   className="w-full aspect-[4/5] rounded-[16px] overflow-hidden relative group select-none shadow-xs border border-[var(--line)]"
                   style={{ backgroundColor: 'var(--surface-sunken)' }}
                 >
@@ -878,10 +881,13 @@ function SearchContent() {
               <div className="grid grid-cols-2 gap-2.5">
                 {searchResults.posts.map((post) => {
                   const photo = post.imageUrl || (post.images && post.images[0]) || '';
+                  const targetUrl = Boolean(post.isReel || post.isVideo)
+                    ? `/reels?id=${post.id}`
+                    : `/u/${post.username}?post=${post.id}`;
                   return (
                     <Link
                       key={post.id}
-                      href={`/home#post-${post.id}`}
+                      href={targetUrl}
                       className="w-full aspect-[4/5] rounded-[16px] overflow-hidden relative group select-none shadow-xs border border-[var(--line)]"
                       style={{ backgroundColor: 'var(--surface-sunken)' }}
                     >

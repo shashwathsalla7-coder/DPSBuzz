@@ -447,3 +447,22 @@ export async function insertD1Notification(notif: {
     ]
   );
 }
+
+// ----------------------------------------------------------------------------
+// POSTS
+// ----------------------------------------------------------------------------
+
+export async function getD1Posts(limit = 100): Promise<any[]> {
+  if (!isD1Configured()) return [];
+  try {
+    const rows = await d1Query<any>(
+      'SELECT * FROM posts ORDER BY created_at DESC LIMIT ?;',
+      [limit]
+    );
+    return Array.isArray(rows) ? rows : [];
+  } catch (err) {
+    console.warn('Cloudflare D1 getD1Posts error:', err);
+    return [];
+  }
+}
+
