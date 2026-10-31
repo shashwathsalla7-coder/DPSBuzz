@@ -67,7 +67,7 @@ export default function AdminLoginPage() {
             Admin Console
           </h1>
           <p className="text-sm text-[var(--text-muted)]">
-            Dilsukhnagar Public School administration access.
+            DPS Buzz administration access.
           </p>
         </div>
 

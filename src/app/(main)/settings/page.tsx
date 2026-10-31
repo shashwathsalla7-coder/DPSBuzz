@@ -987,7 +987,7 @@ export default function SettingsPage() {
             </span>
           </div>
           <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-            Dilsukhnagar Public School private student network. Strictly non-commercial and ad-free. No commercial ads, no sponsorships, and no commercial tracking ever.
+            DPS Buzz private student network. Strictly non-commercial and ad-free. No commercial ads, no sponsorships, and no commercial tracking ever.
           </p>
         </div>
       </div>

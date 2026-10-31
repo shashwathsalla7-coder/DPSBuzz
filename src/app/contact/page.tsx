@@ -9,7 +9,7 @@ const baseUrl = getBaseUrl();
 export const metadata: Metadata = {
   title: 'Contact & Support',
   description:
-    'Contact the moderation and support team for DPS Buzz at Dilsukhnagar Public School, Hyderabad. Get help with login, safety, or account issues.',
+    'Contact the moderation and support team for DPS Buzz. Get help with login, safety, or account issues.',
   alternates: {
     canonical: `${baseUrl}/contact`,
   },
@@ -20,7 +20,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Contact & Support | DPS Buzz Community',
     description:
-      'Contact the student support and moderation team for DPS Buzz, Dilsukhnagar Public School, Hyderabad.',
+      'Contact the student support and moderation team for DPS Buzz.',
     url: `${baseUrl}/contact`,
     siteName: 'DPS Buzz',
     locale: 'en_IN',
@@ -67,7 +67,7 @@ export default function ContactPage() {
             </div>
             <h2 className="text-lg font-bold text-white">Safety &amp; Moderation</h2>
             <p className="text-xs text-neutral-400 leading-relaxed">
-              For reporting cyberbullying, inappropriate conduct, or urgent safety matters regarding students of Dilsukhnagar Public School.
+              For reporting cyberbullying, inappropriate conduct, or urgent safety matters regarding students on the platform.
             </p>
             <div className="pt-2">
               <span className="text-xs font-medium text-neutral-400 block">Support Desk</span>
@@ -102,10 +102,10 @@ export default function ContactPage() {
 
         <section className="rounded-2xl bg-neutral-900/40 border border-neutral-800 p-6 space-y-3">
           <h2 className="text-base font-bold text-white flex items-center gap-2">
-            <span>🏫</span> School Location
+            <span>🏫</span> Campus Community
           </h2>
           <p className="text-sm text-neutral-300">
-            Dilsukhnagar Public School, Hyderabad, Telangana, India.
+            Hyderabad, Telangana, India.
           </p>
           <p className="text-xs text-neutral-500">
             Note: DPS Buzz is an independent student community platform built for and used by students of classes 6 to 10.

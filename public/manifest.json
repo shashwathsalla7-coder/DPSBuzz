@@ -1,7 +1,7 @@
 {
   "name": "DPS Buzz 🐝 School Social",
   "short_name": "DPS Buzz",
-  "description": "Private student social network for Dilsukhnagar Public School.",
+  "description": "Private student social network.",
   "start_url": "/home",
   "scope": "/",
   "display": "standalone",

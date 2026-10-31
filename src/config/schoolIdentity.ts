@@ -11,7 +11,7 @@
 
 export const schoolIdentity = {
   // Official School Name
-  name: 'Dilsukhnagar Public School',
+  name: 'DPS Buzz',
   shortName: 'DPS Buzz',
   location: 'Hyderabad',
 

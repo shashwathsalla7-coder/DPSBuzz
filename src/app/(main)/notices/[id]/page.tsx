@@ -232,7 +232,7 @@ function NoticeDetailContent({ params }: { params: Promise<{ id: string }> }) {
           </h1>
 
           <div className="text-xs pb-3 border-b" style={{ borderColor: 'var(--line)', color: 'var(--text-muted)' }}>
-            Published by Admin Office • Dilsukhnagar Public School
+            Published by Admin Office • DPS Buzz
           </div>
 
           {/* Body */}

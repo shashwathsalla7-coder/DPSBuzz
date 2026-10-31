@@ -137,7 +137,7 @@ export const AppleHelloSplash: React.FC = () => {
       <div className="pt-4 flex items-center gap-2 animate-apple-fade-up">
         <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
         <span className="text-[11px] font-semibold tracking-wider uppercase text-neutral-400">
-          Dilsukhnagar Public School 🐝
+          DPS Buzz Campus 🐝
         </span>
       </div>
 

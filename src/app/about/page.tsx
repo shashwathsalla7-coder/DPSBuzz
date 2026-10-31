@@ -7,9 +7,9 @@ import { getBaseUrl } from '@/lib/site-url';
 const baseUrl = getBaseUrl();
 
 export const metadata: Metadata = {
-  title: 'About DPSBus — School Social Media App | Dilsukhnagar Public School',
+  title: 'About DPSBus — School Social Media App',
   description:
-    'Learn about DPSBus, the official school social media app for classes 6 to 10 at Dilsukhnagar Public School in Hyderabad.',
+    'Learn about DPSBus, the official school social media app for classes 6 to 10.',
   alternates: {
     canonical: `${baseUrl}/about`,
   },
@@ -18,9 +18,9 @@ export const metadata: Metadata = {
     follow: true,
   },
   openGraph: {
-    title: 'About DPSBus — School Social Media App | Dilsukhnagar Public School',
+    title: 'About DPSBus — School Social Media App',
     description:
-      'Learn about DPSBus, the official school social media app for classes 6 to 10 at Dilsukhnagar Public School in Hyderabad.',
+      'Learn about DPSBus, the official school social media app for classes 6 to 10.',
     url: `${baseUrl}/about`,
     siteName: 'DPSBus',
     locale: 'en_IN',
@@ -36,8 +36,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'About DPSBus — School Social Media App | Dilsukhnagar Public School',
-    description: 'Learn about DPSBus, the official school social media app for DPS students in Hyderabad.',
+    title: 'About DPSBus — School Social Media App',
+    description: 'Learn about DPSBus, the official school social media app for students.',
     images: [`${baseUrl}/opengraph-image`],
   },
 };
@@ -56,7 +56,7 @@ export default function AboutPage() {
             About DPSBus
           </h1>
           <p className="text-neutral-300 text-base sm:text-lg leading-relaxed">
-            <strong className="text-white font-semibold">DPSBus is the official school social media app</strong> created exclusively for students of classes 6 to 10 at Dilsukhnagar Public School in Hyderabad.
+            <strong className="text-white font-semibold">DPSBus is the official school social media app</strong> created exclusively for students of classes 6 to 10.
           </p>
         </div>
 
@@ -93,7 +93,7 @@ export default function AboutPage() {
         <section className="space-y-4 pt-4 border-t border-neutral-850">
           <h2 className="text-xl font-bold text-white">Who Can Join?</h2>
           <p className="text-neutral-300 text-sm leading-relaxed">
-            Registration is open strictly to students of classes 6, 7, 8, 9, and 10 of Dilsukhnagar Public School. You will need your school ID admission number and your class invite code to activate your account.
+            Registration is open strictly to verified students of classes 6, 7, 8, 9, and 10. You will need your school ID admission number and your class invite code to activate your account.
           </p>
           <div className="pt-2 flex flex-wrap gap-3">
             <Link

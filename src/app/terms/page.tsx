@@ -9,7 +9,7 @@ const baseUrl = getBaseUrl();
 export const metadata: Metadata = {
   title: 'Terms of Use',
   description:
-    'Plain language terms of use for DPS Buzz student community at Dilsukhnagar Public School, Hyderabad. Explaining community expectations.',
+    'Plain language terms of use for DPS Buzz student community. Explaining community expectations.',
   alternates: {
     canonical: `${baseUrl}/terms`,
   },
@@ -20,7 +20,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Terms of Use | DPS Buzz Community',
     description:
-      'Community terms of use and guidelines for Dilsukhnagar Public School students.',
+      'Community terms of use and guidelines for students on DPS Buzz.',
     url: `${baseUrl}/terms`,
     siteName: 'DPS Buzz',
     locale: 'en_IN',
@@ -56,7 +56,7 @@ export default function TermsPage() {
             Terms of Use
           </h1>
           <p className="text-neutral-400 text-xs italic">
-            *This document is prepared in clear, non-legalese terms for students and parents, and is subject to official review by Dilsukhnagar Public School administration.*
+            *This document is prepared in clear, non-legalese terms for students and parents, and is subject to official review by school administration.*
           </p>
         </div>
 
@@ -64,7 +64,7 @@ export default function TermsPage() {
           <div className="rounded-2xl bg-neutral-900/60 border border-neutral-800 p-6 space-y-3">
             <h2 className="text-lg font-bold text-white">1. Eligibility</h2>
             <p className="text-neutral-300 text-sm leading-relaxed">
-              DPS Buzz is created solely for active students in classes 6, 7, 8, 9, and 10 of Dilsukhnagar Public School, Hyderabad. You agree to provide accurate information (such as your genuine admission number) during sign up.
+              DPS Buzz is created solely for active students in classes 6, 7, 8, 9, and 10. You agree to provide accurate information (such as your genuine admission number) during sign up.
             </p>
           </div>
 

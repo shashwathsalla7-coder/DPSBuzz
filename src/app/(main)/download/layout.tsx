@@ -6,7 +6,7 @@ const baseUrl = getBaseUrl();
 export const metadata: Metadata = {
   title: 'Download DPSBus App & Android APK — School Social Media App',
   description:
-    'Download the official DPSBus Android APK (v1.4) or install the school social media web app for Dilsukhnagar Public School students in Hyderabad.',
+    'Download the official DPSBus Android APK (v1.4) or install the school social media web app for students.',
   alternates: {
     canonical: `${baseUrl}/download`,
   },
@@ -15,9 +15,9 @@ export const metadata: Metadata = {
     follow: true,
   },
   openGraph: {
-    title: 'Download DPSBus App | Dilsukhnagar Public School',
+    title: 'Download DPSBus App',
     description:
-      'Download the official DPSBus Android APK v1.4 or install the school social media web app for Dilsukhnagar Public School students.',
+      'Download the official DPSBus Android APK v1.4 or install the school social media web app for students.',
     url: `${baseUrl}/download`,
     images: [
       {

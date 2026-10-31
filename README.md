@@ -1,6 +1,6 @@
-# DPS Buzz — Dilsukhnagar Public School Student Network
+# DPS Buzz — Private Student Network
 
-DPS Buzz is a private social and notice board website built exclusively for the students of Dilsukhnagar Public School (classes 6–10, ages 11–16). It is designed to feel like a well-kept school notebook that happens to be alive — clear, calm, and school-specific.
+DPS Buzz is a private social and notice board website built exclusively for students (classes 6–10, ages 11–16). It is designed to feel like a well-kept school notebook that happens to be alive — clear, calm, and school-specific.
 
 ---
 

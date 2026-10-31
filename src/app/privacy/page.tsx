@@ -9,7 +9,7 @@ const baseUrl = getBaseUrl();
 export const metadata: Metadata = {
   title: 'Privacy Policy',
   description:
-    'Plain language privacy policy for DPS Buzz student community at Dilsukhnagar Public School, Hyderabad. Explaining student data protection.',
+    'Plain language privacy policy for DPS Buzz student community. Explaining student data protection.',
   alternates: {
     canonical: `${baseUrl}/privacy`,
   },
@@ -20,7 +20,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Privacy Policy | DPS Buzz Community',
     description:
-      'Student privacy protection and plain-language data policy on DPS Buzz for Dilsukhnagar Public School students.',
+      'Student privacy protection and plain-language data policy on DPS Buzz.',
     url: `${baseUrl}/privacy`,
     siteName: 'DPS Buzz',
     locale: 'en_IN',
@@ -37,7 +37,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'Privacy Policy | DPS Buzz',
-    description: 'Student data protection policy for Dilsukhnagar Public School community.',
+    description: 'Student data protection policy for the DPS Buzz community.',
     images: [`${baseUrl}/opengraph-image`],
   },
 };
@@ -56,7 +56,7 @@ export default function PrivacyPage() {
             Privacy Policy
           </h1>
           <p className="text-neutral-400 text-xs italic">
-            *This policy is drafted in plain language for students, parents, and for formal review by Dilsukhnagar Public School administration.*
+            *This policy is drafted in plain language for students, parents, and school administration.*
           </p>
           <p className="text-neutral-300 text-base leading-relaxed">
             DPS Buzz is designed from the ground up to protect children&apos;s privacy. We do not sell data, we do not show commercial advertisements, and we do not track students across third-party websites.

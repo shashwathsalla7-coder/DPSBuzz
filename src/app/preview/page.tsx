@@ -196,7 +196,7 @@ function GazetteScreen({
           className="flex justify-between items-center text-[9px] font-bold tracking-widest uppercase pb-1 mb-1.5 border-b"
           style={{ color: subtextColor, borderColor: borderColor }}
         >
-          <span>DILSUKHNAGAR PUBLIC SCHOOL</span>
+          <span>DPS BUZZ CAMPUS</span>
           <span>TERM 1 • VOL. 24</span>
         </div>
         <div

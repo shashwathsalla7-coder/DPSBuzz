@@ -430,7 +430,7 @@ export default function StyleguidePage() {
       >
         <div className="space-y-4 text-xs text-[var(--text)]">
           <p className="leading-relaxed">
-            Students are verified directly against the Dilsukhnagar Public School student roster provided by the administrative office.
+            Students are verified directly against the school student roster provided by the administrative office.
           </p>
           <div className="p-3 rounded-[10px] bg-[var(--surface-sunken)] border border-[var(--line)]">
             <p className="font-semibold mb-1">Privacy Guarantee</p>
