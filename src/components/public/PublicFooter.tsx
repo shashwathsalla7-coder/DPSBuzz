@@ -40,7 +40,7 @@ export default function PublicFooter() {
         </div>
 
         <div className="pt-6 border-t border-neutral-900 flex flex-col sm:flex-row items-center justify-between gap-3 text-neutral-400 text-xs">
-          <p>© {year} DPSBus. The official school social media app for Dilsukhnagar Public School students, Hyderabad.</p>
+          <p>© {year} DPSBus. The official school social media app for students.</p>
           <p>Private &amp; moderated space for classes 6–10.</p>
         </div>
       </div>

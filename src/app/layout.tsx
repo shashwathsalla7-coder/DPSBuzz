@@ -15,11 +15,11 @@ const siteUrl = getBaseUrl();
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: 'DPSBus — School Social Media App | Dilsukhnagar Public School',
+    default: 'DPSBus — School Social Media App',
     template: '%s | DPSBus',
   },
   description:
-    'DPSBus is the official school social media app and student community for classes 6 to 10 at Dilsukhnagar Public School in Hyderabad. Connect with classmates, share academic achievements, and stay updated.',
+    'DPSBus is the official school social media app and student community for classes 6 to 10. Connect with classmates, share academic achievements, and stay updated.',
   applicationName: 'DPSBus',
   authors: [{ name: 'DPSBus Community', url: siteUrl }],
   generator: 'Next.js',
@@ -29,15 +29,13 @@ export const metadata: Metadata = {
     'DPSBus app',
     'DPS Buzz',
     'school social media app',
-    'Dilsukhnagar Public School',
-    'DPS Dilsukhnagar',
     'DPS Hyderabad',
     'DPSBus APK download',
-    'Dilsukhnagar student community',
+    'DPS student community',
     'DPS student social app',
   ],
   creator: 'Shashwath • DPSBus Admin',
-  publisher: 'Dilsukhnagar Public School Student Community',
+  publisher: 'DPSBus Student Community',
   formatDetection: {
     email: false,
     address: false,
@@ -62,23 +60,23 @@ export const metadata: Metadata = {
     locale: 'en_IN',
     url: siteUrl,
     siteName: 'DPSBus',
-    title: 'DPSBus — School Social Media App | Dilsukhnagar Public School',
+    title: 'DPSBus — School Social Media App',
     description:
-      'DPSBus is the official school social media app and student community for Dilsukhnagar Public School students in Hyderabad. Connect with classmates, view announcements, and download the app.',
+      'DPSBus is the official school social media app and student community. Connect with classmates, view announcements, and download the app.',
     images: [
       {
         url: `${siteUrl}/opengraph-image`,
         width: 1200,
         height: 630,
-        alt: 'DPSBus — School Social Media App | Dilsukhnagar Public School',
+        alt: 'DPSBus — School Social Media App',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'DPSBus — School Social Media App | Dilsukhnagar Public School',
+    title: 'DPSBus — School Social Media App',
     description:
-      'DPSBus is the official school social media app for Dilsukhnagar Public School students in Hyderabad. Connect with classmates and download the app.',
+      'DPSBus is the official school social media app for students. Connect with classmates and download the app.',
     images: [`${siteUrl}/opengraph-image`],
     creator: '@dpsbus',
   },

@@ -8,7 +8,7 @@
 export const school = {
   // Site & School Name
   siteName: 'DPS Buzz',
-  schoolName: 'Dilsukhnagar Public School',
+  schoolName: 'DPS Buzz',
   shortCode: 'DPS',
   schoolCode: 'DPS71845',
 
@@ -16,7 +16,7 @@ export const school = {
   logo: {
     type: 'wordmark',
     text: 'DPS Buzz',
-    subtext: 'Dilsukhnagar Public School',
+    subtext: 'Campus Network',
     badge: 'DPS',
   },
 

@@ -9,7 +9,7 @@ const baseUrl = getBaseUrl();
 export const metadata: Metadata = {
   title: 'Safety & Community Guidelines',
   description:
-    'Community guidelines, anti-bullying rules, and safety reporting on DPS Buzz for Dilsukhnagar Public School students in Hyderabad.',
+    'Community guidelines, anti-bullying rules, and safety reporting on DPS Buzz for students.',
   alternates: {
     canonical: `${baseUrl}/safety`,
   },
@@ -20,7 +20,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Safety & Guidelines | DPS Buzz Community',
     description:
-      'Community guidelines, anti-bullying rules, and safety reporting on DPS Buzz for Dilsukhnagar Public School students in Hyderabad.',
+      'Community guidelines, anti-bullying rules, and safety reporting on DPS Buzz for students.',
     url: `${baseUrl}/safety`,
     siteName: 'DPS Buzz',
     locale: 'en_IN',
@@ -142,7 +142,7 @@ export default function SafetyPage() {
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <div>
                   <p className="text-sm font-bold text-white">Grievance &amp; Child Safety Officer</p>
-                  <p className="text-xs text-neutral-400">DPS Buzz Administration • Dilsukhnagar, Hyderabad, Telangana</p>
+                  <p className="text-xs text-neutral-400">DPS Buzz Administration • Hyderabad, Telangana</p>
                 </div>
                 <div className="px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-400 text-xs font-semibold">
                   Response within 24 Hours

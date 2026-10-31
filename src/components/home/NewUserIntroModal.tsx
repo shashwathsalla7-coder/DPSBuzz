@@ -169,10 +169,10 @@ export function NewUserIntroModal({
             <div className="p-4 rounded-2xl bg-gradient-to-br from-[#833AB4]/20 via-[#C13584]/15 to-transparent border border-white/10 space-y-2">
               <div className="flex items-center gap-2 text-pink-300 font-black text-sm">
                 <GraduationCap size={18} />
-                <span>Welcome to Dilsukhnagar Public School&apos;s Campus Hub!</span>
+                <span>Welcome to the Campus Hub!</span>
               </div>
               <p className="text-xs text-slate-200 leading-relaxed">
-                DPSBuzz is the exclusive, student-only social platform for Dilsukhnagar Public School. Connect with classmates from your section, share study notes, post reels, participate in school events, and play live duels.
+                DPSBuzz is your exclusive, student-only social platform. Connect with classmates from your section, share study notes, post reels, participate in campus events, and play live duels.
               </p>
             </div>
 
@@ -316,7 +316,7 @@ export function NewUserIntroModal({
                 <div>
                   <h4 className="font-bold text-white">Section & School Pride</h4>
                   <p className="text-slate-400 text-[11px] mt-0.5">
-                    Represent your class section (e.g. Class 8-A) and bring your section to #1 in Dilsukhnagar Public School!
+                    Represent your class section (e.g. Class 8-A) and bring your section to #1 on the leaderboard!
                   </p>
                 </div>
               </div>

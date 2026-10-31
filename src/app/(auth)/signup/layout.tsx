@@ -6,7 +6,7 @@ const baseUrl = getBaseUrl();
 export const metadata: Metadata = {
   title: 'Join Community (Classes 6–10)',
   description:
-    'Join DPS Buzz, the student community for Dilsukhnagar Public School classes 6-10 in Hyderabad. Sign up with your school invite code.',
+    'Join DPS Buzz, the student community for classes 6-10. Sign up with your school invite code.',
   alternates: {
     canonical: `${baseUrl}/signup`,
   },

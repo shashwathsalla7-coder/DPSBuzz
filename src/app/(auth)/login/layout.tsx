@@ -6,7 +6,7 @@ const baseUrl = getBaseUrl();
 export const metadata: Metadata = {
   title: 'Student & Staff Login',
   description:
-    'Log in to DPS Buzz, the student community for Dilsukhnagar Public School students in Hyderabad. Connect with classmates and access school updates.',
+    'Log in to DPS Buzz, the exclusive student community. Connect with classmates and access school updates.',
   alternates: {
     canonical: `${baseUrl}/login`,
   },
@@ -15,7 +15,7 @@ export const metadata: Metadata = {
     follow: true,
   },
   openGraph: {
-    title: 'Log In to DPS Buzz | Dilsukhnagar Public School',
+    title: 'Log In to DPS Buzz',
     description: 'Log in to connect with classmates and school updates on DPS Buzz.',
     url: `${baseUrl}/login`,
     images: [

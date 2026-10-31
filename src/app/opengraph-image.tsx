@@ -1,6 +1,6 @@
 import { ImageResponse } from 'next/og';
 
-export const alt = 'DPS Buzz — Student Community | Dilsukhnagar Public School';
+export const alt = 'DPS Buzz — Student Community';
 export const size = {
   width: 1200,
   height: 630,
@@ -109,7 +109,7 @@ export default async function Image() {
             lineHeight: 1.4,
           }}
         >
-          A Student Community for Dilsukhnagar Public School • Hyderabad
+          A Private Student Community • Classes 6 to 10
         </div>
 
         {/* Badges footer */}

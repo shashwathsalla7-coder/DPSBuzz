@@ -61,7 +61,7 @@ BEGIN
     INSERT INTO public.groups (name, description, class, section, category, is_official)
     VALUES (
       v_group_name,
-      'Official class group for Class ' || NEW.class || '-' || UPPER(NEW.section) || ' • Dilsukhnagar Public School',
+      'Official class group for Class ' || NEW.class || '-' || UPPER(NEW.section) || ' • DPS Buzz',
       NEW.class,
       UPPER(NEW.section),
       'class',
@@ -117,7 +117,7 @@ BEGIN
       'dpsbuzz_official',
       'DPS Buzz Official 🐝',
       NULL,
-      'The official pulse of Dilsukhnagar Public School. News, notices, events & campus highlights.',
+      'The official pulse of campus. News, notices, events & campus highlights.',
       'admin',
       true,
       true,

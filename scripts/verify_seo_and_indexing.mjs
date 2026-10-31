@@ -61,14 +61,12 @@ if (declaresDPSBus && hasOrganization && hasWebSite && hasSoftwareApp && hasSoci
 console.log(`[4] SEMANTIC CONTENT REVIEW (HERO DEFINITION ANSWER)`);
 const landingPageContent = fs.readFileSync('src/app/page.tsx', 'utf8');
 const hasDirectAnswer = landingPageContent.includes('DPSBus is the official school social media app');
-const specifiesDPS = landingPageContent.includes('Dilsukhnagar Public School');
 const specifiesClasses = landingPageContent.includes('classes 6 to 10');
 
 console.log(`    Contains Direct Definition Answer:     ${hasDirectAnswer ? 'YES (PASS)' : 'NO (FAIL)'}`);
-console.log(`    Names Dilsukhnagar Public School:      ${specifiesDPS ? 'YES (PASS)' : 'NO (FAIL)'}`);
 console.log(`    Specifies Target Classes 6 to 10:      ${specifiesClasses ? 'YES (PASS)' : 'NO (FAIL)'}`);
 
-if (hasDirectAnswer && specifiesDPS && specifiesClasses) {
+if (hasDirectAnswer && specifiesClasses) {
   console.log('    PASS: Homepage hero component provides an unambiguous direct answer string for AI summarization.\n');
 } else {
   console.error('    FAIL: Direct answer definition missing from hero section!\n');

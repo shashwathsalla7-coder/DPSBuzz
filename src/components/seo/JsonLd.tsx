@@ -27,11 +27,10 @@ export function JsonLd() {
     },
     image: `${baseUrl}/opengraph-image`,
     description:
-      'DPSBus is the official school social media app and student community for students of classes 6 to 10 at Dilsukhnagar Public School in Hyderabad, India.',
+      'DPSBus is the official school social media app and student community for students of classes 6 to 10.',
     knowsAbout: [
       'School Social Media App',
       'Student Community Platform',
-      'Dilsukhnagar Public School',
       'Education Technology',
       'Child Online Safety',
     ],
@@ -72,7 +71,7 @@ export function JsonLd() {
     ],
     url: baseUrl,
     description:
-      'DPSBus is the official school social media app and student network for classes 6 to 10 at Dilsukhnagar Public School, Hyderabad, India.',
+      'DPSBus is the official school social media app and student network for classes 6 to 10.',
     publisher: {
       '@id': `${baseUrl}/#organization`,
     },
@@ -93,7 +92,7 @@ export function JsonLd() {
       priceCurrency: 'INR',
     },
     description:
-      'DPSBus is a safe, moderated school social media app for verified Dilsukhnagar Public School students in classes 6-10 to connect with classmates, collaborate on studies, and view school announcements.',
+      'DPSBus is a safe, moderated school social media app for verified students in classes 6-10 to connect with classmates, collaborate on studies, and view school announcements.',
     url: `${baseUrl}/download`,
     author: {
       '@id': `${baseUrl}/#organization`,

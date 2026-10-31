@@ -66,7 +66,7 @@ export default function NotFound() {
       {/* Footer */}
       <div className="max-w-md w-full mx-auto text-left">
         <p className="text-xs text-neutral-500">
-          DPS Buzz • Dilsukhnagar Public School Student Community
+          DPS Buzz • Student Community
         </p>
       </div>
     </div>

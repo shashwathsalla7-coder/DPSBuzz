@@ -472,7 +472,7 @@ export function CallModal({
         </div>
 
         <p className="text-[11px] text-neutral-400 font-medium">
-          Dilsukhnagar Public School • Private Campus Call
+          DPS Buzz • Private Campus Call
         </p>
       </footer>
     </div>

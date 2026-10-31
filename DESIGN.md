@@ -2,7 +2,7 @@
 
 The single source of truth for how DPS Buzz looks, sounds and moves. Read this whole file before touching any UI. If something here conflicts with a default, a template or a habit, this file wins.
 
-DPS Buzz is a private social website for the students of Dilsukhnagar Public School (classes 6–10, ages 11–16). It must feel like it belongs to this school and was made by people who know it. It should be calmer, clearer and more useful than Instagram, not a copy of it.
+DPS Buzz is a private social website for students (classes 6–10, ages 11–16). It must feel like it belongs to our school and was made by people who know it. It should be calmer, clearer and more useful than Instagram, not a copy of it.
 
 ---
 
@@ -52,7 +52,7 @@ Keep all of these in a single file, `src/config/school.ts`. Changing them must r
 | Item | Placeholder now | Real value |
 |---|---|---|
 | Site name | DPS Buzz | (confirm) |
-| School name | Dilsukhnagar Public School | — |
+| School name | DPS Buzz | — |
 | Logo / crest | Text wordmark only, no invented crest | Owner will supply |
 | School primary colour | `#1E3A8A` (ink blue) | Owner will supply |
 | School accent colour | `#F0563A` (coral) | Owner will supply |

@@ -578,7 +578,7 @@ function SearchContent() {
                 </span>
               </p>
               <p className="text-[10px] text-[var(--text-muted)]">
-                DPS Dilsukhnagar student community
+                DPS Buzz student community
               </p>
             </div>
           </div>
