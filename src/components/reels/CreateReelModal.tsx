@@ -49,6 +49,7 @@ export const CreateReelModal: React.FC<CreateReelModalProps> = ({
   const [externalVideoUrl, setExternalVideoUrl] = useState('');
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [videoDuration, setVideoDuration] = useState<number>(0);
+  const [videoThumbnail, setVideoThumbnail] = useState<string | null>(null);
   const [caption, setCaption] = useState('');
   const [habitCategory, setHabitCategory] = useState<string>('entertainment');
   const [selectedSong, setSelectedSong] = useState<SongTrack | null>(null);
@@ -117,6 +118,25 @@ export const CreateReelModal: React.FC<CreateReelModalProps> = ({
       setSelectedFile(file);
       if (previewUrl) URL.revokeObjectURL(previewUrl);
       setPreviewUrl(tempUrl);
+
+      // Seek slightly to capture poster thumbnail
+      try {
+        tempVideo.currentTime = Math.min(0.5, dur > 1 ? dur / 2 : 0.1);
+      } catch {}
+    };
+
+    tempVideo.onseeked = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = 480;
+        canvas.height = (tempVideo.videoHeight / (tempVideo.videoWidth || 1)) * 480 || 640;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(tempVideo, 0, 0, canvas.width, canvas.height);
+          const thumb = canvas.toDataURL('image/jpeg', 0.8);
+          setVideoThumbnail(thumb);
+        }
+      } catch {}
     };
 
     tempVideo.onerror = () => {
@@ -191,43 +211,84 @@ export const CreateReelModal: React.FC<CreateReelModalProps> = ({
     }
 
     setIsUploading(true);
-    setUploadProgress(15);
+    setUploadProgress(5);
     setError(null);
 
     try {
-      const formData = new FormData();
-      formData.append('file', selectedFile);
-      formData.append('folder', 'reels');
+      let videoUrl = '';
 
-      const progressInterval = setInterval(() => {
-        setUploadProgress((prev) => {
-          if (prev >= 85) {
-            clearInterval(progressInterval);
-            return 85;
+      // Direct Cloudinary Signed Upload (bypasses serverless body limits)
+      try {
+        const signRes = await fetch('/api/upload/sign?folder=reels');
+        if (signRes.ok) {
+          const signData = await signRes.json();
+          if (signData.success && signData.signature) {
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            formData.append('api_key', signData.apiKey);
+            formData.append('timestamp', signData.timestamp.toString());
+            formData.append('signature', signData.signature);
+            formData.append('folder', signData.folder);
+
+            videoUrl = await new Promise<string>((resolve, reject) => {
+              const xhr = new XMLHttpRequest();
+              const endpoint = signData.videoUploadUrl || `https://api.cloudinary.com/v1_1/${signData.cloudName}/video/upload`;
+              xhr.open('POST', endpoint);
+              xhr.upload.onprogress = (e) => {
+                if (e.lengthComputable) {
+                  const pct = Math.round((e.loaded / e.total) * 90);
+                  setUploadProgress(Math.max(5, pct));
+                }
+              };
+              xhr.onload = () => {
+                if (xhr.status >= 200 && xhr.status < 300) {
+                  try {
+                    const resp = JSON.parse(xhr.responseText);
+                    resolve(resp.secure_url || resp.url);
+                  } catch (e) {
+                    reject(e);
+                  }
+                } else {
+                  reject(new Error(`Cloudinary upload returned status ${xhr.status}`));
+                }
+              };
+              xhr.onerror = () => reject(new Error('Network error during video upload'));
+              xhr.send(formData);
+            });
           }
-          return prev + 12;
-        });
-      }, 400);
-
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-      });
-
-      clearInterval(progressInterval);
-
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.error || 'Failed to upload video');
+        }
+      } catch (directErr) {
+        console.warn('Direct upload notice, falling back:', directErr);
       }
 
-      setUploadProgress(95);
-      const data = await res.json();
-      const videoUrl = data.url;
+      // Fallback to /api/upload if direct upload was not completed
+      if (!videoUrl) {
+        if (selectedFile.size > 4.5 * 1024 * 1024) {
+          throw new Error('Video is larger than 4.5MB. Please choose a video under 4.5MB or check your connection.');
+        }
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+        formData.append('folder', 'reels');
+
+        const res = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || 'Failed to upload video');
+        }
+
+        const data = await res.json();
+        videoUrl = data.url;
+      }
 
       if (!videoUrl) {
         throw new Error('Upload server did not return a valid video URL');
       }
+
+      setUploadProgress(95);
 
       // Add to DataStore
       const newPost = DataStore.addPost({
@@ -238,7 +299,7 @@ export const CreateReelModal: React.FC<CreateReelModalProps> = ({
         avatar: currentUser.avatar || null,
         caption: caption.trim() || 'Check out my new reel! 🎬✨',
         images: [videoUrl],
-        imageUrl: videoUrl,
+        imageUrl: videoThumbnail || videoUrl,
         videoUrl: videoUrl,
         isVideo: true,
         isReel: true,

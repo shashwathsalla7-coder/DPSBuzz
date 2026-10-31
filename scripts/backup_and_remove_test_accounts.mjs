@@ -13,6 +13,14 @@ for (const line of envContent.split('\n')) {
 }
 
 const supabase = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+
+// 🛡️ Safety check: Refuse destructive deletion on live DB unless explicitly approved
+if (process.env.CONFIRM_DELETE_ACCOUNTS !== 'true') {
+  console.error('\n🛑 SAFETY BLOCK: Script requires explicit confirmation before removing accounts from live database.');
+  console.error('Run only after user approval with CONFIRM_DELETE_ACCOUNTS=true.\n');
+  process.exit(1);
+}
+
 const TEST_USERS = ['testaccount', 'testing', 'test_insert_probe', 'test_uuid5_user'];
 
 async function backupAndRemove() {

@@ -59,15 +59,19 @@ export const ReelCard: React.FC<ReelCardProps> = ({
   const playIconTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const isVideoMedia = Boolean(
+    reel.isVideo ||
+    reel.isReel ||
     reel.videoUrl ||
     (reel.imageUrl && (
       reel.imageUrl.endsWith('.mp4') ||
       reel.imageUrl.endsWith('.webm') ||
+      reel.imageUrl.endsWith('.mov') ||
       reel.imageUrl.includes('/video/upload/') ||
       reel.imageUrl.includes('/videos/')
-    ))
+    )) ||
+    (reel.images && Array.isArray(reel.images) && reel.images.some((img: string) => typeof img === 'string' && (img.endsWith('.mp4') || img.includes('/video/'))))
   );
-  const videoUrl = isVideoMedia ? (reel.videoUrl || reel.imageUrl) : '';
+  const videoUrl = isVideoMedia ? (reel.videoUrl || (reel.images && reel.images[0]) || reel.imageUrl) : '';
   const authorProf = DataStore.getProfileByUsername(reel.username);
   const authorAvatar = authorProf?.avatar || reel.avatar || null;
   const color = getAvatarColorPair(reel.username);
@@ -216,6 +220,7 @@ export const ReelCard: React.FC<ReelCardProps> = ({
           loop
           muted={isMuted}
           preload={isActive ? 'auto' : 'metadata'}
+          crossOrigin="anonymous"
           disablePictureInPicture
           onWaiting={() => setIsBuffering(true)}
           onPlaying={() => setIsBuffering(false)}
@@ -224,6 +229,10 @@ export const ReelCard: React.FC<ReelCardProps> = ({
             setIsBuffering(false);
             if (videoRef.current && !videoRef.current.src.includes('launch_video.mp4')) {
               videoRef.current.src = '/videos/launch_video.mp4';
+              videoRef.current.load();
+              if (isActive) {
+                videoRef.current.play().catch(() => {});
+              }
             }
           }}
           onTimeUpdate={handleTimeUpdate}

@@ -7,9 +7,10 @@ import {
   GlobalModerationGuard,
   GlobalNotificationListener,
   AuthGuard,
+  DataVersionGuard,
 } from '@/components/layout';
 import { AppleHelloSplash } from '@/components/ui';
-import { GlobalCallProvider } from '@/components/calls';
+import GlobalCallProvider from '@/components/calls/GlobalCallProvider';
 import InstallPromptBanner from '@/components/pwa/InstallPromptBanner';
 
 // Protect all logged-in student and private routes from search engine indexing
@@ -32,6 +33,7 @@ export const metadata: Metadata = {
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   return (
     <AuthGuard>
+      <DataVersionGuard />
       <div className="min-h-dvh">
         {/* Real-time WebRTC Voice & Video Calling Provider */}
         <Suspense fallback={null}>

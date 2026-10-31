@@ -1015,9 +1015,9 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
           </div>
         )}
 
-        {/* Bottom Bar: Instagram-style Story Reply / Insights bar elevated above Android navigation bar */}
+        {/* Bottom Bar: elevated above Android navigation bar */}
         <div
-          className="absolute inset-x-0 z-30 px-3 pt-2.5 flex flex-col bg-gradient-to-t from-black/95 via-black/70 to-transparent"
+          className="absolute inset-x-0 z-30 px-3 pt-2.5 flex flex-col"
           style={{
             bottom: 0,
             paddingBottom: 'max(env(safe-area-inset-bottom, 0px) + 16px, 48px)',
@@ -1054,25 +1054,9 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
               </button>
             </div>
           ) : (
-            /* Classmate Story: Quick Emoji Reactions + Views Pill + Message Input + Heart Like */
-            <div className="w-full flex flex-col gap-2">
-              {/* Quick emoji reaction row */}
-              <div className="flex items-center justify-between gap-1 px-1 overflow-x-auto no-scrollbar">
-                {QUICK_REACTIONS.map((emoji) => (
-                  <button
-                    key={emoji}
-                    type="button"
-                    onClick={() => handleSendQuickReaction(emoji)}
-                    className="w-8 h-8 flex items-center justify-center text-lg rounded-full bg-black/45 hover:bg-black/75 active:scale-125 transition-all cursor-pointer backdrop-blur-md border border-white/10"
-                    title={`React ${emoji}`}
-                    aria-label={`React with ${emoji}`}
-                  >
-                    {emoji}
-                  </button>
-                ))}
-              </div>
-
-              {/* Main row: Message Input + Heart Like (NO views pill for classmate stories) */}
+            /* Classmate Story: Clean Bottom Message Bar without emojis or bottom gradient */
+            <div className="w-full">
+              {/* Main row: Message Input + Heart Like */}
               <div className="flex items-center gap-2">
                 {/* Reply Message Input */}
                 <div className="flex-1 relative flex items-center">
