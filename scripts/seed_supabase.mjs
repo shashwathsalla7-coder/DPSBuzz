@@ -13,6 +13,14 @@ for (const line of envContent.split('\n')) {
 
 const supabase = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 
+// 🛡️ Safety check: Refuse to run against the live production Supabase database
+if (env.NEXT_PUBLIC_SUPABASE_URL && env.NEXT_PUBLIC_SUPABASE_URL.includes('xdvoeddebquguuqgyscl.supabase.co') && process.env.ALLOW_LIVE_SEED !== 'true') {
+  console.error('\n🛑 SAFETY BLOCK: Refusing to run seed script against the LIVE production Supabase database (xdvoeddebquguuqgyscl)!');
+  console.error('This protects live student accounts from being overwritten by localhost seed data.');
+  console.error('To run in a test environment, point NEXT_PUBLIC_SUPABASE_URL to your test instance.\n');
+  process.exit(1);
+}
+
 async function seed() {
   console.log('--- Checking if database tables exist ---');
   const { error: postCheck } = await supabase.from('posts').select('id').limit(1);

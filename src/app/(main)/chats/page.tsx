@@ -1366,10 +1366,11 @@ function ChatsContent() {
     };
 
     pollMessages();
+    // Gentle 30s background sync fallback (instant updates are delivered 0ms via Supabase Realtime + BroadcastChannel)
     const interval = setInterval(() => {
       if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
       pollMessages();
-    }, 3500);
+    }, 30000);
 
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
@@ -1971,10 +1972,11 @@ function ChatsContent() {
     };
 
     fetchLatestSync();
+    // Gentle 30s fallback poll when tab is visible
     const interval = setInterval(() => {
       if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
       fetchLatestSync();
-    }, 1200);
+    }, 30000);
 
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
@@ -3116,74 +3118,7 @@ function ChatsContent() {
     setTimeout(() => scrollToBottom(true), 60);
     setTimeout(() => scrollToBottom(true), 180);
 
-    // Non-blocking asynchronous update of recipient storage for local test accounts
-    setTimeout(() => {
-      try {
-        if (!activeConversation.isGroup && targetUser) {
-          const targetConvKey = `dpsbuzz_chat_conversations_${targetUser}_v3`;
-          const targetMsgKey = `dpsbuzz_chat_messages_${targetUser}_v3`;
-          const recipientConv = JSON.parse(localStorage.getItem(targetConvKey) || '[]');
-          const recipientMsgs = JSON.parse(localStorage.getItem(targetMsgKey) || '{}');
-          const rConvId = `conv-${currentUsername}`;
-          const rList = recipientMsgs[canonicalId] || recipientMsgs[rConvId] || [];
-          const rMsg: ChatMessage = { ...newMsg, sender: 'them' };
-          if (!rList.some((m: any) => m.id === rMsg.id)) {
-            const nextRList = [...rList, rMsg];
-            recipientMsgs[canonicalId] = nextRList;
-            recipientMsgs[rConvId] = nextRList;
-            localStorage.setItem(targetMsgKey, JSON.stringify(recipientMsgs));
-          }
-          const rExistingIdx = recipientConv.findIndex(
-            (c: any) => (c.username || '').toLowerCase() === currentUsername || c.id === rConvId || c.id === canonicalId
-          );
-          if (rExistingIdx >= 0) {
-            recipientConv[rExistingIdx] = {
-              ...recipientConv[rExistingIdx],
-              lastMessage: sentText,
-              timeAgo: 'Just now',
-              isUnread: true,
-              unreadCount: (recipientConv[rExistingIdx].unreadCount || 0) + 1,
-            };
-            const [item] = recipientConv.splice(rExistingIdx, 1);
-            recipientConv.unshift(item);
-          }
-          localStorage.setItem(targetConvKey, JSON.stringify(recipientConv));
-        } else if (activeConversation.isGroup) {
-          const activeGroupId = activeConversation.id.replace(/^conv-/, '');
-          const members = DataStore.getGroupMembers(activeGroupId);
-          for (const member of members) {
-            const cleanMember = (typeof member === 'string' ? member : (member as any)?.username || '').toLowerCase().trim();
-            if (cleanMember && cleanMember !== currentUsername) {
-              const memberMsgKey = `dpsbuzz_chat_messages_${cleanMember}_v3`;
-              const memberConvKey = `dpsbuzz_chat_conversations_${cleanMember}_v3`;
-              const memberMsgs = JSON.parse(localStorage.getItem(memberMsgKey) || '{}');
-              const memberConvs = JSON.parse(localStorage.getItem(memberConvKey) || '[]');
-              const gList = memberMsgs[canonicalId] || memberMsgs[rawId] || [];
-              const rMsg: ChatMessage = { ...newMsg, sender: 'them' };
-              if (!gList.some((m: any) => m.id === rMsg.id)) {
-                const nextGList = [...gList, rMsg];
-                memberMsgs[canonicalId] = nextGList;
-                memberMsgs[rawId] = nextGList;
-                localStorage.setItem(memberMsgKey, JSON.stringify(memberMsgs));
-              }
-              const cIdx = memberConvs.findIndex((c: any) => c.id === canonicalId || c.id === rawId);
-              if (cIdx >= 0) {
-                memberConvs[cIdx] = {
-                  ...memberConvs[cIdx],
-                  lastMessage: `${currentUsername}: ${sentText}`,
-                  timeAgo: 'Just now',
-                  isUnread: true,
-                  unreadCount: (memberConvs[cIdx].unreadCount || 0) + 1,
-                };
-                const [item] = memberConvs.splice(cIdx, 1);
-                memberConvs.unshift(item);
-              }
-              localStorage.setItem(memberConvKey, JSON.stringify(memberConvs));
-            }
-          }
-        }
-      } catch {}
-    }, 0);
+
 
     // Instant 0ms broadcast across all tabs and components
     DataStore.broadcastChatEvent({

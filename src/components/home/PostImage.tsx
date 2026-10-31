@@ -271,7 +271,7 @@ export const PostImage: React.FC<PostImageProps> = ({
           <div className="w-full h-full relative bg-black flex items-center justify-center">
             {isLoading && (
               <div className="absolute inset-0 bg-neutral-900 animate-pulse flex items-center justify-center text-white/50 text-xs">
-                Loading launch video...
+                Loading video...
               </div>
             )}
             <video
@@ -279,6 +279,7 @@ export const PostImage: React.FC<PostImageProps> = ({
               src={videoSrc || effectiveVideoUrl}
               playsInline
               preload="auto"
+              crossOrigin="anonymous"
               disablePictureInPicture
               muted={isVideoMuted}
               onLoadedData={() => setIsLoading(false)}
@@ -290,14 +291,34 @@ export const PostImage: React.FC<PostImageProps> = ({
               }}
               onPause={() => setIsVideoPlaying(false)}
               onTimeUpdate={handleTimeUpdate}
-              onLoadedMetadata={(e) => setVideoDuration(e.currentTarget.duration)}
+              onLoadedMetadata={(e) => {
+                const dur = e.currentTarget.duration;
+                if (dur && !isNaN(dur) && dur > 0) {
+                  setVideoDuration(dur);
+                  setIsLoading(false);
+                }
+              }}
               onError={handleVideoError}
               className="w-full h-full object-contain"
             />
 
             {/* Big Center Play Button Overlay when Paused */}
             {!isVideoPlaying && !isLoading && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black/25 pointer-events-none z-10 transition-all">
+              <div
+                className="absolute inset-0 flex items-center justify-center bg-black/25 z-10 transition-all cursor-pointer pointer-events-auto"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (videoRef.current) {
+                    videoRef.current.play().catch(() => {
+                      if (videoRef.current) {
+                        videoRef.current.muted = true;
+                        setIsVideoMuted(true);
+                        videoRef.current.play().catch(() => {});
+                      }
+                    });
+                  }
+                }}
+              >
                 <div className="w-16 h-16 rounded-full bg-blue-600/90 text-white flex items-center justify-center shadow-2xl backdrop-blur-md transform hover:scale-110 transition-transform">
                   <Play size={28} className="ml-1 fill-white" />
                 </div>
@@ -313,31 +334,33 @@ export const PostImage: React.FC<PostImageProps> = ({
             />
 
             {/* Video Scrubber & Time Bar */}
-            <div className="absolute bottom-2 left-4 right-4 z-20 pointer-events-auto">
-              <div className="flex items-center gap-2 mb-1.5 text-[11px] font-mono text-white/90 drop-shadow">
-                <span className="tabular-nums">{formatTime(videoCurrentTime)}</span>
-                <div
-                  className="flex-1 h-1.5 bg-white/30 hover:h-2 rounded-full overflow-hidden cursor-pointer transition-all"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const rect = e.currentTarget.getBoundingClientRect();
-                    const pos = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-                    const newTime = pos * videoDuration;
-                    if (videoRef.current) videoRef.current.currentTime = newTime;
-                    setVideoCurrentTime(newTime);
-                  }}
-                >
+            {videoDuration > 0 && (
+              <div className="absolute bottom-2 left-4 right-4 z-20 pointer-events-auto">
+                <div className="flex items-center gap-2 mb-1.5 text-[11px] font-mono text-white/90 drop-shadow">
+                  <span className="tabular-nums">{formatTime(videoCurrentTime)}</span>
                   <div
-                    ref={scrubberFillRef}
-                    className="h-full bg-blue-400 rounded-full will-change-[width]"
-                    style={{
-                      width: `${videoDuration > 0 ? (videoCurrentTime / videoDuration) * 100 : 0}%`,
+                    className="flex-1 h-1.5 bg-white/30 hover:h-2 rounded-full overflow-hidden cursor-pointer transition-all"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      const pos = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+                      const newTime = pos * videoDuration;
+                      if (videoRef.current) videoRef.current.currentTime = newTime;
+                      setVideoCurrentTime(newTime);
                     }}
-                  />
+                  >
+                    <div
+                      ref={scrubberFillRef}
+                      className="h-full bg-blue-400 rounded-full will-change-[width]"
+                      style={{
+                        width: `${videoDuration > 0 ? (videoCurrentTime / videoDuration) * 100 : 0}%`,
+                      }}
+                    />
+                  </div>
+                  <span className="tabular-nums">{formatTime(videoDuration)}</span>
                 </div>
-                <span className="tabular-nums">{formatTime(videoDuration)}</span>
               </div>
-            </div>
+            )}
 
             {/* Floating Action Controls on Video: Full Screen Button & Mute Toggle */}
             <div className="absolute bottom-10 right-3.5 z-20 flex items-center gap-2">

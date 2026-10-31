@@ -83,6 +83,10 @@ export async function GET(req: NextRequest) {
 
         if (Array.isArray(dbPosts)) {
           for (const dp of dbPosts) {
+            const mediaArr: string[] = Array.isArray(dp.images) ? dp.images : (dp.image_url ? [dp.image_url] : []);
+            const isVid = mediaArr.some((u: string) => typeof u === 'string' && (u.endsWith('.mp4') || u.includes('/video/upload/') || u.includes('/videos/') || u.endsWith('.webm') || u.endsWith('.mov')));
+            const vidUrl = mediaArr.find((u: string) => typeof u === 'string' && (u.endsWith('.mp4') || u.includes('/video/upload/') || u.includes('/videos/') || u.endsWith('.webm') || u.endsWith('.mov'))) || null;
+
             const mapped = {
               id: dp.id,
               userId: dp.user_id,
@@ -91,8 +95,11 @@ export async function GET(req: NextRequest) {
               avatar: dp.user_avatar,
               class: dp.class,
               caption: dp.caption || '',
-              imageUrl: dp.image_url,
-              images: dp.images || (dp.image_url ? [dp.image_url] : []),
+              imageUrl: dp.image_url || mediaArr[0] || null,
+              images: mediaArr,
+              videoUrl: vidUrl,
+              isVideo: isVid,
+              isReel: isVid,
               song: dp.song,
               habitCategory: dp.habit_category,
               habitTag: dp.habit_tag,

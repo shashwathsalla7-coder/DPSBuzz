@@ -365,12 +365,12 @@ export function GlobalNotificationListener() {
       } catch {}
     };
 
-    // Run immediately and poll every 8s when visible (real-time events handle 0ms instant updates)
+    // Run immediately and poll every 30s when visible (real-time events handle 0ms instant updates)
     checkIncoming();
     const interval = setInterval(() => {
       if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
       checkIncoming();
-    }, 8000);
+    }, 30000);
 
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
