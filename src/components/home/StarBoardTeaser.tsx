@@ -104,7 +104,7 @@ export const StarBoardTeaser: React.FC<StarBoardTeaserProps> = ({
 
   return (
     <div
-      className="mx-3 my-4 p-4 rounded-[24px] border select-none transition-all shadow-sm relative overflow-hidden"
+      className="mx-3 my-4 p-4 rounded-[14px] border select-none transition-all shadow-xs relative overflow-hidden"
       style={{
         backgroundColor: 'var(--surface-sunken)',
         borderColor: 'var(--line)',
@@ -114,18 +114,17 @@ export const StarBoardTeaser: React.FC<StarBoardTeaserProps> = ({
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2.5">
           <div
-            className="w-8 h-8 rounded-full flex items-center justify-center shadow-xs"
+            className="w-8 h-8 rounded-[10px] flex items-center justify-center shadow-xs"
             style={{
-              backgroundColor: activeTab === 'leaderboard' ? 'var(--primary-tint)' : 'rgba(239, 68, 68, 0.15)',
-              color: activeTab === 'leaderboard' ? 'var(--primary)' : '#EF4444',
+              backgroundColor: activeTab === 'leaderboard' ? 'var(--primary-tint)' : 'rgba(249, 115, 22, 0.15)',
+              color: activeTab === 'leaderboard' ? 'var(--primary)' : '#EA580C',
             }}
           >
             {activeTab === 'leaderboard' ? <Trophy size={16} /> : <Flame size={16} />}
           </div>
           <div>
-            <h3 className="text-xs font-black uppercase tracking-wider flex items-center gap-1.5" style={{ color: 'var(--text)' }}>
+            <h3 className="text-xs font-bold tracking-tight flex items-center gap-1.5" style={{ color: 'var(--text)' }}>
               <span>{activeTab === 'leaderboard' ? 'Star Board' : 'Habit Streaks'}</span>
-              <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-pink-500/15 text-pink-500">Live</span>
             </h3>
             <p className="text-[11px] text-[var(--text-muted)] font-medium">
               {activeTab === 'leaderboard'

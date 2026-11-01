@@ -90,76 +90,55 @@ Rule: when the real primary and accent colours arrive, regenerate `--primary`, `
 
 ## 4. Colour
 
-Flat solid colours. The page is warm off-white, not cold grey. Dark mode is designed separately (a deep warm slate), not an inversion of light mode.
+Neutral, calm grey scale with ONE blue accent. The page background is clean white `#FFFFFF`, never warm off-white, cream, beige, coral or peach. Dark mode uses a deep cool slate (`#0B0F17`), reserved strictly for dark mode, Reels, and the video viewer. Orange is allowed ONLY in story rings and the streak flame icon.
 
 ### 4.1 Tokens
 
 | Token | Light | Dark | Use |
 |---|---|---|---|
-| `--bg` | `#FAF7F2` | `#14161C` | Page background |
-| `--surface` | `#FFFFFF` | `#1D2029` | Cards, sheets, inputs |
-| `--surface-sunken` | `#F2EDE4` | `#11131A` | Chips, received chat bubbles, search field |
-| `--line` | `#E4DED3` | `#2F3442` | Default borders and dividers |
-| `--line-strong` | `#CFC7B8` | `#434A5C` | Seen story rings, focus-adjacent borders |
-| `--text` | `#17181C` | `#F2EFE9` | Main text |
-| `--text-muted` | `#5F6472` | `#9AA0B2` | Secondary text, timestamps |
-| `--primary` | `#1E3A8A` | `#7C9BFF` | Buttons, links, active tab, hashtags |
-| `--primary-hover` | `#172E6E` | `#9DB4FF` | Pressed/hover |
-| `--primary-tint` | `#E8EDFB` | `#1F2747` | Selected rows, your own rank row |
-| `--on-primary` | `#FFFFFF` | `#0E1530` | Text on primary |
-| `--accent` | `#F0563A` | `#FF7A5C` | Likes, notification dot, small badges |
-| `--accent-tint` | `#FDE9E4` | `#3A211C` | Soft accent backgrounds |
-| `--gold` | `#E0A100` | `#F2B705` | Rewards, rank 1 |
-| `--silver` | `#9AA3B2` | `#AEB6C6` | Rank 2 |
-| `--bronze` | `#B8733A` | `#D08A4E` | Rank 3 |
-| `--success` | `#1F8A4C` | `#4CC38A` | Confirmations |
-| `--warning` | `#B7791F` | `#E3A94B` | Cautions |
-| `--danger` | `#C62828` | `#FF6B6B` | Urgent notices, destructive actions, errors |
+| `--bg` | `#FFFFFF` | `#0B0F17` | Page background (clean white / cool dark) |
+| `--surface` | `#F8FAFC` | `#111827` | Cards, sheets, inputs |
+| `--surface-sunken` | `#F1F5F9` | `#080C14` | Chips, received chat bubbles, search field |
+| `--line` | `#E2E8F0` | `#1F2937` | Default 1px borders and dividers |
+| `--line-strong` | `#CBD5E1` | `#374151` | Seen story rings, active inputs |
+| `--text` | `#0F172A` | `#F8FAFC` | Main body & heading text |
+| `--text-muted` | `#64748B` | `#94A3B8` | Secondary meta text, timestamps |
+| `--primary` | `#2B4BFF` | `#4D6BFF` | The single blue accent for buttons & active states |
+| `--primary-hover` | `#2139D6` | `#7088FF` | Pressed/hover |
+| `--primary-tint` | `#EFF4FF` | `#162038` | Subtle selected states |
+| `--on-primary` | `#FFFFFF` | `#FFFFFF` | Text on primary |
+| `--success` | `#16A34A` | `#22C55E` | Verified status & confirmations |
+| `--danger` | `#DC2626` | `#EF4444` | Badges, errors & critical actions |
 
-*(Note: Yellow highlight token has been removed. Use white `#FFFFFF` or `--primary-tint` for any highlighter effect.)*
+*(Note: Yellow highlights, warm backgrounds, corals, creams, and peaches are eliminated. The UI stays calm and flat.)*
 
-**Notice category colours** (used as a 3px left edge and a small label colour, never as a full background)
-
-| Category | Light | Dark |
-|---|---|---|
-| Exams | `#2D4FB3` | `#8CA6FF` |
-| Holidays | `#1F8A4C` | `#4CC38A` |
-| Events | `#D6336C` | `#FF7FAE` |
-| Sports | `#E8590C` | `#FF9A5C` |
-| Fees | `#0B7285` | `#4FC3D9` |
-| Urgent | `#C62828` | `#FF6B6B` |
+**Story Ring Neon Gradient** (preserved strictly per user identity rule):
+`linear-gradient(135deg, #FF8A1F 0%, #FF2E93 35%, #A855F7 68%, #3B82F6 100%)` (orange, pink, purple, blue, white).
 
 ### 4.2 Rules
 
-- One dominant colour (`--primary`), one sharp accent (`--accent`), calm neutrals. Everything else is restrained.
-- Buttons are `--primary` with `--on-primary` text. Never put small white text on `--accent` or `--gold`. Use dark text on those.
-- `--accent` is for likes, the notification dot, small badges and underlines. It is not a button colour.
-- Gold, silver and bronze appear only for Star Board and reward badges. This keeps them special.
-- Red appears only for urgent notices, destructive confirmations and errors.
-- Colour is never the only signal. Pair it with text, an icon or a shape.
-- Dark mode: lift primary and accent to the dark values above, reduce shadow reliance, use borders for separation.
-- Default theme follows the device setting on first visit. Store the user's choice.
+- One blue accent (`--primary`) used deliberately. No competing bright card colors.
+- Primary buttons are solid blue with white text.
+- Red appears only for error badges, urgent school notices, and destructive confirmations.
+- Neutral initials avatar fallbacks use cool slate pairs with 4.5:1+ contrast.
+- Cards use flat solid `--surface` backgrounds with 1px border. No gradients on cards.
 
 ### 4.3 CSS variables and Tailwind
 
 ```css
 :root {
-  --bg:#FAF7F2; --surface:#FFFFFF; --surface-sunken:#F2EDE4;
-  --line:#E4DED3; --line-strong:#CFC7B8;
-  --text:#17181C; --text-muted:#5F6472;
-  --primary:#1E3A8A; --primary-hover:#172E6E; --primary-tint:#E8EDFB; --on-primary:#FFFFFF;
-  --accent:#F0563A; --accent-tint:#FDE9E4;
-  --gold:#E0A100; --silver:#9AA3B2; --bronze:#B8733A;
-  --success:#1F8A4C; --warning:#B7791F; --danger:#C62828;
+  --bg:#FFFFFF; --surface:#F8FAFC; --surface-sunken:#F1F5F9;
+  --line:#E2E8F0; --line-strong:#CBD5E1;
+  --text:#0F172A; --text-muted:#64748B;
+  --primary:#2B4BFF; --primary-hover:#2139D6; --primary-tint:#EFF4FF; --on-primary:#FFFFFF;
+  --success:#16A34A; --danger:#DC2626;
 }
 :root[data-theme="dark"] {
-  --bg:#14161C; --surface:#1D2029; --surface-sunken:#11131A;
-  --line:#2F3442; --line-strong:#434A5C;
-  --text:#F2EFE9; --text-muted:#9AA0B2;
-  --primary:#7C9BFF; --primary-hover:#9DB4FF; --primary-tint:#1F2747; --on-primary:#0E1530;
-  --accent:#FF7A5C; --accent-tint:#3A211C;
-  --gold:#F2B705; --silver:#AEB6C6; --bronze:#D08A4E;
-  --success:#4CC38A; --warning:#E3A94B; --danger:#FF6B6B;
+  --bg:#0B0F17; --surface:#111827; --surface-sunken:#080C14;
+  --line:#1F2937; --line-strong:#374151;
+  --text:#F8FAFC; --text-muted:#94A3B8;
+  --primary:#4D6BFF; --primary-hover:#7088FF; --primary-tint:#162038; --on-primary:#FFFFFF;
+  --success:#22C55E; --danger:#EF4444;
 }
 ```
 
@@ -215,70 +194,40 @@ Rules: sentence case everywhere (no ALL CAPS except the tiny category label, 12p
 
 ## 6. Space, layout, shape
 
-- **Spacing scale (4px base):** 4, 8, 12, 16, 20, 24, 32, 40, 56, 72. Nothing outside the scale.
-- **Mobile layout:** 16px side gutters, content max-width 480px centred on large phones. Vertical rhythm of 12 between related items and 24 between sections. Vary the rhythm on purpose; don't use one padding value everywhere.
-- **Tablet (≥768px):** single centred column, 560px wide, with wider notice and Star Board layouts.
-- **Desktop (≥1024px):** left sidebar (72px collapsed / 240px expanded), centre feed 560px, right rail 320px (notice strip, Top 3, upcoming events).
+- **Spacing scale (4px/8px base):** 4, 8, 12, 16, 24, 32px. 16px page side margin.
+- **Mobile layout:** 16px side gutters, content max-width 480px centred on large phones.
+- **Desktop (≥1024px):** Centred layout with clean max-width or sensible two-column feed, never a stretched phone screen.
 
-**Radii (Master Prompt Quality Pass Override)**
-
-### 6. Corner radius (Redesign Override)
-Kept strictly in tokens so they can be changed in one place:
+### 6.1 Corner radius (Unified Calm System)
 
 | Token | px | Use |
 |---|---|---|
-| `--r-pill` | 9999px | Chips and search fields (full pill) |
-| `--r-input` / `--r-btn` | 14px | Buttons and form inputs |
-| `--r-photo` / `--r-hero` | 20px | Post photo cards and hero card |
-| `--r-grid` | 16px | 2-column grid photo cards |
-| `--r-tabbar` | 24px | Floating bottom tab bar |
-| `--r-sheet` | 24px | Bottom sheets (top corners only) |
-| `--r-group-avatar` | 14px | Group avatars |
-| `--r-chat-bubble` | 18px | Chat bubbles |
-| `--r-notice` | 6px | Notice cards (paper-like) |
-| `--r-circle` | 9999px | People avatars and story rings (full circle) |
-
-Rule: Radii follow this clear hierarchy. All radius values must come strictly from tokens.
-
+| `--r-pill` | 9999px | Pills, chips, search bar, story circles |
+| `--r-card` | 14px | Cards, post containers, dialogs (one moderate radius ~14px) |
+| `--r-input` | 12px | Form inputs, textareas |
+| `--r-btn` | 12px | Action buttons |
+| `--r-sheet` | 16px | Bottom sheets (top corners) |
+| `--r-group-avatar` | 12px | Group avatars (rounded squares) |
+| `--r-tabbar` | 0px | Docked full-width bottom navigation bar |
 
 **Borders and elevation**
-
-- Default separation is a 1px `--line` border, not a shadow.
-- `--elev-1` for floating things only (menus, bottom sheets, toasts): light `0 6px 20px rgba(23,24,28,.10)`, dark `0 6px 20px rgba(0,0,0,.45)`.
-- `--elev-sticker` (stickers and badges only): `2px 2px 0 var(--text)` in light, `2px 2px 0 #000` in dark.
-- No other shadows. No blur backgrounds.
+- Default separation is a 1px `--line` border (`#E2E8F0` light, `#1F2937` dark).
+- One very subtle shadow (`0 1px 3px rgba(15, 23, 42, 0.05)`), no heavy blurs or card gradients.
+- Bottom navigation docks to the screen bottom as a full-width bar with safe-area padding for mobile.
 
 ---
 
 ## 7. Icons, illustration, imagery, avatars
 
 **Icons**
-- One consistent set, 24px grid, 1.75px stroke, rounded joins. Start from Phosphor (Regular) or Lucide, then redraw or adjust the five bottom-tab icons so they feel custom: Home, Search, Post (pencil-plus), Chats, Profile.
-- Active tab uses the filled version of the icon plus `--primary`. Inactive is outlined and `--text-muted`.
-- Every icon-only button has an accessible label and a 44×44px tap area.
-
-**Illustration**
-- A small set of 8 hand-drawn SVG doodles in a single 2px line style with a slight wobble: pencil, ruler, school bag, bell, notebook, trophy, bus, canteen cup. Use them only in empty states and the 404 page, in `--text-muted` with one accent stroke.
-- No stock illustration packs. No illustrated people.
-
-**Imagery**
-- Only real student photos and real campus photos supplied by the school. No stock photos. No faces of real people in demo or marketing material.
-- Photos are shown 4:5 with a blur-up placeholder from the image's dominant colour (never a grey "Photo" box).
-- Post images: max 4 per post, compressed to 1080px wide and about 200KB.
+- One consistent outline icon set (Lucide React), 24px grid, 1.75px stroke.
+- Accessible tap target: minimum 44×44px.
+- Emojis only in user captions, reactions, and empty states. No emoji as button or label decoration.
 
 **Avatars**
-- People: circles. Groups: rounded squares (radius 12). This difference is always kept.
-- Default avatar: the student's initials on one of 8 curated flat colour pairs, chosen from the username so it never changes.
-
-| # | Background | Letters |
-|---|---|---|
-| 1 | `#FFD9CC` | `#7A2E1B` |
-| 2 | `#FDEBA8` | `#6B5200` |
-| 3 | `#CFEBD8` | `#14532D` |
-| 4 | `#CDE6F7` | `#0C4A6E` |
-| 5 | `#E2D9FB` | `#3B2A87` |
-| 6 | `#FBD3E3` | `#8A1C4B` |
-| 7 | `#D6E4C8` | `#3F5B1E` |
+- Standardized sizes: 32px (meta), 40px (comments/chips), 56px (list rows/chats), 96px (profiles).
+- People: circles. Groups: 12px rounded squares.
+- Fallback: student initials on a neutral cool slate background with high contrast (WCAG AA compliant).
 | 8 | `#F3D9C4` | `#6B3A12` |
 
   Dark mode: background = the letter colour at 22% over `--surface`, letters = the light background colour.

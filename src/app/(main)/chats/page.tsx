@@ -5587,17 +5587,6 @@ function ChatsContent() {
             </span>
           )}
         </button>
-
-        {/* Curved "+ New Group" button */}
-        <button
-          type="button"
-          onClick={() => setIsCreateGroupOpen(true)}
-          className="h-9 px-3.5 rounded-full text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 bg-[var(--primary)] text-white hover:opacity-90 shrink-0 ml-auto shadow-xs"
-          aria-label="Create group"
-        >
-          <Plus size={14} />
-          <span>New Group</span>
-        </button>
       </div>
 
       {/* Pending Group Invitations Banner (Visible on All and Groups tabs) */}

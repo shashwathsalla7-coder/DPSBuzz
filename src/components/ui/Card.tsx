@@ -17,20 +17,19 @@ const paddingStyles: Record<CardPadding, string> = {
 };
 
 /**
- * Card component adhering strictly to DESIGN.md and Master Prompt radius override:
- * - Exactly 12px radius (var(--r-lg))
- * - 1px var(--line) border
- * - Flat solid var(--surface) background
- * - No soft shadows or glassmorphism
+ * Card component adhering to Unified Calm Design System:
+ * - Exactly 14px radius (about 14px moderate curves)
+ * - 1px border border-[var(--line)]
+ * - Flat solid background (var(--surface)), no card gradients
+ * - Very subtle shadow (shadow-xs)
  */
 export const Card = forwardRef<HTMLDivElement, CardProps>(
   ({ padding = 'md', sunken = false, className = '', children, ...props }, ref) => {
     return (
       <div
         ref={ref}
-        style={{ borderRadius: 0 }}
         className={`
-          border border-[var(--line)] overflow-hidden transition-colors rounded-none
+          border border-[var(--line)] rounded-[14px] overflow-hidden transition-colors shadow-xs
           ${sunken ? 'bg-[var(--surface-sunken)]' : 'bg-[var(--surface)]'}
           ${paddingStyles[padding]}
           ${className}

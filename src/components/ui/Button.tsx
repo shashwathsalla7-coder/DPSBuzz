@@ -2,7 +2,7 @@
 
 import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'quiet' | 'destructive' | 'conversion' | 'gold';
+export type ButtonVariant = 'primary' | 'secondary' | 'quiet' | 'ghost' | 'destructive' | 'danger' | 'conversion' | 'gold';
 export type ButtonSize = 'sm' | 'md' | 'lg';
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -16,30 +16,34 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantStyles: Record<ButtonVariant, string> = {
   primary:
-    'bg-[var(--primary)] text-[var(--on-primary)] hover:bg-[var(--primary-hover)] active:scale-[0.96] border border-transparent shadow-none',
+    'bg-[var(--primary)] text-white hover:bg-[var(--primary-hover)] active:scale-[0.98] border border-transparent shadow-xs',
   secondary:
-    'bg-transparent text-[var(--text)] border border-[var(--line-strong)] hover:bg-[var(--surface-sunken)] active:scale-[0.96]',
+    'bg-[var(--surface)] text-[var(--text)] border border-[var(--line-strong)] hover:bg-[var(--surface-sunken)] active:scale-[0.98]',
   quiet:
-    'bg-transparent text-[var(--primary)] border border-transparent hover:bg-[var(--primary-tint)] active:scale-[0.96]',
+    'bg-transparent text-[var(--primary)] border border-transparent hover:bg-[var(--primary-tint)] active:scale-[0.98]',
+  ghost:
+    'bg-transparent text-[var(--text)] border border-transparent hover:bg-[var(--surface-sunken)] active:scale-[0.98]',
   destructive:
-    'bg-[var(--danger)] text-white hover:opacity-90 active:scale-[0.96] border border-transparent',
+    'bg-[var(--danger)] text-white hover:opacity-90 active:scale-[0.98] border border-transparent shadow-xs',
+  danger:
+    'bg-[var(--danger)] text-white hover:opacity-90 active:scale-[0.98] border border-transparent shadow-xs',
   conversion:
-    'bg-[var(--accent-cta)] text-[var(--on-accent-cta)] hover:bg-[var(--accent-cta-hover)] active:scale-[0.96] border border-transparent shadow-sm font-bold',
+    'bg-[var(--primary)] text-white hover:bg-[var(--primary-hover)] active:scale-[0.98] border border-transparent shadow-xs font-semibold',
   gold:
-    'bg-[var(--gold-cta)] text-[var(--on-gold-cta)] hover:bg-[var(--gold-hover)] active:scale-[0.96] border border-transparent shadow-sm font-bold',
+    'bg-[var(--primary)] text-white hover:bg-[var(--primary-hover)] active:scale-[0.98] border border-transparent shadow-xs font-semibold',
 };
 
 const sizeStyles: Record<ButtonSize, string> = {
-  sm: 'h-8 px-3 text-xs gap-1.5',
-  md: 'h-11 px-4 text-sm font-semibold gap-2',
-  lg: 'h-12 px-6 text-sm font-bold gap-2',
+  sm: 'min-h-[36px] h-9 px-3 text-xs gap-1.5',
+  md: 'min-h-[44px] h-11 px-4 text-sm font-semibold gap-2',
+  lg: 'min-h-[48px] h-12 px-6 text-sm font-semibold gap-2',
 };
 
 /**
- * Button component strictly adhering to DESIGN.md and Master Prompt radius override:
- * - Exactly 10px radius (var(--r-md))
- * - No pill-shapes, no gradients
- * - 44px minimum tap target for md/lg sizes
+ * Button component adhering to Unified Calm Design System:
+ * - 12px moderate rounded corners
+ * - 44px minimum tap target for accessibility
+ * - No heavy shadows, no card gradients
  */
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   (
@@ -61,10 +65,9 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       <button
         ref={ref}
         disabled={disabled || isLoading}
-        style={{ borderRadius: 0 }}
         className={`
-          inline-flex items-center justify-center rounded-none
-          transition-transform duration-[var(--dur-fast)] ease-[var(--ease-out)]
+          inline-flex items-center justify-center rounded-[12px]
+          transition-all duration-[var(--dur-fast)] ease-[var(--ease-out)]
           disabled:opacity-40 disabled:pointer-events-none disabled:cursor-not-allowed
           cursor-pointer select-none font-sans
           ${variantStyles[variant]}

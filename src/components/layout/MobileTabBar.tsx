@@ -3,7 +3,7 @@
 import { useState, useEffect, type FC } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Film, SquarePlus, MessageCircle, User } from 'lucide-react';
+import { Home, Film, SquarePlus, MessageCircle } from 'lucide-react';
 import { DataStore, type Profile } from '@/lib/dataStore';
 import { getAvatarColorPair } from '@/config/tokens';
 
@@ -32,6 +32,7 @@ export const MobileTabBar: FC = () => {
 
   const isHomeActive = pathname === '/home';
   const isReelsActive = pathname === '/reels' || pathname.startsWith('/reels');
+  const isCreateActive = pathname === '/post/new';
   const isChatsActive = pathname === '/chats' || pathname.startsWith('/chats');
   const isProfileActive = pathname === '/profile' || pathname.startsWith('/u/');
 
@@ -41,43 +42,39 @@ export const MobileTabBar: FC = () => {
     .slice(0, 2)
     .toUpperCase();
 
+  // Dark variant on Reels screen per user rule
+  const isDarkReels = isReelsActive;
+
   return (
     <nav
-      className="fixed z-40 md:hidden transition-colors duration-200"
+      className={`fixed bottom-0 left-0 right-0 z-40 md:hidden w-full transition-colors border-t select-none ${
+        isDarkReels
+          ? 'bg-[#0B0F17] border-[#1F2937] text-white'
+          : 'bg-[var(--surface)] border-[var(--line)] text-[var(--text)]'
+      }`}
       style={{
-        left: '12px',
-        right: '12px',
-        bottom: 'calc(12px + env(safe-area-inset-bottom, 0px))',
-        height: '66px',
-        borderRadius: '32px',
-        backgroundColor: 'var(--tabbar-bg)',
-        borderColor: 'var(--tabbar-border)',
-        borderWidth: '1px',
-        borderStyle: 'solid',
-        boxShadow: 'var(--tabbar-shadow)',
-        backdropFilter: 'blur(24px)',
-        WebkitBackdropFilter: 'blur(24px)',
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
       }}
       aria-label="Main navigation"
     >
-      <div className="flex items-center justify-around h-full px-2 relative">
+      <div className="flex items-center justify-around h-14 px-2 max-w-md mx-auto">
         {/* 1. Home Tab */}
         <Link
           href="/home"
           prefetch={true}
-          className="flex flex-col items-center justify-center flex-1 h-full py-1 transition-colors select-none"
+          className="flex flex-col items-center justify-center flex-1 h-full py-1 transition-colors min-h-[44px]"
           style={{
-            color: isHomeActive ? 'var(--primary)' : 'var(--text-muted)',
+            color: isHomeActive ? 'var(--primary)' : isDarkReels ? '#94A3B8' : 'var(--text-muted)',
           }}
           aria-label="Home"
           aria-current={isHomeActive ? 'page' : undefined}
         >
           <Home
             size={22}
-            strokeWidth={isHomeActive ? 2.5 : 1.75}
+            strokeWidth={isHomeActive ? 2.2 : 1.75}
             className={isHomeActive ? 'fill-current' : ''}
           />
-          <span className={`text-[12px] leading-tight mt-0.5 ${isHomeActive ? 'font-bold' : 'font-medium'}`}>
+          <span className={`text-[12px] leading-tight mt-0.5 ${isHomeActive ? 'font-semibold' : 'font-medium'}`}>
             Home
           </span>
         </Link>
@@ -86,82 +83,82 @@ export const MobileTabBar: FC = () => {
         <Link
           href="/reels"
           prefetch={true}
-          className="flex flex-col items-center justify-center flex-1 h-full py-1 transition-colors select-none"
+          className="flex flex-col items-center justify-center flex-1 h-full py-1 transition-colors min-h-[44px]"
           style={{
-            color: isReelsActive ? 'var(--primary)' : 'var(--text-muted)',
+            color: isReelsActive ? (isDarkReels ? '#FFFFFF' : 'var(--primary)') : isDarkReels ? '#94A3B8' : 'var(--text-muted)',
           }}
           aria-label="Reels"
           aria-current={isReelsActive ? 'page' : undefined}
         >
           <Film
             size={22}
-            strokeWidth={isReelsActive ? 2.5 : 1.75}
+            strokeWidth={isReelsActive ? 2.2 : 1.75}
             className={isReelsActive ? 'fill-current' : ''}
           />
-          <span className={`text-[12px] leading-tight mt-0.5 ${isReelsActive ? 'font-bold' : 'font-medium'}`}>
+          <span className={`text-[12px] leading-tight mt-0.5 ${isReelsActive ? 'font-semibold' : 'font-medium'}`}>
             Reels
           </span>
         </Link>
 
-        {/* 3. Center Raised Post Button (54px circular primary button, raised above the bar with 4px page-bg ring and blue glow) */}
-        <div className="flex flex-col items-center justify-center flex-1 h-full relative select-none">
-          <Link
-            href="/post/new"
-            prefetch={true}
-            className="w-[54px] h-[54px] rounded-full flex items-center justify-center transition-transform active:scale-95 -translate-y-3"
-            style={{
-              backgroundColor: 'var(--primary)',
-              color: 'var(--on-primary)',
-              boxShadow: '0 8px 24px rgba(43, 75, 255, 0.50)',
-              border: '4px solid var(--bg)',
-            }}
-            aria-label="Create Post"
-          >
-            <SquarePlus size={26} strokeWidth={2.2} className="text-white" />
-          </Link>
-        </div>
+        {/* 3. Center Create Button (Smaller, cleanly docked inside the bar, no big glow) */}
+        <Link
+          href="/post/new"
+          prefetch={true}
+          className="flex flex-col items-center justify-center flex-1 h-full py-1 transition-transform active:scale-95 min-h-[44px]"
+          style={{
+            color: isCreateActive ? 'var(--primary)' : isDarkReels ? '#94A3B8' : 'var(--text-muted)',
+          }}
+          aria-label="Create Post"
+          aria-current={isCreateActive ? 'page' : undefined}
+        >
+          <div className="w-8 h-8 rounded-full bg-[var(--primary)] text-white flex items-center justify-center shadow-xs">
+            <SquarePlus size={18} strokeWidth={2.2} />
+          </div>
+          <span className={`text-[12px] leading-tight mt-0.5 ${isCreateActive ? 'font-semibold' : 'font-medium'}`}>
+            Create
+          </span>
+        </Link>
 
-        {/* 4. Chats & Multiplayer Games Tab (with like-rose unread dot) */}
+        {/* 4. Chats Tab */}
         <Link
           href="/chats"
           data-games-action="/chats?view=games"
           data-game-type="connect4"
           prefetch={true}
-          className="flex flex-col items-center justify-center flex-1 h-full py-1 transition-colors select-none"
+          className="flex flex-col items-center justify-center flex-1 h-full py-1 transition-colors min-h-[44px]"
           style={{
-            color: isChatsActive ? 'var(--primary)' : 'var(--text-muted)',
+            color: isChatsActive ? 'var(--primary)' : isDarkReels ? '#94A3B8' : 'var(--text-muted)',
           }}
-          aria-label="Chats and Games"
+          aria-label="Chats"
           aria-current={isChatsActive ? 'page' : undefined}
         >
           <div className="relative">
             <MessageCircle
               size={22}
-              strokeWidth={isChatsActive ? 2.5 : 1.75}
+              strokeWidth={isChatsActive ? 2.2 : 1.75}
               className={isChatsActive ? 'fill-current' : ''}
             />
             {unreadChatsCount > 0 && (
               <span
-                className="absolute -top-1.5 -right-2 min-w-[17px] h-[17px] px-1 rounded-full text-[9px] font-extrabold text-white flex items-center justify-center leading-none border-2 border-[var(--surface)] animate-bounce-in shadow-xs"
-                style={{ backgroundColor: 'var(--like)' }}
+                className="absolute -top-1.5 -right-2 min-w-[16px] h-[16px] px-1 rounded-full text-[10px] font-bold text-white flex items-center justify-center leading-none bg-red-600 border border-[var(--surface)] shadow-xs"
                 aria-label={`${unreadChatsCount} unread chats`}
               >
                 {unreadChatsCount > 9 ? '9+' : unreadChatsCount}
               </span>
             )}
           </div>
-          <span className={`text-[12px] leading-tight mt-0.5 ${isChatsActive ? 'font-bold' : 'font-medium'}`}>
+          <span className={`text-[12px] leading-tight mt-0.5 ${isChatsActive ? 'font-semibold' : 'font-medium'}`}>
             Chats
           </span>
         </Link>
 
-        {/* 5. Profile Tab (Own student avatar 24px, ringed in primary when active) */}
+        {/* 5. Profile Tab */}
         <Link
           href={mounted && currentUser?.username ? `/u/${currentUser.username}` : '/profile'}
           prefetch={true}
-          className="flex flex-col items-center justify-center flex-1 h-full py-1 transition-colors select-none"
+          className="flex flex-col items-center justify-center flex-1 h-full py-1 transition-colors min-h-[44px]"
           style={{
-            color: isProfileActive ? 'var(--primary)' : 'var(--text-muted)',
+            color: isProfileActive ? 'var(--primary)' : isDarkReels ? '#94A3B8' : 'var(--text-muted)',
           }}
           aria-label="Profile"
           aria-current={isProfileActive ? 'page' : undefined}
@@ -179,7 +176,7 @@ export const MobileTabBar: FC = () => {
               />
             ) : (
               <div
-                className="w-full h-full flex items-center justify-center text-[10px] font-bold"
+                className="w-full h-full flex items-center justify-center text-[10px] font-semibold"
                 style={{
                   backgroundColor: avatarColor.bg,
                   color: avatarColor.text,
@@ -189,7 +186,7 @@ export const MobileTabBar: FC = () => {
               </div>
             )}
           </div>
-          <span className={`text-[12px] leading-tight mt-0.5 ${isProfileActive ? 'font-bold' : 'font-medium'}`}>
+          <span className={`text-[12px] leading-tight mt-0.5 ${isProfileActive ? 'font-semibold' : 'font-medium'}`}>
             Profile
           </span>
         </Link>

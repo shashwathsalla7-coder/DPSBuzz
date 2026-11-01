@@ -195,6 +195,25 @@ export const ChatNotesTray: React.FC<ChatNotesTrayProps> = ({ onReplyToNote }) =
     playerState.isPlaying;
 
   const quickReactionEmojis = ['❤️', '🔥', '😂', '👏', '😮', '🙌', '🎵', '💯'];
+  const hasNotes = Boolean(myNote || peerNotes.length > 0);
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  // Compact collapsible row when empty
+  if (!hasNotes && !isExpanded) {
+    return (
+      <div className="px-4 py-2 border-b border-[var(--line)] bg-[var(--surface)] flex items-center justify-between">
+        <span className="text-xs text-[var(--text-muted)] font-medium">No notes from classmates yet</span>
+        <button
+          type="button"
+          onClick={handleOpenMyNoteModal}
+          className="h-7 px-2.5 rounded-full text-xs font-semibold bg-[var(--surface-sunken)] hover:bg-[var(--surface-raised)] border border-[var(--line)] text-[var(--text)] flex items-center gap-1 cursor-pointer transition-colors"
+        >
+          <Plus size={12} className="text-[var(--primary)]" />
+          <span>Share note</span>
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="pt-2 pb-3 border-b border-[var(--line)] bg-[var(--surface)] relative">

@@ -244,7 +244,7 @@ export function SuggestedAccountsList({
                 </div>
               </Link>
 
-              {/* Follow Button (Instagram Blue Link Text) */}
+              {/* Unified Follow Button */}
               {(() => {
                 const isRequested = !isFollowing && (requestedMap[person.username.toLowerCase()] || DataStore.hasRequestedFollow(currentUsername, person.username));
                 return (
@@ -252,19 +252,19 @@ export function SuggestedAccountsList({
                     type="button"
                     onClick={() => handleToggle(person.username)}
                     style={{ touchAction: 'manipulation' }}
-                    className={`text-xs font-semibold px-2 py-1.5 shrink-0 transition-colors cursor-pointer touch-manipulation ${
+                    className={`h-8 px-3.5 rounded-full text-xs font-semibold shrink-0 transition-all cursor-pointer ${
                       isFollowing
-                        ? 'text-[var(--text-muted)] hover:text-[var(--text)]'
+                        ? 'bg-[var(--surface-sunken)] text-[var(--text)] border border-[var(--line)]'
                         : isRequested
-                        ? 'text-[var(--text-muted)] font-bold'
-                        : 'text-[#0095F6] hover:text-[#1877F2] active:opacity-75'
+                        ? 'bg-[var(--surface-sunken)] text-[var(--text-muted)] border border-[var(--line)]'
+                        : 'bg-[var(--primary)] text-[var(--on-primary)] hover:opacity-90'
                     }`}
                     aria-label={isFollowing ? `Unfollow ${person.username}` : `Follow ${person.username}`}
                   >
                     {isFollowing
                       ? 'Following'
                       : isRequested
-                      ? 'Requested 🔒'
+                      ? 'Requested'
                       : currentUsername && DataStore.isFollowing(person.username, currentUsername)
                       ? 'Follow Back'
                       : 'Follow'}

@@ -469,7 +469,7 @@ function SearchContent() {
           <SearchIcon size={19} className="text-[var(--text-muted)] shrink-0" />
           <input
             type="text"
-            placeholder="Search by class (6, 7, 8, 10), name, or keyword..."
+            placeholder="Search classmates (classes 6–10), posts, or clubs..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className="flex-1 bg-transparent text-xs text-[var(--text)] outline-none placeholder:text-[var(--text-muted)] font-medium h-full"
@@ -556,29 +556,25 @@ function SearchContent() {
         })}
       </div>
 
-      {/* Live Community Enrolled Count Banner */}
+      {/* Student Community Enrolled Count Banner */}
       <div className="px-4 pt-3 pb-1">
         <div
-          className="w-full px-3.5 py-2.5 rounded-[18px] border flex items-center justify-between transition-all shadow-xs"
+          className="w-full px-3.5 py-2.5 rounded-[14px] border flex items-center justify-between transition-all shadow-xs"
           style={{
             backgroundColor: 'var(--surface-sunken)',
             borderColor: 'var(--line)',
           }}
         >
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white gradient-bg shrink-0 shadow-xs">
+            <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white bg-[var(--primary)] shrink-0 shadow-xs">
               🐝
             </div>
             <div>
-              <p className="text-xs font-bold text-[var(--text)] flex items-center gap-1.5">
-                <span>{registeredUserCount} {registeredUserCount === 1 ? 'Student' : 'Students'} Enrolled</span>
-                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/15 text-emerald-500 border border-emerald-500/30">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  Live
-                </span>
+              <p className="text-xs font-bold text-[var(--text)]">
+                {registeredUserCount} {registeredUserCount === 1 ? 'Student' : 'Students'} Enrolled
               </p>
               <p className="text-[10px] text-[var(--text-muted)]">
-                DPS Buzz student community
+                DPS Buzz student community · Classes 6–10
               </p>
             </div>
           </div>
@@ -661,10 +657,10 @@ function SearchContent() {
             currentUsername={currentUser?.username}
           />
 
-          {/* Suggested Classmates List (Instagram Style) */}
+          {/* Suggested Classmates List */}
           <div className="px-4 pb-8">
             <div
-              className="p-4 rounded-[22px] border shadow-xs"
+              className="p-4 rounded-[14px] border shadow-xs"
               style={{
                 backgroundColor: 'var(--surface)',
                 borderColor: 'var(--line)',

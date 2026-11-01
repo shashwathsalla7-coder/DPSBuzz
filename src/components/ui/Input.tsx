@@ -57,9 +57,8 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           <input
             ref={ref}
             id={inputId}
-            style={{ borderRadius: 0 }}
             className={`
-              w-full h-12 text-sm text-[var(--text)] rounded-none
+              w-full h-12 text-sm text-[var(--text)] rounded-[12px]
               border transition-colors font-sans
               placeholder:text-[var(--text-muted)]
               focus:outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20

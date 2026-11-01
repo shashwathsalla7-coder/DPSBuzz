@@ -10,6 +10,7 @@ export { default as EmptyState, type EmptyStateProps, type DoodleType } from './
 export { default as Skeleton, AvatarSkeleton, PostCardSkeleton, type SkeletonProps } from './Skeleton';
 export { default as Modal } from './Modal';
 export { default as Badge } from './Badge';
+export { default as ListRow, type ListRowProps } from './ListRow';
 export { default as Toggle } from './Toggle';
 export { default as Logo } from './Logo';
 export { default as AppleHelloSplash } from './AppleHelloSplash';

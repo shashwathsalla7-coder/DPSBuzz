@@ -224,16 +224,16 @@ export default function NotificationsPage() {
           <div className="space-y-2.5 animate-fade-in">
             <div className="flex items-center justify-between px-1">
               <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-1.5">
-                <UserPlus size={13} className="text-pink-500" />
+                <UserPlus size={13} className="text-[var(--primary)]" />
                 <span>Pending Requests</span>
               </span>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-pink-500/15 text-pink-500 border border-pink-500/20">
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[var(--primary-tint)] text-[var(--primary)] border border-[var(--line)]">
                 {groupRequests.length + followRequests.length} pending
               </span>
             </div>
 
             <div
-              className="rounded-2xl border divide-y overflow-hidden"
+              className="rounded-[14px] border divide-y overflow-hidden shadow-xs"
               style={{
                 backgroundColor: 'var(--surface)',
                 borderColor: 'var(--line)',
@@ -276,7 +276,7 @@ export default function NotificationsPage() {
                       <button
                         type="button"
                         onClick={() => handleAcceptFollowReq(freq)}
-                        className="px-3 py-1.5 rounded-full text-xs font-bold text-white gradient-bg shadow-xs hover:opacity-90 transition-opacity cursor-pointer flex items-center gap-1"
+                        className="px-3 py-1.5 rounded-full text-xs font-semibold text-white bg-[var(--primary)] shadow-xs hover:opacity-90 transition-opacity cursor-pointer flex items-center gap-1"
                       >
                         <Check size={12} strokeWidth={2.5} />
                         <span>Confirm</span>
@@ -323,7 +323,7 @@ export default function NotificationsPage() {
                           <span className="text-[var(--text-muted)] font-normal">
                             wants to join
                           </span>{' '}
-                          <span className="text-pink-500">{greq.groupName}</span>
+                          <span className="font-semibold text-[var(--text)]">{greq.groupName}</span>
                         </p>
                         <p className="text-[11px] text-[var(--text-muted)] truncate">
                           {greq.studentClass || 'Classmate'} • {greq.requestedAt}
@@ -335,7 +335,7 @@ export default function NotificationsPage() {
                       <button
                         type="button"
                         onClick={() => handleAcceptGroupReq(greq)}
-                        className="px-3 py-1.5 rounded-full text-xs font-bold text-white gradient-bg shadow-xs hover:opacity-90 transition-opacity cursor-pointer flex items-center gap-1"
+                        className="px-3 py-1.5 rounded-full text-xs font-semibold text-white bg-[var(--primary)] shadow-xs hover:opacity-90 transition-opacity cursor-pointer flex items-center gap-1"
                       >
                         <Check size={12} strokeWidth={2.5} />
                         <span>Accept</span>

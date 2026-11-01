@@ -727,87 +727,18 @@ function HomeContent() {
         }}
       />
 
-      {/* 3. Story row: horizontal snap scroll, hidden scrollbar, 64px avatars with neon ring */}
+      {/* 2. Story row: horizontal snap scroll, 60px avatars with neon ring */}
       <StoriesRow />
 
-      {/* Small Get App Widget */}
-      <GetAppWidget />
-
-      {/* 4. Feed tabs "Following" and "Whole School" as segmented control */}
+      {/* 3. Feed tabs "Following" and "Whole School" as segmented control */}
       <FeedTabs activeTab={activeTab} onChange={setActiveTab} />
 
-      {/* Mini Streak & Strike Points Top Pill Bar */}
-      <HomeStreakWidget compact={true} />
+      {/* Desktop App Banner (Slim dismissible bar, hidden on mobile) */}
+      <GetAppWidget />
 
-      {/* Four in a Row (Connect 4) 2-Player Game Banner */}
-      <div
-        className="mx-3 my-2 p-3 rounded-[18px] border flex items-center justify-between gap-3 shadow-xs transition-all hover:border-blue-500/40"
-        style={{
-          background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.08) 0%, rgba(6, 182, 212, 0.08) 100%)',
-          borderColor: 'var(--line)',
-        }}
-      >
-        <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-cyan-500 flex items-center justify-center text-lg shadow-sm shrink-0 text-white">
-            🎮
-          </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-1.5">
-              <h4 className="text-xs font-extrabold text-[var(--text)] tracking-tight">
-                Four in a Row
-              </h4>
-              <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-blue-500/20 text-blue-400 font-bold border border-blue-500/30">
-                2-Player Duel
-              </span>
-            </div>
-            <p className="text-[10.5px] text-[var(--text-muted)] truncate">
-              Drop discs &amp; duel classmates live in 4-in-a-row!
-            </p>
-          </div>
-        </div>
-
-        <Link
-          href="/chats?view=games"
-          className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 active:scale-95 text-white font-extrabold text-xs shadow-sm transition-all shrink-0 cursor-pointer flex items-center gap-1"
-        >
-          <span>Play 🔴</span>
-        </Link>
-      </div>
-
-      {/* Mini 2048 Solo Game Card / Banner */}
-      <div
-        className="mx-3 my-2 p-3 rounded-[18px] border flex items-center justify-between gap-3 shadow-xs transition-all hover:border-cyan-500/40"
-        style={{
-          background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.08) 0%, rgba(59, 130, 246, 0.08) 100%)',
-          borderColor: 'var(--line)',
-        }}
-      >
-        <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-600 to-blue-600 flex items-center justify-center text-lg shadow-sm shrink-0">
-            🐝
-          </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-1.5">
-              <h4 className="text-xs font-extrabold text-[var(--text)] tracking-tight">
-                2048 Buzz Solo
-              </h4>
-              <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-blue-500/20 text-blue-400 font-bold border border-blue-500/30">
-                5 Levels
-              </span>
-            </div>
-            <p className="text-[10.5px] text-[var(--text-muted)] truncate">
-              Swipe tiles, climb levels 1-5 &amp; win Star Points!
-            </p>
-          </div>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => setIsSolo2048Open(true)}
-          className="px-3.5 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 active:scale-95 text-white font-extrabold text-xs shadow-sm transition-all shrink-0 cursor-pointer flex items-center gap-1"
-        >
-          <span>Play 🚀</span>
-        </button>
+      {/* Accessible quick entrance to Four in a Row (Connect4) game */}
+      <div className="sr-only">
+        <Link href="/chats?view=games">Four in a Row (Connect4) 2-Player Game</Link>
       </div>
 
       {/* 5. Upload-in-progress card at the top of the feed */}
