@@ -101,8 +101,9 @@ export function CricketGameDrawer({
     });
     serverProfiles.forEach((p) => {
       const u = (p.username || '').toLowerCase().trim();
-      if (u && !map.has(u)) {
-        map.set(u, p);
+      if (u) {
+        const existing = map.get(u);
+        map.set(u, existing ? { ...existing, ...p } : p);
       }
     });
 

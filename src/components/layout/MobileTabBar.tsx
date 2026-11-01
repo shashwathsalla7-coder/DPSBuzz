@@ -121,15 +121,17 @@ export const MobileTabBar: FC = () => {
           </Link>
         </div>
 
-        {/* 4. Chats Tab (with like-rose unread dot) */}
+        {/* 4. Chats & Multiplayer Games Tab (with like-rose unread dot) */}
         <Link
           href="/chats"
+          data-games-action="/chats?view=games"
+          data-game-type="connect4"
           prefetch={true}
           className="flex flex-col items-center justify-center flex-1 h-full py-1 transition-colors select-none"
           style={{
             color: isChatsActive ? 'var(--primary)' : 'var(--text-muted)',
           }}
-          aria-label="Chats"
+          aria-label="Chats and Games"
           aria-current={isChatsActive ? 'page' : undefined}
         >
           <div className="relative">

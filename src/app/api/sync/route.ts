@@ -170,7 +170,7 @@ export async function GET(req: NextRequest) {
       }
     })();
 
-    const sbBatchPromise: Promise<[any[], any[], any[], any[], any[]]> = (async () => {
+    async function getSbBatch(): Promise<[any[], any[], any[], any[], any[]]> {
       if (isLightweightMode || !sb) return [[], [], [], [], []];
       try {
         const [fRes, frRes, pRes, poRes, stRes] = await Promise.all([
@@ -191,7 +191,8 @@ export async function GET(req: NextRequest) {
         console.warn('Supabase batch error:', e);
         return [[], [], [], [], []];
       }
-    })();
+    }
+    const sbBatchPromise = getSbBatch();
 
     // Await all concurrent queries simultaneously
     const [

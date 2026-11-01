@@ -217,6 +217,7 @@ function HomeContent() {
           setIsIntroModalOpen(true);
         }
       }
+      setFollowsVersion((v) => v + 1);
     };
 
     loadData();
@@ -239,10 +240,10 @@ function HomeContent() {
 
     fetchFreshPosts();
 
-    // Defer background full sync so initial feed render & interactive hydration are instant
+    // Fast initial sync so followed accounts and posts hydrate immediately on fresh devices
     const syncTimeout = setTimeout(() => {
       DataStore.syncWithServer().catch(() => {});
-    }, 1500);
+    }, 100);
 
     // Smart polling sync every 15 seconds when visible to automatically pull fresh posts
     const syncInterval = setInterval(() => {
@@ -614,18 +615,17 @@ function HomeContent() {
         if (!followedSet.has(u)) return false;
       }
 
-      // Check repost origin: if original post author is private, non-followers cannot see it
+      // Check repost origin: if original post author is private, only followers of origAuthor OR followers of reposter can see it
       if (p.isRepost && p.repostedFrom?.username) {
         const reposter = (p.username || '').toLowerCase().trim();
         const origAuthor = p.repostedFrom.username.toLowerCase().trim();
         const origAuthorProf = profileMap.get(origAuthor);
-        if (
-          origAuthorProf?.isPrivate &&
-          !followedSet.has(origAuthor) &&
-          origAuthor !== myUsername &&
-          !followedSet.has(reposter)
-        ) {
-          return false;
+        if (origAuthorProf?.isPrivate) {
+          const canViewOriginal = followedSet.has(origAuthor) || origAuthor === myUsername;
+          const canViewReposter = followedSet.has(reposter) || reposter === myUsername;
+          if (!canViewOriginal && !canViewReposter) {
+            return false;
+          }
         }
       }
 

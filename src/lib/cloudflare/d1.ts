@@ -24,7 +24,10 @@ const CF_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID || process.env.R2_ACCOUN
 const CF_DATABASE_ID = process.env.CLOUDFLARE_D1_DATABASE_ID || '';
 const CF_API_TOKEN = process.env.CLOUDFLARE_API_TOKEN || process.env.CLOUDFLARE_D1_TOKEN || '';
 
+let d1AuthFailed = false;
+
 export function isD1Configured(): boolean {
+  if (d1AuthFailed) return false;
   return Boolean(
     CF_ACCOUNT_ID &&
     CF_DATABASE_ID &&
@@ -62,6 +65,9 @@ export async function d1Query<T = any>(sql: string, params: any[] = []): Promise
     if (!res.ok) {
       const errText = await res.text();
       console.warn('[Cloudflare D1] Query failed:', res.status, errText);
+      if (res.status === 401 || res.status === 403) {
+        d1AuthFailed = true;
+      }
       return [];
     }
 
@@ -105,6 +111,9 @@ export async function d1Execute(sql: string, params: any[] = []): Promise<boolea
     if (!res.ok) {
       const errText = await res.text();
       console.warn('[Cloudflare D1] Execute failed:', res.status, errText);
+      if (res.status === 401 || res.status === 403) {
+        d1AuthFailed = true;
+      }
       return false;
     }
 
