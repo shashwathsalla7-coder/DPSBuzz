@@ -41,7 +41,8 @@
       "comments": 2,
       "views": 45,
       "createdAt": "2026-10-29T16:44:06.000Z",
-      "timeAgo": "1d ago"
+      "timeAgo": "1d ago",
+      "userAvatar": "https://res.cloudinary.com/ogfaxmjw/image/upload/v1793285086/dpsbuzz/avatars/rohan728.jpg"
     },
     {
       "id": "post-1793283391305",
@@ -119,6 +120,26 @@
   "stories": [],
   "profiles": [
     {
+      "id": "171f8584-2c00-50ff-a9a9-dc9ee8507561",
+      "username": "rohan728",
+      "fullName": "Rohan R",
+      "avatar": "https://res.cloudinary.com/ogfaxmjw/image/upload/v1793285086/dpsbuzz/avatars/rohan728.jpg",
+      "bio": "Class 8-G • DPS Student 🐝",
+      "class": "8",
+      "section": "G",
+      "role": "student",
+      "isVerified": true,
+      "isApproved": true,
+      "isPrivate": false,
+      "followerCount": 0,
+      "followingCount": 1,
+      "postCount": 1,
+      "spiritPoints": 125,
+      "referredBy": "shashwath71845",
+      "referralCount": 0,
+      "createdAt": "2026-10-26T14:55:46.886983+00:00"
+    },
+    {
       "id": "admin-shashwath-id",
       "username": "shashwath71845",
       "fullName": "Shashwath Salla",
@@ -129,8 +150,8 @@
       "bio": "DPS Buzz Super Administrator 🛡️ • Full Systems & Moderation Access",
       "class": "Staff",
       "section": "Admin",
-      "followerCount": 4,
-      "followingCount": 3,
+      "followerCount": 3,
+      "followingCount": 1,
       "postCount": 1,
       "spiritPoints": 0,
       "createdAt": "2026-10-01T00:00:00.000Z"
@@ -153,26 +174,6 @@
       "spiritPoints": 50,
       "referralCount": 0,
       "createdAt": "2026-10-16T03:18:25.683Z"
-    },
-    {
-      "id": "student-1792066627891",
-      "username": "rohan728",
-      "fullName": "Rohan R",
-      "avatar": "https://res.cloudinary.com/ogfaxmjw/image/upload/v1793285086/dpsbuzz/avatars/rohan728.jpg",
-      "bio": "Class 8-G • DPS Student 🐝",
-      "class": "8",
-      "section": "G",
-      "role": "student",
-      "isVerified": true,
-      "isApproved": true,
-      "isPrivate": false,
-      "followerCount": 0,
-      "followingCount": 1,
-      "postCount": 0,
-      "spiritPoints": 75,
-      "referredBy": "shashwath71845",
-      "referralCount": 0,
-      "createdAt": "2026-10-15T12:17:07.891Z"
     },
     {
       "id": "student-1792074799861",
@@ -299,8 +300,8 @@
       "isVerified": true,
       "bio": "Official pulse of campus. News, events, highlights and student life.",
       "postCount": 1,
-      "followerCount": 18,
-      "followingCount": 1
+      "followerCount": 0,
+      "followingCount": 0
     },
     {
       "id": "profile-chandan-id",
@@ -310,8 +311,8 @@
       "role": "student",
       "isVerified": true,
       "isApproved": true,
-      "followerCount": 1,
-      "followingCount": 1,
+      "followerCount": 0,
+      "followingCount": 0,
       "postCount": 0,
       "spiritPoints": 50,
       "avatar": "https://res.cloudinary.com/ogfaxmjw/image/upload/v1793285816/dpsbuzz/avatars/chandan.jpg"
@@ -4178,5 +4179,5 @@
   "groups": [],
   "groupMembers": {},
   "groupJoinRequests": [],
-  "lastUpdated": 1792304629582
+  "lastUpdated": 1793510232914
 }

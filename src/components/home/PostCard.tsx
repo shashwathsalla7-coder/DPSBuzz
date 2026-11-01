@@ -234,7 +234,7 @@ const PostCardComponent: React.FC<PostCardProps> = ({
               <button
                 type="button"
                 onClick={() => setShowSongPicker(true)}
-                className="text-[10px] font-bold px-2 py-1 rounded-full bg-[var(--surface-sunken)] border border-[var(--line)] text-[var(--text-muted)] hover:text-pink-400 hover:border-pink-500/30 flex items-center gap-1 transition-colors cursor-pointer shrink-0"
+                className="text-[10px] font-semibold px-2 py-1 rounded-full bg-[var(--surface-sunken)] border border-[var(--line)] text-[var(--text-muted)] hover:text-[var(--primary)] hover:border-[var(--primary)] flex items-center gap-1 transition-colors cursor-pointer shrink-0"
                 title="Change background music for this post 🎵"
               >
                 <Music size={11} />
@@ -247,9 +247,9 @@ const PostCardComponent: React.FC<PostCardProps> = ({
             <button
               type="button"
               onClick={() => setShowSongPicker(true)}
-              className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-[var(--surface-sunken)] border border-dashed border-[var(--line)] text-[var(--text-muted)] hover:text-pink-400 hover:border-pink-500/30 flex items-center gap-1.5 transition-colors cursor-pointer"
+              className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-[var(--surface-sunken)] border border-dashed border-[var(--line)] text-[var(--text-muted)] hover:text-[var(--primary)] hover:border-[var(--primary)] flex items-center gap-1.5 transition-colors cursor-pointer"
             >
-              <Music size={12} className="text-pink-400" />
+              <Music size={12} className="text-[var(--primary)]" />
               <span>+ Add Background Music 🎵</span>
             </button>
           )
@@ -303,7 +303,7 @@ const PostCardComponent: React.FC<PostCardProps> = ({
           <button
             type="button"
             onClick={() => setShowRepostSheet(true)}
-            className="h-11 px-2.5 rounded-full flex items-center gap-1 text-[var(--text)] transition-transform active:scale-85 cursor-pointer hover:text-pink-500 touch-manipulation"
+            className="h-11 px-2.5 rounded-full flex items-center gap-1 text-[var(--text)] transition-transform active:scale-85 cursor-pointer hover:text-[var(--primary)] touch-manipulation"
             style={{ touchAction: 'manipulation' }}
             aria-label="Repost post to feed or story"
             title="Repost to feed or add to your story"

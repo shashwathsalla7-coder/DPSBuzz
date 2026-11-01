@@ -36,49 +36,39 @@
   --font-gambetta: var(--font-gambetta), 'Gambetta', serif;
   --font-chat: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF UI Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
 
-  --radius-xs: 0px;
-  --radius-sm: 0px;
-  --radius-md: 0px;
-  --radius-lg: 0px;
+  --radius-xs: 6px;
+  --radius-sm: 12px;
+  --radius-md: 14px;
+  --radius-lg: 14px;
   --radius-bubble: 14px;
-  --radius-sheet: 0px;
+  --radius-sheet: 16px;
   --radius-full: 9999px;
 }
 
-/* ==========================================================================
-   60-30-10 COLOR RULE & WCAG CONTRAST SPECIFICATION
-   - 60% White (#FFFFFF): Canvas, card background, generous negative space.
-   - 30% Blue (#1E3A8A): Secondary elements, headers, cards, navigation.
-     * WCAG Contrast: 10.31:1 against white (Exceeds WCAG AAA 7:1 standard).
-   - 10% Bright Accent (Coral #D9480F / Gold #F59E0B): Conversion CTA buttons.
-     * WCAG Contrast: 4.65:1 (Coral w/ white text, meets WCAG AA 4.5:1).
-     * WCAG Contrast: 8.03:1 (Gold w/ dark blue text, exceeds WCAG AAA 7:1).
-   ========================================================================== */
-
-/* Light Theme Tokens */
+/* Light Theme Tokens — Clean Calm Neutral System with Single Blue Accent */
 :root {
-  --bg: #F6F8FB;
-  --surface: #FFFFFF;
-  --surface-sunken: #EDF0F5;
-  --line: #DFE4EC;
-  --line-strong: #C4CCD8;
-  --text: #121620;
-  --text-muted: #596275;
+  --bg: #FFFFFF;
+  --surface: #F8FAFC;
+  --surface-sunken: #F1F5F9;
+  --line: #E2E8F0;
+  --line-strong: #CBD5E1;
+  --text: #0F172A;
+  --text-muted: #64748B;
 
   --primary: #2B4BFF;
   --primary-hover: #2139D6;
-  --primary-tint: #E8EDFF;
+  --primary-tint: #EFF4FF;
   --on-primary: #FFFFFF;
-  --tabbar-bg: rgba(255, 255, 255, 0.82);
-  --tabbar-border: rgba(223, 228, 236, 0.75);
-  --tabbar-shadow: 0 8px 32px rgba(18, 22, 32, 0.08);
-  --blue-header: #2B4BFF;
-  --blue-card-bg: #EDF0F5;
-  --blue-card-border: #DFE4EC;
+  --tabbar-bg: #FFFFFF;
+  --tabbar-border: #E2E8F0;
+  --tabbar-shadow: 0 -1px 0 #E2E8F0;
+  --blue-header: #FFFFFF;
+  --blue-card-bg: #F8FAFC;
+  --blue-card-border: #E2E8F0;
 
-  --accent: #0B9DB0;
-  --accent-hover: #088495;
-  --accent-tint: #E0F6F9;
+  --accent: #2B4BFF;
+  --accent-hover: #2139D6;
+  --accent-tint: #EFF4FF;
   --accent-cta: #2B4BFF;
   --accent-cta-hover: #2139D6;
   --on-accent-cta: #FFFFFF;
@@ -102,29 +92,30 @@
   --ease-out: cubic-bezier(.2,.8,.2,1);
   --ease-spring: cubic-bezier(.34,1.56,.64,1);
 
-  --elev-tabbar: 0 8px 24px rgba(18,22,32,0.12);
-  --elev-1: 0 4px 16px rgba(18,22,32,0.08);
-  --elev-sticker: 2px 2px 0 var(--text);
+  --elev-tabbar: 0 -1px 0 #E2E8F0;
+  --elev-1: 0 1px 3px rgba(15, 23, 42, 0.05);
+  --elev-sticker: none;
 
-  /* Corner radius tokens (Redesign Specification) */
+  /* Corner radius tokens (Unified 14px/12px System) */
   --r-pill: 9999px;
-  --r-input: 14px;
-  --r-btn: 14px;
-  --r-photo: 20px;
-  --r-hero: 20px;
-  --r-grid: 16px;
-  --r-tabbar: 24px;
-  --r-sheet: 24px;
-  --r-group-avatar: 14px;
+  --r-input: 12px;
+  --r-btn: 12px;
+  --r-card: 14px;
+  --r-photo: 14px;
+  --r-hero: 14px;
+  --r-grid: 14px;
+  --r-tabbar: 0px;
+  --r-sheet: 16px;
+  --r-group-avatar: 12px;
   --r-chat-bubble: 14px;
-  --r-notice: 6px;
+  --r-notice: 14px;
   --r-circle: 9999px;
 
   /* Legacy compatibility aliases */
   --r-xs: 6px;
-  --r-sm: 9999px;
+  --r-sm: 12px;
   --r-md: 14px;
-  --r-lg: 20px;
+  --r-lg: 14px;
   --r-bubble: 14px;
   --r-full: 9999px;
 
@@ -133,24 +124,24 @@
 
 /* Dark Theme Tokens */
 :root[data-theme="dark"], body[data-theme="dark"], [data-theme="dark"] {
-  --bg: #0F131B;
-  --surface: #171C26;
-  --surface-sunken: #0B0E14;
-  --line: #262D3B;
-  --line-strong: #3A4357;
-  --text: #EEF1F6;
-  --text-muted: #98A2B6;
+  --bg: #0B0F17;
+  --surface: #111827;
+  --surface-sunken: #080C14;
+  --line: #1F2937;
+  --line-strong: #374151;
+  --text: #F8FAFC;
+  --text-muted: #94A3B8;
 
-  --primary: #7C9BFF;
-  --primary-hover: #9DB4FF;
-  --primary-tint: #1B2548;
-  --on-primary: #0E1530;
-  --tabbar-bg: rgba(23, 28, 38, 0.85);
-  --tabbar-border: rgba(38, 45, 59, 0.75);
-  --tabbar-shadow: 0 8px 32px rgba(0, 0, 0, 0.40);
-  --blue-header: #171C26;
-  --blue-card-bg: #0B0E14;
-  --blue-card-border: #262D3B;
+  --primary: #4D6BFF;
+  --primary-hover: #7088FF;
+  --primary-tint: #162038;
+  --on-primary: #FFFFFF;
+  --tabbar-bg: #111827;
+  --tabbar-border: #1F2937;
+  --tabbar-shadow: 0 -1px 0 #1F2937;
+  --blue-header: #111827;
+  --blue-card-bg: #080C14;
+  --blue-card-border: #1F2937;
 
   --accent: #3CC8DA;
   --accent-hover: #62D6E6;

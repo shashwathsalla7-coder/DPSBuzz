@@ -14,10 +14,10 @@ export interface ChipProps {
 }
 
 /**
- * Chip component adhering strictly to DESIGN.md and Master Prompt radius override:
- * - 6px radius (var(--r-sm))
- * - 32px standard height (md)
- * - Selected state in var(--primary-tint) with var(--primary) text
+ * Chip component adhering to Unified Calm Design System:
+ * - Fully round pill shape (rounded-full)
+ * - Clean neutral styling with single blue accent when selected
+ * - Minimum accessible tap target
  */
 export const Chip: FC<ChipProps> = ({
   label,
@@ -32,16 +32,15 @@ export const Chip: FC<ChipProps> = ({
 
   return (
     <div
-      style={{ borderRadius: 'var(--r-sm)' }}
       onClick={onClick}
       className={`
-        inline-flex items-center gap-1.5 transition-colors font-sans
+        inline-flex items-center gap-1.5 transition-colors font-sans rounded-full
         border select-none
-        ${size === 'sm' ? 'h-6 px-2 text-xs font-medium' : 'h-8 px-2.5 text-xs font-semibold'}
+        ${size === 'sm' ? 'h-8 px-3 text-xs font-medium' : 'h-9 px-3.5 text-xs font-semibold'}
         ${isClickable ? 'cursor-pointer' : ''}
         ${
           selected
-            ? 'bg-[var(--primary-tint)] text-[var(--primary)] border-[var(--primary)]/30'
+            ? 'bg-[var(--primary)] text-white border-transparent shadow-xs'
             : 'bg-[var(--surface-sunken)] text-[var(--text)] border-[var(--line)] hover:bg-[var(--line)]/50'
         }
         ${className}

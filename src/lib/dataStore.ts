@@ -105,6 +105,7 @@ export interface Post {
   isTaggedOnGrid?: boolean;
   audience?: 'whole-school' | 'class-group' | string;
   targetClass?: string;
+  altText?: string;
 }
 
 export interface UserActivityComment {

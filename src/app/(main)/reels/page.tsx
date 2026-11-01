@@ -186,13 +186,13 @@ export default function ReelsPage() {
           </Link>
         </div>
 
-        {/* Post Reel Button */}
+        {/* Post Reel Button (Standard Primary Button Style) */}
         <button
           type="button"
           onClick={() => setIsCreateModalOpen(true)}
-          className="pointer-events-auto flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-pink-600 to-rose-600 hover:opacity-95 text-white text-xs font-bold shadow-lg shadow-rose-900/40 active:scale-95 transition-all cursor-pointer"
+          className="pointer-events-auto flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white text-xs font-semibold shadow-xs active:scale-95 transition-all cursor-pointer min-h-[36px]"
         >
-          <Plus size={15} strokeWidth={2.5} />
+          <Plus size={15} strokeWidth={2.2} />
           <span>Post Reel</span>
         </button>
       </div>

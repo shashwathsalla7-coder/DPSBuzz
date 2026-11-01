@@ -1522,7 +1522,7 @@ export default function ProfileClient({ username }: { username: string }) {
 
         {/* Star Board Standing & Habit Streaks Panel */}
         <div
-          className="p-3.5 rounded-[12px] border space-y-3 mt-2 shadow-xs"
+          className="p-3.5 rounded-[14px] border space-y-3 mt-2 shadow-xs"
           style={{
             backgroundColor: 'var(--surface-sunken)',
             borderColor: 'var(--line)',
@@ -1531,7 +1531,7 @@ export default function ProfileClient({ username }: { username: string }) {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div
-                className="w-7 h-7 rounded-[8px] flex items-center justify-center font-bold text-xs"
+                className="w-7 h-7 rounded-[10px] flex items-center justify-center font-bold text-xs"
                 style={{
                   backgroundColor: 'rgba(242, 183, 5, 0.15)',
                   color: '#F2B705',
@@ -1540,18 +1540,18 @@ export default function ProfileClient({ username }: { username: string }) {
                 <Trophy size={15} />
               </div>
               <div>
-                <h3 className="text-xs font-extrabold tracking-tight" style={{ color: 'var(--text)' }}>
+                <h3 className="text-xs font-bold tracking-tight" style={{ color: 'var(--text)' }}>
                   Star Board Standing
                 </h3>
                 <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
-                  Rank & Habit Streaks
+                  Rank &amp; Habit Streaks · This Week
                 </p>
               </div>
             </div>
 
             <Link
               href="/leaderboard"
-              className="text-[11px] font-bold hover:underline flex items-center gap-1 btn-press"
+              className="text-[11px] font-semibold hover:underline flex items-center gap-1"
               style={{ color: 'var(--primary)' }}
             >
               <span>View Leaderboard</span>
@@ -1561,14 +1561,14 @@ export default function ProfileClient({ username }: { username: string }) {
 
           {/* 3 Metric Badges */}
           <div className="grid grid-cols-3 gap-2 text-center select-none">
-            <div className="p-2 rounded-[8px] border bg-[var(--surface)]" style={{ borderColor: 'var(--line)' }}>
+            <div className="p-2 rounded-[12px] border bg-[var(--surface)]" style={{ borderColor: 'var(--line)' }}>
               <div className="text-sm font-extrabold tabular-nums font-mono text-[#F2B705]">
                 #{starBoardRank}
               </div>
               <div className="text-[10px] text-[var(--text-muted)] mt-0.5">School Rank</div>
             </div>
 
-            <div className="p-2 rounded-[8px] border bg-[var(--surface)]" style={{ borderColor: 'var(--line)' }}>
+            <div className="p-2 rounded-[12px] border bg-[var(--surface)]" style={{ borderColor: 'var(--line)' }}>
               <div className="text-sm font-extrabold tabular-nums font-mono text-emerald-500 flex items-center justify-center gap-1">
                 <span className="animate-flame">🔥</span>
                 <span>{userStreak.streakDays}d</span>
@@ -1576,11 +1576,11 @@ export default function ProfileClient({ username }: { username: string }) {
               <div className="text-[10px] text-[var(--text-muted)] mt-0.5">Active Streak</div>
             </div>
 
-            <div className="p-2 rounded-[8px] border bg-[var(--surface)]" style={{ borderColor: 'var(--line)' }}>
+            <div className="p-2 rounded-[12px] border bg-[var(--surface)]" style={{ borderColor: 'var(--line)' }}>
               <div className="text-sm font-extrabold tabular-nums font-mono text-amber-400">
                 ⭐ {userStreak.habitPoints}
               </div>
-              <div className="text-[10px] text-[var(--text-muted)] mt-0.5">Habit Points</div>
+              <div className="text-[10px] text-[var(--text-muted)] mt-0.5">Star Points</div>
             </div>
           </div>
 

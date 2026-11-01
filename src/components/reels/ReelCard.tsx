@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -13,7 +14,6 @@ import {
   Music,
   UserPlus,
   UserCheck,
-  Sparkles,
   Eye,
 } from 'lucide-react';
 import { DataStore, type Post, type Profile } from '@/lib/dataStore';
@@ -56,7 +56,6 @@ export const ReelCard: React.FC<ReelCardProps> = ({
   const progressBarRef = useRef<HTMLDivElement>(null);
   const lastTapRef = useRef<number>(0);
   const singleTapTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const playIconTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const isVideoMedia = Boolean(
     reel.isVideo ||
@@ -77,7 +76,6 @@ export const ReelCard: React.FC<ReelCardProps> = ({
   const color = getAvatarColorPair(reel.username);
   const initials = (authorProf?.fullName || reel.fullName || reel.username || 'ST').slice(0, 2).toUpperCase();
 
-  // Initialize liked, stats & follow state from real DataStore
   useEffect(() => {
     if (currentUser?.username) {
       const likedIds = DataStore.getUserLikedPostIds(currentUser.username);
@@ -89,7 +87,7 @@ export const ReelCard: React.FC<ReelCardProps> = ({
     setViewsCount(DataStore.getPostViews(reel.id));
   }, [reel.id, currentUser?.username]);
 
-  // Increment real views (strictly 1 unique view per user, never counted multiple times)
+  // Record 1 unique view
   useEffect(() => {
     let timer: NodeJS.Timeout | null = null;
     if (isActive && isPlaying) {
@@ -103,99 +101,93 @@ export const ReelCard: React.FC<ReelCardProps> = ({
     };
   }, [isActive, isPlaying, reel.id, currentUser?.username]);
 
-  // Video play/pause based on active reel in viewport
+  // Video playback management based on active index
   useEffect(() => {
-    const video = videoRef.current;
-    if (!video || !isVideoMedia) {
-      if (isActive) setIsPlaying(true);
-      return;
-    }
-
-    if (isActive) {
-      video.muted = isMuted;
-      video
-        .play()
-        .then(() => setIsPlaying(true))
-        .catch(() => {
-          // Auto-play was prevented (often due to unmuted audio on mobile)
-          video.muted = true;
-          video.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
-        });
-    } else {
-      video.pause();
-      setIsPlaying(false);
-    }
-  }, [isActive, isMuted, isVideoMedia]);
-
-  const handleTimeUpdate = () => {
-    const video = videoRef.current;
-    if (!video || !progressBarRef.current) return;
-    const { currentTime, duration } = video;
-    if (duration > 0) {
-      const pct = (currentTime / duration) * 100;
-      progressBarRef.current.style.width = `${pct}%`;
-    }
-  };
-
-  const handleTogglePlay = () => {
     const video = videoRef.current;
     if (!video) return;
 
-    if (video.paused) {
-      video.play().catch(() => {});
-      setIsPlaying(true);
+    if (isActive) {
+      video.muted = isMuted;
+      const playPromise = video.play();
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => setIsPlaying(true))
+          .catch(() => {
+            setIsPlaying(false);
+          });
+      }
     } else {
       video.pause();
+      video.currentTime = 0;
       setIsPlaying(false);
+      setIsCaptionExpanded(false);
     }
+  }, [isActive, isMuted]);
 
-    setShowPlayIcon(true);
-    if (playIconTimeoutRef.current) clearTimeout(playIconTimeoutRef.current);
-    playIconTimeoutRef.current = setTimeout(() => setShowPlayIcon(false), 650);
-  };
-
-  // Double tap to like, single tap to play/pause with reliable timeout clearing
-  const handleTouchOrClick = (e: React.MouseEvent | React.TouchEvent) => {
+  const handleTouchOrClick = () => {
     const now = Date.now();
-    const DOUBLE_TAP_DELAY = 280;
-
+    const DOUBLE_TAP_DELAY = 300;
     if (now - lastTapRef.current < DOUBLE_TAP_DELAY) {
-      // Double tap detected! Clear pending single-tap play/pause
       if (singleTapTimerRef.current) {
         clearTimeout(singleTapTimerRef.current);
         singleTapTimerRef.current = null;
       }
-      if (!isLiked && currentUser?.username) {
-        const res = DataStore.toggleLikePost(reel.id, currentUser.username);
-        setIsLiked(res.liked);
-        setLikesCount(res.likesCount);
-      }
-      playLikeChime();
-      triggerLikeVibration();
-      setShowHeartAnim(true);
+      handleDoubleTapLike();
       lastTapRef.current = 0;
     } else {
       lastTapRef.current = now;
-      if (singleTapTimerRef.current) clearTimeout(singleTapTimerRef.current);
       singleTapTimerRef.current = setTimeout(() => {
-        handleTogglePlay();
-        lastTapRef.current = 0;
-        singleTapTimerRef.current = null;
+        togglePlayPause();
       }, DOUBLE_TAP_DELAY);
     }
+  };
+
+  const togglePlayPause = () => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    if (video.paused) {
+      video.play().then(() => setIsPlaying(true)).catch(() => {});
+    } else {
+      video.pause();
+      setIsPlaying(false);
+    }
+    setShowPlayIcon(true);
+    setTimeout(() => setShowPlayIcon(false), 500);
+  };
+
+  const handleDoubleTapLike = () => {
+    if (!currentUser?.username) return;
+    if (!isLiked) {
+      const res = DataStore.toggleLikePost(reel.id, currentUser.username);
+      const isNow = typeof res === 'boolean' ? res : Boolean((res as any)?.liked);
+      setIsLiked(isNow);
+      setLikesCount(DataStore.getPostLikes(reel.id));
+    }
+    setShowHeartAnim(true);
+    playLikeChime();
+    triggerLikeVibration();
   };
 
   const handleLikeClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!currentUser?.username) return;
     const res = DataStore.toggleLikePost(reel.id, currentUser.username);
-    setIsLiked(res.liked);
-    setLikesCount(res.likesCount);
-    if (res.liked) {
+    const nowLiked = typeof res === 'boolean' ? res : Boolean((res as any)?.liked);
+    setIsLiked(nowLiked);
+    setLikesCount(DataStore.getPostLikes(reel.id));
+    if (nowLiked) {
       playLikeChime();
       triggerLikeVibration();
-      setShowHeartAnim(true);
     }
+  };
+
+  const handleTimeUpdate = () => {
+    const video = videoRef.current;
+    const bar = progressBarRef.current;
+    if (!video || !bar || !video.duration) return;
+    const pct = (video.currentTime / video.duration) * 100;
+    bar.style.width = `${pct}%`;
   };
 
   const handleFollowClick = (e: React.MouseEvent) => {
@@ -210,7 +202,7 @@ export const ReelCard: React.FC<ReelCardProps> = ({
       className="relative w-full h-[100dvh] snap-start snap-always overflow-hidden bg-black flex items-center justify-center select-none"
       onClick={handleTouchOrClick}
     >
-      {/* Background Video Player / Image View */}
+      {/* Background Video Player */}
       {isVideoMedia && videoUrl ? (
         <video
           ref={videoRef}
@@ -225,16 +217,6 @@ export const ReelCard: React.FC<ReelCardProps> = ({
           onWaiting={() => setIsBuffering(true)}
           onPlaying={() => setIsBuffering(false)}
           onCanPlay={() => setIsBuffering(false)}
-          onError={() => {
-            setIsBuffering(false);
-            if (videoRef.current && !videoRef.current.src.includes('launch_video.mp4')) {
-              videoRef.current.src = '/videos/launch_video.mp4';
-              videoRef.current.load();
-              if (isActive) {
-                videoRef.current.play().catch(() => {});
-              }
-            }
-          }}
           onTimeUpdate={handleTimeUpdate}
         />
       ) : (
@@ -250,149 +232,123 @@ export const ReelCard: React.FC<ReelCardProps> = ({
       {/* Buffering Indicator */}
       {isBuffering && isPlaying && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
-          <div className="w-12 h-12 rounded-full border-2 border-white/20 border-t-white animate-spin shadow-lg" />
+          <div className="w-10 h-10 rounded-full border-2 border-white/20 border-t-white animate-spin" />
         </div>
       )}
 
-      {/* Center Animated Play/Pause Feedback Icon */}
+      {/* Center Play/Pause Feedback */}
       {showPlayIcon && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
-          <div className="w-16 h-16 rounded-full bg-black/60 backdrop-blur-md text-white flex items-center justify-center animate-scale-in">
-            {isPlaying ? <Play size={28} className="translate-x-0.5" /> : <Pause size={28} />}
+          <div className="w-14 h-14 rounded-full bg-black/60 text-white flex items-center justify-center">
+            {isPlaying ? <Play size={24} className="translate-x-0.5" /> : <Pause size={24} />}
           </div>
         </div>
       )}
 
-      {/* Center Unique Multi-Particle & Gradient Heart Animation */}
+      {/* Center Heart Animation */}
       <UniqueLikeOverlay isVisible={showHeartAnim} onFinished={() => setShowHeartAnim(false)} />
 
-      {/* Top Subtle Gradient */}
-      <div className="absolute top-0 inset-x-0 h-28 bg-gradient-to-b from-black/60 to-transparent pointer-events-none z-10 sm:max-w-[440px] sm:mx-auto" />
+      {/* Subtle overlays for text contrast */}
+      <div className="absolute top-0 inset-x-0 h-24 bg-gradient-to-b from-black/60 to-transparent pointer-events-none z-10" />
+      <div className="absolute bottom-0 inset-x-0 h-56 bg-gradient-to-t from-black/85 via-black/35 to-transparent pointer-events-none z-10" />
 
-      {/* Bottom Gradient Overlay for text readability */}
-      <div className="absolute bottom-0 inset-x-0 h-64 bg-gradient-to-t from-black/90 via-black/40 to-transparent pointer-events-none z-10 sm:max-w-[440px] sm:mx-auto" />
-
-      {/* Right Side Action Column (Instagram Reels Style) */}
+      {/* Right Side Action Column (Consistent white icons & uniform typography) */}
       <div
-        className="absolute right-3 bottom-20 sm:bottom-12 z-20 flex flex-col items-center gap-4 sm:gap-5 text-white"
+        className="absolute right-3.5 bottom-[calc(76px+env(safe-area-inset-bottom,0px))] z-20 flex flex-col items-center gap-4 text-white"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Like Button & Tap-to-view Likes */}
-        <div className="flex flex-col items-center gap-1 group">
+        {/* 1. Like */}
+        <div className="flex flex-col items-center gap-1">
           <button
             type="button"
             onClick={handleLikeClick}
-            className={`w-11 h-11 rounded-full flex items-center justify-center backdrop-blur-md transition-all active:scale-75 cursor-pointer ${
-              isLiked
-                ? 'bg-gradient-to-tr from-rose-600 via-pink-500 to-amber-500 text-white shadow-lg shadow-rose-500/50 scale-105'
-                : 'bg-black/40 hover:bg-black/60 text-white'
-            }`}
+            className="w-11 h-11 rounded-full flex items-center justify-center bg-black/40 hover:bg-black/60 active:scale-90 transition-all cursor-pointer min-h-[44px]"
             aria-label={isLiked ? 'Unlike reel' : 'Like reel'}
           >
             <Heart
               size={22}
-              className={isLiked ? 'fill-white stroke-white animate-unique-heart drop-shadow' : ''}
+              className={isLiked ? 'fill-red-500 text-red-500' : 'text-white'}
             />
           </button>
+          <span className="text-xs font-semibold text-white/90 tabular-nums">
+            {likesCount}
+          </span>
+        </div>
+
+        {/* 2. Views */}
+        <div className="flex flex-col items-center gap-1">
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
               onOpenLikesViews?.(reel);
             }}
-            className="text-[11px] font-bold tracking-tight drop-shadow-sm hover:underline hover:text-rose-300 transition-colors cursor-pointer"
-            title="View who liked this reel"
+            className="w-11 h-11 rounded-full flex items-center justify-center bg-black/40 hover:bg-black/60 active:scale-90 transition-all cursor-pointer min-h-[44px]"
+            aria-label="View reel stats"
           >
-            {likesCount}
+            <Eye size={22} className="text-white" />
           </button>
-        </div>
-
-        {/* Real Views Counter Button */}
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onOpenLikesViews?.(reel);
-          }}
-          className="flex flex-col items-center gap-1 group active:scale-75 transition-transform cursor-pointer"
-          aria-label="View reel stats"
-          title="Total real views"
-        >
-          <div className="w-11 h-11 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-md text-white flex items-center justify-center transition-colors">
-            <Eye size={20} className="text-cyan-300" />
-          </div>
-          <span className="text-[11px] font-bold tracking-tight drop-shadow-sm tabular-nums">
+          <span className="text-xs font-semibold text-white/90 tabular-nums">
             {viewsCount}
           </span>
-        </button>
+        </div>
 
-        {/* Comment Button */}
-        <button
-          type="button"
-          onClick={() => onOpenComments(reel)}
-          className="flex flex-col items-center gap-1 group active:scale-75 transition-transform cursor-pointer"
-          aria-label="View comments"
-        >
-          <div className="w-11 h-11 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-md text-white flex items-center justify-center transition-colors">
-            <MessageCircle size={22} />
-          </div>
-          <span className="text-[11px] font-bold tracking-tight drop-shadow-sm">
+        {/* 3. Comments */}
+        <div className="flex flex-col items-center gap-1">
+          <button
+            type="button"
+            onClick={() => onOpenComments(reel)}
+            className="w-11 h-11 rounded-full flex items-center justify-center bg-black/40 hover:bg-black/60 active:scale-90 transition-all cursor-pointer min-h-[44px]"
+            aria-label="Comments"
+          >
+            <MessageCircle size={22} className="text-white" />
+          </button>
+          <span className="text-xs font-semibold text-white/90 tabular-nums">
             {commentsCount}
           </span>
-        </button>
+        </div>
 
-        {/* Share Button (Sends directly to chats / apps) */}
-        <button
-          type="button"
-          onClick={() => onOpenShare(reel)}
-          className="flex flex-col items-center gap-1 group active:scale-75 transition-transform cursor-pointer"
-          aria-label="Share reel"
-        >
-          <div className="w-11 h-11 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-md text-white flex items-center justify-center transition-colors">
-            <Share2 size={22} className="text-cyan-400" />
-          </div>
-          <span className="text-[11px] font-bold tracking-tight drop-shadow-sm">
+        {/* 4. Share */}
+        <div className="flex flex-col items-center gap-1">
+          <button
+            type="button"
+            onClick={() => onOpenShare(reel)}
+            className="w-11 h-11 rounded-full flex items-center justify-center bg-black/40 hover:bg-black/60 active:scale-90 transition-all cursor-pointer min-h-[44px]"
+            aria-label="Share reel"
+          >
+            <Share2 size={22} className="text-white" />
+          </button>
+          <span className="text-xs font-semibold text-white/90">
             Share
           </span>
-        </button>
+        </div>
 
-        {/* Mute / Unmute Button */}
-        <button
-          type="button"
-          onClick={onToggleMute}
-          className="w-11 h-11 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-md text-white flex items-center justify-center transition-transform active:scale-90 cursor-pointer"
-          aria-label={isMuted ? 'Unmute' : 'Mute'}
-        >
-          {isMuted ? <VolumeX size={20} className="text-amber-400" /> : <Volume2 size={20} />}
-        </button>
-
-        {/* Rotating Sound Vinyl Disc in bottom right */}
-        <div
-          className={`w-10 h-10 rounded-full bg-gradient-to-tr from-zinc-800 via-zinc-950 to-zinc-800 border-2 border-white/30 p-1 shadow-lg flex items-center justify-center ${
-            isPlaying ? 'animate-spin' : ''
-          }`}
-          style={{ animationDuration: '4s' }}
-        >
-          <div className="w-full h-full rounded-full bg-zinc-900 border border-white/20 flex items-center justify-center overflow-hidden">
-            {authorAvatar ? (
-              <img src={authorAvatar} alt="audio disc" className="w-full h-full object-cover" />
-            ) : (
-              <Music size={12} className="text-white" />
-            )}
-          </div>
+        {/* 5. Mute */}
+        <div className="flex flex-col items-center gap-1">
+          <button
+            type="button"
+            onClick={onToggleMute}
+            className="w-11 h-11 rounded-full flex items-center justify-center bg-black/40 hover:bg-black/60 active:scale-90 transition-all cursor-pointer min-h-[44px]"
+            aria-label={isMuted ? 'Unmute' : 'Mute'}
+          >
+            {isMuted ? <VolumeX size={22} className="text-white" /> : <Volume2 size={22} className="text-white" />}
+          </button>
+          <span className="text-xs font-semibold text-white/90">
+            {isMuted ? 'Muted' : 'Sound'}
+          </span>
         </div>
       </div>
 
-      {/* Bottom Info Overlay (Creator, Caption, Music) */}
+      {/* Bottom Info Overlay (Safely placed above bottom navigation bar) */}
       <div
-        className="absolute left-3 right-16 bottom-20 sm:bottom-12 z-20 text-white space-y-2 pointer-events-auto sm:max-w-[340px] sm:left-[calc(50%-210px)]"
+        className="absolute left-4 right-18 bottom-[calc(76px+env(safe-area-inset-bottom,0px))] z-20 text-white space-y-2 pointer-events-auto sm:max-w-[340px]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Creator Header with Avatar & Follow Button */}
         <div className="flex items-center gap-2.5">
           <Link
             href={`/u/${reel.username}`}
-            className="w-10 h-10 rounded-full overflow-hidden shrink-0 border-2 border-white/80 shadow-md transition-transform hover:scale-105"
+            className="w-10 h-10 rounded-full overflow-hidden shrink-0 border border-white/40 shadow-sm"
           >
             {authorAvatar ? (
               <img src={authorAvatar} alt={reel.username} className="w-full h-full object-cover" />
@@ -408,7 +364,7 @@ export const ReelCard: React.FC<ReelCardProps> = ({
           <div className="flex items-center gap-2 truncate">
             <Link
               href={`/u/${reel.username}`}
-              className="text-sm font-bold text-white hover:underline truncate drop-shadow-sm"
+              className="text-sm font-semibold text-white hover:underline truncate"
             >
               @{reel.username}
             </Link>
@@ -416,62 +372,48 @@ export const ReelCard: React.FC<ReelCardProps> = ({
               <button
                 type="button"
                 onClick={handleFollowClick}
-                className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold border transition-all cursor-pointer flex items-center gap-1 ${
+                className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border transition-all cursor-pointer min-h-[28px] ${
                   isFollowing
-                    ? 'bg-white/20 border-white/40 text-white'
-                    : 'bg-[var(--primary)] border-transparent text-white shadow-sm hover:opacity-90'
+                    ? 'bg-white/20 border-white/30 text-white'
+                    : 'bg-[var(--primary)] border-transparent text-white shadow-xs'
                 }`}
               >
-                {isFollowing ? (
-                  <>
-                    <UserCheck size={11} />
-                    <span>Following</span>
-                  </>
-                ) : (
-                  <>
-                    <UserPlus size={11} />
-                    <span>Follow</span>
-                  </>
-                )}
+                {isFollowing ? 'Following' : 'Follow'}
               </button>
             )}
           </div>
         </div>
 
-        {/* Reel Caption */}
+        {/* Reel Caption: at most 2 lines with "more" */}
         {reel.caption && (
-          <div className="text-xs text-white/95 leading-relaxed drop-shadow-sm">
+          <div className="text-xs text-white/95 leading-relaxed">
             <p className={isCaptionExpanded ? '' : 'line-clamp-2'}>
               {reel.caption}
             </p>
-            {reel.caption.length > 90 && (
+            {reel.caption.length > 80 && (
               <button
                 type="button"
                 onClick={() => setIsCaptionExpanded(!isCaptionExpanded)}
-                className="text-[11px] font-bold text-white/70 hover:text-white mt-0.5 cursor-pointer"
+                className="text-white/70 hover:text-white font-semibold text-xs mt-0.5 cursor-pointer"
               >
-                {isCaptionExpanded ? 'less' : '...more'}
+                {isCaptionExpanded ? 'less' : 'more'}
               </button>
             )}
           </div>
         )}
 
-        {/* Music / Sound Audio Marquee Banner */}
-        <div className="flex items-center gap-2 text-[11px] font-semibold text-white/85 bg-black/40 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/10 w-fit max-w-[280px] truncate">
-          <Music size={12} className="shrink-0 text-pink-400 animate-pulse" />
-          <span className="truncate">
-            {reel.song ? `${reel.song.title} • ${reel.song.artist}` : `Original Audio • @${reel.username}`}
-          </span>
-        </div>
+        {/* Audio Pill: Positioned above docked bar without overlapping */}
+        {(reel.song || (reel as any).music) && (
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/50 border border-white/20 text-xs text-white max-w-[240px]">
+            <Music size={12} className="shrink-0" />
+            <span className="truncate">{(reel.song || (reel as any).music)?.title} • {(reel.song || (reel as any).music)?.artist}</span>
+          </div>
+        )}
       </div>
 
-      {/* Bottom Progress Bar (DOM Ref Updated for 60fps Smoothness without React Re-renders) */}
-      <div className="absolute bottom-0 inset-x-0 h-1 bg-white/20 z-30 sm:max-w-[440px] sm:mx-auto">
-        <div
-          ref={progressBarRef}
-          className="h-full bg-gradient-to-r from-pink-500 to-rose-500 will-change-[width]"
-          style={{ width: '0%' }}
-        />
+      {/* Progress Bar at Bottom of Reel Content */}
+      <div className="absolute bottom-[calc(60px+env(safe-area-inset-bottom,0px))] left-0 right-0 h-[2px] bg-white/20 z-30 pointer-events-none">
+        <div ref={progressBarRef} className="h-full bg-[var(--primary)] transition-all duration-100" style={{ width: '0%' }} />
       </div>
     </div>
   );

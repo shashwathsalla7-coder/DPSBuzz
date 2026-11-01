@@ -494,25 +494,25 @@ export default function SettingsPage() {
                   When a friend signs up with your referral code, both of you receive +25 points!
                 </p>
               </div>
-              <div className="w-10 h-10 rounded-2xl bg-pink-500/10 border border-pink-500/20 flex items-center justify-center text-pink-500 shrink-0">
+              <div className="w-10 h-10 rounded-[12px] bg-[var(--primary-tint)] border border-[var(--line)] flex items-center justify-center text-[var(--primary)] shrink-0">
                 <Gift size={20} />
               </div>
             </div>
 
             {/* Referral Code Box */}
-            <div className="p-3 rounded-xl bg-[var(--surface-sunken)] border border-[var(--line)] flex items-center justify-between gap-2">
+            <div className="p-3 rounded-[12px] bg-[var(--surface-sunken)] border border-[var(--line)] flex items-center justify-between gap-2">
               <div>
                 <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider block">
                   Your Referral Code
                 </span>
-                <span className="text-sm font-mono font-black text-[var(--primary)] block mt-0.5">
+                <span className="text-sm font-mono font-bold text-[var(--primary)] block mt-0.5">
                   @{currentUser?.username || 'student'}
                 </span>
               </div>
               <button
                 type="button"
                 onClick={handleCopyReferralLink}
-                className="px-3 py-1.5 rounded-lg text-xs font-bold text-white gradient-bg shadow-xs flex items-center gap-1.5 cursor-pointer hover:opacity-95 active:scale-95 transition"
+                className="px-3 py-1.5 rounded-[12px] text-xs font-semibold text-white bg-[var(--primary)] shadow-xs flex items-center gap-1.5 cursor-pointer hover:opacity-90 active:scale-95 transition"
               >
                 {copiedRefLink ? (
                   <>
@@ -995,7 +995,7 @@ export default function SettingsPage() {
       {/* DELETE ACCOUNT CONFIRMATION SHEET */}
       {showDeleteSheet && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-end md:items-center justify-center p-0 md:p-4 animate-fade-in">
-          <div className="w-full max-w-lg bg-[var(--surface)] border border-red-500/30 rounded-t-[24px] md:rounded-[24px] p-6 space-y-4 animate-slide-up shadow-2xl">
+          <div className="w-full max-w-lg bg-[var(--surface)] border border-red-500/30 rounded-t-[14px] md:rounded-[14px] p-6 space-y-4 animate-slide-up shadow-2xl">
             <div className="w-9 h-1 rounded-full bg-[var(--line-strong)] mx-auto md:hidden" />
             <div className="flex items-center gap-2.5 text-red-600 dark:text-red-400">
               <AlertTriangle size={24} className="shrink-0" />

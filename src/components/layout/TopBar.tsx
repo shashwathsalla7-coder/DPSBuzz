@@ -34,8 +34,13 @@ export const TopBar: FC<TopBarProps> = ({ notificationCount = 0 }) => {
     };
   }, []);
 
-  // Dedicated screen headers exist on Search, Chats, and Fullscreen Reels
-  if (pathname.startsWith('/chats') || pathname.startsWith('/search') || pathname.startsWith('/reels')) {
+  // Dedicated screen headers exist on Search, Chats, Fullscreen Reels, and Create Post
+  if (
+    pathname.startsWith('/chats') ||
+    pathname.startsWith('/search') ||
+    pathname.startsWith('/reels') ||
+    pathname.startsWith('/post/new')
+  ) {
     return null;
   }
 
@@ -59,59 +64,47 @@ export const TopBar: FC<TopBarProps> = ({ notificationCount = 0 }) => {
         style={{
           backgroundColor: 'var(--surface)',
           borderColor: 'var(--line)',
-          paddingTop: 'max(env(safe-area-inset-top, 0px), 12px)',
+          paddingTop: 'max(env(safe-area-inset-top, 0px), 8px)',
         }}
       >
-        {/* Main 56px Top Bar with safe breathing room from top edge */}
-        <div className="flex items-center justify-between px-4 h-14 pb-1">
+        {/* Main 56px Top Bar */}
+        <div className="flex items-center justify-between px-4 h-14">
           <Link href="/home" className="flex items-center gap-2 select-none" aria-label="DPS Buzz Home">
             <Logo size="md" />
           </Link>
 
-          <div className="flex items-center gap-1.5 sm:gap-2">
-            {/* Quick Games Duel Button */}
-            <Link
-              href="/chats?view=games"
-              className="w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center relative btn-press hover:bg-[var(--surface-sunken)] active:scale-95 transition-all border border-transparent hover:border-[var(--line)]"
-              style={{ color: 'var(--text)' }}
-              aria-label="Games Arena"
-              title="Four in a Row & Games Arena"
-            >
-              <Gamepad2 size={20} strokeWidth={1.8} />
-            </Link>
-
-            {/* Quick Search Button */}
+          <div className="flex items-center gap-2">
+            {/* Quick Search Button (40-44px tap target) */}
             <Link
               href="/search"
-              className="w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center relative btn-press hover:bg-[var(--surface-sunken)] active:scale-95 transition-all border border-transparent hover:border-[var(--line)]"
+              className="w-11 h-11 rounded-full flex items-center justify-center relative hover:bg-[var(--surface-sunken)] active:scale-95 transition-all border border-transparent hover:border-[var(--line)]"
               style={{ color: 'var(--text)' }}
               aria-label="Search"
             >
               <Search size={20} strokeWidth={1.8} />
             </Link>
 
-            {/* Notification Bell with like-rose badge or count up to 9+ */}
+            {/* Notification Bell (40-44px tap target) */}
             <Link
               href="/notifications"
-              className="w-11 h-11 rounded-full flex items-center justify-center relative btn-press hover:bg-[var(--surface-sunken)] active:scale-95 transition-all border border-transparent hover:border-[var(--line)]"
+              className="w-11 h-11 rounded-full flex items-center justify-center relative hover:bg-[var(--surface-sunken)] active:scale-95 transition-all border border-transparent hover:border-[var(--line)]"
               style={{ color: 'var(--text)' }}
               aria-label="Notifications"
             >
-              <Bell size={21} strokeWidth={1.8} />
+              <Bell size={20} strokeWidth={1.8} />
               {unreadCount > 0 && (
                 <span
-                  className="absolute top-1.5 right-1.5 min-w-[17px] h-[17px] px-1 rounded-full text-[10px] font-extrabold text-white flex items-center justify-center tabular-nums leading-none border border-[var(--surface)] animate-bounce-in shadow-xs"
-                  style={{ backgroundColor: 'var(--like)' }}
+                  className="absolute top-1.5 right-1.5 min-w-[16px] h-[16px] px-1 rounded-full text-[10px] font-bold text-white flex items-center justify-center tabular-nums leading-none bg-red-600 border border-[var(--surface)] shadow-xs"
                 >
                   {unreadCount > 9 ? '9+' : unreadCount}
                 </span>
               )}
             </Link>
 
-            {/* Menu Drawer Button (Three Lines / Tree Type Button) */}
+            {/* Menu Drawer Button (40-44px tap target) */}
             <button
               onClick={() => setIsMenuOpen(true)}
-              className="w-11 h-11 rounded-full flex items-center justify-center btn-press hover:bg-[var(--surface-sunken)] active:scale-95 transition-all cursor-pointer shadow-xs border border-[var(--line)]"
+              className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-[var(--surface-sunken)] active:scale-95 transition-all cursor-pointer shadow-xs border border-[var(--line)]"
               style={{
                 color: 'var(--text)',
                 backgroundColor: 'var(--surface-sunken)',
@@ -119,7 +112,7 @@ export const TopBar: FC<TopBarProps> = ({ notificationCount = 0 }) => {
               aria-label="Open menu"
               title="Open school menu"
             >
-              <Menu size={22} strokeWidth={2.2} />
+              <Menu size={20} strokeWidth={2} />
             </button>
           </div>
         </div>

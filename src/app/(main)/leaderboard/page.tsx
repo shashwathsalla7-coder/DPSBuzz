@@ -327,7 +327,7 @@ export default function LeaderboardPage() {
 
       <div className="max-w-lg mx-auto px-4 py-4 space-y-4">
         {/* 2. Current Student Streak Hero Card */}
-        <div className="p-5 rounded-[26px] border bg-[var(--surface)] border-[var(--line)] shadow-sm space-y-4">
+        <div className="p-5 rounded-[14px] border bg-[var(--surface)] border-[var(--line)] shadow-xs space-y-4">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
               <div
@@ -358,24 +358,24 @@ export default function LeaderboardPage() {
             </div>
 
             {/* Streak Flame Badge */}
-            <div className="px-3 py-1.5 rounded-full bg-orange-500/15 border border-orange-500/30 text-orange-500 font-black text-xs flex items-center gap-1.5 shrink-0 shadow-xs">
-              <Flame size={16} className="text-orange-500 animate-pulse" />
+            <div className="px-3 py-1.5 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-600 font-bold text-xs flex items-center gap-1.5 shrink-0 shadow-xs">
+              <Flame size={15} className="text-orange-500" />
               <span className="tabular-nums font-mono text-sm">{myStreak?.streakDays ?? 0}d Streak</span>
             </div>
           </div>
 
           {/* Points & Daily Status Grid */}
           <div className="grid grid-cols-2 gap-2.5 pt-1">
-            <div className="p-3 rounded-[18px] bg-[var(--surface-sunken)] border border-[var(--line)]">
+            <div className="p-3 rounded-[12px] bg-[var(--surface-sunken)] border border-[var(--line)]">
               <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider block">
-                Habit Points
+                Star Points
               </span>
               <span className="text-base font-extrabold text-[var(--primary)] tabular-nums font-mono mt-0.5 block">
                 ⭐ {myStreak?.habitPoints ?? 0} pts
               </span>
             </div>
 
-            <div className="p-3 rounded-[18px] bg-[var(--surface-sunken)] border border-[var(--line)]">
+            <div className="p-3 rounded-[12px] bg-[var(--surface-sunken)] border border-[var(--line)]">
               <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider block">
                 Today&apos;s Status
               </span>
@@ -397,45 +397,39 @@ export default function LeaderboardPage() {
           <button
             type="button"
             onClick={() => setShowQuickPostModal(true)}
-            className="btn-apple w-full py-3 px-4 rounded-xl text-white text-xs font-bold flex items-center justify-center gap-2 shadow-md cursor-pointer"
-            style={{
-              background: 'linear-gradient(135deg, #833AB4, #C13584, #F77737)',
-            }}
+            className="w-full py-2.5 px-4 rounded-[12px] text-white text-xs font-bold flex items-center justify-center gap-2 bg-[var(--primary)] hover:opacity-90 transition-opacity cursor-pointer shadow-xs"
           >
-            <Zap size={15} />
-            <span>Post Habit & Save Streak (+25 Pts)</span>
+            <Zap size={14} />
+            <span>Post Habit &amp; Save Streak (+25 Pts)</span>
           </button>
         </div>
 
-        {/* Interactive Streaks & Leaderboard Explainer Banner */}
-        <div className="p-3.5 rounded-[22px] bg-gradient-to-r from-orange-500/15 via-pink-500/15 to-purple-500/15 border border-orange-500/30 flex items-center justify-between gap-3 shadow-xs">
+        {/* Streaks & Leaderboard Explainer Banner */}
+        <div className="p-3.5 rounded-[14px] bg-[var(--surface-sunken)] border border-[var(--line)] flex items-center justify-between gap-3 shadow-xs">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-9 h-9 rounded-2xl bg-orange-500/20 text-orange-400 flex items-center justify-center text-lg shrink-0">
+            <div className="w-8 h-8 rounded-[10px] bg-orange-500/10 text-orange-500 flex items-center justify-center text-base shrink-0">
               🔥
             </div>
             <div className="min-w-0">
-              <h4 className="text-xs font-black text-[var(--text)] flex items-center gap-1.5 flex-wrap">
-                <span>Daily Streak & Star Board Rules</span>
-                <span className="text-[9px] px-1.5 py-0.2 rounded-full font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">
-                  Strict Reset
-                </span>
+              <h4 className="text-xs font-bold text-[var(--text)] flex items-center gap-1.5 flex-wrap">
+                <span>Daily Streak &amp; Star Board Rules</span>
               </h4>
               <p className="text-[11px] text-[var(--text-muted)] mt-0.5 truncate">
-                Post daily before midnight. Miss a day and your streak resets to 0!
+                Post daily before midnight. Miss a day and your streak resets to 0.
               </p>
             </div>
           </div>
           <button
             type="button"
             onClick={() => setShowHowItWorks(true)}
-            className="btn-apple shrink-0 py-1.5 px-3 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold transition-all cursor-pointer shadow-xs"
+            className="shrink-0 py-1.5 px-3 rounded-full bg-[var(--surface)] hover:bg-[var(--surface-raised)] border border-[var(--line)] text-[var(--text)] text-xs font-semibold transition-all cursor-pointer shadow-xs"
           >
-            Guide 📖
+            Guide
           </button>
         </div>
 
-        {/* 3. Segmented Switcher (2 Tabs Only: Streaks & Star Board - No Spirit) */}
-        <div className="flex p-1 rounded-2xl bg-[var(--surface-sunken)] border border-[var(--line)] text-xs font-bold">
+        {/* 3. Segmented Switcher (2 Tabs Only: Streaks & Star Board) */}
+        <div className="flex p-1 rounded-full bg-[var(--surface-sunken)] border border-[var(--line)] text-xs font-bold">
           <button
             type="button"
             onClick={() => setActiveTab('streaks')}
@@ -502,11 +496,8 @@ export default function LeaderboardPage() {
         {/* 6. Rankings List (#4 and below) */}
         <div className="space-y-2 pt-2">
           <div className="flex items-center justify-between px-1">
-            <span className="text-xs font-black uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-1.5">
-              <span>{activeTab === 'streaks' ? 'All Habit Streaks' : 'All Student Ranks'}</span>
-              <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-pink-500/15 text-pink-500">
-                Live
-              </span>
+            <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
+              {activeTab === 'streaks' ? 'All Habit Streaks' : 'All Student Ranks'}
             </span>
             <span className="text-[11px] text-[var(--text-muted)] font-medium">
               Updated in real-time
@@ -524,7 +515,7 @@ export default function LeaderboardPage() {
                     <Link
                       key={s.id}
                       href={`/u/${s.username}`}
-                      className={`btn-apple p-3.5 rounded-[20px] border flex items-center justify-between gap-3 transition-colors ${
+                      className={`btn-apple p-3.5 rounded-[14px] border flex items-center justify-between gap-3 transition-colors ${
                         isMe
                           ? 'bg-[var(--primary)]/10 border-[var(--primary)]/30'
                           : 'bg-[var(--surface)] border-[var(--line)] hover:bg-[var(--surface-sunken)]'
@@ -614,7 +605,7 @@ export default function LeaderboardPage() {
                   <Link
                     key={u.username}
                     href={`/u/${u.username}`}
-                    className={`btn-apple p-3.5 rounded-[20px] border flex items-center justify-between gap-3 transition-colors cursor-pointer group ${
+                    className={`btn-apple p-3.5 rounded-[14px] border flex items-center justify-between gap-3 transition-colors cursor-pointer group ${
                       isMe
                         ? 'bg-[var(--primary)]/10 border-[var(--primary)]/30'
                         : 'bg-[var(--surface)] border-[var(--line)] hover:bg-[var(--surface-sunken)]'
@@ -656,7 +647,7 @@ export default function LeaderboardPage() {
                       <span className="text-xs font-bold text-[var(--text)] tabular-nums block">
                         👥 {u.followers} {u.followers === 1 ? 'follower' : 'followers'}
                       </span>
-                      <span className="text-[10px] text-pink-500 font-bold block">
+                      <span className="text-[10px] text-[var(--text-muted)] font-medium block">
                         👁️ {u.views} views · ❤️ {u.likes} · 📸 {u.posts}
                       </span>
                     </div>
@@ -664,14 +655,14 @@ export default function LeaderboardPage() {
                 );
               })
             ) : studentLeaders.length > 0 ? (
-              <div className="p-4 rounded-[20px] border text-center bg-[var(--surface)] border-[var(--line)]">
+              <div className="p-4 rounded-[14px] border text-center bg-[var(--surface)] border-[var(--line)]">
                 <p className="text-xs font-bold text-[var(--text)]">Top students displayed on the podium above!</p>
                 <p className="text-[11px] text-[var(--text-muted)] mt-0.5">
                   Follow classmates and share posts to climb the ranks.
                 </p>
               </div>
             ) : (
-              <div className="p-6 rounded-[22px] border text-center bg-[var(--surface)] border-[var(--line)] space-y-2">
+              <div className="p-6 rounded-[14px] border text-center bg-[var(--surface)] border-[var(--line)] space-y-2">
                 <Trophy size={24} className="mx-auto text-amber-500" />
                 <p className="text-xs font-bold text-[var(--text)]">No student rankings recorded yet!</p>
                 <p className="text-[11px] text-[var(--text-muted)]">

@@ -76,30 +76,29 @@ export const HeroCard: React.FC<HeroCardProps> = ({
   return (
     <div className="mx-4 my-2 select-none">
       <div
-        className="w-full rounded-[22px] border p-4.5 relative overflow-hidden transition-all shadow-sm"
+        className="w-full rounded-[14px] border p-3.5 relative overflow-hidden transition-all shadow-xs"
         style={{
-          backgroundColor: 'var(--primary-tint)',
+          backgroundColor: 'var(--surface)',
           borderColor: 'var(--line)',
         }}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
         {/* Top Header Label */}
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-2.5">
           <div className="flex items-center gap-1.5">
             <span
-              className="w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs shadow-xs"
+              className="w-5 h-5 rounded-full flex items-center justify-center font-bold text-xs"
               style={{
-                backgroundColor: 'var(--primary)',
-                color: 'var(--on-primary)',
+                backgroundColor: 'var(--primary-tint)',
+                color: 'var(--primary)',
               }}
             >
-              <Trophy size={13} />
+              <Trophy size={12} />
             </span>
             <span
-              className="text-xs font-extrabold uppercase tracking-wider"
+              className="text-xs font-bold tracking-tight"
               style={{
-                fontFamily: "var(--font-cabinet), 'Cabinet Grotesk', sans-serif",
                 color: 'var(--primary)',
               }}
             >
@@ -109,9 +108,9 @@ export const HeroCard: React.FC<HeroCardProps> = ({
 
           <div className="flex items-center gap-1.5">
             <span
-              className="text-[11px] font-bold px-2 py-0.5 rounded-full"
+              className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
               style={{
-                backgroundColor: 'var(--surface)',
+                backgroundColor: 'var(--surface-sunken)',
                 color: 'var(--primary)',
                 border: '1px solid var(--line)',
               }}
@@ -124,7 +123,7 @@ export const HeroCard: React.FC<HeroCardProps> = ({
                 <button
                   type="button"
                   onClick={handlePrev}
-                  className="w-6 h-6 rounded-full flex items-center justify-center bg-[var(--surface)] border border-[var(--line)] text-[var(--text-muted)] hover:text-[var(--text)] transition cursor-pointer"
+                  className="w-6 h-6 rounded-full flex items-center justify-center bg-[var(--surface-sunken)] border border-[var(--line)] text-[var(--text-muted)] hover:text-[var(--text)] transition cursor-pointer"
                   aria-label="Previous ranker"
                 >
                   <ChevronLeft size={13} />
@@ -132,7 +131,7 @@ export const HeroCard: React.FC<HeroCardProps> = ({
                 <button
                   type="button"
                   onClick={handleNext}
-                  className="w-6 h-6 rounded-full flex items-center justify-center bg-[var(--surface)] border border-[var(--line)] text-[var(--text-muted)] hover:text-[var(--text)] transition cursor-pointer"
+                  className="w-6 h-6 rounded-full flex items-center justify-center bg-[var(--surface-sunken)] border border-[var(--line)] text-[var(--text-muted)] hover:text-[var(--text)] transition cursor-pointer"
                   aria-label="Next ranker"
                 >
                   <ChevronRight size={13} />
@@ -149,11 +148,11 @@ export const HeroCard: React.FC<HeroCardProps> = ({
             className="flex items-center gap-3 min-w-0"
           >
             <div
-              className="w-14 h-14 rounded-full overflow-hidden shrink-0 flex items-center justify-center font-bold text-base border-2 shadow-xs"
+              className="w-12 h-12 rounded-full overflow-hidden shrink-0 flex items-center justify-center font-bold text-sm border shadow-xs"
               style={{
                 backgroundColor: avatarColor.bg,
                 color: avatarColor.text,
-                borderColor: 'var(--surface)',
+                borderColor: 'var(--line)',
               }}
             >
               {(profile.avatar || DataStore.getProfileByUsername(profile.username)?.avatar) ? (
@@ -175,11 +174,11 @@ export const HeroCard: React.FC<HeroCardProps> = ({
                 @{profile.username} · Class {profile.class}-{profile.section || 'A'}
               </p>
               <div className="flex items-center gap-2 mt-0.5">
-                <span className="text-[11px] text-[var(--primary)] font-bold tabular-nums">
+                <span className="text-[11px] text-[var(--text-muted)] font-medium tabular-nums">
                   {profile.followerCount ?? 0} {profile.followerCount === 1 ? 'follower' : 'followers'}
                 </span>
                 {(profile.spiritPoints !== undefined && profile.spiritPoints > 0) && (
-                  <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-amber-500/15 text-amber-500 font-bold border border-amber-500/20">
+                  <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-amber-500/10 text-amber-600 font-bold border border-amber-500/20">
                     ⭐ {profile.spiritPoints} pts
                   </span>
                 )}
@@ -192,14 +191,14 @@ export const HeroCard: React.FC<HeroCardProps> = ({
             <button
               type="button"
               onClick={() => onFollowToggle?.(profile.username)}
-              className="px-4 py-2 rounded-full text-xs font-bold transition-all btn-press shrink-0 shadow-xs cursor-pointer"
+              className="h-8 px-3.5 rounded-full text-xs font-semibold transition-all shrink-0 cursor-pointer"
               style={{
-                backgroundColor: followingState || requestedState ? 'var(--surface)' : 'var(--primary)',
+                backgroundColor: followingState || requestedState ? 'var(--surface-sunken)' : 'var(--primary)',
                 color: followingState || requestedState ? 'var(--text)' : 'var(--on-primary)',
                 border: followingState || requestedState ? '1px solid var(--line)' : 'none',
               }}
             >
-              {followingState ? 'Following' : requestedState ? 'Requested 🔒' : 'Follow'}
+              {followingState ? 'Following' : requestedState ? 'Requested' : 'Follow'}
             </button>
           )}
         </div>

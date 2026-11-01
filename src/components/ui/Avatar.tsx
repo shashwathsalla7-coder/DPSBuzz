@@ -4,8 +4,8 @@ import { useState, type FC } from 'react';
 import { getAvatarColorPair } from '@/config/tokens';
 import { DataStore } from '@/lib/dataStore';
 
-export type AvatarSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl';
-export type AvatarShape = 'circle' | 'square'; // circle for people, square (10px) for groups
+export type AvatarSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '32' | '40' | '56' | '96';
+export type AvatarShape = 'circle' | 'square';
 export type AvatarRing = 'none' | 'unseen-story' | 'seen-story' | 'reward';
 
 export interface AvatarProps {
@@ -19,19 +19,22 @@ export interface AvatarProps {
 }
 
 const sizeMap: Record<AvatarSize, { px: number; textSize: string; ringPad: string }> = {
-  xs: { px: 28, textSize: 'text-[11px]', ringPad: 'p-[2px]' },
-  sm: { px: 36, textSize: 'text-xs', ringPad: 'p-[2px]' },
-  md: { px: 44, textSize: 'text-sm', ringPad: 'p-[3px]' },
-  lg: { px: 64, textSize: 'text-lg', ringPad: 'p-[3px]' },
-  xl: { px: 88, textSize: 'text-2xl', ringPad: 'p-[4px]' },
+  xs: { px: 32, textSize: 'text-xs', ringPad: 'p-[2px]' },
+  sm: { px: 40, textSize: 'text-xs', ringPad: 'p-[2px]' },
+  md: { px: 56, textSize: 'text-sm font-semibold', ringPad: 'p-[3px]' },
+  lg: { px: 96, textSize: 'text-xl font-bold', ringPad: 'p-[4px]' },
+  xl: { px: 96, textSize: 'text-xl font-bold', ringPad: 'p-[4px]' },
+  '32': { px: 32, textSize: 'text-xs', ringPad: 'p-[2px]' },
+  '40': { px: 40, textSize: 'text-xs', ringPad: 'p-[2px]' },
+  '56': { px: 56, textSize: 'text-sm font-semibold', ringPad: 'p-[3px]' },
+  '96': { px: 96, textSize: 'text-xl font-bold', ringPad: 'p-[4px]' },
 };
 
 /**
- * Avatar component adhering strictly to DESIGN.md:
- * - People are strictly circles
- * - Groups are strictly rounded squares with 10px radius (var(--r-md))
- * - Deterministic color pair from 8 curated pairs based on username/name
- * - Prioritizes uploaded profile picture everywhere across the app
+ * Avatar component adhering strictly to Unified Calm Design System:
+ * - Standardized sizes: 32 / 40 / 56 / 96 px
+ * - People are circles, groups are 12px rounded squares
+ * - One neutral initials fallback style with high contrast
  */
 export const Avatar: FC<AvatarProps> = ({
   src,

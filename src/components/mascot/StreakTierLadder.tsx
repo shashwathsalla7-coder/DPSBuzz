@@ -26,7 +26,7 @@ export default function StreakTierLadder({
       minDays: 3,
       color: '#4CC38A',
       bgColor: 'rgba(76, 195, 138, 0.12)',
-      perks: '+25 Habit Pts/day • Daily Habit Verification',
+      perks: '+25 Star Points/day • Daily Habit Verification',
     },
     {
       id: 'better',
