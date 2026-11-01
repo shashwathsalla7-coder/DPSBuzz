@@ -469,13 +469,13 @@ export default function NewPostPage() {
   const handlePost = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // 1. Mandatory Image Check
-    if (selectedPhotos.length === 0) {
-      setPhotoError('📸 Photo is mandatory! You must attach at least 1 photo showing what you are studying or doing.');
+    // 1. Content Check (Caption or Photo required)
+    if (selectedPhotos.length === 0 && !caption.trim()) {
+      setPhotoError('Please enter a caption or attach a photo showing what you are studying or doing.');
       return;
     }
 
-    if (isUploadingPhoto || selectedPhotos.some((u) => u.startsWith('blob:'))) {
+    if (selectedPhotos.length > 0 && (isUploadingPhoto || selectedPhotos.some((u) => u.startsWith('blob:')))) {
       setPhotoError('Photos are still uploading to cloud storage. Please wait a moment.');
       return;
     }

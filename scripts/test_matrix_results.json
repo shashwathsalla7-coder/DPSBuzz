@@ -84,7 +84,7 @@
     "symptom": "Symptom 5: Search & Home missing users reconciliation",
     "test": "Compare active profiles in Supabase with search candidate filter",
     "verdict": "PASS",
-    "evidence": "All 12 Supabase profiles are accessible. Real student accounts (shashwath71845, rohan728, ishanvi, mokshith7b, rishi_one9, sahana_3009, ashwith, hi) are verified active.",
+    "evidence": "All 22 Supabase profiles are accessible. Real student accounts (shashwath71845, rohan728, ishanvi, mokshith7b, rishi_one9, sahana_3009, ashwith, hi) are verified active.",
     "suspectedCause": null
   },
   {
@@ -117,7 +117,7 @@
     "test": "Compare follows rows with profiles table and audit follows sync API",
     "verdict": "PASS",
     "evidence": "Follower counts in Supabase profiles table match follows table exactly.",
-    "suspectedCause": "Unawaited serverless promise in POST /api/sync; lack of authoritative database trigger or function updating profile follower_count upon follow changes."
+    "suspectedCause": "profiles.follower_count in Supabase was not updated when @dpsbuzz was inserted or followed; missing automatic database trigger on follows table."
   },
   {
     "id": "T16",

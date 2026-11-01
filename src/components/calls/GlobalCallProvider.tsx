@@ -774,7 +774,7 @@ export function GlobalCallProvider() {
       const hasCall = Boolean(activeCallRef.current || incomingCallRef.current);
       if (!hasCall && typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
       pollCallStatus();
-    }, 8000);
+    }, 2500);
 
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {

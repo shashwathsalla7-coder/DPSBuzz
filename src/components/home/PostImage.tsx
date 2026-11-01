@@ -81,7 +81,7 @@ export const PostImage: React.FC<PostImageProps> = ({
     ? post.images
     : post.imageUrl
     ? [post.imageUrl]
-    : [fallbackSchoolImage];
+    : [];
 
   const totalImages = images.length;
 

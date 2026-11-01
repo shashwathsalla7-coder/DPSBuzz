@@ -40,6 +40,7 @@ export function ZegoCallRoom({ call, isCaller, onEndCall, onConnected }: ZegoCal
   const zpRef = useRef<any>(null);
   const onEndCallRef = useRef(onEndCall);
   const onConnectedRef = useRef(onConnected);
+  const initializedCallIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     onEndCallRef.current = onEndCall;
@@ -282,6 +283,11 @@ export function ZegoCallRoom({ call, isCaller, onEndCall, onConnected }: ZegoCal
   }, [unlockAllAudioElements]);
 
   useEffect(() => {
+    if (!call?.callId || initializedCallIdRef.current === call.callId) {
+      return;
+    }
+    initializedCallIdRef.current = call.callId;
+
     let isMounted = true;
     const containerEl = containerRef.current;
     const remoteAudioEl = remoteAudioPlayerRef.current;
@@ -302,32 +308,8 @@ export function ZegoCallRoom({ call, isCaller, onEndCall, onConnected }: ZegoCal
         // STAGE 7: SDK Compatibility check
         console.log('[ZEGO STAGE 7: SDK COMPATIBILITY] Initializing @zegocloud/zego-uikit-prebuilt v2.18.4');
 
-        // STAGE 1: Microphone permission and local audio capture pre-flight check
-        if (typeof navigator !== 'undefined' && navigator.mediaDevices?.getUserMedia) {
-          try {
-            console.log('[ZEGO STAGE 1: MIC] Checking microphone permissions & pre-warming capture...');
-            const preflightStream = await navigator.mediaDevices.getUserMedia({
-              audio: {
-                echoCancellation: true,
-                noiseSuppression: true,
-                autoGainControl: true,
-              },
-              video: Boolean(call.isVideo),
-            });
-            const aTracks = preflightStream.getAudioTracks();
-            console.log('[ZEGO STAGE 1: MIC] Microphone capture test SUCCESS:', {
-              audioTrackCount: aTracks.length,
-              label: aTracks[0]?.label || 'Standard Microphone',
-              enabled: aTracks[0]?.enabled,
-              muted: aTracks[0]?.muted,
-              readyState: aTracks[0]?.readyState,
-            });
-            // Stop temporary test tracks so ZEGOCLOUD captures cleanly without device lock
-            preflightStream.getTracks().forEach((t) => t.stop());
-          } catch (micErr: any) {
-            console.warn('[ZEGO STAGE 1: MIC] Pre-flight microphone access warning (ZEGO will prompt):', micErr?.name, micErr?.message);
-          }
-        }
+        // Clean direct hardware acquisition: let ZEGOCLOUD acquire microphone and camera tracks directly without pre-flight lock
+        console.log('[ZEGO STAGE 1: HARDWARE] Direct hardware stream acquisition ready (isVideo:', Boolean(call.isVideo), ')');
 
         // STAGE 5: Enumerate audio output devices (speakers)
         if (typeof navigator !== 'undefined' && navigator.mediaDevices?.enumerateDevices) {
@@ -653,6 +635,7 @@ export function ZegoCallRoom({ call, isCaller, onEndCall, onConnected }: ZegoCal
     }
 
     return () => {
+      initializedCallIdRef.current = null;
       isMounted = false;
       stopCallAudio();
       if (typeof navigator !== 'undefined' && navigator.mediaDevices?.removeEventListener) {
@@ -674,7 +657,7 @@ export function ZegoCallRoom({ call, isCaller, onEndCall, onConnected }: ZegoCal
         containerEl.innerHTML = '';
       }
     };
-  }, [call?.callId, call?.status, call?.isVideo, isCaller, unlockAllAudioElements, bindStreamToHardwareSpeaker]);
+  }, [call?.callId, call?.isVideo, isCaller, unlockAllAudioElements, bindStreamToHardwareSpeaker]);
 
   const handleReportCall = async () => {
     try {
@@ -892,7 +875,13 @@ export function ZegoCallRoom({ call, isCaller, onEndCall, onConnected }: ZegoCal
         autoPlay
         playsInline
         aria-hidden="true"
-        className="hidden"
+        style={{
+          position: 'absolute',
+          width: '1px',
+          height: '1px',
+          opacity: 0,
+          pointerEvents: 'none',
+        }}
       />
 
       {/* 6. Full-Screen ZEGOCLOUD Call Container with Native WebRTC audio & video pipeline */}

@@ -771,100 +771,122 @@ function ChatsContent() {
         }
 
         // Auto-discover incoming conversations & post shares from server / Supabase
-        fetch(`/api/chats?username=${encodeURIComponent(uname)}`)
-          .then((res) => res.json())
-          .then((data) => {
-            if (data.success && data.chatMessages && typeof data.chatMessages === 'object') {
-              const profiles = DataStore.getProfiles();
-              const pMap = new Map<string, any>(profiles.map((p) => [p.username.toLowerCase(), p]));
-              setConversations((prev) => {
-                const convMap = new Map<string, ConversationItem>();
-                for (const c of prev) {
-                  convMap.set(c.id, c);
-                }
-                for (const [key, msgs] of Object.entries(data.chatMessages as Record<string, any[]>)) {
-                  if (!Array.isArray(msgs) || msgs.length === 0) continue;
-                  const isGroup = key.startsWith('conv-group-') || key.startsWith('group-');
-                  let otherUser = '';
-                  if (!isGroup && key.includes('__')) {
-                    const parts = key.split('__').map((p) => p.trim().toLowerCase());
-                    otherUser = parts.find((p) => p !== uname) || parts[0];
+        const syncServerInbox = () => {
+          if (!uname || uname === 'guest') return;
+          fetch(`/api/chats?username=${encodeURIComponent(uname)}`)
+            .then((res) => res.json())
+            .then((data) => {
+              if (data.success && data.chatMessages && typeof data.chatMessages === 'object') {
+                const profiles = DataStore.getProfiles();
+                const pMap = new Map<string, any>(profiles.map((p) => [p.username.toLowerCase(), p]));
+                setConversations((prev) => {
+                  const convMap = new Map<string, ConversationItem>();
+                  for (const c of prev) {
+                    convMap.set(c.id, c);
                   }
-                  const convId = isGroup ? key : `conv-${otherUser}`;
-                  const lastMsg = msgs[msgs.length - 1];
-                  const sender = (lastMsg?.senderUsername || '').toLowerCase();
-                  const isMe = sender === uname || lastMsg?.sender === 'me';
-                  const msgText = lastMsg?.text || (lastMsg?.sharedPost ? 'Shared a post 📸' : 'New message');
-                  const lastPreview = isMe ? `You: ${msgText}` : msgText;
-                  const otherProf = otherUser ? pMap.get(otherUser) : null;
+                  for (const [key, msgs] of Object.entries(data.chatMessages as Record<string, any[]>)) {
+                    if (!Array.isArray(msgs) || msgs.length === 0) continue;
+                    const isGroup = key.startsWith('conv-group-') || key.startsWith('group-');
+                    let otherUser = '';
+                    if (!isGroup && key.includes('__')) {
+                      const parts = key.split('__').map((p) => p.trim().toLowerCase());
+                      otherUser = parts.find((p) => p !== uname) || parts[0];
+                    }
+                    const convId = isGroup ? key : `conv-${otherUser}`;
+                    const lastMsg = msgs[msgs.length - 1];
+                    const sender = (lastMsg?.senderUsername || '').toLowerCase();
+                    const isMe = sender === uname || lastMsg?.sender === 'me';
+                    const msgText = lastMsg?.text || (lastMsg?.sharedPost ? 'Shared a post 📸' : 'New message');
+                    const lastPreview = isMe ? `You: ${msgText}` : msgText;
+                    const otherProf = otherUser ? pMap.get(otherUser) : null;
 
-                  if (convMap.has(convId)) {
-                    const existing = convMap.get(convId)!;
-                    convMap.set(convId, {
-                      ...existing,
-                      lastMessage: lastPreview,
-                      timeAgo: lastMsg?.time || 'Recently',
-                    });
-                  } else if (convMap.has(key)) {
-                    const existing = convMap.get(key)!;
-                    convMap.set(key, {
-                      ...existing,
-                      lastMessage: lastPreview,
-                      timeAgo: lastMsg?.time || 'Recently',
-                    });
-                  } else if (!isGroup && otherUser) {
-                    convMap.set(convId, {
-                      id: convId,
-                      name: otherProf ? otherProf.fullName : `@${otherUser}`,
-                      username: otherUser,
-                      avatar: otherProf?.avatar || null,
-                      studentClass: otherProf?.class ? `Class ${otherProf.class}-${otherProf.section || 'A'}` : 'Student',
-                      isGroup: false,
-                      type: 'direct',
-                      lastMessage: lastPreview,
-                      timeAgo: lastMsg?.time || 'Recently',
-                      inboxTier: 'PRIMARY',
-                      isUnread: false,
-                    });
+                    if (convMap.has(convId)) {
+                      const existing = convMap.get(convId)!;
+                      convMap.set(convId, {
+                        ...existing,
+                        lastMessage: lastPreview,
+                        timeAgo: lastMsg?.time || 'Recently',
+                      });
+                    } else if (convMap.has(key)) {
+                      const existing = convMap.get(key)!;
+                      convMap.set(key, {
+                        ...existing,
+                        lastMessage: lastPreview,
+                        timeAgo: lastMsg?.time || 'Recently',
+                      });
+                    } else if (!isGroup && otherUser) {
+                      convMap.set(convId, {
+                        id: convId,
+                        name: otherProf ? otherProf.fullName : `@${otherUser}`,
+                        username: otherUser,
+                        avatar: otherProf?.avatar || null,
+                        studentClass: otherProf?.class ? `Class ${otherProf.class}-${otherProf.section || 'A'}` : 'Student',
+                        isGroup: false,
+                        type: 'direct',
+                        lastMessage: lastPreview,
+                        timeAgo: lastMsg?.time || 'Recently',
+                        inboxTier: 'PRIMARY',
+                        isUnread: false,
+                      });
+                    }
                   }
-                }
-                const updatedList = Array.from(convMap.values()).filter((c) => !c.username || !DUMMY_TEST_USERNAMES.has(c.username.toLowerCase()));
-                try {
-                  localStorage.setItem(userConvKey, JSON.stringify(updatedList));
-                } catch {}
-                return updatedList;
-              });
+                  const updatedList = Array.from(convMap.values()).filter((c) => !c.username || !DUMMY_TEST_USERNAMES.has(c.username.toLowerCase()));
+                  try {
+                    localStorage.setItem(userConvKey, JSON.stringify(updatedList));
+                  } catch {}
+                  return updatedList;
+                });
 
-              // Also merge chatMessages into state so clicking the conversation loads immediately
-              setChatMessages((prev) => {
-                const next = { ...prev };
-                for (const [k, v] of Object.entries(data.chatMessages as Record<string, any[]>)) {
-                  if (Array.isArray(v) && v.length > 0) {
-                    const existingList = next[k] || [];
-                    const idSet = new Set(existingList.map((m) => m.client_id || m.id));
-                    const toAdd = v.filter((m) => !idSet.has(m.client_id || m.id));
-                    if (toAdd.length > 0) {
-                      const mergedList = [...existingList, ...toAdd];
-                      next[k] = mergedList;
-                      // Also mirror under conv-otherUser for instant 0ms access
-                      if (k.includes('__')) {
-                        const parts = k.split('__').map((p) => p.trim().toLowerCase());
-                        const other = parts.find((p) => p !== uname) || parts[0];
-                        if (other) {
-                          next[`conv-${other}`] = mergedList;
+                // Also merge chatMessages into state so clicking the conversation loads immediately
+                setChatMessages((prev) => {
+                  const next = { ...prev };
+                  for (const [k, v] of Object.entries(data.chatMessages as Record<string, any[]>)) {
+                    if (Array.isArray(v) && v.length > 0) {
+                      const existingList = next[k] || [];
+                      const idSet = new Set(existingList.map((m) => m.client_id || m.id));
+                      const toAdd = v.filter((m) => !idSet.has(m.client_id || m.id));
+                      if (toAdd.length > 0) {
+                        const mergedList = [...existingList, ...toAdd];
+                        next[k] = mergedList;
+                        // Also mirror under conv-otherUser for instant 0ms access
+                        if (k.includes('__')) {
+                          const parts = k.split('__').map((p) => p.trim().toLowerCase());
+                          const other = parts.find((p) => p !== uname) || parts[0];
+                          if (other) {
+                            next[`conv-${other}`] = mergedList;
+                          }
                         }
                       }
                     }
                   }
-                }
-                try {
-                  localStorage.setItem(userMsgKey, JSON.stringify(next));
-                } catch {}
-                return next;
-              });
-            }
-          })
-          .catch(() => {});
+                  try {
+                    localStorage.setItem(userMsgKey, JSON.stringify(next));
+                  } catch {}
+                  return next;
+                });
+              }
+            })
+            .catch(() => {});
+        };
+
+        syncServerInbox();
+
+        const handleVisibilityOrFocus = () => {
+          if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+            syncServerInbox();
+          }
+        };
+        window.addEventListener('visibilitychange', handleVisibilityOrFocus);
+        window.addEventListener('focus', handleVisibilityOrFocus);
+        window.addEventListener('online', handleVisibilityOrFocus);
+        window.addEventListener('dpsbuzz:content_updated', syncServerInbox);
+
+        return () => {
+          window.removeEventListener('visibilitychange', handleVisibilityOrFocus);
+          window.removeEventListener('focus', handleVisibilityOrFocus);
+          window.removeEventListener('online', handleVisibilityOrFocus);
+          window.removeEventListener('dpsbuzz:content_updated', syncServerInbox);
+        };
       } catch {}
     }
   }, []);

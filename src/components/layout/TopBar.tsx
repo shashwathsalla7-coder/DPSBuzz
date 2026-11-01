@@ -3,7 +3,7 @@
 import { useState, useEffect, type FC } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Bell, Menu, X, Megaphone, Users, Trophy, Settings, Shield, Download, Search } from 'lucide-react';
+import { Bell, Menu, X, Megaphone, Users, Trophy, Settings, Shield, Download, Search, Gamepad2 } from 'lucide-react';
 import { school } from '@/config/school';
 import { DataStore, type Notice } from '@/lib/dataStore';
 import { colors } from '@/config/tokens';
@@ -40,6 +40,7 @@ export const TopBar: FC<TopBarProps> = ({ notificationCount = 0 }) => {
   }
 
   const baseMenuItems = [
+    { title: 'Games Arena (Connect 4)', href: '/chats?view=games', icon: Gamepad2, desc: 'Four in a Row 2-Player duel' },
     { title: 'Notices', href: '/notices', icon: Megaphone, desc: 'School schedule & dispatches' },
     { title: 'Groups', href: '/groups', icon: Users, desc: 'Class sections & clubs' },
     { title: 'Star Board', href: '/leaderboard', icon: Trophy, desc: 'Class & student honours' },
@@ -68,6 +69,17 @@ export const TopBar: FC<TopBarProps> = ({ notificationCount = 0 }) => {
           </Link>
 
           <div className="flex items-center gap-1.5 sm:gap-2">
+            {/* Quick Games Duel Button */}
+            <Link
+              href="/chats?view=games"
+              className="w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center relative btn-press hover:bg-[var(--surface-sunken)] active:scale-95 transition-all border border-transparent hover:border-[var(--line)]"
+              style={{ color: 'var(--text)' }}
+              aria-label="Games Arena"
+              title="Four in a Row & Games Arena"
+            >
+              <Gamepad2 size={20} strokeWidth={1.8} />
+            </Link>
+
             {/* Quick Search Button */}
             <Link
               href="/search"
