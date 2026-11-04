@@ -313,7 +313,7 @@ export async function GET(req: NextRequest) {
     // 8. Fetch WhatsApp Channels from D1
     let whatsappChannels: any[] = [];
     try {
-      const rawChannels = await d1Query<any>('SELECT * FROM campus_whatsapp_channels ORDER BY is_locked DESC, created_at ASC;');
+      const rawChannels = await d1Query<any>('SELECT * FROM campus_whatsapp_channels ORDER BY CASE WHEN id = \'channel-class-8g\' THEN 0 WHEN is_locked = 0 THEN 1 ELSE 2 END, created_at ASC;');
       whatsappChannels = rawChannels.map((c) => ({
         id: c.id,
         name: c.name,
