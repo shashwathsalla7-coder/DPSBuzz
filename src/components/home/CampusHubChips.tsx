@@ -8,6 +8,7 @@ import {
   Users,
   Megaphone,
   Sparkles,
+  Search,
 } from 'lucide-react';
 
 export function CampusHubChips() {
@@ -56,6 +57,15 @@ export function CampusHubChips() {
       badge: 'Official',
       color: 'from-rose-500 to-orange-400',
       textColor: 'text-rose-500',
+    },
+    {
+      title: 'Lost & Found',
+      subtitle: 'Campus Recovery',
+      icon: Search,
+      href: '/lost-found',
+      badge: 'Recovery',
+      color: 'from-amber-600 to-red-500',
+      textColor: 'text-amber-500',
     },
   ];
 

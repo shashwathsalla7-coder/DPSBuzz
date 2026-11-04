@@ -1829,7 +1829,17 @@ function ChatsContent() {
         return updated;
       }
     });
-  }, [userParam, currentUsername]);
+
+    const textParam = searchParams.get('text') || searchParams.get('msg');
+    if (textParam) {
+      setMessageInput(textParam);
+    }
+    if (targetUser && currentUsername) {
+      try {
+        DataStore.acceptMessageRequest(currentUsername, targetUser);
+      } catch {}
+    }
+  }, [userParam, currentUsername, searchParams]);
 
   // Automatically open group chat when navigated with ?conv=conv-group-... or ?group=...
   const handledConvParamRef = useRef<string | null>(null);

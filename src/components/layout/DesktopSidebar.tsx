@@ -19,6 +19,7 @@ const navItems = [
   { href: '/question-box', icon: HelpCircle, label: 'Question Box' },
   { href: '/groups', icon: Users, label: 'Class Rooms' },
   { href: '/notices', icon: Megaphone, label: 'Notices' },
+  { href: '/lost-found', icon: Search, label: 'Lost & Found' },
   { href: '/chats', icon: MessageCircle, label: 'Chats' },
   { href: '/chats?view=games', icon: Gamepad2, label: 'Games Arena' },
   { href: '/leaderboard', icon: Trophy, label: 'Star Board' },

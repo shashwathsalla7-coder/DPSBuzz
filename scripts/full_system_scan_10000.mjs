@@ -53,13 +53,14 @@ async function runFullScan() {
   const requiredTables = [
     'campus_broadcasts',
     'campus_homework',
+    'campus_lost_found',
     'campus_questions',
     'campus_quiz_progress',
     'campus_study_notes',
     'campus_study_schedules'
   ];
   const allTablesPresent = requiredTables.every(t => tableNames.includes(t));
-  record('D1 Database', '6 Dedicated Campus SQL Tables Verification', 700, allTablesPresent,
+  record('D1 Database', '7 Dedicated Campus SQL Tables Verification (incl. Lost & Found)', 700, allTablesPresent,
     `Tables verified: ${tableNames.join(', ')}`);
 
   // Performance latency check
