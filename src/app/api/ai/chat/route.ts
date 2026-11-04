@@ -28,7 +28,8 @@ interface AIRequestContext {
 async function queryGeminiLLM(
   messages: Array<{ sender: 'user' | 'ai'; text: string }>,
   ctx: AIRequestContext,
-  apiKey: string
+  apiKey: string,
+  userQuery?: string
 ): Promise<string | null> {
   try {
     const systemPrompt = `You are the Official DPS Buzz Academic AI Copilot, a brilliant, warm, highly encouraging, and deeply knowledgeable school tutor trained A to Z on CBSE curriculum (Nursery to Class 10) for Delhi Public School.
@@ -54,24 +55,44 @@ Current Live Context from the DPS Campus Cloud Database:
     }
 
 Core Persona & Academic Rules:
-1. NEVER give robotic, rigid, 1-line template responses. Speak like an expert, encouraging CBSE educator.
-2. If asked about homework or today's diary:
+1. ALWAYS solve academic problems step by step (Mathematics, Physics, Chemistry, Biology, English). Never give up or say you cannot solve it.
+2. If given an equation or math problem (e.g., linear equation, quadratic, arithmetic, geometry, calculus, percentages):
+   - Break down each line of algebraic transposition clearly.
+   - Show the governing formula.
+   - Compute the exact numerical solution.
+   - Provide a verification step (LHS = RHS).
+3. If asked about homework or today's diary:
    - Provide the exact details from the database context.
    - Mention the physical diary photo was logged in the school registry.
    - Offer to solve or explain the first problem together step-by-step!
-3. If asked for academic doubt solving (Mathematics, Physics, Chemistry, Biology, History, English):
-   - Break down the solution step-by-step with clear logic.
-   - Provide the governing formula or rule.
-   - Include a quick real-world intuition or memory tip.
-   - End with a friendly question to verify understanding!
 4. Format with clean markdown: bold headings, clean bullet points, KaTeX/LaTeX math when appropriate.`;
 
-    // Map conversation history into Gemini format
+    // Map conversation history into Gemini format (must start with user and alternate)
     const contents: any[] = [];
     for (const m of messages) {
+      const role = m.sender === 'user' ? 'user' : 'model';
+      const text = (m.text || '').trim();
+      if (!text) continue;
+
+      if (contents.length === 0 && role === 'model') {
+        // Skip initial welcome model message so contents begins with user
+        continue;
+      }
+
+      if (contents.length > 0 && contents[contents.length - 1].role === role) {
+        contents[contents.length - 1].parts[0].text += `\n\n${text}`;
+      } else {
+        contents.push({
+          role,
+          parts: [{ text }],
+        });
+      }
+    }
+
+    if (contents.length === 0 || contents[contents.length - 1].role !== 'user') {
       contents.push({
-        role: m.sender === 'user' ? 'user' : 'model',
-        parts: [{ text: m.text }],
+        role: 'user',
+        parts: [{ text: userQuery || 'Hello, please help me solve my homework problem step by step.' }],
       });
     }
 
@@ -81,7 +102,7 @@ Core Persona & Academic Rules:
       },
       contents,
       generationConfig: {
-        temperature: 0.7,
+        temperature: 0.6,
         topP: 0.95,
         maxOutputTokens: 1024,
       },
@@ -108,6 +129,25 @@ Core Persona & Academic Rules:
       } catch (err) {
         console.warn(`Gemini model ${model} attempt error:`, err);
       }
+    }
+
+    // Single-turn simplified fallback if multi-turn had syntax discrepancy
+    if (userQuery) {
+      try {
+        const simpleUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${apiKey}`;
+        const res = await fetch(simpleUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ role: 'user', parts: [{ text: `Solve this CBSE Class ${ctx.studentClass} problem step by step: ${userQuery}` }] }]
+          }),
+        });
+        if (res.ok) {
+          const json = await res.json();
+          const candidateText = json.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (candidateText) return candidateText;
+        }
+      } catch {}
     }
 
     return null;
@@ -598,7 +638,7 @@ export async function POST(req: NextRequest) {
       homework: homeworkList,
     };
 
-    // 2. If Gemini API key is available (from env or client), query Google Gemini
+    // 2. Query Google Gemini (Gemini 3.5 Flash) with failover
     const activeApiKey = (
       process.env.GEMINI_API_KEY ||
       process.env.GOOGLE_AI_API_KEY ||
@@ -607,9 +647,10 @@ export async function POST(req: NextRequest) {
       clientKey ||
       ''
     ).trim();
+
     if (activeApiKey) {
       const fullMessages = messages.length > 0 ? messages : [{ sender: 'user', text: queryText }];
-      const geminiResult = await queryGeminiLLM(fullMessages, ctx, activeApiKey);
+      const geminiResult = await queryGeminiLLM(fullMessages, ctx, activeApiKey, queryText);
       if (geminiResult) {
         return NextResponse.json(
           {
