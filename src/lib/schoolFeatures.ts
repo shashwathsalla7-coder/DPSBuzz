@@ -9,6 +9,8 @@
 // 5. AI Diary & Intelligent Study Scheduler
 // ============================================================================
 
+import { DataStore } from './dataStore';
+
 export interface PrincipalBroadcast {
   id: string;
   title: string;
@@ -104,6 +106,20 @@ export interface DailyStudySchedule {
   grade: string;
   totalDurationMin: number;
   items: StudyScheduleItem[];
+}
+
+export interface ClassDiaryEntry {
+  id: string;
+  classGrade: string;
+  section: string;
+  dateStr: string;
+  imageUrl: string;
+  homeworkSummary: string;
+  uploadedByUsername: string;
+  uploadedByName: string;
+  isFirstSubmission: boolean;
+  pointsAwarded: number;
+  createdAt: string;
 }
 
 export interface WhatsAppChannel {
@@ -385,6 +401,7 @@ let dbLostFound: LostFoundItem[] = [];
 let dbWhatsAppChannels: WhatsAppChannel[] = [];
 let dbWhatsAppMessages: WhatsAppMessage[] = [];
 let dbGroupInvites: GroupInvite[] = [];
+let dbDiaryEntries: ClassDiaryEntry[] = [];
 let isFetching = false;
 
 // Real-Time Sync Engine
@@ -441,6 +458,9 @@ async function syncFromDatabase(username?: string): Promise<void> {
         }
         if (Array.isArray(data.groupInvites)) {
           dbGroupInvites = data.groupInvites;
+        }
+        if (Array.isArray(data.diaryEntries)) {
+          dbDiaryEntries = data.diaryEntries;
         }
         window.dispatchEvent(new Event('dpsbuzz:campus_updated'));
       }
@@ -854,8 +874,78 @@ export const SchoolFeatures = {
     } catch {}
   },
 
+  // --- CLASS DIARY & HOMEWORK IMAGES ---
+  getDiaryEntries(classGrade?: string): ClassDiaryEntry[] {
+    if (!classGrade || classGrade === 'all') return dbDiaryEntries;
+    const cleanGrade = classGrade.replace(/[^0-9]/g, '');
+    return dbDiaryEntries.filter((d) => {
+      const entryGrade = d.classGrade.replace(/[^0-9]/g, '');
+      return cleanGrade ? entryGrade === cleanGrade : d.classGrade.toLowerCase().includes(classGrade.toLowerCase());
+    });
+  },
+
+  getTodayDiary(classGrade: string): ClassDiaryEntry | null {
+    const cleanGrade = classGrade.replace(/[^0-9]/g, '');
+    const todayStr = new Date().toISOString().split('T')[0];
+    const todayMatch = dbDiaryEntries.find((d) => {
+      const entryGrade = d.classGrade.replace(/[^0-9]/g, '');
+      return (cleanGrade ? entryGrade === cleanGrade : true) && d.dateStr === todayStr;
+    });
+    if (todayMatch) return todayMatch;
+    // Fallback to latest available for this class
+    return dbDiaryEntries.find((d) => {
+      const entryGrade = d.classGrade.replace(/[^0-9]/g, '');
+      return cleanGrade ? entryGrade === cleanGrade : true;
+    }) || null;
+  },
+
+  async uploadDiaryEntry(data: {
+    classGrade: string;
+    section?: string;
+    imageUrl: string;
+    homeworkSummary?: string;
+    username: string;
+    fullName: string;
+  }): Promise<{ success: boolean; entry?: ClassDiaryEntry; isFirstSubmission: boolean; pointsAwarded: number; message: string }> {
+    try {
+      const res = await fetch('/api/campus', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'upload_diary_entry',
+          ...data,
+        }),
+      });
+      const json = await res.json();
+      if (json.success && json.entry) {
+        dbDiaryEntries = [json.entry, ...dbDiaryEntries.filter((d) => d.id !== json.entry.id)];
+        if (json.isFirstSubmission && data.username) {
+          dbQuizProgress.totalPointsWon = (dbQuizProgress.totalPointsWon || 0) + (json.pointsAwarded || 50);
+          try {
+            DataStore.addSpiritPoints(data.username, json.pointsAwarded || 50);
+          } catch {}
+        }
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('dpsbuzz:campus_updated'));
+        }
+      }
+      return json;
+    } catch (err: any) {
+      console.error('Failed to upload diary entry:', err);
+      return { success: false, isFirstSubmission: false, pointsAwarded: 0, message: err.message || 'Network error' };
+    }
+  },
+
   // --- AI DIARY QUERY ENGINE ---
-  queryAiDiary(prompt: string, userClass: string = '8'): { answer: string; category: string; suggestions: string[] } {
+  queryAiDiary(prompt: string, userClass: string = '8'): {
+    answer: string;
+    category: string;
+    suggestions: string[];
+    imageUrl?: string;
+    diaryEntry?: ClassDiaryEntry;
+    canUploadDiary?: boolean;
+    targetClass?: string;
+  } {
     const q = prompt.toLowerCase().trim();
 
     // 1. Study Schedule generation command
@@ -867,19 +957,32 @@ export const SchoolFeatures = {
       };
     }
 
-    // 2. Homework queries
+    // 2. Homework & Diary queries
     if (q.includes('homework') || q.includes('diary') || q.includes('home work') || q.includes('tasks') || q.includes('assignment')) {
-      if (userClass.includes('10')) {
+      const classMatch = q.match(/class\s*(\d+)/i) || q.match(/(\d+)(?:th|st|nd|rd)\s*class/i);
+      const targetClass = classMatch ? classMatch[1] : (userClass.replace(/[^0-9]/g, '') || '8');
+      const diaryEntry = this.getTodayDiary(targetClass);
+
+      if (diaryEntry) {
         return {
-          category: 'homework',
-          answer: `📚 **Today's Class 10 Homework Diary:**\n\n• **Mathematics:** Solve Section B & C from CBSE Sample Paper 2026.\n• **Physics:** Complete numerical practice on Ohm's Law and resistance circuits.\n• **English:** Write article on "Impact of AI in School Education" (150 words).\n• **Social Science:** Timeline chart of the Non-Cooperation Movement (1920-1922).`,
-          suggestions: ['When are pre-board exams?', 'What is tomorrow uniform?', 'Show physics formula cheat sheet'],
+          category: 'diary_image',
+          answer: `📸 **Class ${targetClass} Official Diary Page (${diaryEntry.dateStr}):**\n\n${diaryEntry.isFirstSubmission ? '🏆 **Speed First Submission Winner:** ' : 'Submitted by: '}**${diaryEntry.uploadedByName}** (@${diaryEntry.uploadedByUsername})${diaryEntry.pointsAwarded > 0 ? ` (+${diaryEntry.pointsAwarded} House Points won!)` : ''}\n\n${diaryEntry.homeworkSummary ? `📝 **Today's Homework Summary:**\n${diaryEntry.homeworkSummary}\n\n` : ''}*Here is the verified physical blackboard / diary photo:*`,
+          imageUrl: diaryEntry.imageUrl,
+          diaryEntry,
+          suggestions: ['Plan my study schedule', 'Uniform schedule', 'View all class diaries'],
         };
       }
+
+      const defaultHw = targetClass === '10'
+        ? `📚 **Today's Class 10 Homework Diary:**\n\n• **Mathematics:** Solve Section B & C from CBSE Sample Paper 2026.\n• **Physics:** Complete numerical practice on Ohm's Law and resistance circuits.\n• **English:** Write article on "Impact of AI in School Education" (150 words).\n• **Social Science:** Timeline chart of the Non-Cooperation Movement (1920-1922).`
+        : `📝 **Today's Class ${targetClass} Homework Diary:**\n\n• **Mathematics:** Exercise 4.2 (Q1 to Q6) on Algebraic Expressions & Identities.\n• **Physics:** Complete lab journal write-up on Laws of Reflection.\n• **English:** Read Chapter 5 "The Summit Within" and note down 10 difficult vocabulary words.\n• **Social Science:** Mark major mineral belts of India on political outline map.`;
+
       return {
         category: 'homework',
-        answer: `📝 **Today's Class 8 Homework Diary:**\n\n• **Mathematics:** Exercise 4.2 (Q1 to Q6) on Algebraic Expressions & Identities.\n• **Physics:** Complete lab journal write-up on Laws of Reflection.\n• **English:** Read Chapter 5 "The Summit Within" and note down 10 difficult vocabulary words.\n• **Social Science:** Mark major mineral belts of India on political outline map.\n\n*All homework is due tomorrow morning during zero period.*`,
-        suggestions: ['What is the uniform tomorrow?', 'When are half-yearly exams?', 'Bus timings for today'],
+        answer: `${defaultHw}\n\n⚠️ *No student in Class ${targetClass} has uploaded today's physical diary photo yet!*\n\n🏆 **Speed Diary Challenge:** Be the FIRST student in Class ${targetClass} to upload a photo of today's blackboard/diary page to win **+50 House Points**!`,
+        canUploadDiary: true,
+        targetClass,
+        suggestions: ['Upload today diary photo', 'Plan my daily study schedule', 'Uniform schedule'],
       };
     }
 
