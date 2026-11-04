@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import {
   Home, Search, Film, PlusSquare, MessageCircle, Users,
   Megaphone, Trophy, User, Settings, Bell, Shield, Smartphone, Download, Gamepad2,
-  Bot, BookOpen, HelpCircle
+  Bot, BookOpen, HelpCircle, MessageSquare
 } from 'lucide-react';
 import { schoolConfig } from '@/config/school';
 import { DataStore } from '@/lib/dataStore';
@@ -14,6 +14,7 @@ import Logo from '@/components/ui/Logo';
 
 const navItems = [
   { href: '/home', icon: Home, label: 'Home' },
+  { href: '/school-whatsapp', icon: MessageSquare, label: 'WhatsApp Hub' },
   { href: '/ai-diary', icon: Bot, label: 'AI Diary' },
   { href: '/study-corner', icon: BookOpen, label: 'Study Corner' },
   { href: '/question-box', icon: HelpCircle, label: 'Question Box' },
