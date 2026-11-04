@@ -106,6 +106,31 @@ export interface DailyStudySchedule {
   items: StudyScheduleItem[];
 }
 
+export interface LostFoundItem {
+  id: string;
+  title: string;
+  category: string;
+  status: 'LOST' | 'FOUND' | 'CLAIMED';
+  location: string;
+  specificSpot: string;
+  description: string;
+  imageUrl?: string;
+  reporterUsername: string;
+  reporterName: string;
+  reporterClass: string;
+  reporterSection: string;
+  reporterRole?: string;
+  finderUsername?: string;
+  finderName?: string;
+  finderClass?: string;
+  finderSection?: string;
+  finderNotes?: string;
+  storageLocation: string;
+  urgent: boolean;
+  createdAt: string;
+  resolvedAt?: string | null;
+}
+
 // ----------------------------------------------------------------------------
 // OFFICIAL CLASS GROUPS (Curriculum Standard Nursery to Class 10)
 // ----------------------------------------------------------------------------
@@ -308,6 +333,7 @@ let dbStudyNotes: StudyNoteItem[] = [];
 let dbQuestions: DailyQuizQuestion[] = [...DAILY_QUESTIONS];
 let dbQuizProgress: UserQuizProgress = { answeredDates: {}, currentStreak: 0, totalPointsWon: 0 };
 let dbStudySchedules: DailyStudySchedule[] = [];
+let dbLostFound: LostFoundItem[] = [];
 let isFetching = false;
 
 // Real-Time Sync Engine
@@ -352,6 +378,9 @@ async function syncFromDatabase(username?: string): Promise<void> {
                 dueDate: h.dueDate,
               }));
           }
+        }
+        if (Array.isArray(data.lostFound)) {
+          dbLostFound = data.lostFound;
         }
         window.dispatchEvent(new Event('dpsbuzz:campus_updated'));
       }
@@ -836,5 +865,134 @@ export const SchoolFeatures = {
       answer: `Hello! I am your **DPS Buzz AI Diary Assistant** 🐝\n\nI can help you with:\n1. 📅 **AI Daily Study Schedule:** Ask *"Plan my study schedule for today"*\n2. 📝 **Daily Homework & Diary:** Ask *"What is today's homework for Class ${userClass}?"*\n3. 👔 **Uniform Code:** Ask *"What is tomorrow's uniform schedule?"*\n4. 📅 **Exams & Datesheets:** Ask *"When are the upcoming examinations?"*\n5. 🚌 **Bus Timings:** Ask *"What time does senior dispersal start?"*\n6. 📚 **Study Notes:** Ask *"Where can I find maths formula sheets?"*`,
       suggestions: ['Plan my study schedule', "What is today's homework?", 'Uniform schedule', 'Upcoming exam dates'],
     };
+  },
+  // --- LOST & FOUND ---
+  getLostFoundItems(): LostFoundItem[] {
+    return dbLostFound;
+  },
+
+  async reportLostFound(data: {
+    title: string;
+    category: string;
+    status: 'LOST' | 'FOUND';
+    location: string;
+    specificSpot?: string;
+    description?: string;
+    imageUrl?: string;
+    reporterUsername: string;
+    reporterName: string;
+    reporterClass: string;
+    reporterSection: string;
+    urgent?: boolean;
+  }): Promise<LostFoundItem> {
+    const optimistic: LostFoundItem = {
+      id: `DPS-LF-${1043 + Math.floor(Math.random() * 9000)}`,
+      title: data.title.trim(),
+      category: data.category,
+      status: data.status,
+      location: data.location,
+      specificSpot: data.specificSpot || data.location,
+      description: data.description || 'Reported on DPSBuzz',
+      imageUrl: data.imageUrl || '',
+      reporterUsername: data.reporterUsername,
+      reporterName: data.reporterName,
+      reporterClass: data.reporterClass,
+      reporterSection: data.reporterSection,
+      reporterRole: 'student',
+      storageLocation: data.status === 'FOUND' ? 'Main Reception — Lost & Found Desk' : 'Not yet turned in',
+      urgent: Boolean(data.urgent || data.status === 'LOST'),
+      createdAt: 'Just now',
+    };
+
+    dbLostFound = [optimistic, ...dbLostFound];
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('dpsbuzz:campus_updated'));
+    }
+
+    try {
+      const res = await fetch('/api/campus', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'report_lost_found',
+          ...data,
+        }),
+      });
+      if (res.ok) {
+        const d = await res.json();
+        if (d.item) {
+          dbLostFound = [d.item, ...dbLostFound.filter((i) => i.id !== optimistic.id)];
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new Event('dpsbuzz:campus_updated'));
+          }
+          return d.item;
+        }
+      }
+    } catch (e) {
+      console.error('Failed to report lost/found to database:', e);
+    }
+    return optimistic;
+  },
+
+  async markItemFound(data: {
+    itemId: string;
+    finderUsername: string;
+    finderName: string;
+    finderClass: string;
+    finderSection: string;
+    finderNotes?: string;
+  }): Promise<boolean> {
+    const item = dbLostFound.find((i) => i.id === data.itemId);
+    if (item) {
+      item.status = 'FOUND';
+      item.finderUsername = data.finderUsername;
+      item.finderName = data.finderName;
+      item.finderClass = data.finderClass;
+      item.finderSection = data.finderSection;
+      item.finderNotes = data.finderNotes || '';
+      item.storageLocation = 'Found by classmate • Direct Handover Pending';
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('dpsbuzz:campus_updated'));
+      }
+    }
+
+    try {
+      const res = await fetch('/api/campus', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'mark_item_found',
+          ...data,
+        }),
+      });
+      return res.ok;
+    } catch {
+      return false;
+    }
+  },
+
+  async claimLostFound(itemId: string): Promise<boolean> {
+    const item = dbLostFound.find((i) => i.id === itemId);
+    if (item) {
+      item.status = 'CLAIMED';
+      item.storageLocation = 'Reunited with owner • Handover Complete';
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('dpsbuzz:campus_updated'));
+      }
+    }
+
+    try {
+      const res = await fetch('/api/campus', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'claim_lost_found',
+          itemId,
+        }),
+      });
+      return res.ok;
+    } catch {
+      return false;
+    }
   },
 };

@@ -50,6 +50,7 @@ export const TopBar: FC<TopBarProps> = ({ notificationCount = 0 }) => {
     { title: 'Question Box', href: '/question-box', icon: HelpCircle, desc: 'Daily quiz & +10 spirit points' },
     { title: 'Class Rooms', href: '/groups', icon: Users, desc: 'Nursery–10 circles & clubs' },
     { title: 'Notices', href: '/notices', icon: Megaphone, desc: 'School schedule & dispatches' },
+    { title: 'Lost & Found', href: '/lost-found', icon: Search, desc: 'Campus recovery & classroom handover' },
     { title: 'Games Arena (Connect 4)', href: '/chats?view=games', icon: Gamepad2, desc: 'Four in a Row 2-Player duel' },
     { title: 'Star Board', href: '/leaderboard', icon: Trophy, desc: 'Class & student honours' },
     { title: 'Install & Download App', href: '/download', icon: Download, desc: 'Laptop, Android APK v1.4 & iPhone' },

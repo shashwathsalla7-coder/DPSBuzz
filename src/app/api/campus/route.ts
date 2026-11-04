@@ -291,6 +291,38 @@ export async function GET(req: NextRequest) {
       console.warn('D1 homework query notice:', e);
     }
 
+    // 7. Fetch Lost & Found Items from D1
+    let lostFoundItems: any[] = [];
+    try {
+      const rawLF = await d1Query<any>('SELECT * FROM campus_lost_found ORDER BY created_at DESC LIMIT 100;');
+      lostFoundItems = rawLF.map((r) => ({
+        id: r.id,
+        title: r.title,
+        category: r.category,
+        status: r.status,
+        location: r.location,
+        specificSpot: r.specific_spot || '',
+        description: r.description || '',
+        imageUrl: r.image_url || '',
+        reporterUsername: r.reporter_username,
+        reporterName: r.reporter_name,
+        reporterClass: r.reporter_class,
+        reporterSection: r.reporter_section,
+        reporterRole: r.reporter_role || 'student',
+        finderUsername: r.finder_username || '',
+        finderName: r.finder_name || '',
+        finderClass: r.finder_class || '',
+        finderSection: r.finder_section || '',
+        finderNotes: r.finder_notes || '',
+        storageLocation: r.storage_location || '',
+        urgent: Boolean(r.urgent),
+        createdAt: r.created_at,
+        resolvedAt: r.resolved_at || null,
+      }));
+    } catch (e) {
+      console.warn('D1 lost & found query notice:', e);
+    }
+
     return NextResponse.json(
       {
         success: true,
@@ -300,6 +332,7 @@ export async function GET(req: NextRequest) {
         quizProgress,
         studySchedules,
         homework: homeworkList,
+        lostFound: lostFoundItems,
       },
       { headers: NO_CACHE_HEADERS }
     );
@@ -718,6 +751,151 @@ export async function POST(req: NextRequest) {
         },
         { headers: NO_CACHE_HEADERS }
       );
+    }
+
+    // ------------------------------------------------------------------------
+    // 9. REPORT LOST & FOUND ITEM
+    // ------------------------------------------------------------------------
+    if (action === 'report_lost_found') {
+      const id = `DPS-LF-${1043 + Math.floor(Math.random() * 9000)}`;
+      const title = (body.title || '').trim();
+      const category = body.category || 'Other';
+      const status = body.status === 'FOUND' ? 'FOUND' : 'LOST';
+      const location = body.location || 'Library';
+      const specificSpot = (body.specificSpot || '').trim();
+      const description = (body.description || '').trim();
+      const imageUrl = (body.imageUrl || '').trim();
+      const reporterUsername = (body.reporterUsername || '').toLowerCase().trim();
+      const reporterName = (body.reporterName || '').trim();
+      const reporterClass = (body.reporterClass || '').trim();
+      const reporterSection = (body.reporterSection || '').trim();
+      const urgent = body.urgent ? 1 : (status === 'LOST' ? 1 : 0);
+      const storageLocation = status === 'FOUND' ? 'Main Reception — Lost & Found Desk' : 'Not yet turned in';
+
+      await d1Execute(
+        `INSERT INTO campus_lost_found (
+          id, title, category, status, location, specific_spot, description, image_url,
+          reporter_username, reporter_name, reporter_class, reporter_section, reporter_role,
+          storage_location, urgent
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+        [
+          id,
+          title,
+          category,
+          status,
+          location,
+          specificSpot,
+          description,
+          imageUrl,
+          reporterUsername,
+          reporterName,
+          reporterClass,
+          reporterSection,
+          'student',
+          storageLocation,
+          urgent,
+        ]
+      );
+
+      // Award +10 Spirit points for active campus participation
+      if (reporterUsername) {
+        try {
+          await d1Execute('UPDATE profiles SET spirit_points = spirit_points + 10 WHERE username = ?;', [reporterUsername]);
+          if (sb) {
+            try {
+              await (sb as any).rpc('increment_spirit_points', { u_name: reporterUsername, pts: 10 });
+            } catch {}
+          }
+        } catch {}
+      }
+
+      return NextResponse.json(
+        {
+          success: true,
+          item: {
+            id,
+            title,
+            category,
+            status,
+            location,
+            specificSpot,
+            description,
+            imageUrl,
+            reporterUsername,
+            reporterName,
+            reporterClass,
+            reporterSection,
+            reporterRole: 'student',
+            finderUsername: '',
+            finderName: '',
+            finderClass: '',
+            finderSection: '',
+            finderNotes: '',
+            storageLocation,
+            urgent: Boolean(urgent),
+            createdAt: 'Just now',
+            resolvedAt: null,
+          },
+        },
+        { headers: NO_CACHE_HEADERS }
+      );
+    }
+
+    // ------------------------------------------------------------------------
+    // 10. MARK ITEM FOUND BY CLASSMATE (Immediate Class & Section Visibility)
+    // ------------------------------------------------------------------------
+    if (action === 'mark_item_found') {
+      const { itemId, finderUsername, finderName, finderClass, finderSection, finderNotes } = body;
+      const cleanFinder = (finderUsername || '').toLowerCase().trim();
+      const cleanName = (finderName || '').trim();
+      const cleanClass = (finderClass || '').trim();
+      const cleanSec = (finderSection || '').trim();
+      const notes = (finderNotes || '').trim();
+      const storageLoc = 'Found by classmate • Direct Handover Pending';
+
+      await d1Execute(
+        `UPDATE campus_lost_found 
+         SET status = 'FOUND', 
+             finder_username = ?, 
+             finder_name = ?, 
+             finder_class = ?, 
+             finder_section = ?, 
+             finder_notes = ?,
+             storage_location = ?
+         WHERE id = ?;`,
+        [cleanFinder, cleanName, cleanClass, cleanSec, notes, storageLoc, itemId]
+      );
+
+      // Award +25 Spirit Points to the finder for campus integrity & helpfulness!
+      if (cleanFinder) {
+        try {
+          await d1Execute('UPDATE profiles SET spirit_points = spirit_points + 25 WHERE username = ?;', [cleanFinder]);
+          if (sb) {
+            try {
+              await (sb as any).rpc('increment_spirit_points', { u_name: cleanFinder, pts: 25 });
+            } catch {}
+          }
+        } catch {}
+      }
+
+      return NextResponse.json({ success: true }, { headers: NO_CACHE_HEADERS });
+    }
+
+    // ------------------------------------------------------------------------
+    // 11. CLAIM LOST & FOUND ITEM (Reunited)
+    // ------------------------------------------------------------------------
+    if (action === 'claim_lost_found') {
+      const { itemId } = body;
+      await d1Execute(
+        `UPDATE campus_lost_found 
+         SET status = 'CLAIMED', 
+             resolved_at = CURRENT_TIMESTAMP,
+             storage_location = 'Reunited with owner • Handover Complete'
+         WHERE id = ?;`,
+        [itemId]
+      );
+
+      return NextResponse.json({ success: true }, { headers: NO_CACHE_HEADERS });
     }
 
     return NextResponse.json({ error: `Unknown action: ${action}` }, { status: 400 });
