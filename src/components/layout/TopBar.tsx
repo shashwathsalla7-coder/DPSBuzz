@@ -3,7 +3,7 @@
 import { useState, useEffect, type FC } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Bell, Menu, X, Megaphone, Users, Trophy, Settings, Shield, Download, Search, Gamepad2, Bot, BookOpen, HelpCircle, MessageSquare } from 'lucide-react';
+import { Bell, Menu, X, Megaphone, Users, Trophy, Settings, Shield, Download, Search, Gamepad2, Bot, BookOpen, HelpCircle } from 'lucide-react';
 import { school } from '@/config/school';
 import { DataStore, type Notice } from '@/lib/dataStore';
 import { colors } from '@/config/tokens';
@@ -45,7 +45,7 @@ export const TopBar: FC<TopBarProps> = ({ notificationCount = 0 }) => {
   }
 
   const baseMenuItems = [
-    { title: 'WhatsApp Hub', href: '/school-whatsapp', icon: MessageSquare, desc: 'Official Dispatches & Classrooms' },
+    { title: 'Class Groups', href: '/groups', icon: Users, desc: 'Class WhatsApp, dispatches & homework' },
     { title: 'AI Diary Assistant', href: '/ai-diary', icon: Bot, desc: 'Homework, timetable & rules' },
     { title: 'Study Corner', href: '/study-corner', icon: BookOpen, desc: 'Nursery to 10 notes & formulas' },
     { title: 'Question Box', href: '/question-box', icon: HelpCircle, desc: 'Daily quiz & +10 spirit points' },
