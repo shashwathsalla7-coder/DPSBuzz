@@ -9,10 +9,20 @@ import {
   Megaphone,
   Sparkles,
   Search,
+  MessageSquare,
 } from 'lucide-react';
 
 export function CampusHubChips() {
   const hubs = [
+    {
+      title: 'WhatsApp Hub',
+      subtitle: 'Official & Classes',
+      icon: MessageSquare,
+      href: '/school-whatsapp',
+      badge: 'Live D1',
+      color: 'from-emerald-600 to-green-500',
+      textColor: 'text-emerald-500',
+    },
     {
       title: 'AI Diary',
       subtitle: 'Homework & Rules',
