@@ -114,6 +114,7 @@ export interface WhatsAppChannel {
   avatar?: string;
   isLocked: boolean;
   adminUsernames: string[];
+  enrolledUsernames?: string[];
   memberCount: number;
   lastMessage: string;
   lastMessageTime: string;
@@ -1136,6 +1137,38 @@ export const SchoolFeatures = {
           window.dispatchEvent(new Event('dpsbuzz:campus_updated'));
         }
         return { success: true, channel: json.channel };
+      }
+      return { success: false, error: json.error };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  },
+
+  async addStudentToChannel(data: {
+    channelId: string;
+    usernameToAdd: string;
+    studentName?: string;
+  }): Promise<{ success: boolean; enrolledUsernames?: string[]; error?: string }> {
+    try {
+      const res = await fetch('/api/campus', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'add_student_to_channel',
+          ...data,
+        }),
+      });
+      const json = await res.json();
+      if (res.ok) {
+        const ch = dbWhatsAppChannels.find((c) => c.id === data.channelId);
+        if (ch) {
+          ch.enrolledUsernames = json.enrolledUsernames;
+          ch.memberCount = (ch.memberCount || 0) + 1;
+        }
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('dpsbuzz:campus_updated'));
+        }
+        return { success: true, enrolledUsernames: json.enrolledUsernames };
       }
       return { success: false, error: json.error };
     } catch (err: any) {

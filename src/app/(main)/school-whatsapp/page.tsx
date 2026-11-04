@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   MessageSquare,
   Send,
@@ -29,6 +30,10 @@ import {
   Megaphone,
   UserCheck,
   Check,
+  UserPlus,
+  Radio,
+  Eye,
+  MessageCircle,
 } from 'lucide-react';
 import {
   schoolSystem,
@@ -39,6 +44,8 @@ import {
 import { DataStore, Profile } from '@/lib/dataStore';
 
 export default function SchoolWhatsAppPage() {
+  const router = useRouter();
+
   // --------------------------------------------------------------------------
   // Core State
   // --------------------------------------------------------------------------
@@ -51,6 +58,7 @@ export default function SchoolWhatsAppPage() {
   const [categoryFilter, setCategoryFilter] = useState<'all' | 'official' | 'classes' | 'clubs'>('all');
   const [isSending, setIsSending] = useState(false);
   const [statusNotice, setStatusNotice] = useState<string | null>(null);
+  const [broadcastToAllClassrooms, setBroadcastToAllClassrooms] = useState(false);
 
   // Responsive mobile navigation (list view vs chat view)
   const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
@@ -61,7 +69,13 @@ export default function SchoolWhatsAppPage() {
   const [clientViewMode, setClientViewMode] = useState<'teacher' | 'student'>('teacher');
   const [showRosterModal, setShowRosterModal] = useState(false);
   const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
+  const [showAddStudentModal, setShowAddStudentModal] = useState(false);
   const [showTemplateMenu, setShowTemplateMenu] = useState(false);
+
+  // Add Student State
+  const [studentSearchInput, setStudentSearchInput] = useState('');
+  const [availableProfiles, setAvailableProfiles] = useState<Profile[]>([]);
+  const [isAddingStudent, setIsAddingStudent] = useState(false);
 
   // Roster Ingestion State
   const [rawRosterInput, setRawRosterInput] = useState('');
@@ -75,17 +89,18 @@ export default function SchoolWhatsAppPage() {
   const [newGroupGrade, setNewGroupGrade] = useState('Class 10');
   const [newGroupSection, setNewGroupSection] = useState('A');
   const [newGroupIsLocked, setNewGroupIsLocked] = useState(false);
+  const [autoEnrollGradeStudents, setAutoEnrollGradeStudents] = useState(true);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const lastSyncTimestampRef = useRef<number>(0);
 
   // --------------------------------------------------------------------------
-  // Initialize Data
+  // Initialize Data & Setup Real-Time Simultaneous Sync
   // --------------------------------------------------------------------------
   useEffect(() => {
     const user = DataStore.getCurrentUser();
     setCurrentUser(user);
 
-    // Default to teacher view if admin or teacher
     const isTeacher =
       (user as any)?.role === 'teacher' ||
       user?.role === 'admin' ||
@@ -94,49 +109,77 @@ export default function SchoolWhatsAppPage() {
       user?.username?.toLowerCase() === 'madam_principal';
     setClientViewMode(isTeacher ? 'teacher' : 'student');
 
+    // Load available student profiles for direct enrollment
+    try {
+      const allP = DataStore.getProfiles();
+      setAvailableProfiles(allP);
+    } catch {}
+
+    // Initial full fetch
     refreshChannelsAndMessages();
 
-    // Listen for updates from other tabs or actions
+    // Fast 1.2s polling for SIMULTANEOUS chatting across phones & computers
+    const fastPollInterval = setInterval(() => {
+      syncIncrementalMessages();
+    }, 1200);
+
     const handleUpdate = () => {
       refreshChannelsAndMessages();
     };
     window.addEventListener('dpsbuzz:campus_updated', handleUpdate);
 
-    // Poll every 4 seconds to sync messages across devices without WebSockets
-    const pollInterval = setInterval(() => {
-      refreshChannelsAndMessages(true);
-    }, 4000);
-
     return () => {
+      clearInterval(fastPollInterval);
       window.removeEventListener('dpsbuzz:campus_updated', handleUpdate);
-      clearInterval(pollInterval);
     };
   }, []);
 
-  const refreshChannelsAndMessages = async (silent = false) => {
+  // --------------------------------------------------------------------------
+  // Fast Incremental Message Sync (1.2s interval)
+  // --------------------------------------------------------------------------
+  const syncIncrementalMessages = async () => {
     try {
-      const chs = schoolSystem.getWhatsAppChannels();
-      if (chs && chs.length > 0) {
-        setChannels(chs);
+      const res = await fetch(
+        `/api/campus?action=whatsapp_messages&after=${lastSyncTimestampRef.current}`,
+        { cache: 'no-store' }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.messages) && data.messages.length > 0) {
+          setMessages((prev) => {
+            const existingIds = new Set(prev.map((m) => m.id));
+            const newOnes = data.messages.filter((m: WhatsAppMessage) => !existingIds.has(m.id));
+            if (newOnes.length === 0) return prev;
+            return [...prev, ...newOnes];
+          });
+          const highestTs = Math.max(...data.messages.map((m: WhatsAppMessage) => m.timestamp));
+          if (highestTs > lastSyncTimestampRef.current) {
+            lastSyncTimestampRef.current = highestTs;
+          }
+        }
       }
-      const msgs = schoolSystem.getWhatsAppMessages();
-      if (msgs && msgs.length > 0) {
-        setMessages(msgs);
-      }
+    } catch {}
+  };
 
-      // Also trigger cloud fetch
+  const refreshChannelsAndMessages = async () => {
+    try {
       const res = await fetch('/api/campus', { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
-        if (data.whatsappChannels) {
+        if (Array.isArray(data.whatsappChannels)) {
           setChannels(data.whatsappChannels);
         }
-        if (data.whatsappMessages) {
+        if (Array.isArray(data.whatsappMessages)) {
           setMessages(data.whatsappMessages);
+          if (data.whatsappMessages.length > 0) {
+            lastSyncTimestampRef.current = Math.max(
+              ...data.whatsappMessages.map((m: WhatsAppMessage) => m.timestamp)
+            );
+          }
         }
       }
     } catch (e) {
-      if (!silent) console.warn('Could not sync WhatsApp Hub:', e);
+      console.warn('Could not sync WhatsApp Hub:', e);
     }
   };
 
@@ -144,39 +187,98 @@ export default function SchoolWhatsAppPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, selectedChannelId]);
 
-  // Selected Channel
-  const activeChannel = channels.find((c) => c.id === selectedChannelId) || channels[0] || {
-    id: 'channel-school-broadcast',
-    name: 'DPS Official Principal Dispatches 📢',
-    grade: 'All',
-    section: 'All',
-    isLocked: true,
-    adminUsernames: ['shashwath71845', 'madam_principal'],
-    memberCount: 5500,
-    lastMessage: 'Welcome to DPS Digital Campus',
-    lastMessageTime: '08:15 AM',
-  };
-
-  const channelMessages = messages.filter((m) => m.channelId === activeChannel.id);
-
   // --------------------------------------------------------------------------
-  // Permission Logic
+  // Student Personalization: "they just need their own group not others"
   // --------------------------------------------------------------------------
+  const userClassGrade = useMemo(() => {
+    const raw = (currentUser as any)?.classGrade || (currentUser as any)?.grade || (currentUser as any)?.class || '10';
+    return String(raw).trim();
+  }, [currentUser]);
+
   const isTeacherView = clientViewMode === 'teacher';
-  const isChannelLocked = activeChannel.isLocked;
 
-  // In Student View, when the channel is locked, sending is disabled!
-  const canSendMessage = isTeacherView || !isChannelLocked;
+  const visibleChannels = useMemo(() => {
+    return channels.filter((c) => {
+      // Teachers and Admins in Teacher View see ALL groups
+      if (isTeacherView) {
+        if (categoryFilter === 'official') return c.id.includes('broadcast') || c.isLocked;
+        if (categoryFilter === 'classes') return c.grade.includes('Class') || c.grade.includes('Nursery');
+        if (categoryFilter === 'clubs') return c.name.toLowerCase().includes('club') || c.section === 'Club';
+        return true;
+      }
+
+      // STUDENTS ONLY SEE THEIR OWN ROOMS:
+      // 1. DPS Official Principal Dispatches (Madam's Channel - required for all students)
+      if (c.id === 'channel-school-broadcast' || c.grade === 'All') return true;
+
+      // 2. Direct enrollment match (student was added directly by faculty)
+      if (c.enrolledUsernames && currentUser?.username) {
+        if (c.enrolledUsernames.map((u) => u.toLowerCase()).includes(currentUser.username.toLowerCase())) {
+          return true;
+        }
+      }
+
+      // 3. Match their own class grade (e.g. 10 matches Class 10 or 10-A)
+      const cleanUserGrade = userClassGrade.toLowerCase().replace(/[^0-9a-z]/g, '');
+      const cleanChannelGrade = c.grade.toLowerCase().replace(/[^0-9a-z]/g, '');
+      const cleanChannelName = c.name.toLowerCase().replace(/[^0-9a-z]/g, '');
+
+      if (cleanChannelGrade.includes(cleanUserGrade) || cleanChannelName.includes(cleanUserGrade)) {
+        return true;
+      }
+
+      // Hide all other classes for students
+      return false;
+    });
+  }, [channels, isTeacherView, categoryFilter, userClassGrade, currentUser]);
+
+  const filteredChannels = useMemo(() => {
+    if (!searchQuery.trim()) return visibleChannels;
+    const q = searchQuery.toLowerCase();
+    return visibleChannels.filter(
+      (c) =>
+        c.name.toLowerCase().includes(q) ||
+        c.grade.toLowerCase().includes(q) ||
+        c.lastMessage.toLowerCase().includes(q)
+    );
+  }, [visibleChannels, searchQuery]);
+
+  // Selected Channel
+  const activeChannel = useMemo(() => {
+    const found = visibleChannels.find((c) => c.id === selectedChannelId);
+    if (found) return found;
+    return visibleChannels[0] || {
+      id: 'channel-school-broadcast',
+      name: 'DPS Official Principal Dispatches 📢',
+      grade: 'All',
+      section: 'All',
+      isLocked: true,
+      adminUsernames: ['shashwath71845', 'madam_principal'],
+      memberCount: 5500,
+      lastMessage: 'Welcome to DPS Digital Campus',
+      lastMessageTime: '08:15 AM',
+    };
+  }, [visibleChannels, selectedChannelId]);
+
+  const channelMessages = useMemo(() => {
+    return messages.filter((m) => m.channelId === activeChannel.id);
+  }, [messages, activeChannel.id]);
+
+  // Permission Logic
+  const canSendMessage = isTeacherView || !activeChannel.isLocked;
 
   // --------------------------------------------------------------------------
-  // Message Dispatch Handler
+  // Message Dispatch Handler (Simultaneous & Multi-Channel Propagation)
   // --------------------------------------------------------------------------
-  const handleSendMessage = async (customText?: string, templateType: 'none' | 'attendance' | 'homework' | 'exam' = 'none') => {
+  const handleSendMessage = async (
+    customText?: string,
+    templateType: 'none' | 'attendance' | 'homework' | 'exam' = 'none'
+  ) => {
     const textToSend = (customText || messageText).trim();
     if (!textToSend || isSending) return;
 
     if (!canSendMessage) {
-      setStatusNotice('🔒 Read-Only: Only Admins and Faculty can send messages when channel is locked.');
+      setStatusNotice('🔒 Read-Only: Only Admins and Faculty can post when channel is locked.');
       setTimeout(() => setStatusNotice(null), 3500);
       return;
     }
@@ -187,28 +289,58 @@ export default function SchoolWhatsAppPage() {
     const senderUsername = currentUser?.username || (isTeacherView ? 'madam_principal' : 'student');
     const senderName = isTeacherView
       ? 'Principal Madam (Office)'
-      : (currentUser?.fullName || currentUser?.username || 'DPS Student');
+      : currentUser?.fullName || currentUser?.username || 'DPS Student';
     const senderRole = isTeacherView ? 'admin' : (currentUser?.role || 'student');
-    const senderClass = isTeacherView ? 'Office of Principal' : ((currentUser as any)?.classGrade || (currentUser as any)?.grade || 'Class 10-A');
+    const senderClass = isTeacherView ? 'Office of Principal' : `Class ${userClassGrade}`;
 
-    const result = await schoolSystem.sendWhatsAppMessage({
+    // Instant Optimistic render (0ms feedback)
+    const optimisticId = `wmsg-opt-${Date.now()}`;
+    const optimisticMsg: WhatsAppMessage = {
+      id: optimisticId,
       channelId: activeChannel.id,
       senderUsername,
       senderName,
-      senderRole,
+      senderRole: senderRole as any,
       senderClass,
       text: textToSend,
       templateType,
-    });
+      timestamp: Date.now(),
+    };
+    setMessages((prev) => [...prev, optimisticMsg]);
+    setMessageText('');
 
-    if (result.success) {
-      setMessageText('');
-      refreshChannelsAndMessages();
-    } else {
-      setStatusNotice(result.error || 'Failed to send message.');
-      setTimeout(() => setStatusNotice(null), 4000);
+    try {
+      const res = await fetch('/api/campus', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'send_whatsapp_message',
+          channelId: activeChannel.id,
+          senderUsername,
+          senderName,
+          senderRole,
+          senderClass,
+          text: textToSend,
+          templateType,
+          broadcastToAll: isTeacherView && (broadcastToAllClassrooms || activeChannel.id === 'channel-school-broadcast'),
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        // Revert optimistic message if rejected
+        setMessages((prev) => prev.filter((m) => m.id !== optimisticId));
+        setStatusNotice(data.error || 'Failed to send message.');
+        setTimeout(() => setStatusNotice(null), 4000);
+      } else {
+        refreshChannelsAndMessages();
+      }
+    } catch (err: any) {
+      setMessages((prev) => prev.filter((m) => m.id !== optimisticId));
+      setStatusNotice(err.message || 'Network error.');
+    } finally {
+      setIsSending(false);
     }
-    setIsSending(false);
   };
 
   // --------------------------------------------------------------------------
@@ -216,7 +348,7 @@ export default function SchoolWhatsAppPage() {
   // --------------------------------------------------------------------------
   const handleToggleLock = async () => {
     if (!isTeacherView) {
-      alert('Only Principal Madam or Teachers can alter channel permissions.');
+      alert('Only Principal Madam or Faculty can alter channel permissions.');
       return;
     }
 
@@ -245,7 +377,7 @@ export default function SchoolWhatsAppPage() {
     setShowTemplateMenu(false);
     let sampleContent = '';
     if (type === 'attendance') {
-      sampleContent = `Roll call completed for ${activeChannel.name}. 42/44 students present. 2 verified absentees notified via SMS dispatch.`;
+      sampleContent = `Roll call completed for ${activeChannel.name}. 42/44 students present. Absentee slips dispatched to registered parent contacts.`;
     } else if (type === 'homework') {
       sampleContent = `Mathematics: NCERT Exercise 8.4 (Trigonometric Identities) Q1 to Q5 fair notebook derivations due tomorrow 08:30 AM before morning assembly.`;
     } else if (type === 'exam') {
@@ -253,6 +385,28 @@ export default function SchoolWhatsAppPage() {
     }
 
     await handleSendMessage(sampleContent, type);
+  };
+
+  // --------------------------------------------------------------------------
+  // Direct Add Student to Group (Teacher Faculty Tool)
+  // --------------------------------------------------------------------------
+  const handleAddStudentDirectly = async (student: Profile) => {
+    setIsAddingStudent(true);
+    const res = await schoolSystem.addStudentToChannel({
+      channelId: activeChannel.id,
+      usernameToAdd: student.username,
+      studentName: student.fullName,
+    });
+
+    if (res.success) {
+      setStatusNotice(`✅ Directly enrolled @${student.username} into ${activeChannel.name}!`);
+      setTimeout(() => setStatusNotice(null), 3500);
+      setShowAddStudentModal(false);
+      refreshChannelsAndMessages();
+    } else {
+      alert(res.error || 'Failed to add student to group');
+    }
+    setIsAddingStudent(false);
   };
 
   // --------------------------------------------------------------------------
@@ -290,7 +444,6 @@ export default function SchoolWhatsAppPage() {
     setIsIngestingRoster(false);
   };
 
-  // Quick Sample Roster Prefill for Demo to Principal Madam
   const prefillSampleRoster = () => {
     const sample = `Student Name,Assigned Class Section,Parent Registration Key,Enrollment ID
 Aarav Sharma,10-A,PRK-901824,DPS-2024-1044
@@ -302,11 +455,22 @@ Rohan Deshmukh,10-A,PRK-663812,DPS-2024-1088`;
   };
 
   // --------------------------------------------------------------------------
-  // Custom Group Creation
+  // Custom Group Creation with Auto-Enrollment
   // --------------------------------------------------------------------------
   const handleCreateGroup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newGroupName.trim()) return;
+
+    // Get all students matching this grade for direct auto-enrollment
+    let enrolledList: string[] = [];
+    if (autoEnrollGradeStudents) {
+      enrolledList = availableProfiles
+        .filter((p) => {
+          const pGrade = String((p as any).classGrade || (p as any).grade || p.class || '').toLowerCase();
+          return pGrade.includes(newGroupGrade.toLowerCase().replace(/[^0-9]/g, ''));
+        })
+        .map((p) => p.username);
+    }
 
     const res = await schoolSystem.createWhatsAppChannel({
       name: newGroupName.trim(),
@@ -322,29 +486,16 @@ Rohan Deshmukh,10-A,PRK-663812,DPS-2024-1088`;
       setSelectedChannelId(res.channel.id);
       setShowCreateGroupModal(false);
       setNewGroupName('');
+      setStatusNotice(`✅ Group "${newGroupName}" created in Cloudflare D1 SQL!`);
+      setTimeout(() => setStatusNotice(null), 3500);
+      refreshChannelsAndMessages();
     } else {
       alert(res.error || 'Failed to create group');
     }
   };
 
-  // --------------------------------------------------------------------------
-  // Filter Channels
-  // --------------------------------------------------------------------------
-  const filteredChannels = channels.filter((c) => {
-    const matchesSearch =
-      c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.grade.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.lastMessage.toLowerCase().includes(searchQuery.toLowerCase());
-
-    if (!matchesSearch) return false;
-    if (categoryFilter === 'official') return c.id.includes('broadcast') || c.isLocked;
-    if (categoryFilter === 'classes') return c.grade.includes('Class') || c.grade.includes('Nursery');
-    if (categoryFilter === 'clubs') return c.name.toLowerCase().includes('club') || c.section === 'Club';
-    return true;
-  });
-
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)] md:h-[calc(100vh-3.5rem)] max-w-7xl mx-auto overflow-hidden bg-[var(--surface)] text-[var(--text)] border-x border-[var(--line)] shadow-xl">
+    <div className="flex flex-col h-[calc(100vh-4rem)] md:h-[calc(100vh-3.5rem)] max-w-7xl mx-auto overflow-hidden bg-[var(--surface)] text-[var(--text)] border-x border-[var(--line)] shadow-2xl">
       {/* ==================================================================== */}
       {/* TOP CONTROL BANNER: Client Mode Switcher (Teacher View vs Student View) */}
       {/* ==================================================================== */}
@@ -361,7 +512,7 @@ Rohan Deshmukh,10-A,PRK-663812,DPS-2024-1088`;
               </span>
             </h1>
             <p className="text-[11px] text-emerald-100/80 leading-tight">
-              Cloudflare D1 SQL Powered • Zero LocalStorage • Multi-Device Live Sync
+              Cloudflare D1 SQL • Zero LocalStorage • Real-Time Simultaneous Sync
             </p>
           </div>
         </div>
@@ -376,7 +527,7 @@ Rohan Deshmukh,10-A,PRK-663812,DPS-2024-1088`;
                   ? 'bg-amber-400 text-slate-900 shadow-sm'
                   : 'text-emerald-100 hover:text-white'
               }`}
-              title="Switch to Madam / Teacher Administrator Mode"
+              title="Madam Principal / Faculty Administrator Controls"
             >
               <Shield size={14} />
               <span>Teacher View (Madam)</span>
@@ -388,14 +539,14 @@ Rohan Deshmukh,10-A,PRK-663812,DPS-2024-1088`;
                   ? 'bg-white text-emerald-950 shadow-sm'
                   : 'text-emerald-100 hover:text-white'
               }`}
-              title="Switch to Student Constrained Viewing Mode"
+              title="Personalized Student Classroom View"
             >
               <UserCheck size={14} />
               <span>Student View</span>
             </button>
           </div>
 
-          {/* Teacher Quick Tools Trigger */}
+          {/* Teacher Quick Tools */}
           {isTeacherView && (
             <div className="flex items-center gap-1.5">
               <button
@@ -423,7 +574,7 @@ Rohan Deshmukh,10-A,PRK-663812,DPS-2024-1088`;
       {/* ==================================================================== */}
       <div className="flex-1 flex overflow-hidden relative">
         {/* ================================================================== */}
-        {/* LEFT PANEL: Chat Rooms List & Search Filters (WhatsApp Web Layout) */}
+        {/* LEFT PANEL: Chat Rooms List (Personalized for Students)             */}
         {/* ================================================================== */}
         <aside
           className={`w-full md:w-80 lg:w-96 flex flex-col border-r border-[var(--line)] bg-[var(--surface)] transition-all ${
@@ -442,7 +593,7 @@ Rohan Deshmukh,10-A,PRK-663812,DPS-2024-1088`;
                 </span>
                 <span className="text-[10px] text-[var(--text-muted)] flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse" />
-                  {isTeacherView ? 'Admin Privilege' : 'Enrolled Student'}
+                  {isTeacherView ? 'Admin Privilege' : `Class ${userClassGrade} Enrolled`}
                 </span>
               </div>
             </div>
@@ -455,17 +606,16 @@ Rohan Deshmukh,10-A,PRK-663812,DPS-2024-1088`;
               >
                 <RefreshCw size={16} />
               </button>
-              {isTeacherView && (
-                <button
-                  onClick={() => setShowRosterModal(true)}
-                  className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors sm:hidden"
-                  title="Open Roster Extraction"
-                >
-                  <Terminal size={16} />
-                </button>
-              )}
             </div>
           </div>
+
+          {/* Student Filter Notice */}
+          {!isTeacherView && (
+            <div className="px-3 py-1.5 bg-emerald-500/10 border-b border-emerald-500/20 text-[11px] text-emerald-800 dark:text-emerald-300 flex items-center justify-between">
+              <span>Showing your assigned classroom</span>
+              <span className="font-bold text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20">Class {userClassGrade}</span>
+            </div>
+          )}
 
           {/* Search Box */}
           <div className="p-2.5 border-b border-[var(--line)] bg-[var(--surface)]">
@@ -473,7 +623,7 @@ Rohan Deshmukh,10-A,PRK-663812,DPS-2024-1088`;
               <Search size={15} className="absolute left-3 text-[var(--text-muted)]" />
               <input
                 type="text"
-                placeholder="Search classrooms or dispatches..."
+                placeholder={isTeacherView ? "Search all school classrooms..." : "Search your classroom..."}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl bg-[var(--surface-sunken)] border border-[var(--line)] focus:outline-none focus:border-[#008069] transition-colors"
@@ -488,39 +638,43 @@ Rohan Deshmukh,10-A,PRK-663812,DPS-2024-1088`;
               )}
             </div>
 
-            {/* Category Filter Chips */}
-            <div className="flex items-center gap-1.5 mt-2 overflow-x-auto pb-0.5 no-scrollbar text-[11px]">
-              {(['all', 'official', 'classes', 'clubs'] as const).map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => setCategoryFilter(cat)}
-                  className={`px-2.5 py-0.5 rounded-full capitalize font-medium whitespace-nowrap transition-colors ${
-                    categoryFilter === cat
-                      ? 'bg-[#008069] text-white font-bold'
-                      : 'bg-[var(--surface-sunken)] text-[var(--text-muted)] hover:text-[var(--text)]'
-                  }`}
-                >
-                  {cat === 'all'
-                    ? 'All Chats'
-                    : cat === 'official'
-                    ? 'Dispatches 📢'
-                    : cat === 'classes'
-                    ? 'Classes 🎓'
-                    : 'Clubs 🔬'}
-                </button>
-              ))}
-            </div>
+            {/* Category Filter Chips (Teacher View Only) */}
+            {isTeacherView && (
+              <div className="flex items-center gap-1.5 mt-2 overflow-x-auto pb-0.5 no-scrollbar text-[11px]">
+                {(['all', 'official', 'classes', 'clubs'] as const).map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => setCategoryFilter(cat)}
+                    className={`px-2.5 py-0.5 rounded-full capitalize font-medium whitespace-nowrap transition-colors ${
+                      categoryFilter === cat
+                        ? 'bg-[#008069] text-white font-bold'
+                        : 'bg-[var(--surface-sunken)] text-[var(--text-muted)] hover:text-[var(--text)]'
+                    }`}
+                  >
+                    {cat === 'all'
+                      ? 'All Chats'
+                      : cat === 'official'
+                      ? 'Dispatches 📢'
+                      : cat === 'classes'
+                      ? 'Classes 🎓'
+                      : 'Clubs 🔬'}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Chat Rooms Feed */}
           <div className="flex-1 overflow-y-auto divide-y divide-[var(--line)]">
             {filteredChannels.length === 0 ? (
               <div className="p-6 text-center text-xs text-[var(--text-muted)]">
-                No school groups found matching "{searchQuery}"
+                No classrooms found matching "{searchQuery}"
               </div>
             ) : (
               filteredChannels.map((channel) => {
                 const isSelected = channel.id === activeChannel.id;
+                const isMyClass = !isTeacherView && channel.id !== 'channel-school-broadcast';
+
                 return (
                   <button
                     key={channel.id}
@@ -573,9 +727,15 @@ Rohan Deshmukh,10-A,PRK-663812,DPS-2024-1088`;
                         <p className="text-[11px] text-[var(--text-muted)] truncate max-w-[190px]">
                           {channel.lastMessage || 'No messages yet'}
                         </p>
-                        <span className="text-[9px] font-semibold px-1.5 py-0.2 rounded-full bg-[var(--surface-sunken)] border border-[var(--line)] text-[var(--text-muted)]">
-                          {channel.memberCount}
-                        </span>
+                        {isMyClass ? (
+                          <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded-full bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
+                            Your Class
+                          </span>
+                        ) : (
+                          <span className="text-[9px] font-semibold px-1.5 py-0.2 rounded-full bg-[var(--surface-sunken)] border border-[var(--line)] text-[var(--text-muted)]">
+                            {channel.memberCount}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </button>
@@ -596,7 +756,6 @@ Rohan Deshmukh,10-A,PRK-663812,DPS-2024-1088`;
           {/* Active Chat Header */}
           <div className="p-3 bg-[var(--surface-sunken)] border-b border-[var(--line)] flex items-center justify-between z-10 shadow-xs">
             <div className="flex items-center gap-2.5">
-              {/* Mobile Back Button */}
               <button
                 onClick={() => setIsMobileChatOpen(false)}
                 className="p-1 rounded-lg text-[var(--text-muted)] hover:text-[var(--text)] md:hidden"
@@ -636,6 +795,18 @@ Rohan Deshmukh,10-A,PRK-663812,DPS-2024-1088`;
 
             {/* Header Right Actions */}
             <div className="flex items-center gap-2">
+              {/* Teacher Add Student to Group Button */}
+              {isTeacherView && (
+                <button
+                  onClick={() => setShowAddStudentModal(true)}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold bg-[#008069] hover:bg-[#00705c] text-white transition-all shadow-xs"
+                  title="Directly enroll student into this classroom"
+                >
+                  <UserPlus size={13} />
+                  <span className="hidden sm:inline">Add Student</span>
+                </button>
+              )}
+
               {/* Teacher Toggle Channel Lock Button */}
               {isTeacherView && (
                 <button
@@ -666,9 +837,9 @@ Rohan Deshmukh,10-A,PRK-663812,DPS-2024-1088`;
                 <div className="relative">
                   <button
                     onClick={() => setShowTemplateMenu(!showTemplateMenu)}
-                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold bg-[#008069] hover:bg-[#00705c] text-white transition-all shadow-xs"
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold bg-white/10 hover:bg-white/20 border border-[var(--line)] text-[var(--text)] transition-all shadow-xs"
                   >
-                    <Sparkles size={13} />
+                    <Sparkles size={13} className="text-amber-500" />
                     <span className="hidden sm:inline">Templates</span>
                   </button>
 
@@ -727,7 +898,7 @@ Rohan Deshmukh,10-A,PRK-663812,DPS-2024-1088`;
               <div className="max-w-md px-3 py-1.5 rounded-xl bg-amber-100/70 dark:bg-amber-950/40 border border-amber-300/40 text-amber-900 dark:text-amber-200 text-[11px] text-center shadow-2xs flex items-center justify-center gap-1.5">
                 <Lock size={12} className="text-amber-600 shrink-0" />
                 <span>
-                  Official DPS Campus Channel. Managed by Principal Madam. Database synchronized in Cloudflare D1.
+                  Official DPS Campus Channel. Managed by Principal Madam. Live Edge Sync in Cloudflare D1.
                 </span>
               </div>
             </div>
@@ -737,29 +908,48 @@ Rohan Deshmukh,10-A,PRK-663812,DPS-2024-1088`;
               const isMe =
                 currentUser?.username &&
                 msg.senderUsername.toLowerCase() === currentUser.username.toLowerCase();
-              const isFaculty = msg.senderRole === 'admin' || msg.senderRole === 'teacher';
+              const isPrincipal =
+                msg.senderRole === 'admin' ||
+                msg.senderUsername.toLowerCase() === 'madam_principal' ||
+                msg.senderName.toLowerCase().includes('principal');
+              const isFaculty = isPrincipal || msg.senderRole === 'teacher';
               const isTemplate = msg.templateType && msg.templateType !== 'none';
 
               return (
                 <div
                   key={msg.id}
-                  className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} my-1`}
+                  className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} my-1.5`}
                 >
                   <div
                     className={`max-w-[85%] sm:max-w-[70%] rounded-2xl p-3 shadow-xs border transition-all ${
-                      isFaculty
-                        ? 'bg-amber-50/90 dark:bg-amber-950/40 border-amber-300/50 dark:border-amber-700/50'
+                      isPrincipal
+                        ? 'bg-amber-50/95 dark:bg-amber-950/50 border-amber-400 dark:border-amber-600 shadow-sm'
+                        : isFaculty
+                        ? 'bg-emerald-50/90 dark:bg-emerald-950/40 border-emerald-300/50'
                         : isMe
                         ? 'bg-[#d9fdd3] dark:bg-[#005c4b] text-slate-900 dark:text-white border-emerald-300/40'
                         : 'bg-[var(--surface)] text-[var(--text)] border-[var(--line)]'
                     }`}
                   >
+                    {/* Special Principal Madam Circular Banner */}
+                    {isPrincipal && (
+                      <div className="mb-2 pb-1 border-b border-amber-300/60 dark:border-amber-700/60 flex items-center justify-between text-[11px] font-extrabold text-amber-800 dark:text-amber-300">
+                        <span className="flex items-center gap-1">
+                          <Award size={13} className="text-amber-600" />
+                          <span>OFFICIAL PRINCIPAL CIRCULAR</span>
+                        </span>
+                        <span className="text-[9px] uppercase px-1.5 py-0.2 rounded bg-amber-500/20">All Classrooms</span>
+                      </div>
+                    )}
+
                     {/* Sender Identity Header */}
                     <div className="flex items-center justify-between gap-3 mb-1">
                       <span
                         className={`text-[11px] font-bold flex items-center gap-1 truncate ${
-                          isFaculty
-                            ? 'text-amber-700 dark:text-amber-400'
+                          isPrincipal
+                            ? 'text-amber-800 dark:text-amber-300'
+                            : isFaculty
+                            ? 'text-emerald-700 dark:text-emerald-300'
                             : isMe
                             ? 'text-emerald-800 dark:text-emerald-200'
                             : 'text-[#008069]'
@@ -773,6 +963,18 @@ Rohan Deshmukh,10-A,PRK-663812,DPS-2024-1088`;
                           </span>
                         )}
                       </span>
+
+                      {/* Direct Message Peer Shortcut */}
+                      {!isMe && msg.senderUsername !== 'system' && (
+                        <button
+                          onClick={() => router.push(`/chats?user=${encodeURIComponent(msg.senderUsername)}`)}
+                          className="text-[10px] text-[var(--text-muted)] hover:text-emerald-600 flex items-center gap-0.5"
+                          title={`Direct message @${msg.senderUsername}`}
+                        >
+                          <MessageCircle size={11} />
+                          <span className="hidden sm:inline">Message</span>
+                        </button>
+                      )}
                     </div>
 
                     {/* Template Badge */}
@@ -821,6 +1023,25 @@ Rohan Deshmukh,10-A,PRK-663812,DPS-2024-1088`;
           {/* ACTION FOOTER INPUT BOX (Conditional UI Rendering)                */}
           {/* ================================================================ */}
           <div className="p-3 bg-[var(--surface-sunken)] border-t border-[var(--line)]">
+            {/* Madam Broadcast-to-All toggle */}
+            {isTeacherView && (
+              <div className="mb-2 flex items-center justify-between px-2 text-[11px] text-[var(--text-muted)]">
+                <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={broadcastToAllClassrooms || activeChannel.id === 'channel-school-broadcast'}
+                    onChange={(e) => setBroadcastToAllClassrooms(e.target.checked)}
+                    disabled={activeChannel.id === 'channel-school-broadcast'}
+                    className="w-3.5 h-3.5 accent-[#008069] rounded cursor-pointer"
+                  />
+                  <span className="font-semibold text-[var(--text)]">
+                    📢 Post this dispatch to ALL school classrooms simultaneously
+                  </span>
+                </label>
+                <span className="text-[10px] text-emerald-600 font-bold">Madam Privilege</span>
+              </div>
+            )}
+
             {!canSendMessage ? (
               /* Conditional Locked Banner: Student View & Channel Locked */
               <div className="py-2.5 px-4 rounded-xl bg-[var(--surface)] border border-amber-500/40 text-center flex items-center justify-center gap-2 text-xs font-semibold text-[var(--text-muted)] shadow-xs animate-fadeIn">
@@ -840,8 +1061,8 @@ Rohan Deshmukh,10-A,PRK-663812,DPS-2024-1088`;
                   type="text"
                   placeholder={
                     isTeacherView
-                      ? 'Type faculty dispatch or announcement...'
-                      : 'Type your message to the class...'
+                      ? 'Type faculty circular or classroom announcement...'
+                      : 'Type a message to your classmates...'
                   }
                   value={messageText}
                   onChange={(e) => setMessageText(e.target.value)}
@@ -864,12 +1085,79 @@ Rohan Deshmukh,10-A,PRK-663812,DPS-2024-1088`;
       </div>
 
       {/* ==================================================================== */}
-      {/* MODAL 1: STUDENT ROSTER INGESTION & AUTO-ENROLLMENT PIPELINE         */}
+      {/* MODAL 1: ADD STUDENT DIRECTLY TO CLASSROOM GROUP                     */}
+      {/* ==================================================================== */}
+      {showAddStudentModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-[var(--surface)] border border-[var(--line)] rounded-2xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col max-h-[85vh]">
+            <div className="p-4 bg-[#005c4b] text-white flex items-center justify-between">
+              <h3 className="text-sm font-bold flex items-center gap-2">
+                <UserPlus size={18} />
+                <span>Enroll Student Into {activeChannel.name}</span>
+              </h3>
+              <button
+                onClick={() => setShowAddStudentModal(false)}
+                className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="p-4 space-y-3 flex-1 overflow-y-auto">
+              <p className="text-xs text-[var(--text-muted)]">
+                Select a registered student to directly enroll them into this group. They will immediately see this classroom without needing to accept requests.
+              </p>
+
+              <div className="relative">
+                <Search size={14} className="absolute left-3 top-2.5 text-[var(--text-muted)]" />
+                <input
+                  type="text"
+                  placeholder="Search students by name or username..."
+                  value={studentSearchInput}
+                  onChange={(e) => setStudentSearchInput(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 text-xs rounded-xl bg-[var(--surface-sunken)] border border-[var(--line)] focus:outline-none focus:border-[#008069]"
+                />
+              </div>
+
+              <div className="divide-y divide-[var(--line)] border border-[var(--line)] rounded-xl max-h-60 overflow-y-auto">
+                {availableProfiles
+                  .filter((p) => {
+                    const q = studentSearchInput.toLowerCase();
+                    return (
+                      p.username.toLowerCase().includes(q) ||
+                      p.fullName.toLowerCase().includes(q)
+                    );
+                  })
+                  .map((student) => (
+                    <div
+                      key={student.username}
+                      className="p-2.5 flex items-center justify-between hover:bg-[var(--surface-sunken)] transition-colors"
+                    >
+                      <div className="min-w-0 flex-1 mr-2">
+                        <div className="text-xs font-bold text-[var(--text)] truncate">{student.fullName}</div>
+                        <div className="text-[10px] text-[var(--text-muted)]">@{student.username} • Class {(student as any).classGrade || student.class || '10'}</div>
+                      </div>
+                      <button
+                        onClick={() => handleAddStudentDirectly(student)}
+                        disabled={isAddingStudent}
+                        className="px-3 py-1 rounded-lg text-xs font-bold bg-[#008069] hover:bg-[#00705c] text-white transition-all shadow-xs shrink-0"
+                      >
+                        Enroll Now
+                      </button>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================================== */}
+      {/* MODAL 2: STUDENT ROSTER INGESTION & AUTO-ENROLLMENT PIPELINE         */}
       {/* ==================================================================== */}
       {showRosterModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
           <div className="bg-[var(--surface)] border border-[var(--line)] rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
-            {/* Modal Header */}
             <div className="p-4 bg-[#005c4b] text-white flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Terminal size={20} className="text-emerald-300" />
@@ -888,7 +1176,6 @@ Rohan Deshmukh,10-A,PRK-663812,DPS-2024-1088`;
               </button>
             </div>
 
-            {/* Modal Body */}
             <div className="p-4 overflow-y-auto space-y-4 flex-1">
               <div>
                 <div className="flex items-center justify-between mb-1.5">
@@ -913,7 +1200,6 @@ Rohan Deshmukh,10-A,PRK-663812,DPS-2024-1088`;
                 />
               </div>
 
-              {/* Target Room Selection */}
               <div className="flex flex-wrap items-center gap-3">
                 <div className="flex-1 min-w-[200px]">
                   <label className="text-xs font-semibold text-[var(--text-muted)] block mb-1">
@@ -945,7 +1231,6 @@ Rohan Deshmukh,10-A,PRK-663812,DPS-2024-1088`;
                 </div>
               </div>
 
-              {/* Operations Data Feed Window */}
               {operationsLogs.length > 0 && (
                 <div className="rounded-xl bg-slate-950 text-emerald-400 p-3 font-mono text-[11px] border border-emerald-900 shadow-inner">
                   <div className="flex items-center justify-between text-slate-400 border-b border-slate-800 pb-1 mb-2 text-[10px] uppercase tracking-wider">
@@ -965,7 +1250,6 @@ Rohan Deshmukh,10-A,PRK-663812,DPS-2024-1088`;
                 </div>
               )}
 
-              {/* Enrolled Students Table Preview */}
               {enrolledStudents.length > 0 && (
                 <div className="rounded-xl border border-[var(--line)] overflow-hidden">
                   <div className="p-2 bg-[var(--surface-sunken)] text-xs font-bold text-[var(--text)] border-b border-[var(--line)] flex items-center justify-between">
@@ -995,7 +1279,7 @@ Rohan Deshmukh,10-A,PRK-663812,DPS-2024-1088`;
       )}
 
       {/* ==================================================================== */}
-      {/* MODAL 2: CUSTOM GROUP CREATION (Teacher / Madam Exclusive)           */}
+      {/* MODAL 3: CUSTOM GROUP CREATION (Teacher / Madam Exclusive)           */}
       {/* ==================================================================== */}
       {showCreateGroupModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
@@ -1053,6 +1337,26 @@ Rohan Deshmukh,10-A,PRK-663812,DPS-2024-1088`;
                     className="w-full p-2 text-xs rounded-xl bg-[var(--surface-sunken)] border border-[var(--line)]"
                   />
                 </div>
+              </div>
+
+              {/* Direct auto-enroll option */}
+              <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                <label className="flex items-start gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={autoEnrollGradeStudents}
+                    onChange={(e) => setAutoEnrollGradeStudents(e.target.checked)}
+                    className="w-4 h-4 accent-[#008069] mt-0.5"
+                  />
+                  <div>
+                    <div className="text-xs font-bold text-emerald-900 dark:text-emerald-200">
+                      Directly Auto-Enroll All {newGroupGrade} Students
+                    </div>
+                    <div className="text-[10px] text-emerald-800/80 dark:text-emerald-300/80">
+                      Students in {newGroupGrade} immediately see this classroom without needing join requests.
+                    </div>
+                  </div>
+                </label>
               </div>
 
               <div className="flex items-center justify-between p-3 rounded-xl bg-[var(--surface-sunken)] border border-[var(--line)]">
