@@ -167,8 +167,36 @@ export default function AiDiaryPage() {
       } catch {}
     }
 
-    // Default fast AI response
-    setTimeout(() => {
+    // Query server AI brain with full conversation context and database RAG
+    try {
+      const res = await fetch('/api/ai/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [...messages, userMsg],
+          prompt: text,
+          userClass,
+          username,
+        }),
+      });
+      const data = await res.json();
+      if (data && data.success) {
+        const aiMsg: ChatMessage = {
+          id: `ai-${Date.now()}`,
+          sender: 'ai',
+          text: data.answer,
+          timestamp: 'Just now',
+          suggestions: data.suggestions,
+          imageUrl: data.imageUrl,
+          diaryEntry: data.diaryEntry,
+          canUploadDiary: data.canUploadDiary,
+          targetClass: data.targetClass,
+        };
+        setMessages((prev) => [...prev, aiMsg]);
+      } else {
+        throw new Error('API fallback');
+      }
+    } catch {
       const response = SchoolFeatures.queryAiDiary(text, userClass);
       const aiMsg: ChatMessage = {
         id: `ai-${Date.now()}`,
@@ -182,8 +210,9 @@ export default function AiDiaryPage() {
         targetClass: response.targetClass,
       };
       setMessages((prev) => [...prev, aiMsg]);
+    } finally {
       setIsTyping(false);
-    }, 350);
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
