@@ -80,39 +80,10 @@ export interface UserQuizProgress {
 }
 
 // ----------------------------------------------------------------------------
-// SEED DATA FOR DEMO TO MADAM
+// OFFICIAL SCHOOL CAMPUS DATA
 // ----------------------------------------------------------------------------
 
-export const DEFAULT_BROADCASTS: PrincipalBroadcast[] = [
-  {
-    id: 'broadcast-principal-01',
-    title: 'Welcome to DPS Buzz — Official Digital Campus for Nursery to Class 10',
-    message:
-      'Dear Students, Teachers, and Parents, We are proud to launch DPS Buzz as our official digital campus. All school circulars, homework diaries, study resources, and notices are now centralized here. Teachers no longer need to forward WhatsApp messages manually. Junior classes (Nursery to Class 5) are 100% protected in private parent-teacher circles. Let us inspire excellence and integrity in every child!',
-    sender: 'Mrs. Sunitha Rao',
-    senderRole: 'Principal • Delhi Public School',
-    senderAvatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
-    targetAudience: 'all',
-    targetAudienceLabel: 'Nursery to Class 10 (All Students & Parents)',
-    date: 'Today, 8:00 AM',
-    priority: 'urgent',
-    acknowledgedBy: ['shashwath71845', 'vignesh', 'rohan728'],
-  },
-  {
-    id: 'broadcast-principal-02',
-    title: "Children's Day Carnival & Inter-House Athletic Meet Notice",
-    message:
-      "Our annual Children's Day Celebration and Athletic Meet will take place on November 14th on the main school ground. All students from Class 1 to 10 are required to attend in their respective House Uniforms. House Captains must submit team participant lists to the Physical Education department by Thursday.",
-    sender: 'Mrs. Sunitha Rao',
-    senderRole: 'Principal • Delhi Public School',
-    senderAvatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
-    targetAudience: 'seniors_6_10',
-    targetAudienceLabel: 'Classes 1 to 10',
-    date: 'Yesterday, 3:30 PM',
-    priority: 'high',
-    acknowledgedBy: ['shashwath71845'],
-  },
-];
+export const DEFAULT_BROADCASTS: PrincipalBroadcast[] = [];
 
 export const OFFICIAL_CLASS_GROUPS: OfficialClassGroup[] = [
   {
@@ -124,8 +95,8 @@ export const OFFICIAL_CLASS_GROUPS: OfficialClassGroup[] = [
     tier: 'junior',
     isJuniorPrivate: true,
     description: 'Strictly private parent-teacher circle for Nursery students. Daily activities, craft photos, and teacher notes.',
-    memberCount: 42,
-    classTeacher: 'Mrs. Lakshmi Priya',
+    memberCount: 0,
+    classTeacher: 'Assigned Class Teacher',
     color: '#EC4899',
     emoji: '🌸',
     rules: [
@@ -133,10 +104,7 @@ export const OFFICIAL_CLASS_GROUPS: OfficialClassGroup[] = [
       'No sharing of student photos outside the app.',
       'Direct messaging with class teacher active 9:00 AM – 3:00 PM.',
     ],
-    homework: [
-      { subject: 'Fine Motor Skills', task: 'Practice clay modeling of fruits and vegetables', dueDate: 'Friday' },
-      { subject: 'Rhymes', task: 'Sing "Twinkle Twinkle" with actions at home', dueDate: 'Tomorrow' },
-    ],
+    homework: [],
   },
   {
     id: 'class-lkg',
@@ -147,14 +115,12 @@ export const OFFICIAL_CLASS_GROUPS: OfficialClassGroup[] = [
     tier: 'junior',
     isJuniorPrivate: true,
     description: 'Foundation year activities, phonics practice, and teacher dispatches.',
-    memberCount: 48,
-    classTeacher: 'Mrs. Radhika Nair',
+    memberCount: 0,
+    classTeacher: 'Assigned Class Teacher',
     color: '#10B981',
     emoji: '🌱',
     rules: ['Private parent community', 'Homework diary updated daily at 2:00 PM'],
-    homework: [
-      { subject: 'Phonics', task: 'Color pictures starting with letters S, A, T, P in workbook', dueDate: 'Tomorrow' },
-    ],
+    homework: [],
   },
   {
     id: 'class-ukg',
@@ -165,15 +131,12 @@ export const OFFICIAL_CLASS_GROUPS: OfficialClassGroup[] = [
     tier: 'junior',
     isJuniorPrivate: true,
     description: 'Pre-primary graduation preparation, early reading, and counting.',
-    memberCount: 50,
-    classTeacher: 'Mrs. Ananya Sen',
+    memberCount: 0,
+    classTeacher: 'Assigned Class Teacher',
     color: '#F59E0B',
     emoji: '⭐',
     rules: ['Private parent circle', 'Teacher office hours: 2:00 PM – 4:00 PM'],
-    homework: [
-      { subject: 'Maths', task: 'Write numbers 1 to 50 in square-line notebook', dueDate: 'Tomorrow' },
-      { subject: 'English', task: 'Read 3-letter words page 14 aloud to parents', dueDate: 'Tomorrow' },
-    ],
+    homework: [],
   },
   {
     id: 'class-1',
@@ -184,15 +147,12 @@ export const OFFICIAL_CLASS_GROUPS: OfficialClassGroup[] = [
     tier: 'primary',
     isJuniorPrivate: true,
     description: 'Primary school foundation circle for Class 1 students and parents.',
-    memberCount: 38,
-    classTeacher: 'Mrs. Meenakshi Sundaram',
+    memberCount: 0,
+    classTeacher: 'Assigned Class Teacher',
     color: '#3B82F6',
     emoji: '🚀',
     rules: ['Safe classroom space', 'Parents can monitor student spirit points'],
-    homework: [
-      { subject: 'English', task: 'Complete sentences worksheet chapter 3', dueDate: 'Tomorrow' },
-      { subject: 'EVS', task: 'Paste pictures of domestic animals in scrapbook', dueDate: 'Thursday' },
-    ],
+    homework: [],
   },
   {
     id: 'class-5',
@@ -203,15 +163,12 @@ export const OFFICIAL_CLASS_GROUPS: OfficialClassGroup[] = [
     tier: 'primary',
     isJuniorPrivate: true,
     description: 'Upper primary cohort: Science experiments, mathematics problem solving.',
-    memberCount: 40,
-    classTeacher: 'Mr. Arvind Rao',
+    memberCount: 0,
+    classTeacher: 'Assigned Class Teacher',
     color: '#8B5CF6',
     emoji: '💡',
     rules: ['Classroom discussion and project collaboration'],
-    homework: [
-      { subject: 'Mathematics', task: 'Chapter 6: Fractions & Decimals Word Problems (Page 84)', dueDate: 'Tomorrow' },
-      { subject: 'General Science', task: 'Draw the Water Cycle with labelled condensation & precipitation', dueDate: 'Wednesday' },
-    ],
+    homework: [],
   },
   {
     id: 'class-8-a',
@@ -222,8 +179,8 @@ export const OFFICIAL_CLASS_GROUPS: OfficialClassGroup[] = [
     tier: 'middle',
     isJuniorPrivate: false,
     description: 'Official class community for Class 8-A students and teachers. Homework, project groups, and quiz leaderboards.',
-    memberCount: 44,
-    classTeacher: 'Mrs. Srividya K.',
+    memberCount: 0,
+    classTeacher: 'Assigned Class Teacher',
     color: '#0284C7',
     emoji: '🏆',
     rules: [
@@ -231,12 +188,7 @@ export const OFFICIAL_CLASS_GROUPS: OfficialClassGroup[] = [
       'Share helpful notes and clarify homework doubts.',
       'No spamming or off-topic memes during class hours.',
     ],
-    homework: [
-      { subject: 'Mathematics', task: 'Exercise 4.2 (Q1 to Q6) on Algebraic Expressions & Identities', dueDate: 'Tomorrow' },
-      { subject: 'Physics', task: 'Complete lab manual write-up on Laws of Reflection', dueDate: 'Thursday' },
-      { subject: 'English', task: 'Read Chapter 5 "The Summit Within" and write 10 new vocabulary words', dueDate: 'Wednesday' },
-      { subject: 'Social Science', task: 'Mark major mineral belts of India on political outline map', dueDate: 'Friday' },
-    ],
+    homework: [],
   },
   {
     id: 'class-8-g',
@@ -247,15 +199,12 @@ export const OFFICIAL_CLASS_GROUPS: OfficialClassGroup[] = [
     tier: 'middle',
     isJuniorPrivate: false,
     description: 'Class 8-G student discussion, homework tracker, and study corner sync.',
-    memberCount: 42,
-    classTeacher: 'Mr. Pradeep Kumar',
+    memberCount: 0,
+    classTeacher: 'Assigned Class Teacher',
     color: '#0D9488',
     emoji: '🎯',
     rules: ['Official class room', 'Homework updates posted daily by 3:30 PM'],
-    homework: [
-      { subject: 'Mathematics', task: 'Linear Equations in One Variable (Ex 2.3)', dueDate: 'Tomorrow' },
-      { subject: 'Chemistry', task: 'Revise synthetic fibers and plastics key definitions', dueDate: 'Tomorrow' },
-    ],
+    homework: [],
   },
   {
     id: 'class-10-a',
@@ -266,109 +215,19 @@ export const OFFICIAL_CLASS_GROUPS: OfficialClassGroup[] = [
     tier: 'senior',
     isJuniorPrivate: false,
     description: 'CBSE Board Year Cohort: Past question papers, pre-board schedules, and peer study groups.',
-    memberCount: 45,
-    classTeacher: 'Dr. Suresh V.',
+    memberCount: 0,
+    classTeacher: 'Assigned Class Teacher',
     color: '#DC2626',
     emoji: '⚡',
     rules: [
       'Focused board exam preparation and query resolution.',
       'Verify note uploads before sharing.',
     ],
-    homework: [
-      { subject: 'Mathematics', task: 'Solve CBSE 2025 Standard Mathematics Sample Paper Section B & C', dueDate: 'Friday' },
-      { subject: 'Science', task: 'Complete numericals on Ohm’s Law and Series/Parallel Resistors', dueDate: 'Tomorrow' },
-      { subject: 'Social Studies', task: 'Nationalism in India — Timeline chart from 1915 to 1947', dueDate: 'Thursday' },
-    ],
+    homework: [],
   },
 ];
 
-export const DEFAULT_STUDY_NOTES: StudyNoteItem[] = [
-  {
-    id: 'note-01',
-    title: 'Class 10: Complete Quadratic Equations & AP Formula Sheet',
-    subject: 'Mathematics',
-    classGrade: 'Class 10',
-    description: 'All formulas, discriminant rules (D > 0, D = 0, D < 0), sum of n terms, and nth term derivations in 3 pages.',
-    authorName: 'Mrs. Geetha Sharma',
-    authorRole: 'teacher',
-    authorClass: 'Senior Maths Faculty',
-    likes: 84,
-    likedBy: ['shashwath71845', 'vignesh'],
-    downloads: 142,
-    fileType: 'cheat_sheet',
-    badge: 'Faculty Verified 🌟',
-    createdAt: '2 days ago',
-    contentPreview: '• Standard Form: ax² + bx + c = 0 (a ≠ 0)\n• Quadratic Formula: x = (-b ± √(b² - 4ac)) / (2a)\n• Nature of Roots:\n  - If D = b² - 4ac > 0: Two distinct real roots\n  - If D = 0: Two equal real roots (-b/2a)\n  - If D < 0: No real roots\n• Arithmetic Progression:\n  - an = a + (n - 1)d\n  - Sn = n/2 [2a + (n - 1)d] or n/2 [a + l]',
-  },
-  {
-    id: 'note-02',
-    title: 'Class 9: Laws of Motion & Gravitation — Key Derivations',
-    subject: 'Science',
-    classGrade: 'Class 9',
-    description: 'Derivation of v = u + at, s = ut + 1/2at², Newton’s 2nd Law (F = ma) with universal gravitation constant numericals.',
-    authorName: 'Rohan Sharma',
-    authorRole: 'student',
-    authorClass: 'Class 9-A',
-    likes: 47,
-    likedBy: ['shashwath71845'],
-    downloads: 98,
-    fileType: 'pdf',
-    badge: 'Top Contributor 🚀',
-    createdAt: '3 days ago',
-    contentPreview: '1. First Equation: a = (v - u)/t => at = v - u => v = u + at\n2. Momentum: p = mv (kg·m/s)\n3. Newton’s Second Law: F ∝ dp/dt => F = k·m(v - u)/t => F = ma (Unit: Newton)\n4. Universal Gravitation: F = G · (m₁m₂)/r² where G = 6.67 × 10⁻¹¹ N·m²/kg²',
-  },
-  {
-    id: 'note-03',
-    title: 'Class 8: Photosynthesis & Cell Structure — Illustrated Mind Map',
-    subject: 'Science',
-    classGrade: 'Class 8',
-    description: 'Plant cell vs Animal cell differences, organelle functions (mitochondria, chloroplasts, nucleus) and chloroplast light reaction.',
-    authorName: 'Shashwath Salla',
-    authorRole: 'student',
-    authorClass: 'Class 8-A',
-    likes: 62,
-    likedBy: ['vignesh', 'rohan728'],
-    downloads: 110,
-    fileType: 'summary',
-    badge: 'Student Choice 💡',
-    createdAt: 'Yesterday',
-    contentPreview: '• Photosynthesis Equation: 6CO₂ + 6H₂O + Sunlight + Chlorophyll → C₆H₁₂O₆ + 6O₂\n• Cell Organelles:\n  - Nucleus: Brain of the cell (holds chromosomes/DNA)\n  - Mitochondria: Powerhouse of the cell (produces ATP)\n  - Chloroplast: Found ONLY in plant cells (contains green pigment chlorophyll)\n  - Cell Wall: Rigid outer layer in plant cells (cellulose)',
-  },
-  {
-    id: 'note-04',
-    title: 'Class 8: The Indian Constitution — Fundamental Rights & Preamble',
-    subject: 'Social Science',
-    classGrade: 'Class 8',
-    description: 'Key features of the Constitution: Federalism, Separation of Powers, Fundamental Rights (Articles 14 to 32) and Directive Principles.',
-    authorName: 'Vignesh',
-    authorRole: 'student',
-    authorClass: 'Class 8-G',
-    likes: 39,
-    likedBy: ['shashwath71845'],
-    downloads: 73,
-    fileType: 'notes',
-    badge: 'Classroom Top Notes 📝',
-    createdAt: '4 days ago',
-    contentPreview: '• Preamble: Sovereign, Socialist, Secular, Democratic Republic\n• 6 Fundamental Rights:\n  1. Right to Equality (Art. 14-18)\n  2. Right to Freedom (Art. 19-22)\n  3. Right against Exploitation (Art. 23-24)\n  4. Right to Freedom of Religion (Art. 25-28)\n  5. Cultural and Educational Rights (Art. 29-30)\n  6. Right to Constitutional Remedies (Art. 32 — Heart & Soul of Constitution)',
-  },
-  {
-    id: 'note-05',
-    title: 'Class 5: Fractions & Decimals Visual Cheat Sheet',
-    subject: 'Mathematics',
-    classGrade: 'Class 5',
-    description: 'Easy pictorial guide to equivalent fractions, adding mixed numbers, and converting fractions to decimals.',
-    authorName: 'DPS Primary Maths Club',
-    authorRole: 'club',
-    authorClass: 'Primary Wing',
-    likes: 51,
-    likedBy: [],
-    downloads: 89,
-    fileType: 'cheat_sheet',
-    badge: 'Junior Friendly 🎨',
-    createdAt: '5 days ago',
-    contentPreview: '• Equivalent Fractions: Multiply or divide numerator & denominator by the same non-zero number (1/2 = 2/4 = 4/8)\n• Decimals:\n  - 1/10 = 0.1\n  - 1/4 = 0.25\n  - 1/2 = 0.5\n  - 3/4 = 0.75',
-  },
-];
+export const DEFAULT_STUDY_NOTES: StudyNoteItem[] = [];
 
 export const DAILY_QUESTIONS: DailyQuizQuestion[] = [
   {
@@ -421,6 +280,19 @@ const KEYS = {
   DAILY_PROGRESS: 'dpsbuzz_daily_quiz_progress_v1',
 };
 
+// One-time purge of legacy mock data so visitor browsers start completely fresh
+const CLEAN_SEED_KEY = 'dpsbuzz_clean_seed_v2';
+if (typeof window !== 'undefined') {
+  try {
+    if (!localStorage.getItem(CLEAN_SEED_KEY)) {
+      localStorage.removeItem(KEYS.BROADCASTS);
+      localStorage.removeItem(KEYS.STUDY_NOTES);
+      localStorage.removeItem(KEYS.DAILY_PROGRESS);
+      localStorage.setItem(CLEAN_SEED_KEY, 'true');
+    }
+  } catch {}
+}
+
 function getLocal<T>(key: string, fallback: T): T {
   if (typeof window === 'undefined') return fallback;
   try {
@@ -463,9 +335,9 @@ export const SchoolFeatures = {
       id: `broadcast-${Date.now()}`,
       title: data.title.trim(),
       message: data.message.trim(),
-      sender: 'Mrs. Sunitha Rao',
+      sender: 'Office of the Principal',
       senderRole: 'Principal • Delhi Public School',
-      senderAvatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
+      senderAvatar: '',
       targetAudience: data.targetAudience,
       targetAudienceLabel: audienceLabels[data.targetAudience] || 'School Wide',
       date: 'Just now',
@@ -582,8 +454,8 @@ export const SchoolFeatures = {
   getUserQuizProgress(): UserQuizProgress {
     return getLocal<UserQuizProgress>(KEYS.DAILY_PROGRESS, {
       answeredDates: {},
-      currentStreak: 3,
-      totalPointsWon: 30,
+      currentStreak: 0,
+      totalPointsWon: 0,
     });
   },
 

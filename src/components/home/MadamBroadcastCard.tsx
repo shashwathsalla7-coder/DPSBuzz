@@ -61,9 +61,8 @@ export function MadamBroadcastCard() {
     showToast('Broadcast published campus-wide to all students & parents! 🎓');
   };
 
-  if (broadcasts.length === 0) return null;
-  const latest = broadcasts[0];
-  const isAcknowledged = (latest.acknowledgedBy || []).includes(username);
+  const latest = broadcasts.length > 0 ? broadcasts[0] : null;
+  const isAcknowledged = latest ? (latest.acknowledgedBy || []).includes(username) : false;
 
   return (
     <div className="relative px-4">
@@ -75,102 +74,154 @@ export function MadamBroadcastCard() {
         </div>
       )}
 
-      {/* Main Broadcast Card */}
-      <div
-        className="p-4 rounded-2xl border bg-gradient-to-br from-amber-500/10 via-[var(--surface)] to-yellow-500/5 shadow-xs space-y-3 relative overflow-hidden"
-        style={{ borderColor: 'var(--line)' }}
-      >
-        {/* Decorative corner accent */}
-        <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
+      {!latest ? (
+        /* Empty State / Principal Desk Card */
+        <div
+          className="p-4 rounded-2xl border bg-gradient-to-br from-amber-500/10 via-[var(--surface)] to-yellow-500/5 shadow-xs space-y-3 relative overflow-hidden"
+          style={{ borderColor: 'var(--line)' }}
+        >
+          <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
 
-        {/* Header with Principal Seal */}
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <img
-                src={latest.senderAvatar}
-                alt={latest.sender}
-                className="w-11 h-11 rounded-full object-cover border-2 border-amber-500/40 shadow-xs"
-              />
-              <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-amber-500 text-black flex items-center justify-center shadow-xs">
-                <GraduationCap size={12} strokeWidth={2.5} />
-              </span>
-            </div>
-
-            <div>
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <h3 className="text-sm font-bold text-[var(--text)] tracking-tight">
-                  {latest.sender}
-                </h3>
-                <span className="inline-flex items-center gap-0.5 text-[10px] font-extrabold px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400">
-                  <ShieldCheck size={11} />
-                  <span>Office of Principal</span>
-                </span>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-full bg-gradient-to-br from-amber-500 to-amber-700 text-white flex items-center justify-center font-black shadow-xs border-2 border-amber-500/40">
+                <GraduationCap size={22} className="text-white" />
               </div>
-              <p className="text-[11px] text-[var(--text-muted)] flex items-center gap-1.5 mt-0.5">
-                <span>{latest.senderRole}</span>
-                <span>•</span>
-                <span>{latest.date}</span>
-              </p>
+              <div>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <h3 className="text-sm font-bold text-[var(--text)] tracking-tight">
+                    Office of the Principal
+                  </h3>
+                  <span className="inline-flex items-center gap-0.5 text-[10px] font-extrabold px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400">
+                    <ShieldCheck size={11} />
+                    <span>Official Desk</span>
+                  </span>
+                </div>
+                <p className="text-[11px] text-[var(--text-muted)] mt-0.5">
+                  Direct Broadcast Desk • Nursery to Class 10
+                </p>
+              </div>
             </div>
+
+            <button
+              type="button"
+              onClick={() => setIsComposeOpen(true)}
+              className="px-3 py-1.5 bg-amber-500 text-black font-bold text-[11px] rounded-full hover:opacity-90 active:scale-95 transition-all shadow-xs flex items-center gap-1 cursor-pointer shrink-0"
+              title="Compose Broadcast"
+            >
+              <Plus size={13} strokeWidth={3} />
+              <span>Broadcast</span>
+            </button>
           </div>
 
-          {/* Compose button (Visible for Admin / Madam or Demo) */}
-          <button
-            type="button"
-            onClick={() => setIsComposeOpen(true)}
-            className="px-2.5 py-1 bg-amber-500 text-black font-bold text-[11px] rounded-full hover:opacity-90 active:scale-95 transition-all shadow-xs flex items-center gap-1 cursor-pointer shrink-0"
-            title="Compose Principal Broadcast"
-          >
-            <Plus size={13} strokeWidth={3} />
-            <span>Broadcast</span>
-          </button>
-        </div>
-
-        {/* Broadcast Body */}
-        <div className="space-y-1.5">
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400">
-              📢 {latest.targetAudienceLabel}
-            </span>
-            {latest.priority === 'urgent' && (
-              <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md bg-rose-500/10 text-rose-600 dark:text-rose-400 animate-pulse">
-                Urgent
-              </span>
-            )}
-          </div>
-
-          <h4 className="text-sm font-bold text-[var(--text)] leading-snug">
-            {latest.title}
-          </h4>
-          <p className="text-xs text-[var(--text-muted)] leading-relaxed whitespace-pre-wrap">
-            {latest.message}
+          <p className="text-xs text-[var(--text-muted)] leading-relaxed bg-[var(--surface-sunken)] p-3 rounded-xl border border-[var(--line)]">
+            No active circulars at this moment. Official dispatches, emergency notices, and circulars issued by Madam will appear here directly on all student and parent devices.
           </p>
         </div>
+      ) : (
+        /* Main Broadcast Card */
+        <div
+          className="p-4 rounded-2xl border bg-gradient-to-br from-amber-500/10 via-[var(--surface)] to-yellow-500/5 shadow-xs space-y-3 relative overflow-hidden"
+          style={{ borderColor: 'var(--line)' }}
+        >
+          {/* Decorative corner accent */}
+          <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
 
-        {/* Footer actions */}
-        <div className="flex items-center justify-between pt-2 border-t border-[var(--line)] text-xs text-[var(--text-muted)]">
-          <div className="flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-            <span className="text-[11px]">
-              {latest.acknowledgedBy?.length || 12} students & parents acknowledged
-            </span>
+          {/* Header with Principal Seal */}
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                {latest.senderAvatar ? (
+                  <img
+                    src={latest.senderAvatar}
+                    alt={latest.sender}
+                    className="w-11 h-11 rounded-full object-cover border-2 border-amber-500/40 shadow-xs"
+                  />
+                ) : (
+                  <div className="w-11 h-11 rounded-full bg-gradient-to-br from-amber-500 to-amber-700 text-white flex items-center justify-center font-black shadow-xs border-2 border-amber-500/40">
+                    <GraduationCap size={20} className="text-white" />
+                  </div>
+                )}
+                <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-amber-500 text-black flex items-center justify-center shadow-xs">
+                  <GraduationCap size={12} strokeWidth={2.5} />
+                </span>
+              </div>
+
+              <div>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <h3 className="text-sm font-bold text-[var(--text)] tracking-tight">
+                    {latest.sender}
+                  </h3>
+                  <span className="inline-flex items-center gap-0.5 text-[10px] font-extrabold px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400">
+                    <ShieldCheck size={11} />
+                    <span>Office of Principal</span>
+                  </span>
+                </div>
+                <p className="text-[11px] text-[var(--text-muted)] flex items-center gap-1.5 mt-0.5">
+                  <span>{latest.senderRole}</span>
+                  <span>•</span>
+                  <span>{latest.date}</span>
+                </p>
+              </div>
+            </div>
+
+            {/* Compose button (Visible for Admin / Madam or Demo) */}
+            <button
+              type="button"
+              onClick={() => setIsComposeOpen(true)}
+              className="px-2.5 py-1 bg-amber-500 text-black font-bold text-[11px] rounded-full hover:opacity-90 active:scale-95 transition-all shadow-xs flex items-center gap-1 cursor-pointer shrink-0"
+              title="Compose Principal Broadcast"
+            >
+              <Plus size={13} strokeWidth={3} />
+              <span>Broadcast</span>
+            </button>
           </div>
 
-          <button
-            type="button"
-            onClick={() => handleAcknowledge(latest.id)}
-            className={`px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
-              isAcknowledged
-                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
-                : 'bg-[var(--surface-sunken)] hover:bg-amber-500/10 hover:text-amber-500 border border-[var(--line)]'
-            }`}
-          >
-            <Check size={13} className={isAcknowledged ? 'text-emerald-500' : ''} />
-            <span>{isAcknowledged ? 'Acknowledged' : 'Acknowledge'}</span>
-          </button>
+          {/* Broadcast Body */}
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                📢 {latest.targetAudienceLabel}
+              </span>
+              {latest.priority === 'urgent' && (
+                <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md bg-rose-500/10 text-rose-600 dark:text-rose-400 animate-pulse">
+                  Urgent
+                </span>
+              )}
+            </div>
+
+            <h4 className="text-sm font-bold text-[var(--text)] leading-snug">
+              {latest.title}
+            </h4>
+            <p className="text-xs text-[var(--text-muted)] leading-relaxed whitespace-pre-wrap">
+              {latest.message}
+            </p>
+          </div>
+
+          {/* Footer actions */}
+          <div className="flex items-center justify-between pt-2 border-t border-[var(--line)] text-xs text-[var(--text-muted)]">
+            <div className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              <span className="text-[11px]">
+                {latest.acknowledgedBy?.length || 0} students & parents acknowledged
+              </span>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => handleAcknowledge(latest.id)}
+              className={`px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                isAcknowledged
+                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
+                  : 'bg-[var(--surface-sunken)] hover:bg-amber-500/10 hover:text-amber-500 border border-[var(--line)]'
+              }`}
+            >
+              <Check size={13} className={isAcknowledged ? 'text-emerald-500' : ''} />
+              <span>{isAcknowledged ? 'Acknowledged' : 'Acknowledge'}</span>
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Compose Broadcast Modal */}
       {isComposeOpen && (
@@ -262,7 +313,7 @@ export function MadamBroadcastCard() {
 
             <div className="flex items-center justify-between pt-2 border-t" style={{ borderColor: 'var(--line)' }}>
               <span className="text-[10px] text-[var(--text-muted)]">
-                Sender: Mrs. Sunitha Rao (Principal)
+                Sender: Office of the Principal
               </span>
 
               <div className="flex items-center gap-2">

@@ -357,27 +357,30 @@ export default function GroupsPage() {
                   </div>
 
                   <div className="space-y-2">
-                    {(selectedGroup.homework || [
-                      { subject: 'Mathematics', task: 'Chapter practice questions Q1-Q5', dueDate: 'Tomorrow' },
-                      { subject: 'Science', task: 'Revise definitions and diagrams', dueDate: 'Wednesday' },
-                      { subject: 'English', task: 'Read chapter summary and write word meanings', dueDate: 'Tomorrow' },
-                    ]).map((hw: any, i: number) => (
-                      <div
-                        key={i}
-                        className="p-3 rounded-xl border bg-[var(--surface-sunken)] flex items-start justify-between gap-3 text-xs"
-                        style={{ borderColor: 'var(--line)' }}
-                      >
-                        <div className="space-y-1">
-                          <span className="font-bold text-[var(--primary)] uppercase text-[10px]">
-                            {hw.subject}
-                          </span>
-                          <p className="font-medium text-[var(--text)]">{hw.task}</p>
-                        </div>
-                        <span className="text-[10px] font-bold text-amber-500 shrink-0 px-2 py-0.5 rounded bg-amber-500/10">
-                          Due {hw.dueDate}
-                        </span>
+                    {(selectedGroup.homework || []).length === 0 ? (
+                      <div className="py-8 text-center text-xs text-[var(--text-muted)] space-y-1 bg-[var(--surface-sunken)] rounded-xl border border-[var(--line)] p-4">
+                        <p className="font-semibold text-[var(--text)]">No homework assigned yet for this class.</p>
+                        <p className="text-[11px]">Daily diary updates posted by the class teacher will appear here.</p>
                       </div>
-                    ))}
+                    ) : (
+                      (selectedGroup.homework || []).map((hw: any, i: number) => (
+                        <div
+                          key={i}
+                          className="p-3 rounded-xl border bg-[var(--surface-sunken)] flex items-start justify-between gap-3 text-xs"
+                          style={{ borderColor: 'var(--line)' }}
+                        >
+                          <div className="space-y-1">
+                            <span className="font-bold text-[var(--primary)] uppercase text-[10px]">
+                              {hw.subject}
+                            </span>
+                            <p className="font-medium text-[var(--text)]">{hw.task}</p>
+                          </div>
+                          <span className="text-[10px] font-bold text-amber-500 shrink-0 px-2 py-0.5 rounded bg-amber-500/10">
+                            Due {hw.dueDate}
+                          </span>
+                        </div>
+                      ))
+                    )}
                   </div>
                 </div>
               )}
@@ -802,7 +805,7 @@ export default function GroupsPage() {
 
                       <div className="pt-2 border-t border-[var(--line)] flex items-center justify-between text-xs text-[var(--text-muted)]">
                         <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                          📝 {assigned.homework?.length || 2} Homework tasks in diary
+                          📝 {assigned.homework?.length || 0} Homework tasks in diary
                         </span>
                         <span className="font-bold text-[var(--primary)] hover:underline">Open Room &rarr;</span>
                       </div>

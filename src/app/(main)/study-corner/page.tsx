@@ -210,10 +210,22 @@ export default function StudyCornerPage() {
       {/* Notes Grid */}
       <div className="px-4 grid grid-cols-1 md:grid-cols-2 gap-3.5">
         {filteredNotes.length === 0 ? (
-          <div className="col-span-full py-12 text-center text-xs text-[var(--text-muted)] space-y-2">
-            <BookOpen size={36} className="mx-auto text-[var(--text-muted)] opacity-50" />
-            <p className="font-semibold">No notes found for this filter combination.</p>
-            <p>Be the first student to upload notes for {selectedGrade} {selectedSubject}!</p>
+          <div className="col-span-full py-12 text-center text-xs text-[var(--text-muted)] space-y-3 bg-[var(--surface-sunken)] rounded-2xl border border-[var(--line)] p-6">
+            <BookOpen size={36} className="mx-auto text-blue-500 opacity-70" />
+            <div className="space-y-1">
+              <p className="font-bold text-sm text-[var(--text)]">No study notes uploaded yet</p>
+              <p className="text-xs text-[var(--text-muted)] max-w-sm mx-auto">
+                Share revision guides, formula cheat sheets, or chapter summaries to help your fellow students and earn Spirit Points!
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsUploadOpen(true)}
+              className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold rounded-full text-xs hover:opacity-95 shadow-xs inline-flex items-center gap-1.5 transition-all cursor-pointer"
+            >
+              <Plus size={14} />
+              <span>Upload Notes</span>
+            </button>
           </div>
         ) : (
           filteredNotes.map((note) => {
