@@ -126,6 +126,106 @@ function generateAcademicResponse(
   const q = userQuery.toLowerCase().trim();
   const cGrade = ctx.studentClass;
 
+  // 0. API & MODEL ARCHITECTURE QUERY (Direct & Honest Explanation)
+  if (
+    q.includes('which api') ||
+    q.includes('what api') ||
+    q.includes('is it ai') ||
+    q.includes('are you ai') ||
+    q.includes('how do you work') ||
+    q.includes('who made you') ||
+    q.includes('train')
+  ) {
+    return {
+      category: 'architecture',
+      answer: `🤖 **DPS Buzz AI Architecture & Training Specification:**\n\n` +
+        `• **Primary LLM Engine:** Powered by **Google Gemini 1.5 Flash API** (\`gemini-1.5-flash\` via the Google Generative Language REST interface).\n` +
+        `• **Context Architecture (RAG):** Live Cloudflare D1 SQL database retrieval engine. Before generating any response, the AI reads:\n` +
+        `  1. Today's verified blackboard diary snapshot for Class ${cGrade}.\n` +
+        `  2. Principal Madam's active circulars and broadcasts.\n` +
+        `  3. Enrolled homework tasks and student points.\n` +
+        `• **Cognitive Fallback Engine:** A dedicated, fully offline CBSE curriculum reasoner covering Mathematics step-by-step problem solving, Physics formulas, Chemistry balanced equations, Biology life processes, and English formats with 0% latency.\n\n` +
+        `*Test my academic capabilities! Ask me to solve any linear equation, quadratic equation, explain Pythagoras theorem, or show today's class diary!*`,
+      suggestions: [
+        'Solve 2x + 3 = 11 step-by-step',
+        'Find the roots of x^2 - 5x + 6 = 0',
+        "Show today's diary image",
+      ],
+    };
+  }
+
+  // 0.1 DYNAMIC MATHEMATICS EQUATION SOLVER (Solves linear equations on the fly)
+  const linearMatch = q.match(/(?:solve\s*)?(\d+)?x\s*([+-])\s*(\d+)\s*=\s*(\d+)/i);
+  if (linearMatch) {
+    const a = parseInt(linearMatch[1] || '1', 10);
+    const sign = linearMatch[2];
+    const b = parseInt(linearMatch[3], 10);
+    const c = parseInt(linearMatch[4], 10);
+
+    const rightSide = sign === '+' ? c - b : c + b;
+    const xVal = rightSide / a;
+    const isInteger = Number.isInteger(xVal);
+
+    return {
+      category: 'academic',
+      answer: `🧮 **Step-by-Step Algebraic Solution for $${a === 1 ? '' : a}x ${sign} ${b} = ${c}$:**\n\n` +
+        `**Step 1: Isolate the variable term by transposing constants:**\n` +
+        `$$${a === 1 ? '' : a}x = ${c} ${sign === '+' ? '-' : '+'} ${b}$$\n` +
+        `$$${a === 1 ? '' : a}x = ${rightSide}$$\n\n` +
+        `**Step 2: Solve for $x$ by dividing both sides by the coefficient ${a}:**\n` +
+        `$$x = \\frac{${rightSide}}{${a}}$$\n` +
+        `$$\\mathbf{x = ${isInteger ? xVal : `\\frac{${rightSide}}{${a}} \\approx ${xVal.toFixed(2)}`}}$$\n\n` +
+        `**Verification (Check Your Answer):**\n` +
+        `$$\\text{LHS} = ${a}(${isInteger ? xVal : (rightSide/a).toFixed(2)}) ${sign} ${b} = ${a * xVal} ${sign} ${b} = ${c} = \\text{RHS} \\quad \\checkmark$$\n\n` +
+        `💡 *Always write the verification step in your CBSE board answers to secure full presentation marks!*`,
+      suggestions: ['Solve another equation', 'Explain quadratic formula', 'Pythagoras theorem'],
+    };
+  }
+
+  // 0.2 DYNAMIC QUADRATIC EQUATION SOLVER (Solves ax^2 + bx + c = 0 on the fly)
+  const quadMatch = q.match(/x\^?2\s*([+-]\s*\d+)?x\s*([+-]\s*\d+)\s*=\s*0/i);
+  if (quadMatch) {
+    const bStr = (quadMatch[1] || '+1').replace(/\s+/g, '');
+    const cStr = (quadMatch[2] || '+0').replace(/\s+/g, '');
+    const a = 1;
+    const b = parseInt(bStr, 10);
+    const c = parseInt(cStr, 10);
+
+    const D = b * b - 4 * a * c;
+    const sqrtD = Math.sqrt(Math.abs(D));
+    const isPerfSquare = Number.isInteger(sqrtD);
+
+    let rootsText = '';
+    if (D > 0) {
+      if (isPerfSquare) {
+        const r1 = (-b + sqrtD) / (2 * a);
+        const r2 = (-b - sqrtD) / (2 * a);
+        rootsText = `$$\\mathbf{x_1 = ${r1}, \\quad x_2 = ${r2}}$$`;
+      } else {
+        rootsText = `$$\\mathbf{x = \\frac{${-b} \\pm \\sqrt{${D}}}{${2 * a}}}$$`;
+      }
+    } else if (D === 0) {
+      const r = -b / (2 * a);
+      rootsText = `$$\\mathbf{x_1 = x_2 = ${r}} \\quad (\\text{Two equal real roots})$$`;
+    } else {
+      rootsText = `$$\\mathbf{x = \\frac{${-b} \\pm i\\sqrt{${Math.abs(D)}}}{${2 * a}}} \\quad (\\text{No real roots; imaginary roots})$$`;
+    }
+
+    return {
+      category: 'academic',
+      answer: `🧮 **Step-by-Step Quadratic Solution for $x^2 ${b >= 0 ? `+ ${b}` : `- ${Math.abs(b)}`}x ${c >= 0 ? `+ ${c}` : `- ${Math.abs(c)}`} = 0$:**\n\n` +
+        `**1. Identify Coefficients:**\n` +
+        `$a = 1$, $b = ${b}$, $c = ${c}$\n\n` +
+        `**2. Compute Discriminant ($D = b^2 - 4ac$):**\n` +
+        `$$D = (${b})^2 - 4(1)(${c}) = ${b * b} - ${4 * c} = ${D}$$\n` +
+        `• Since $D ${D > 0 ? '> 0' : D === 0 ? '= 0' : '< 0'}$, the equation has **${D > 0 ? 'two distinct real roots' : D === 0 ? 'two equal real roots' : 'no real roots (imaginary)'}**.\n\n` +
+        `**3. Apply Quadratic Formula ($x = \\frac{-b \\pm \\sqrt{D}}{2a}$):**\n` +
+        rootsText + `\n\n` +
+        `💡 *In CBSE Class 10 Board exams, state the value of the discriminant $D$ explicitly before writing the final roots!*`,
+      suggestions: ['Solve 2x + 3 = 11', 'Trigonometric identities', 'Surface area formulas'],
+    };
+  }
+
   // A. CLASS DIARY & HOMEWORK QUERIES
   if (
     q.includes('diary') ||
@@ -490,8 +590,15 @@ export async function POST(req: NextRequest) {
       homework: homeworkList,
     };
 
-    // 2. If GEMINI_API_KEY is available (from env or client), query Google Gemini
-    const activeApiKey = (process.env.GEMINI_API_KEY || clientKey || '').trim();
+    // 2. If Gemini API key is available (from env or client), query Google Gemini
+    const activeApiKey = (
+      process.env.GEMINI_API_KEY ||
+      process.env.GOOGLE_AI_API_KEY ||
+      process.env.GOOGLE_API_KEY ||
+      process.env.NEXT_PUBLIC_GEMINI_API_KEY ||
+      clientKey ||
+      ''
+    ).trim();
     if (activeApiKey) {
       const fullMessages = messages.length > 0 ? messages : [{ sender: 'user', text: queryText }];
       const geminiResult = await queryGeminiLLM(fullMessages, ctx, activeApiKey);

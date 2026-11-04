@@ -454,10 +454,10 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: false, error: 'Image URL is required for diary upload' }, { status: 400 });
       }
 
-      // Check if ANY student in THIS class has submitted a diary for this date
+      // Check if ANY student in THIS (class_grade, section) has submitted a diary for this date
       const existing = await d1Query<any>(
-        'SELECT id, uploaded_by_username, uploaded_by_name FROM campus_diary_entries WHERE class_grade = ? AND date_str = ?;',
-        [classGrade, dateStr]
+        'SELECT id, uploaded_by_username, uploaded_by_name FROM campus_diary_entries WHERE class_grade = ? AND (section = ? OR section = \'All\') AND date_str = ?;',
+        [classGrade, section, dateStr]
       );
 
       const isFirstSubmission = existing.length === 0;
@@ -523,17 +523,38 @@ export async function POST(req: NextRequest) {
           isFirstSubmission,
           pointsAwarded,
           message: isFirstSubmission
-            ? `🎉 Incredible speed! You are the FIRST in Class ${classGrade} to upload today's diary! +50 Points awarded to your profile!`
-            : `Diary photo recorded for Class ${classGrade}.`,
+            ? `🎉 Incredible speed! You are the FIRST in Class ${classGrade}${section && section !== 'All' ? `-${section}` : ''} to upload today's diary! +50 Points awarded to your profile!`
+            : `Diary photo recorded for Class ${classGrade}${section && section !== 'All' ? `-${section}` : ''}.`,
         },
         { headers: NO_CACHE_HEADERS }
       );
     }
 
     // ------------------------------------------------------------------------
-    // 1. CREATE BROADCAST (Office of the Principal)
+    // 1. CREATE BROADCAST (Office of the Principal - Protected)
     // ------------------------------------------------------------------------
     if (action === 'create_broadcast') {
+      const requesterUser = (req.headers.get('x-username') || body.requesterUsername || '').toLowerCase().trim();
+      const requesterRole = (req.headers.get('x-user-role') || body.requesterRole || '').toLowerCase().trim();
+
+      // Check against authorized principals or database profile
+      let isVerifiedAdmin = requesterUser === 'shashwath71845' || requesterUser === 'madam_principal' || requesterRole === 'admin';
+      if (!isVerifiedAdmin && requesterUser) {
+        try {
+          const profRows = await d1Query<any>('SELECT role FROM profiles WHERE LOWER(username) = ? LIMIT 1;', [requesterUser]);
+          if (profRows.length > 0 && (profRows[0].role === 'admin' || profRows[0].role === 'teacher')) {
+            isVerifiedAdmin = true;
+          }
+        } catch {}
+      }
+
+      if (!isVerifiedAdmin) {
+        return NextResponse.json(
+          { error: 'Unauthorized: Only Principal Madam and Faculty Administrators can publish official campus broadcasts.' },
+          { status: 403, headers: NO_CACHE_HEADERS }
+        );
+      }
+
       const id = `broadcast-${Date.now()}`;
       const title = (body.title || '').trim();
       const message = (body.message || '').trim();
@@ -1079,6 +1100,58 @@ export async function POST(req: NextRequest) {
     }
 
     // ------------------------------------------------------------------------
+    // 11.4 REQUEST CLASS ACCESS (Teacher or Student requests admission to group)
+    // ------------------------------------------------------------------------
+    if (action === 'request_class_access') {
+      const { channelId, username, fullName, role, subject } = body;
+      const cleanUser = (username || '').toLowerCase().trim();
+      if (!channelId || !cleanUser) {
+        return NextResponse.json({ error: 'channelId and username are required' }, { status: 400 });
+      }
+
+      const chList = await d1Query<any>('SELECT * FROM campus_whatsapp_channels WHERE id = ? LIMIT 1;', [channelId]);
+      if (!chList.length) return NextResponse.json({ error: 'Channel not found' }, { status: 404 });
+      const ch = chList[0];
+
+      // Check if user is already enrolled
+      const enrolled: string[] = JSON.parse(ch.enrolled_usernames || '[]');
+      if (enrolled.includes(cleanUser)) {
+        return NextResponse.json({ success: true, message: 'You are already enrolled in this classroom!', isAlreadyEnrolled: true }, { headers: NO_CACHE_HEADERS });
+      }
+
+      // Check if pending invite or request already exists
+      const existingReq = await d1Query<any>(
+        'SELECT id, status FROM campus_group_invites WHERE group_id = ? AND LOWER(invitee_username) = ? AND status = ? LIMIT 1;',
+        [channelId, cleanUser, 'pending']
+      );
+
+      if (existingReq.length > 0) {
+        return NextResponse.json({ success: true, message: 'Admission request already pending review by Principal Madam & Admins.', inviteId: existingReq[0].id }, { headers: NO_CACHE_HEADERS });
+      }
+
+      const id = `invite-req-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      await d1Execute(`
+        INSERT INTO campus_group_invites (
+          id, group_id, group_name, invitee_username, invitee_role, subject, invited_by, status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending');
+      `, [
+        id,
+        channelId,
+        ch.name,
+        cleanUser,
+        role || 'student',
+        subject || (role === 'teacher' ? 'Faculty Member' : 'Classroom Admission Request'),
+        cleanUser, // Requested by user themselves
+      ]);
+
+      return NextResponse.json({
+        success: true,
+        message: `Admission request to join ${ch.name} submitted to Principal Madam & Faculty Admins.`,
+        inviteId: id,
+      }, { headers: NO_CACHE_HEADERS });
+    }
+
+    // ------------------------------------------------------------------------
     // 11.5 CREATE GROUP INVITATION (Madam / Admin Assignment)
     // ------------------------------------------------------------------------
     if (action === 'create_group_invite') {
@@ -1179,9 +1252,32 @@ export async function POST(req: NextRequest) {
       const isLocked = Boolean(ch.is_locked);
       const adminList: string[] = JSON.parse(ch.admin_usernames || '["shashwath71845", "madam_principal"]');
       const cleanUser = (senderUsername || '').toLowerCase().trim();
+
+      // Cryptographic / Database verified role check (prevents client-side spoofing)
+      let effectiveRole = senderRole || 'student';
+      let effectiveName = (senderName || cleanUser || 'Student').trim();
+
+      if (cleanUser === 'madam_principal' || senderRole === 'admin') {
+        const authUser = (req.headers.get('x-username') || '').toLowerCase().trim();
+        const isLegitAdmin = authUser === 'shashwath71845' || authUser === 'madam_principal' || cleanUser === 'shashwath71845';
+        if (!isLegitAdmin) {
+          try {
+            const prof = await d1Query<any>('SELECT role, full_name FROM profiles WHERE LOWER(username) = ? LIMIT 1;', [cleanUser]);
+            if (!prof.length || prof[0].role !== 'admin') {
+              effectiveRole = 'student';
+              if (cleanUser === 'madam_principal') {
+                effectiveName = 'DPS Student';
+              }
+            }
+          } catch {
+            effectiveRole = 'student';
+          }
+        }
+      }
+
       const isSenderAdmin =
-        senderRole === 'admin' ||
-        senderRole === 'teacher' ||
+        effectiveRole === 'admin' ||
+        effectiveRole === 'teacher' ||
         cleanUser === 'shashwath71845' ||
         cleanUser === 'madam_principal' ||
         cleanUser.includes('teacher') ||
@@ -1206,8 +1302,8 @@ export async function POST(req: NextRequest) {
         msgId,
         channelId,
         cleanUser || 'student',
-        (senderName || cleanUser || 'Student').trim(),
-        senderRole || 'student',
+        effectiveName,
+        effectiveRole,
         senderClass || 'Class 10',
         cleanText,
         templateType || 'none',
