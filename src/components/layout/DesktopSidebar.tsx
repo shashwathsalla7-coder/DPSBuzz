@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   Home, Search, Film, PlusSquare, MessageCircle, Users,
-  Megaphone, Trophy, User, Settings, Bell, Shield, Smartphone, Download, Gamepad2
+  Megaphone, Trophy, User, Settings, Bell, Shield, Smartphone, Download, Gamepad2,
+  Bot, BookOpen, HelpCircle
 } from 'lucide-react';
 import { schoolConfig } from '@/config/school';
 import { DataStore } from '@/lib/dataStore';
@@ -13,13 +14,13 @@ import Logo from '@/components/ui/Logo';
 
 const navItems = [
   { href: '/home', icon: Home, label: 'Home' },
-  { href: '/search', icon: Search, label: 'Search' },
-  { href: '/reels', icon: Film, label: 'Reels' },
-  { href: '/post/new', icon: PlusSquare, label: 'Post' },
+  { href: '/ai-diary', icon: Bot, label: 'AI Diary' },
+  { href: '/study-corner', icon: BookOpen, label: 'Study Corner' },
+  { href: '/question-box', icon: HelpCircle, label: 'Question Box' },
+  { href: '/groups', icon: Users, label: 'Class Rooms' },
+  { href: '/notices', icon: Megaphone, label: 'Notices' },
   { href: '/chats', icon: MessageCircle, label: 'Chats' },
   { href: '/chats?view=games', icon: Gamepad2, label: 'Games Arena' },
-  { href: '/groups', icon: Users, label: 'Groups' },
-  { href: '/notices', icon: Megaphone, label: 'Notices' },
   { href: '/leaderboard', icon: Trophy, label: 'Star Board' },
   { href: '/notifications', icon: Bell, label: 'Alerts' },
 ];

@@ -3,7 +3,7 @@
 import { useState, useEffect, type FC } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Bell, Menu, X, Megaphone, Users, Trophy, Settings, Shield, Download, Search, Gamepad2 } from 'lucide-react';
+import { Bell, Menu, X, Megaphone, Users, Trophy, Settings, Shield, Download, Search, Gamepad2, Bot, BookOpen, HelpCircle } from 'lucide-react';
 import { school } from '@/config/school';
 import { DataStore, type Notice } from '@/lib/dataStore';
 import { colors } from '@/config/tokens';
@@ -45,9 +45,12 @@ export const TopBar: FC<TopBarProps> = ({ notificationCount = 0 }) => {
   }
 
   const baseMenuItems = [
-    { title: 'Games Arena (Connect 4)', href: '/chats?view=games', icon: Gamepad2, desc: 'Four in a Row 2-Player duel' },
+    { title: 'AI Diary Assistant', href: '/ai-diary', icon: Bot, desc: 'Homework, timetable & rules' },
+    { title: 'Study Corner', href: '/study-corner', icon: BookOpen, desc: 'Nursery to 10 notes & formulas' },
+    { title: 'Question Box', href: '/question-box', icon: HelpCircle, desc: 'Daily quiz & +10 spirit points' },
+    { title: 'Class Rooms', href: '/groups', icon: Users, desc: 'Nursery–10 circles & clubs' },
     { title: 'Notices', href: '/notices', icon: Megaphone, desc: 'School schedule & dispatches' },
-    { title: 'Groups', href: '/groups', icon: Users, desc: 'Class sections & clubs' },
+    { title: 'Games Arena (Connect 4)', href: '/chats?view=games', icon: Gamepad2, desc: 'Four in a Row 2-Player duel' },
     { title: 'Star Board', href: '/leaderboard', icon: Trophy, desc: 'Class & student honours' },
     { title: 'Install & Download App', href: '/download', icon: Download, desc: 'Laptop, Android APK v1.4 & iPhone' },
     { title: 'Settings', href: '/settings', icon: Settings, desc: 'Theme, privacy & safety' },

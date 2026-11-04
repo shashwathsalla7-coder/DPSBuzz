@@ -33,6 +33,9 @@ import { HomeFeedSkeleton } from '@/components/home/HomeFeedSkeleton';
 import { SuggestedAccountsList } from '@/components/suggestions';
 import { HomeStreakWidget } from '@/components/home/HomeStreakWidget';
 import { AdVideoCard } from '@/components/home/AdVideoCard';
+import { MadamBroadcastCard } from '@/components/home/MadamBroadcastCard';
+import { CampusHubChips } from '@/components/home/CampusHubChips';
+import { HomeQuestionBoxTeaser } from '@/components/home/HomeQuestionBoxTeaser';
 import dynamic from 'next/dynamic';
 
 const SharePostModal = dynamic(
@@ -729,6 +732,15 @@ function HomeContent() {
 
       {/* 2. Story row: horizontal snap scroll, 60px avatars with neon ring */}
       <StoriesRow />
+
+      {/* Office of the Principal: Broadcast Card (Direct messaging from Madam) */}
+      <MadamBroadcastCard />
+
+      {/* Nursery to 10 Campus Hub (AI Diary, Study Corner, Question Box, Class Groups) */}
+      <CampusHubChips />
+
+      {/* Daily Question Box: Brain Teaser & House Points */}
+      <HomeQuestionBoxTeaser />
 
       {/* 3. Feed tabs "Following" and "Whole School" as segmented control */}
       <FeedTabs activeTab={activeTab} onChange={setActiveTab} />

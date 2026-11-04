@@ -26,6 +26,7 @@ import {
   type Group,
 } from '@/lib/dataStore';
 import { getAvatarColorPair } from '@/config/tokens';
+import { SchoolFeatures, OFFICIAL_CLASS_GROUPS, type OfficialClassGroup } from '@/lib/schoolFeatures';
 
 export interface GroupStudentContact {
   id: string;
@@ -38,7 +39,8 @@ export interface GroupStudentContact {
 export default function GroupsPage() {
   const router = useRouter();
   const [selectedGroup, setSelectedGroup] = useState<any | null>(null);
-  const [activeTab, setActiveTab] = useState<'feed' | 'chat' | 'members'>('feed');
+  const [activeTab, setActiveTab] = useState<'feed' | 'homework' | 'chat' | 'members'>('homework');
+  const [groupViewSection, setGroupViewSection] = useState<'classrooms' | 'study_groups'>('classrooms');
 
   // Create Group State
   const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false);
@@ -311,6 +313,7 @@ export default function GroupsPage() {
               }}
             >
               {[
+                { id: 'homework', label: 'Diary 📝' },
                 { id: 'feed', label: 'Feed' },
                 { id: 'chat', label: 'Chat' },
                 { id: 'members', label: 'Members' },
@@ -339,6 +342,46 @@ export default function GroupsPage() {
                 borderColor: 'var(--line)',
               }}
             >
+              {activeTab === 'homework' && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between border-b pb-2" style={{ borderColor: 'var(--line)' }}>
+                    <div>
+                      <h4 className="text-xs font-bold text-[var(--text)]">Daily Homework Diary</h4>
+                      <p className="text-[11px] text-[var(--text-muted)]">
+                        Class Teacher: {selectedGroup.classTeacher || 'Assigned Faculty'}
+                      </p>
+                    </div>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                      Verified Diary
+                    </span>
+                  </div>
+
+                  <div className="space-y-2">
+                    {(selectedGroup.homework || [
+                      { subject: 'Mathematics', task: 'Chapter practice questions Q1-Q5', dueDate: 'Tomorrow' },
+                      { subject: 'Science', task: 'Revise definitions and diagrams', dueDate: 'Wednesday' },
+                      { subject: 'English', task: 'Read chapter summary and write word meanings', dueDate: 'Tomorrow' },
+                    ]).map((hw: any, i: number) => (
+                      <div
+                        key={i}
+                        className="p-3 rounded-xl border bg-[var(--surface-sunken)] flex items-start justify-between gap-3 text-xs"
+                        style={{ borderColor: 'var(--line)' }}
+                      >
+                        <div className="space-y-1">
+                          <span className="font-bold text-[var(--primary)] uppercase text-[10px]">
+                            {hw.subject}
+                          </span>
+                          <p className="font-medium text-[var(--text)]">{hw.task}</p>
+                        </div>
+                        <span className="text-[10px] font-bold text-amber-500 shrink-0 px-2 py-0.5 rounded bg-amber-500/10">
+                          Due {hw.dueDate}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {activeTab === 'feed' && (
                 <div className="py-8 text-center space-y-1.5">
                   <p className="text-xs font-bold" style={{ color: 'var(--text)' }}>
@@ -693,6 +736,134 @@ export default function GroupsPage() {
           </div>
 
           <div className="p-4 max-w-[480px] mx-auto space-y-4">
+            {/* Section Switcher: Official Class Rooms vs Custom Study Squads */}
+            <div
+              className="flex p-1 rounded-2xl border text-xs font-bold"
+              style={{
+                backgroundColor: 'var(--surface-sunken)',
+                borderColor: 'var(--line)',
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setGroupViewSection('classrooms')}
+                className={`flex-1 py-2 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                  groupViewSection === 'classrooms'
+                    ? 'bg-[var(--surface)] text-[var(--primary)] shadow-xs'
+                    : 'text-[var(--text-muted)] hover:text-[var(--text)]'
+                }`}
+              >
+                <span>🏫 Class Rooms (Nursery–10)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setGroupViewSection('study_groups')}
+                className={`flex-1 py-2 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                  groupViewSection === 'study_groups'
+                    ? 'bg-[var(--surface)] text-[var(--primary)] shadow-xs'
+                    : 'text-[var(--text-muted)] hover:text-[var(--text)]'
+                }`}
+              >
+                <span>👥 Study Squads ({groups.length})</span>
+              </button>
+            </div>
+
+            {/* Official Nursery to 10 Classrooms View */}
+            {groupViewSection === 'classrooms' && (
+              <div className="space-y-3 animate-fade-in">
+                {/* Current User Assigned Class Highlight */}
+                {(() => {
+                  const assigned = SchoolFeatures.getClassGroupForUser(currentUser?.class, currentUser?.section);
+                  if (!assigned) return null;
+                  return (
+                    <div
+                      onClick={() => {
+                        setSelectedGroup(assigned);
+                        setActiveTab('homework');
+                      }}
+                      className="p-4 rounded-2xl border-2 border-amber-500/50 bg-gradient-to-r from-amber-500/10 via-[var(--surface)] to-yellow-500/5 shadow-md cursor-pointer hover:border-amber-500 transition-all space-y-2.5"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-amber-500 text-black shadow-xs">
+                          ⭐ Your Assigned Class Room
+                        </span>
+                        <span className="text-xs font-bold text-amber-500">
+                          {assigned.memberCount} Students
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl">{assigned.emoji}</span>
+                        <div>
+                          <h3 className="text-sm font-bold text-[var(--text)]">{assigned.name}</h3>
+                          <p className="text-xs text-[var(--text-muted)]">Class Teacher: {assigned.classTeacher}</p>
+                        </div>
+                      </div>
+
+                      <div className="pt-2 border-t border-[var(--line)] flex items-center justify-between text-xs text-[var(--text-muted)]">
+                        <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                          📝 {assigned.homework?.length || 2} Homework tasks in diary
+                        </span>
+                        <span className="font-bold text-[var(--primary)] hover:underline">Open Room &rarr;</span>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* All Classes List */}
+                <div className="space-y-2">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] px-1">
+                    All DPS Campus Class Rooms
+                  </h3>
+
+                  {OFFICIAL_CLASS_GROUPS.map((cg) => (
+                    <div
+                      key={cg.id}
+                      onClick={() => {
+                        setSelectedGroup(cg);
+                        setActiveTab('homework');
+                      }}
+                      className="p-3.5 rounded-2xl border bg-[var(--surface)] hover:bg-[var(--surface-sunken)] hover:border-blue-500/40 transition-all cursor-pointer flex items-center justify-between gap-3 shadow-2xs"
+                      style={{ borderColor: 'var(--line)' }}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div
+                          className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-lg shrink-0 shadow-xs"
+                          style={{ backgroundColor: `${cg.color}20`, color: cg.color }}
+                        >
+                          {cg.emoji}
+                        </div>
+
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <h4 className="text-xs font-bold text-[var(--text)] truncate">{cg.name}</h4>
+                            {cg.isJuniorPrivate ? (
+                              <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-pink-500/10 text-pink-500 border border-pink-500/20">
+                                🔒 Junior Circle
+                              </span>
+                            ) : (
+                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-500 border border-blue-500/20">
+                                👥 Student Cohort
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-[var(--text-muted)] truncate">
+                            {cg.classTeacher} • {cg.memberCount} Members
+                          </p>
+                        </div>
+                      </div>
+
+                      <span className="text-xs font-bold text-[var(--primary)] shrink-0">
+                        View &rarr;
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {groupViewSection === 'study_groups' && (
+              <div className="space-y-4 animate-fade-in">
             {/* ======================================================== */}
             {/* REQUIREMENT: GROUP INVITATIONS FOR CURRENT USER */}
             {/* "add when groups are created add a request from the account group was made ansdd a option yes i wnat to join thenn they must be joined no i diont wnat to jin then no join in the group" */}
@@ -1063,6 +1234,8 @@ export default function GroupsPage() {
                 </div>
               )}
             </section>
+            </div>
+            )}
           </div>
         </div>
       )}
