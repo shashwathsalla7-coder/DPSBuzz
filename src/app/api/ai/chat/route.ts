@@ -87,22 +87,30 @@ Core Persona & Academic Rules:
       },
     };
 
-    // Try gemini-1.5-flash endpoint
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
+    // Multi-model cascade: Try gemini-3.5-flash first, then flash-lite / flash-latest
+    const modelCandidates = ['gemini-3.5-flash', 'gemini-3.5-flash-lite', 'gemini-flash-latest', 'gemini-1.5-flash'];
+    for (const model of modelCandidates) {
+      try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
 
-    if (!res.ok) {
-      console.warn('Gemini API HTTP status:', res.status);
-      return null;
+        if (res.ok) {
+          const json = await res.json();
+          const candidateText = json.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (candidateText) return candidateText;
+        } else {
+          console.warn(`Gemini model ${model} HTTP status:`, res.status);
+        }
+      } catch (err) {
+        console.warn(`Gemini model ${model} attempt error:`, err);
+      }
     }
 
-    const json = await res.json();
-    const candidateText = json.candidates?.[0]?.content?.parts?.[0]?.text;
-    return candidateText || null;
+    return null;
   } catch (err) {
     console.warn('Gemini API query notice:', err);
     return null;
