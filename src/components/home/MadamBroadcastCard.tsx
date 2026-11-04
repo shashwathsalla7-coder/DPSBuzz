@@ -1,7 +1,6 @@
 'use client';
 
-import { useState } from 'react';
-import Link from 'next/link';
+import { useState, useEffect } from 'react';
 import {
   GraduationCap,
   ShieldCheck,
@@ -9,10 +8,8 @@ import {
   Plus,
   X,
   Send,
-  Users,
-  Megaphone,
-  Bell,
   Sparkles,
+  Radio,
 } from 'lucide-react';
 import { SchoolFeatures, type PrincipalBroadcast } from '@/lib/schoolFeatures';
 import { DataStore } from '@/lib/dataStore';
@@ -27,38 +24,56 @@ export function MadamBroadcastCard() {
   const [newAudience, setNewAudience] = useState<'all' | 'nursery_5' | 'seniors_6_10' | 'teachers'>('all');
   const [newPriority, setNewPriority] = useState<'urgent' | 'high' | 'normal'>('high');
   const [toast, setToast] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const currentUser = DataStore.getCurrentUser();
   const username = currentUser?.username || 'student';
-  const isAdmin = currentUser?.role === 'admin' || username.toLowerCase() === 'shashwath71845';
+
+  useEffect(() => {
+    // Sync broadcasts from server database
+    SchoolFeatures.sync(username);
+
+    const handleUpdate = () => {
+      setBroadcasts(SchoolFeatures.getBroadcasts());
+    };
+    window.addEventListener('dpsbuzz:campus_updated', handleUpdate);
+    return () => window.removeEventListener('dpsbuzz:campus_updated', handleUpdate);
+  }, [username]);
 
   const showToast = (msg: string) => {
     setToast(msg);
     setTimeout(() => setToast(null), 3000);
   };
 
-  const handleAcknowledge = (id: string) => {
-    SchoolFeatures.acknowledgeBroadcast(id, username);
+  const handleAcknowledge = async (id: string) => {
+    await SchoolFeatures.acknowledgeBroadcast(id, username);
     setBroadcasts(SchoolFeatures.getBroadcasts());
-    showToast('Notice acknowledged! Marked as read.');
+    showToast('Notice acknowledged! Marked as read in database.');
   };
 
-  const handleCreateBroadcast = (e: React.FormEvent) => {
+  const handleCreateBroadcast = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim() || !newMessage.trim()) return;
 
-    const created = SchoolFeatures.createBroadcast({
-      title: newTitle,
-      message: newMessage,
-      targetAudience: newAudience,
-      priority: newPriority,
-    });
+    setIsSubmitting(true);
+    try {
+      await SchoolFeatures.createBroadcast({
+        title: newTitle,
+        message: newMessage,
+        targetAudience: newAudience,
+        priority: newPriority,
+      });
 
-    setBroadcasts(SchoolFeatures.getBroadcasts());
-    setIsComposeOpen(false);
-    setNewTitle('');
-    setNewMessage('');
-    showToast('Broadcast published campus-wide to all students & parents! 🎓');
+      setBroadcasts(SchoolFeatures.getBroadcasts());
+      setIsComposeOpen(false);
+      setNewTitle('');
+      setNewMessage('');
+      showToast('Broadcast published campus-wide to all devices! 🎓');
+    } catch {
+      showToast('Error publishing broadcast. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const latest = broadcasts.length > 0 ? broadcasts[0] : null;
@@ -75,9 +90,9 @@ export function MadamBroadcastCard() {
       )}
 
       {!latest ? (
-        /* Empty State / Principal Desk Card */
+        /* Empty State / Principal Desk Card (Live Database Synced) */
         <div
-          className="p-4 rounded-2xl border bg-gradient-to-br from-amber-500/10 via-[var(--surface)] to-yellow-500/5 shadow-xs space-y-3 relative overflow-hidden"
+          className="p-4 rounded-2xl border bg-gradient-to-br from-amber-500/10 via-[var(--surface)] to-yellow-500/5 shadow-xs space-y-3 relative overflow-hidden backdrop-blur-xs"
           style={{ borderColor: 'var(--line)' }}
         >
           <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
@@ -92,9 +107,13 @@ export function MadamBroadcastCard() {
                   <h3 className="text-sm font-bold text-[var(--text)] tracking-tight">
                     Office of the Principal
                   </h3>
-                  <span className="inline-flex items-center gap-0.5 text-[10px] font-extrabold px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400">
+                  <span className="inline-flex items-center gap-1 text-[10px] font-extrabold px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400">
                     <ShieldCheck size={11} />
                     <span>Official Desk</span>
+                  </span>
+                  <span className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    <span>Live Cloud</span>
                   </span>
                 </div>
                 <p className="text-[11px] text-[var(--text-muted)] mt-0.5">
@@ -106,11 +125,11 @@ export function MadamBroadcastCard() {
             <button
               type="button"
               onClick={() => setIsComposeOpen(true)}
-              className="px-3 py-1.5 bg-amber-500 text-black font-bold text-[11px] rounded-full hover:opacity-90 active:scale-95 transition-all shadow-xs flex items-center gap-1 cursor-pointer shrink-0"
+              className="px-3.5 py-1.5 bg-gradient-to-r from-amber-500 to-amber-600 text-black font-bold text-xs rounded-full hover:opacity-95 active:scale-95 transition-all shadow-xs flex items-center gap-1 cursor-pointer shrink-0"
               title="Compose Broadcast"
             >
-              <Plus size={13} strokeWidth={3} />
-              <span>Broadcast</span>
+              <Plus size={14} strokeWidth={2.5} />
+              <span>+ Broadcast</span>
             </button>
           </div>
 
@@ -119,9 +138,9 @@ export function MadamBroadcastCard() {
           </p>
         </div>
       ) : (
-        /* Main Broadcast Card */
+        /* Main Broadcast Card (Real-Time Live from Database) */
         <div
-          className="p-4 rounded-2xl border bg-gradient-to-br from-amber-500/10 via-[var(--surface)] to-yellow-500/5 shadow-xs space-y-3 relative overflow-hidden"
+          className="p-4 rounded-2xl border bg-gradient-to-br from-amber-500/10 via-[var(--surface)] to-yellow-500/5 shadow-xs space-y-3 relative overflow-hidden backdrop-blur-xs"
           style={{ borderColor: 'var(--line)' }}
         >
           {/* Decorative corner accent */}
@@ -155,6 +174,10 @@ export function MadamBroadcastCard() {
                   <span className="inline-flex items-center gap-0.5 text-[10px] font-extrabold px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400">
                     <ShieldCheck size={11} />
                     <span>Office of Principal</span>
+                  </span>
+                  <span className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    <span>Live</span>
                   </span>
                 </div>
                 <p className="text-[11px] text-[var(--text-muted)] flex items-center gap-1.5 mt-0.5">
@@ -239,7 +262,7 @@ export function MadamBroadcastCard() {
                 <div>
                   <h2 className="text-sm font-bold text-[var(--text)]">Principal's Broadcast Desk</h2>
                   <p className="text-[11px] text-[var(--text-muted)]">
-                    Instant message to students & parents without forwarding
+                    Direct Cloud broadcast to students & parents across all phones & computers
                   </p>
                 </div>
               </div>
@@ -304,7 +327,7 @@ export function MadamBroadcastCard() {
                   rows={5}
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
-                  placeholder="Type the official message here. It will be sent to all student phones immediately..."
+                  placeholder="Type the official message here. It will be stored in the cloud database and synced to all student phones instantly..."
                   className="w-full p-3 rounded-xl border bg-[var(--surface-sunken)] text-[var(--text)] text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/30 leading-relaxed"
                   style={{ borderColor: 'var(--line)' }}
                 />
@@ -312,8 +335,9 @@ export function MadamBroadcastCard() {
             </div>
 
             <div className="flex items-center justify-between pt-2 border-t" style={{ borderColor: 'var(--line)' }}>
-              <span className="text-[10px] text-[var(--text-muted)]">
-                Sender: Office of the Principal
+              <span className="text-[10px] text-[var(--text-muted)] flex items-center gap-1">
+                <ShieldCheck size={12} className="text-amber-500" />
+                <span>Sender: Office of the Principal</span>
               </span>
 
               <div className="flex items-center gap-2">
@@ -326,10 +350,11 @@ export function MadamBroadcastCard() {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-amber-500 text-black text-xs font-bold hover:opacity-95 shadow-sm flex items-center gap-1.5"
+                  disabled={isSubmitting}
+                  className="px-5 py-2 rounded-xl bg-amber-500 text-black text-xs font-bold hover:opacity-95 shadow-sm flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
                 >
                   <Send size={13} />
-                  <span>Send Broadcast</span>
+                  <span>{isSubmitting ? 'Publishing...' : 'Send Broadcast'}</span>
                 </button>
               </div>
             </div>
