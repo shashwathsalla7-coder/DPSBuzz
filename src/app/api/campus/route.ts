@@ -203,6 +203,7 @@ export async function GET(req: NextRequest) {
         fileType: n.file_type || 'summary',
         badge: n.badge || '',
         contentPreview: n.content_preview,
+        imageUrl: n.image_url || '',
         createdAt: n.created_at,
       }));
     } catch (e) {
@@ -408,12 +409,13 @@ export async function POST(req: NextRequest) {
       const authorRole = body.authorRole || 'student';
       const authorClass = body.authorClass || '';
       const contentPreview = (body.contentPreview || '').trim();
-      const fileType = body.fileType || 'summary';
+      const imageUrl = (body.imageUrl || '').trim();
+      const fileType = body.fileType || (imageUrl ? 'image' : 'summary');
       const badge = body.badge || 'New Upload ✨';
 
       await d1Execute(
-        `INSERT INTO campus_study_notes (id, title, subject, class_grade, description, author_name, author_username, author_role, author_class, likes, liked_by, downloads, file_type, badge, content_preview)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, 1, ?, ?, ?);`,
+        `INSERT INTO campus_study_notes (id, title, subject, class_grade, description, author_name, author_username, author_role, author_class, likes, liked_by, downloads, file_type, badge, content_preview, image_url)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, 1, ?, ?, ?, ?);`,
         [
           id,
           title,
@@ -428,6 +430,7 @@ export async function POST(req: NextRequest) {
           fileType,
           badge,
           contentPreview,
+          imageUrl,
         ]
       );
 
@@ -462,6 +465,7 @@ export async function POST(req: NextRequest) {
             fileType,
             badge,
             contentPreview,
+            imageUrl,
             createdAt: 'Just now',
           },
         },

@@ -34,10 +34,34 @@ async function testCampusFeatures() {
   const notes = await d1Query('SELECT * FROM campus_study_notes ORDER BY created_at DESC;');
   console.log(`Found ${notes.length} study note(s):`);
   notes.forEach(n => {
-    console.log(` - [${n.subject} | ${n.class_grade}] "${n.title}" by @${n.author_username} (${n.likes} likes, ${n.downloads} downloads)`);
+    console.log(` - [${n.subject} | ${n.class_grade}] "${n.title}" by @${n.author_username} (${n.likes} likes, ${n.downloads} downloads, image: ${n.image_url ? 'YES' : 'NONE'})`);
   });
   if (notes.length === 0) throw new Error('No study notes found in D1!');
-  console.log('✓ Study Corner verified\n');
+
+  // Test note with image attachment insertion
+  const testNoteId = `test-note-${Date.now()}`;
+  await d1Execute(
+    `INSERT INTO campus_study_notes (id, title, subject, class_grade, description, author_name, author_username, author_role, author_class, likes, liked_by, downloads, file_type, badge, content_preview, image_url)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, '[]', 1, 'image', 'Test Badge', 'Preview content for test', ?);`,
+    [
+      testNoteId,
+      'Test Diagram Note',
+      'Science',
+      'Class 10',
+      'Test note with photo',
+      'Test Student',
+      'shashwath71845',
+      'student',
+      'Class 10-A',
+      'https://res.cloudinary.com/demo/image/upload/sample.jpg'
+    ]
+  );
+  const verifyNote = await d1Query('SELECT * FROM campus_study_notes WHERE id = ?;', [testNoteId]);
+  if (verifyNote.length === 0 || verifyNote[0].image_url !== 'https://res.cloudinary.com/demo/image/upload/sample.jpg') {
+    throw new Error('Image URL note insertion/retrieval verification failed!');
+  }
+  await d1Execute('DELETE FROM campus_study_notes WHERE id = ?;', [testNoteId]);
+  console.log('✓ Image attachment in Study Corner verified & tested successfully\n');
 
   // 4. Verify AI Question Ranking & Question Box
   console.log('[STEP 4] Verifying Question of the Day & AI Question Bank in D1...');

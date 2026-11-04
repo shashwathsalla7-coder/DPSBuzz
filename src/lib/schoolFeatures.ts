@@ -57,10 +57,11 @@ export interface StudyNoteItem {
   likes: number;
   likedBy: string[];
   downloads: number;
-  fileType: 'pdf' | 'summary' | 'cheat_sheet' | 'notes';
+  fileType: 'pdf' | 'summary' | 'cheat_sheet' | 'notes' | 'image';
   badge?: string;
   createdAt: string;
   contentPreview: string;
+  imageUrl?: string;
 }
 
 export interface DailyQuizQuestion {
@@ -508,7 +509,8 @@ export const SchoolFeatures = {
     authorRole?: 'student' | 'teacher';
     authorClass?: string;
     contentPreview: string;
-    fileType?: 'pdf' | 'summary' | 'cheat_sheet';
+    fileType?: 'pdf' | 'summary' | 'cheat_sheet' | 'notes' | 'image';
+    imageUrl?: string;
   }): Promise<StudyNoteItem> {
     const optimistic: StudyNoteItem = {
       id: `note-${Date.now()}`,
@@ -523,10 +525,11 @@ export const SchoolFeatures = {
       likes: 1,
       likedBy: [data.authorUsername],
       downloads: 1,
-      fileType: data.fileType || 'summary',
+      fileType: data.fileType || (data.imageUrl ? 'image' : 'summary'),
       badge: 'Verified Upload ✨',
       createdAt: 'Just now',
       contentPreview: data.contentPreview.trim(),
+      imageUrl: data.imageUrl || '',
     };
 
     dbStudyNotes = [optimistic, ...dbStudyNotes];

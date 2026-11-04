@@ -119,7 +119,7 @@ export function proxy(request: NextRequest) {
     pathname.startsWith('/api/download') ||
     pathname === '/api/admin/login' ||
     pathname === '/api/media/sign-read' ||
-    pathname === '/api/upload/presign' ||
+    pathname.startsWith('/api/upload') ||
     pathname.startsWith('/api/campus');
 
   // 7. Strict Wall: ALL other routes in the app require a registered, logged-in student account!

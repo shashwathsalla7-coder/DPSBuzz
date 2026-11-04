@@ -15,6 +15,10 @@ import {
   FileText,
   Bookmark,
   Share2,
+  Camera,
+  Image as ImageIcon,
+  Loader2,
+  ExternalLink,
 } from 'lucide-react';
 import { SchoolFeatures, type StudyNoteItem } from '@/lib/schoolFeatures';
 import { DataStore } from '@/lib/dataStore';
@@ -36,6 +40,12 @@ export default function StudyCornerPage() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
+  // Image upload state
+  const [noteImage, setNoteImage] = useState<File | null>(null);
+  const [noteImagePreview, setNoteImagePreview] = useState<string | null>(null);
+  const [uploadedImageUrl, setUploadedImageUrl] = useState<string>('');
+  const [isUploadingImage, setIsUploadingImage] = useState<boolean>(false);
+
   const currentUser = DataStore.getCurrentUser();
   const username = currentUser?.username || 'student';
 
@@ -52,6 +62,59 @@ export default function StudyCornerPage() {
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      showToast('Please select a valid image file (PNG, JPG, WEBP)');
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      showToast('Image size exceeds 10MB limit');
+      return;
+    }
+
+    const preview = URL.createObjectURL(file);
+    setNoteImage(file);
+    setNoteImagePreview(preview);
+    setIsUploadingImage(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('folder', 'notes');
+
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      if (data && data.url) {
+        setUploadedImageUrl(data.url);
+        showToast('Image uploaded to cloud CDN! 📸');
+      } else {
+        showToast('Failed to upload image. Please try another image.');
+        setNoteImage(null);
+        setNoteImagePreview(null);
+      }
+    } catch {
+      showToast('Upload error. Please try again.');
+      setNoteImage(null);
+      setNoteImagePreview(null);
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setNoteImage(null);
+    if (noteImagePreview) URL.revokeObjectURL(noteImagePreview);
+    setNoteImagePreview(null);
+    setUploadedImageUrl('');
   };
 
   const handleLike = async (noteId: string) => {
@@ -76,7 +139,11 @@ export default function StudyCornerPage() {
 
   const handleCreateNote = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTitle.trim() || !newContent.trim()) return;
+    if (!newTitle.trim()) return;
+    if (!newContent.trim() && !uploadedImageUrl) {
+      showToast('Please provide notes text or attach a photo.');
+      return;
+    }
 
     setIsUploading(true);
     try {
@@ -89,8 +156,9 @@ export default function StudyCornerPage() {
         authorUsername: username,
         authorRole: currentUser?.role === 'admin' ? 'teacher' : 'student',
         authorClass: currentUser?.class ? `Class ${currentUser.class}` : newGrade,
-        contentPreview: newContent,
-        fileType: 'summary',
+        contentPreview: newContent || '📸 Photo Notes Attached (Click to view full image)',
+        fileType: uploadedImageUrl ? 'image' : 'summary',
+        imageUrl: uploadedImageUrl || undefined,
       });
 
       setNotes((prev) => [created, ...prev.filter((n) => n.id !== created.id)]);
@@ -98,6 +166,7 @@ export default function StudyCornerPage() {
       setNewTitle('');
       setNewDesc('');
       setNewContent('');
+      handleRemoveImage();
       showToast('Your notes were uploaded to Cloud Database successfully! 🌟');
     } catch {
       showToast('Error uploading notes.');
@@ -237,7 +306,7 @@ export default function StudyCornerPage() {
             <div className="space-y-1">
               <p className="font-bold text-sm text-[var(--text)]">No study notes uploaded yet</p>
               <p className="text-xs text-[var(--text-muted)] max-w-sm mx-auto">
-                Share revision guides, formula cheat sheets, or chapter summaries to help your fellow students and earn Spirit Points!
+                Share revision guides, formula cheat sheets, or photos of handwritten notes to help your fellow students and earn Spirit Points!
               </p>
             </div>
             <button
@@ -282,13 +351,35 @@ export default function StudyCornerPage() {
                   </p>
                 </div>
 
-                {/* Preview Box */}
-                <div
-                  onClick={() => setActivePreviewNote(note)}
-                  className="p-3 rounded-xl bg-[var(--surface-sunken)] border border-[var(--line)] text-[11px] font-mono text-[var(--text-muted)] hover:border-blue-500/40 hover:text-[var(--text)] cursor-pointer transition-colors line-clamp-3 leading-relaxed"
-                >
-                  {note.contentPreview}
-                </div>
+                {/* Optional Attached Image Thumbnail */}
+                {note.imageUrl && (
+                  <div
+                    onClick={() => setActivePreviewNote(note)}
+                    className="relative w-full h-36 rounded-xl overflow-hidden border border-[var(--line)] bg-[var(--surface-sunken)] cursor-pointer group"
+                  >
+                    <img
+                      src={note.imageUrl}
+                      alt={note.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent flex items-end p-2.5">
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-white bg-black/60 backdrop-blur-xs px-2 py-0.5 rounded-full">
+                        <Camera size={11} />
+                        <span>Photo Notes • Tap to zoom</span>
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Preview Box for text content */}
+                {note.contentPreview && (!note.imageUrl || note.contentPreview.length > 50) && (
+                  <div
+                    onClick={() => setActivePreviewNote(note)}
+                    className="p-3 rounded-xl bg-[var(--surface-sunken)] border border-[var(--line)] text-[11px] font-mono text-[var(--text-muted)] hover:border-blue-500/40 hover:text-[var(--text)] cursor-pointer transition-colors line-clamp-2 leading-relaxed"
+                  >
+                    {note.contentPreview}
+                  </div>
+                )}
 
                 {/* Footer details & Action */}
                 <div className="flex items-center justify-between pt-2 border-t border-[var(--line)] text-xs text-[var(--text-muted)]">
@@ -316,7 +407,7 @@ export default function StudyCornerPage() {
                     <button
                       type="button"
                       onClick={() => setActivePreviewNote(note)}
-                      className="px-3 py-1 rounded-full bg-blue-600 text-white font-semibold text-xs hover:opacity-90 flex items-center gap-1"
+                      className="px-3 py-1 rounded-full bg-blue-600 text-white font-semibold text-xs hover:opacity-90 flex items-center gap-1 cursor-pointer"
                     >
                       <FileText size={13} />
                       <span>View</span>
@@ -331,9 +422,9 @@ export default function StudyCornerPage() {
 
       {/* Preview Modal */}
       {activePreviewNote && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
           <div
-            className="w-full max-w-lg rounded-2xl border bg-[var(--surface)] p-5 shadow-2xl space-y-4 max-h-[85vh] flex flex-col"
+            className="w-full max-w-xl rounded-2xl border bg-[var(--surface)] p-5 shadow-2xl space-y-4 max-h-[90vh] flex flex-col"
             style={{ borderColor: 'var(--line)' }}
           >
             <div className="flex items-start justify-between gap-3 border-b pb-3" style={{ borderColor: 'var(--line)' }}>
@@ -349,23 +440,51 @@ export default function StudyCornerPage() {
               <button
                 type="button"
                 onClick={() => setActivePreviewNote(null)}
-                className="p-1 rounded-full hover:bg-[var(--surface-sunken)] text-[var(--text-muted)]"
+                className="p-1 rounded-full hover:bg-[var(--surface-sunken)] text-[var(--text-muted)] cursor-pointer"
               >
                 <X size={18} />
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto pr-1">
-              <div className="p-4 rounded-xl bg-[var(--surface-sunken)] border border-[var(--line)] text-xs md:text-sm font-sans leading-relaxed whitespace-pre-wrap text-[var(--text)]">
-                {activePreviewNote.contentPreview}
-              </div>
+            <div className="flex-1 overflow-y-auto pr-1 space-y-3">
+              {/* High-res Image Preview */}
+              {activePreviewNote.imageUrl && (
+                <div className="rounded-xl overflow-hidden border border-[var(--line)] bg-black/5 dark:bg-black/40 p-1">
+                  <div className="relative max-h-80 w-full flex items-center justify-center overflow-hidden rounded-lg bg-black/20">
+                    <img
+                      src={activePreviewNote.imageUrl}
+                      alt={activePreviewNote.title}
+                      className="max-h-80 w-auto object-contain rounded-lg"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between px-2 pt-2 text-[11px] text-[var(--text-muted)]">
+                    <span>High Resolution Document / Diagram</span>
+                    <a
+                      href={activePreviewNote.imageUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-500 hover:underline flex items-center gap-1 font-semibold"
+                    >
+                      <ExternalLink size={12} />
+                      <span>Open Full Image</span>
+                    </a>
+                  </div>
+                </div>
+              )}
+
+              {/* Text Content */}
+              {activePreviewNote.contentPreview && (
+                <div className="p-4 rounded-xl bg-[var(--surface-sunken)] border border-[var(--line)] text-xs md:text-sm font-sans leading-relaxed whitespace-pre-wrap text-[var(--text)]">
+                  {activePreviewNote.contentPreview}
+                </div>
+              )}
             </div>
 
             <div className="flex items-center justify-between pt-2 border-t" style={{ borderColor: 'var(--line)' }}>
               <button
                 type="button"
                 onClick={() => handleLike(activePreviewNote.id)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[var(--line)] text-xs font-semibold hover:bg-[var(--surface-sunken)]"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[var(--line)] text-xs font-semibold hover:bg-[var(--surface-sunken)] cursor-pointer"
               >
                 <Heart size={14} className={activePreviewNote.likedBy?.includes(username) ? 'fill-rose-500 text-rose-500' : ''} />
                 <span>{activePreviewNote.likes} Likes</span>
@@ -374,13 +493,15 @@ export default function StudyCornerPage() {
               <button
                 type="button"
                 onClick={() => {
-                  showToast('Note saved to your offline device binder! 📥');
-                  setActivePreviewNote(null);
+                  navigator.clipboard?.writeText(
+                    `${activePreviewNote.title}\n\n${activePreviewNote.contentPreview || ''}\n${activePreviewNote.imageUrl ? `Image: ${activePreviewNote.imageUrl}` : ''}`
+                  );
+                  showToast('Note content copied to clipboard! 📋');
                 }}
-                className="px-4 py-1.5 rounded-full bg-blue-600 text-white text-xs font-bold hover:opacity-95 flex items-center gap-1.5 shadow-sm"
+                className="px-4 py-1.5 rounded-full bg-blue-600 text-white text-xs font-bold hover:opacity-95 flex items-center gap-1.5 shadow-sm cursor-pointer"
               >
                 <Download size={14} />
-                <span>Save Offline</span>
+                <span>Copy / Save</span>
               </button>
             </div>
           </div>
@@ -400,12 +521,15 @@ export default function StudyCornerPage() {
                 <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold">
                   <BookOpen size={16} />
                 </div>
-                <h2 className="text-sm font-bold text-[var(--text)]">Upload Study Notes</h2>
+                <div>
+                  <h2 className="text-sm font-bold text-[var(--text)]">Upload Study Notes</h2>
+                  <p className="text-[11px] text-[var(--text-muted)]">Permanent Cloud Database • Visible to all students & teachers</p>
+                </div>
               </div>
               <button
                 type="button"
                 onClick={() => setIsUploadOpen(false)}
-                className="p-1 rounded-full hover:bg-[var(--surface-sunken)] text-[var(--text-muted)]"
+                className="p-1 rounded-full hover:bg-[var(--surface-sunken)] text-[var(--text-muted)] cursor-pointer"
               >
                 <X size={18} />
               </button>
@@ -419,7 +543,7 @@ export default function StudyCornerPage() {
                   required
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
-                  placeholder="e.g. Class 8: Light & Sound Complete Formulas"
+                  placeholder="e.g. Class 10: Science Chapter 1 Formulas & Diagrams"
                   className="w-full h-9 px-3 rounded-xl border bg-[var(--surface-sunken)] text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-blue-500/30"
                   style={{ borderColor: 'var(--line)' }}
                 />
@@ -467,20 +591,84 @@ export default function StudyCornerPage() {
                   type="text"
                   value={newDesc}
                   onChange={(e) => setNewDesc(e.target.value)}
-                  placeholder="e.g. Chapter 4 quick revision summary & 5 practice questions"
+                  placeholder="e.g. Handwritten revision pages, formulas and chapter summary"
                   className="w-full h-9 px-3 rounded-xl border bg-[var(--surface-sunken)] text-[var(--text)] focus:outline-none"
                   style={{ borderColor: 'var(--line)' }}
                 />
               </div>
 
+              {/* Dedicated Image / Photo Attachment Button */}
               <div>
-                <label className="font-semibold block mb-1 text-[var(--text)]">Notes Content / Formulas / Summary *</label>
+                <label className="font-semibold block mb-1 text-[var(--text)] flex items-center justify-between">
+                  <span>Attach Photo of Notes / Diagram</span>
+                  <span className="text-[10px] text-blue-500 font-normal">Visible to all students in Cloud</span>
+                </label>
+
+                {!noteImagePreview ? (
+                  <label className="flex flex-col items-center justify-center p-4 rounded-xl border-2 border-dashed border-[var(--line)] hover:border-blue-500/60 bg-[var(--surface-sunken)] cursor-pointer transition-all hover:bg-blue-500/5 group">
+                    <div className="flex items-center gap-2 text-blue-500 font-semibold text-xs mb-1 group-hover:scale-105 transition-transform">
+                      <Camera size={18} />
+                      <span>Take Photo or Upload Image of Notes</span>
+                    </div>
+                    <p className="text-[11px] text-[var(--text-muted)]">
+                      PNG, JPG, WEBP up to 10MB • Uploads to Cloudinary CDN
+                    </p>
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      onChange={handleImageSelect}
+                      className="hidden"
+                    />
+                  </label>
+                ) : (
+                  <div className="relative rounded-xl overflow-hidden border border-[var(--line)] bg-[var(--surface-sunken)] p-2">
+                    <div className="flex items-center gap-3">
+                      <div className="w-14 h-14 rounded-lg overflow-hidden shrink-0 border border-[var(--line)] bg-black/20">
+                        <img src={noteImagePreview} alt="Preview" className="w-full h-full object-cover" />
+                      </div>
+                      <div className="flex-1 min-w-0 text-xs">
+                        <p className="font-bold text-[var(--text)] truncate">{noteImage?.name || 'Selected photo'}</p>
+                        <p className="text-[11px] text-[var(--text-muted)] mt-0.5">
+                          {isUploadingImage ? (
+                            <span className="text-amber-500 flex items-center gap-1 font-semibold">
+                              <Loader2 size={12} className="animate-spin" /> Uploading to cloud...
+                            </span>
+                          ) : uploadedImageUrl ? (
+                            <span className="text-emerald-500 flex items-center gap-1 font-semibold">
+                              <Check size={12} /> Uploaded to Cloud CDN
+                            </span>
+                          ) : (
+                            'Ready'
+                          )}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleRemoveImage}
+                        className="p-1.5 rounded-lg bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 text-xs font-semibold cursor-pointer"
+                        title="Remove image"
+                      >
+                        <X size={15} />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="font-semibold block mb-1 text-[var(--text)]">
+                  Notes Content / Formulas / Summary {uploadedImageUrl ? '(Optional)' : '*'}
+                </label>
                 <textarea
-                  required
-                  rows={6}
+                  required={!uploadedImageUrl}
+                  rows={uploadedImageUrl ? 3 : 5}
                   value={newContent}
                   onChange={(e) => setNewContent(e.target.value)}
-                  placeholder="Type or paste your formulas, bullet points, key definitions, or exam questions..."
+                  placeholder={
+                    uploadedImageUrl
+                      ? 'Optional: Add bullet points, key takeaways, or page numbers to accompany your photo...'
+                      : 'Type or paste your formulas, bullet points, key definitions, or exam questions...'
+                  }
                   className="w-full p-3 rounded-xl border bg-[var(--surface-sunken)] text-[var(--text)] font-mono text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/30"
                   style={{ borderColor: 'var(--line)' }}
                 />
@@ -491,16 +679,23 @@ export default function StudyCornerPage() {
               <button
                 type="button"
                 onClick={() => setIsUploadOpen(false)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-[var(--text-muted)] hover:bg-[var(--surface-sunken)]"
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-[var(--text-muted)] hover:bg-[var(--surface-sunken)] cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                disabled={isUploading}
-                className="px-5 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold hover:opacity-95 shadow-sm disabled:opacity-50 cursor-pointer"
+                disabled={isUploading || isUploadingImage}
+                className="px-5 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold hover:opacity-95 shadow-sm disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
               >
-                {isUploading ? 'Publishing to Cloud...' : 'Publish to Cloud Database'}
+                {isUploading ? (
+                  <>
+                    <Loader2 size={13} className="animate-spin" />
+                    <span>Publishing to Cloud...</span>
+                  </>
+                ) : (
+                  <span>Publish to Cloud Database</span>
+                )}
               </button>
             </div>
           </form>
