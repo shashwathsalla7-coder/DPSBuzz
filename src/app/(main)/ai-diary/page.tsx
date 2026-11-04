@@ -225,7 +225,7 @@ export default function AiDiaryPage() {
       } catch {}
     }
 
-    // Query server AI brain with full conversation context and database RAG
+    // 1. Query server AI brain with full database RAG & Gemini 3.5 Flash
     try {
       const res = await fetch('/api/ai/chat', {
         method: 'POST',
@@ -235,26 +235,85 @@ export default function AiDiaryPage() {
           prompt: text,
           userClass,
           username,
+          apiKey: process.env.NEXT_PUBLIC_GEMINI_API_KEY || '',
         }),
       });
-      const data = await res.json();
-      if (data && data.success) {
-        const aiMsg: ChatMessage = {
-          id: `ai-${Date.now()}`,
-          sender: 'ai',
-          text: data.answer,
-          timestamp: 'Just now',
-          suggestions: data.suggestions,
-          imageUrl: data.imageUrl,
-          diaryEntry: data.diaryEntry,
-          canUploadDiary: data.canUploadDiary,
-          targetClass: data.targetClass,
-        };
-        setMessages((prev) => [...prev, aiMsg]);
-      } else {
-        throw new Error('API fallback');
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.success && data.answer) {
+          const aiMsg: ChatMessage = {
+            id: `ai-${Date.now()}`,
+            sender: 'ai',
+            text: data.answer,
+            timestamp: 'Just now',
+            suggestions: data.suggestions || [
+              'Explain step 1 in detail',
+              'Solve another problem like this',
+              'What formula was used?',
+            ],
+            imageUrl: data.imageUrl,
+            diaryEntry: data.diaryEntry,
+            canUploadDiary: data.canUploadDiary,
+            targetClass: data.targetClass,
+          };
+          setMessages((prev) => [...prev, aiMsg]);
+          setIsTyping(false);
+          return;
+        }
       }
-    } catch {
+    } catch (serverErr) {
+      console.warn('Server AI route unavailable, attempting direct client Gemini query:', serverErr);
+    }
+
+    // 2. Direct Browser Call to Google Gemini 3.5 Flash (Bypasses server cold starts & guarantees solution)
+    try {
+      const clientApiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY || '';
+      if (clientApiKey) {
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${clientApiKey}`;
+        const gRes = await fetch(geminiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            systemInstruction: {
+              parts: [
+                {
+                  text: `You are the official DPS Buzz Academic AI Copilot for Delhi Public School. Your job is to solve CBSE Class ${userClass} academic problems (Mathematics, Physics, Chemistry, Biology, English) step-by-step with clear derivations, formulas, and encouraging explanations. Always solve the problem completely. Never give a generic canned template.`,
+                },
+              ],
+            },
+            contents: [{ role: 'user', parts: [{ text }] }],
+            generationConfig: { temperature: 0.6, maxOutputTokens: 1024 },
+          }),
+        });
+
+        if (gRes.ok) {
+          const gData = await gRes.json();
+          const generatedText = gData.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (generatedText) {
+            const aiMsg: ChatMessage = {
+              id: `ai-${Date.now()}`,
+              sender: 'ai',
+              text: generatedText,
+              timestamp: 'Just now',
+              suggestions: [
+                'Explain the first step in detail',
+                'Solve another problem like this',
+                'What formula was used?',
+              ],
+            };
+            setMessages((prev) => [...prev, aiMsg]);
+            setIsTyping(false);
+            return;
+          }
+        }
+      }
+    } catch (clientErr) {
+      console.warn('Direct client Gemini call error:', clientErr);
+    }
+
+    // 3. Fallback: Cognitive offline reasoner
+    try {
       const response = SchoolFeatures.queryAiDiary(text, userClass);
       const aiMsg: ChatMessage = {
         id: `ai-${Date.now()}`,

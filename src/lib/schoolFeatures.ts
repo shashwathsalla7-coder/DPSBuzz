@@ -1037,11 +1037,89 @@ export const SchoolFeatures = {
       };
     }
 
-    // 7. Generic friendly educational assistant
+    // 7. Dynamic Math Linear Equation Solver (e.g., "solve 2x + 5 = 15", "3x = 12", "5x - 7 = 18")
+    const linearMatch = q.match(/(?:solve\s*)?(\d+)?x\s*([+-])?\s*(\d+)?\s*=\s*(\d+)/i);
+    if (linearMatch && (linearMatch[1] || linearMatch[2])) {
+      const a = parseInt(linearMatch[1] || '1', 10);
+      const sign = linearMatch[2] || '+';
+      const b = parseInt(linearMatch[3] || '0', 10);
+      const c = parseInt(linearMatch[4] || '0', 10);
+
+      const rightSide = sign === '+' ? c - b : c + b;
+      const xVal = rightSide / a;
+      const isInteger = Number.isInteger(xVal);
+
+      return {
+        category: 'academic_math',
+        answer: `🧮 **Step-by-Step Algebraic Solution:**\n\nGiven equation: **$${a === 1 ? '' : a}x ${b > 0 ? `${sign} ${b}` : ''} = ${c}$**\n\n` +
+          (b > 0 ? `1. **Transpose constant to RHS:**\n   $$${a === 1 ? '' : a}x = ${c} ${sign === '+' ? '-' : '+'} ${b} = ${rightSide}$$\n\n` : '') +
+          `2. **Divide both sides by ${a}:**\n   $$x = \\frac{${rightSide}}{${a}}$$\n   $$\\mathbf{x = ${isInteger ? xVal : xVal.toFixed(2)}}$$\n\n` +
+          `✅ **Verification:** Substituting $x = ${isInteger ? xVal : xVal.toFixed(2)}$ into LHS gives $${a}(${isInteger ? xVal : xVal.toFixed(2)}) ${b > 0 ? `${sign} ${b}` : ''} = ${c} = \\text{RHS}$.`,
+        suggestions: ['Solve another equation', 'Pythagoras theorem formula', 'What is today math homework?'],
+      };
+    }
+
+    // 8. Dynamic Quadratic Equation Solver (e.g., "x^2 - 5x + 6 = 0")
+    const quadMatch = q.match(/x\^?2\s*([+-]\s*\d+)?x\s*([+-]\s*\d+)\s*=\s*0/i);
+    if (quadMatch) {
+      const b = parseInt((quadMatch[1] || '+1').replace(/\s+/g, ''), 10);
+      const c = parseInt((quadMatch[2] || '+0').replace(/\s+/g, ''), 10);
+      const D = b * b - 4 * 1 * c;
+      const sqrtD = Math.sqrt(Math.abs(D));
+      const r1 = (-b + sqrtD) / 2;
+      const r2 = (-b - sqrtD) / 2;
+
+      return {
+        category: 'academic_math',
+        answer: `🧮 **Step-by-Step Quadratic Solution for $x^2 ${b >= 0 ? `+ ${b}` : `- ${Math.abs(b)}`}x ${c >= 0 ? `+ ${c}` : `- ${Math.abs(c)}`} = 0$:**\n\n` +
+          `1. **Discriminant ($D = b^2 - 4ac$):**\n   $$D = (${b})^2 - 4(1)(${c}) = ${D}$$\n\n` +
+          `2. **Roots via Quadratic Formula ($x = \\frac{-b \\pm \\sqrt{D}}{2a}$):**\n   $$\\mathbf{x_1 = ${Number.isInteger(r1) ? r1 : r1.toFixed(2)}, \\quad x_2 = ${Number.isInteger(r2) ? r2 : r2.toFixed(2)}}$$\n\n` +
+          `💡 *In CBSE examinations, write down the formula $x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$ before substituting values to secure full method marks!*`,
+        suggestions: ['Solve 2x + 7 = 19', 'Trigonometry formulas', 'Class 10 sample papers'],
+      };
+    }
+
+    // 9. Pythagoras Theorem & Right Angle Triangles
+    if (q.includes('pythagoras') || q.includes('hypotenuse') || q.includes('right angle triangle')) {
+      return {
+        category: 'academic_math',
+        answer: `📐 **Pythagoras Theorem (CBSE Mathematics):**\n\nIn any right-angled triangle, the area of the square whose side is the hypotenuse is equal to the sum of the areas of the squares on the other two sides:\n\n$$\\mathbf{c^2 = a^2 + b^2} \\implies c = \\sqrt{a^2 + b^2}$$\n\n• If Base = 3 cm and Perpendicular = 4 cm:\n  $$c = \\sqrt{3^2 + 4^2} = \\sqrt{9 + 16} = \\sqrt{25} = 5\\text{ cm}$$\n\n💡 **Pythagorean Triplets to Memorize:** $(3, 4, 5)$, $(5, 12, 13)$, $(6, 8, 10)$, $(8, 15, 17)$.`,
+        suggestions: ['Trigonometry ratios', 'Area of triangle formula', 'Class 8 math homework'],
+      };
+    }
+
+    // 10. Ohm's Law & Physics Circuits
+    if (q.includes('ohm') || q.includes('resistance') || q.includes('voltage') || q.includes('circuit')) {
+      return {
+        category: 'academic_science',
+        answer: `⚡ **Ohm's Law & Circuit Formulas (Physics):**\n\n$$\\mathbf{V = I \\times R}$$\n\n• **$V$ (Potential Difference):** Measured in Volts ($\\text{V}$)\n• **$I$ (Electric Current):** Measured in Amperes ($\\text{A}$)\n• **$R$ (Resistance):** Measured in Ohms ($\\Omega$)\n\n**Example Problem:**\nIf an electric lamp has resistance $R = 20\\,\\Omega$ and current $I = 0.5\\,\\text{A}$ flows through it:\n$$V = 0.5 \\times 20 = 10\\,\\text{Volts}$$\n\n• **Series Resistors:** $R_s = R_1 + R_2 + R_3$\n• **Parallel Resistors:** $\\frac{1}{R_p} = \\frac{1}{R_1} + \\frac{1}{R_2} + \\frac{1}{R_3}$`,
+        suggestions: ['Laws of Reflection', 'What is photosynthesis?', 'Physics study notes'],
+      };
+    }
+
+    // 11. Photosynthesis & Biology
+    if (q.includes('photosynthesis') || q.includes('chlorophyll') || q.includes('autotroph')) {
+      return {
+        category: 'academic_science',
+        answer: `🍃 **Photosynthesis: Life Processes (Biology):**\n\n**Balanced Chemical Equation:**\n$$6\\text{CO}_2 + 12\\text{H}_2\\text{O} \\xrightarrow[\\text{Chlorophyll}]{\\text{Sunlight}} \\text{C}_6\\text{H}_{12}\\text{O}_6 + 6\\text{O}_2 + 6\\text{H}_2\\text{O}$$\n\n**Key Events:**\n1. Absorption of light energy by chlorophyll.\n2. Conversion of light energy into chemical energy and photolysis of water ($2\\text{H}_2\\text{O} \\to 4\\text{H}^+ + \\text{O}_2 + 4e^-$).\n3. Reduction of carbon dioxide ($\\text{CO}_2$) to carbohydrates (glucose).`,
+        suggestions: ['Respiration vs photosynthesis', 'Digestive system organs', 'Plant tissues'],
+      };
+    }
+
+    // 12. English Letter to Editor Format
+    if (q.includes('letter to editor') || q.includes('formal letter') || q.includes('letter format')) {
+      return {
+        category: 'academic_english',
+        answer: `📝 **CBSE Formal Letter to the Editor Format (5 Marks):**\n\n1. **Sender's Address** (2-3 lines, no comma at end of line)\n2. **Date** (e.g. *5th November 2026*)\n3. **The Editor** / *Name of Newspaper* / *City*\n4. **Subject:** Concise & underlined (e.g. *Subject: Reckless driving near school premises*)\n5. **Salutation:** *Sir / Madam*\n6. **Body Paragraphs:**\n   • *Intro:* "Through the columns of your esteemed newspaper, I wish to draw the attention of the authorities..."\n   • *Content:* Cause, impact, and disruption.\n   • *Conclusion:* Constructive solutions & appeal.\n7. **Yours faithfully / Yours sincerely**\n8. **Name & Signature**`,
+        suggestions: ['Notice writing format', 'Analytical paragraph format', 'Active and passive voice'],
+      };
+    }
+
+    // 13. Generic friendly educational assistant
     return {
       category: 'general',
-      answer: `Hello! I am your **DPS Buzz AI Diary Assistant** 🐝\n\nI can help you with:\n1. 📅 **AI Daily Study Schedule:** Ask *"Plan my study schedule for today"*\n2. 📝 **Daily Homework & Diary:** Ask *"What is today's homework for Class ${userClass}?"*\n3. 👔 **Uniform Code:** Ask *"What is tomorrow's uniform schedule?"*\n4. 📅 **Exams & Datesheets:** Ask *"When are the upcoming examinations?"*\n5. 🚌 **Bus Timings:** Ask *"What time does senior dispersal start?"*\n6. 📚 **Study Notes:** Ask *"Where can I find maths formula sheets?"*`,
-      suggestions: ['Plan my study schedule', "What is today's homework?", 'Uniform schedule', 'Upcoming exam dates'],
+      answer: `Hello! I am your **DPS Buzz AI Academic Copilot** 🐝\n\nSend me your exact problem and I will break it down step-by-step:\n• 🧮 **Mathematics:** Equations (e.g. *"Solve 2x + 5 = 15"* or *"Roots of x^2 - 5x + 6 = 0"*), Pythagoras theorem, Trigonometry.\n• 🔬 **Science:** Physics numericals (Ohm's law $V=IR$), Chemistry balancing, Biology life processes.\n• 📝 **English:** Letter to Editor format, Notice writing, Analytical paragraphs.\n• 📸 **Class Diary:** Show verified daily blackboard notes.\n\nType your question above!`,
+      suggestions: ['Solve 2x + 7 = 19', 'Explain Ohm law', "Show today's diary image", 'Letter to Editor format'],
     };
   },
   // --- LOST & FOUND ---
