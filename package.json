@@ -20,6 +20,7 @@
     "date-fns": "^4.4.0",
     "lucide-react": "^1.55.0",
     "next": "^16.4.3",
+    "pptxgenjs": "^4.0.1",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "uuid": "^14.0.3"

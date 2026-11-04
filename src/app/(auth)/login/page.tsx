@@ -159,7 +159,7 @@ export default function LoginPage() {
     );
 
     // If not found in localStorage, fetch from authoritative /api/auth/profile (checks Cloudflare D1 + Supabase + ServerStore fast)
-    if (!match) {
+    if (!match || (match as any).alias_of) {
       try {
         const profRes = await fetch(`/api/auth/profile?username=${encodeURIComponent(cleanInput)}`, { cache: 'no-store' });
         if (profRes.ok) {

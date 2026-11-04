@@ -54,7 +54,7 @@ export default function SignupPage() {
     }
   }, []);
 
-  const handleStep1 = (e: React.FormEvent) => {
+  const handleStep1 = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -80,6 +80,22 @@ export default function SignupPage() {
       setError('Invalid school code. Please enter DPS71845 to continue.');
       return;
     }
+
+    // Guard against duplicate accounts: Check if student with this full name already exists in this class
+    try {
+      const checkRes = await fetch(
+        `/api/auth/profile?checkName=${encodeURIComponent(fullName.trim().toLowerCase())}&class=${encodeURIComponent(className)}&section=${encodeURIComponent(section)}`
+      );
+      if (checkRes.ok) {
+        const checkData = await checkRes.json();
+        if (checkData.exists) {
+          setError(
+            `An account already exists for "${fullName.trim()}" in Class ${className}-${section} (username: @${checkData.username}). Please log in with this account instead of creating a duplicate.`
+          );
+          return;
+        }
+      }
+    } catch {}
 
     setStep(2);
   };
