@@ -15,12 +15,12 @@ import {
 export function CampusHubChips() {
   const hubs = [
     {
-      title: 'WhatsApp Hub',
-      subtitle: 'Official & Classes',
-      icon: MessageSquare,
-      href: '/school-whatsapp',
-      badge: 'Live D1',
-      color: 'from-emerald-600 to-green-500',
+      title: 'Class Groups',
+      subtitle: 'Class WhatsApp & Chat',
+      icon: Users,
+      href: '/groups',
+      badge: 'WhatsApp',
+      color: 'from-emerald-600 to-teal-500',
       textColor: 'text-emerald-500',
     },
     {
@@ -49,15 +49,6 @@ export function CampusHubChips() {
       badge: '+10 pts',
       color: 'from-emerald-500 to-teal-400',
       textColor: 'text-emerald-500',
-    },
-    {
-      title: 'Class Groups',
-      subtitle: 'Nursery to 10th',
-      icon: Users,
-      href: '/groups',
-      badge: 'Classrooms',
-      color: 'from-purple-600 to-pink-500',
-      textColor: 'text-purple-500',
     },
     {
       title: 'Notices',
