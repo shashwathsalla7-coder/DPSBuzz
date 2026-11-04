@@ -33,56 +33,36 @@ async function seedInitialCampusData() {
   }
 
   // 2. Check if study notes exist
-  const existingNotes = await d1Query('SELECT id FROM campus_study_notes LIMIT 1;');
+  const existingNotes = await d1Query('SELECT id FROM campus_study_notes WHERE id = ?;', ['note-optics-class10']);
   if (existingNotes.length === 0) {
-    console.log('Inserting initial curated study notes...');
+    console.log('Inserting initial curated study notes including photo/diagram note...');
     await d1Execute(
-      `INSERT INTO campus_study_notes (id, title, subject, class_grade, description, author_name, author_username, author_role, author_class, likes, liked_by, downloads, file_type, badge, content_preview)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+      `INSERT INTO campus_study_notes (id, title, subject, class_grade, description, author_name, author_username, author_role, author_class, likes, liked_by, downloads, file_type, badge, content_preview, image_url)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
       [
-        'note-chem-class10',
-        'Chemical Reactions & Equations — Complete Chapter Summary',
+        'note-optics-class10',
+        'Class 10 Physics: Ray Diagrams for Concave & Convex Mirrors',
         'Science',
         'Class 10',
-        'Handwritten-style revision notes covering Combination, Decomposition, Displacement, Redox reactions, and Corrosion with NCERT balanced equations.',
+        'Complete handwritten geometric ray diagrams for object at infinity, beyond C, at C, between C and F, and between F and P with Cartesian sign convention.',
         'Shashwath Salla',
         'shashwath71845',
         'student',
         'Class 10-A',
-        14,
-        JSON.stringify(['shashwath71845', 'vignesh', 'chandan', 'rohan728']),
-        38,
-        'pdf',
-        'Top Rated ⭐',
-        '1. Chemical Equations: Representation using chemical symbols. 2. Law of Conservation of Mass: Mass cannot be created nor destroyed. 3. Balancing by hit-and-trial. 4. Types: Combination, Decomposition (Thermal, Electrolytic, Photolytic), Single/Double Displacement, Oxidation-Reduction (LEO/GER).'
+        18,
+        JSON.stringify(['shashwath71845', 'vignesh', 'chandan', 'rohan728', 'ishanvi']),
+        45,
+        'image',
+        'NCERT Verified 📐',
+        'Rule 1: Ray parallel to principal axis passes through focus after reflection. Rule 2: Ray through center of curvature retraces path. Real & inverted when object is beyond F; virtual & erect when between F and Pole (used for shaving mirrors and headlights).',
+        'https://upload.wikimedia.org/wikipedia/commons/thumb/c/cf/Concave_mirror_ray_diagram.svg/800px-Concave_mirror_ray_diagram.svg.png'
       ]
     );
-
-    await d1Execute(
-      `INSERT INTO campus_study_notes (id, title, subject, class_grade, description, author_name, author_username, author_role, author_class, likes, liked_by, downloads, file_type, badge, content_preview)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
-      [
-        'note-math-class9',
-        'Polynomials & Factor Theorem Cheat Sheet',
-        'Mathematics',
-        'Class 9',
-        'Quick formula cards covering degree of polynomials, Remainder Theorem, Factor Theorem, and algebraic identities (a+b+c)², x³+y³+z³-3xyz.',
-        'Rohan Kumar',
-        'rohan728',
-        'student',
-        'Class 9-B',
-        9,
-        JSON.stringify(['rohan728', 'shashwath71845', 'ashwith']),
-        22,
-        'summary',
-        'NCERT Gold 🏆',
-        'Identity 1: (x+y+z)² = x²+y²+z²+2xy+2yz+2zx. Identity 2: x³+y³+z³ - 3xyz = (x+y+z)(x²+y²+z² - xy - yz - zx). Remainder Theorem: When p(x) is divided by (x - a), the remainder is p(a). Factor Theorem: (x - a) is a factor if p(a) = 0.'
-      ]
-    );
-    console.log('Curated study notes seeded successfully.');
-  } else {
-    console.log('Study notes already present (' + existingNotes.length + ' found).');
+    console.log('Optics ray diagram note seeded successfully.');
   }
+
+  // Clean up any test notes like 'hi'
+  await d1Execute("DELETE FROM campus_study_notes WHERE title = 'hi' OR description = 'hi';");
 
   // 3. Verify counts
   const qCount = await d1Query('SELECT count(*) as count FROM campus_questions;');
