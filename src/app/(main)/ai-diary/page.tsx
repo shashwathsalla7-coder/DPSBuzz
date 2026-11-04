@@ -51,7 +51,7 @@ export default function AiDiaryPage() {
     {
       id: 'msg-welcome',
       sender: 'ai',
-      text: "👋 Namaste! I am your **DPS Buzz AI Diary Assistant**.\n\nI have access to **daily class diary photos**, homework tasks, the examination timetable, uniform guidelines, and Madam's official announcements for Nursery to Class 10.\n\nAsk me *\"Show today's diary\"* or *\"What is today's homework?\"* and I will retrieve the verified diary snapshot for your class!\n\n🏆 **Speed Diary Challenge:** The first student in each class to upload today's diary photo wins **+50 House Points**!",
+      text: "👋 Namaste! I am your **DPS Buzz AI Diary Assistant**.\n\nI have access to **daily class diary photos**, homework tasks, the examination timetable, uniform guidelines, and Madam's official announcements for Nursery to Class 10.\n\nAsk me *\"Show today's diary\"* or *\"What is today's homework?\"* and I will retrieve the verified diary snapshot for your class!\n\n🏆 **Speed Diary Challenge:** The first student in each class to upload today's diary photo wins **+50 Spirit Points**!",
       timestamp: 'Just now',
       suggestions: [
         "Show today's diary image",
@@ -251,7 +251,7 @@ export default function AiDiaryPage() {
             {
               id: `ai-upload-${Date.now()}`,
               sender: 'ai',
-              text: `🎉 **Outstanding! You are the FIRST in Class ${selectedClass} to submit today's diary!**\n\n**+50 House Points** have been awarded to your account and your House! Your snapshot is now officially visible to all classmates.`,
+              text: `🎉 **Outstanding! You are the FIRST in Class ${selectedClass} to submit today's diary!**\n\n**+50 Spirit Points** have been awarded to your account and your profile! Your snapshot is now officially visible to all classmates.`,
               timestamp: 'Just now',
               imageUrl: upData.url,
               diaryEntry: res.entry,
@@ -764,7 +764,7 @@ export default function AiDiaryPage() {
                 <span>
                   {hasUserClassUploadedToday
                     ? `Class ${userClass} diary photo has already been logged for today!`
-                    : `Be the FIRST in Class ${userClass} to upload today's diary to win +50 House Points!`}
+                    : `Be the FIRST in Class ${userClass} to upload today's diary to win +50 Spirit Points!`}
                 </span>
               </div>
               {!hasUserClassUploadedToday && (
@@ -1068,7 +1068,7 @@ export default function AiDiaryPage() {
                 <div>
                   <h3 className="text-sm font-bold text-[var(--text)]">Upload Daily Class Diary</h3>
                   <p className="text-[11px] text-[var(--text-muted)]">
-                    First submission for your class wins <strong>+50 House Points</strong>!
+                    First submission for your class wins <strong>+50 Spirit Points</strong>!
                   </p>
                 </div>
               </div>

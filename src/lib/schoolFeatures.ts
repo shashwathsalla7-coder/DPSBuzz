@@ -5,7 +5,7 @@
 // 1. Madam's Broadcast Desk (Direct Principal to Student/Parent messaging)
 // 2. Class Groups (Nursery to Class 10 with Junior Parent-Teacher privacy)
 // 3. Study Corner (Collaborative Notes & Revision Sheets)
-// 4. Daily Question Box (AI Ranked Question Algorithm & House Points)
+// 4. Daily Question Box (AI Ranked Question Algorithm & Spirit Points)
 // 5. AI Diary & Intelligent Study Scheduler
 // ============================================================================
 
@@ -966,7 +966,7 @@ export const SchoolFeatures = {
       if (diaryEntry) {
         return {
           category: 'diary_image',
-          answer: `📸 **Class ${targetClass} Official Diary Page (${diaryEntry.dateStr}):**\n\n${diaryEntry.isFirstSubmission ? '🏆 **Speed First Submission Winner:** ' : 'Submitted by: '}**${diaryEntry.uploadedByName}** (@${diaryEntry.uploadedByUsername})${diaryEntry.pointsAwarded > 0 ? ` (+${diaryEntry.pointsAwarded} House Points won!)` : ''}\n\n${diaryEntry.homeworkSummary ? `📝 **Today's Homework Summary:**\n${diaryEntry.homeworkSummary}\n\n` : ''}*Here is the verified physical blackboard / diary photo:*`,
+          answer: `📸 **Class ${targetClass} Official Diary Page (${diaryEntry.dateStr}):**\n\n${diaryEntry.isFirstSubmission ? '🏆 **Speed First Submission Winner:** ' : 'Submitted by: '}**${diaryEntry.uploadedByName}** (@${diaryEntry.uploadedByUsername})${diaryEntry.pointsAwarded > 0 ? ` (+${diaryEntry.pointsAwarded} Spirit Points won!)` : ''}\n\n${diaryEntry.homeworkSummary ? `📝 **Today's Homework Summary:**\n${diaryEntry.homeworkSummary}\n\n` : ''}*Here is the verified physical blackboard / diary photo:*`,
           imageUrl: diaryEntry.imageUrl,
           diaryEntry,
           suggestions: ['Plan my study schedule', 'Uniform schedule', 'View all class diaries'],
@@ -979,7 +979,7 @@ export const SchoolFeatures = {
 
       return {
         category: 'homework',
-        answer: `${defaultHw}\n\n⚠️ *No student in Class ${targetClass} has uploaded today's physical diary photo yet!*\n\n🏆 **Speed Diary Challenge:** Be the FIRST student in Class ${targetClass} to upload a photo of today's blackboard/diary page to win **+50 House Points**!`,
+        answer: `${defaultHw}\n\n⚠️ *No student in Class ${targetClass} has uploaded today's physical diary photo yet!*\n\n🏆 **Speed Diary Challenge:** Be the FIRST student in Class ${targetClass} to upload a photo of today's blackboard/diary page to win **+50 Spirit Points**!`,
         canUploadDiary: true,
         targetClass,
         suggestions: ['Upload today diary photo', 'Plan my daily study schedule', 'Uniform schedule'],
@@ -990,7 +990,7 @@ export const SchoolFeatures = {
     if (q.includes('uniform') || q.includes('dress') || q.includes('shoes') || q.includes('tie') || q.includes('track pant')) {
       return {
         category: 'uniform',
-        answer: `👔 **DPS Uniform Code & Schedule:**\n\n• **Monday, Tuesday, Thursday, Friday:**\n  - Regular Formal School Uniform: White shirt, grey trousers/skirt, school tie, black polished leather shoes, and black socks.\n• **Wednesday & Saturday:**\n  - House Uniform: Respective House T-shirt (Ganges/Yamuna/Kaveri/Krishna), navy blue track pants, and clean white sports sneakers.\n\n*Note: ID cards are mandatory every day.*`,
+        answer: `👔 **DPS Uniform Code & Schedule:**\n\n• **Monday, Tuesday, Thursday, Friday:**\n  - Regular Formal School Uniform: White shirt, grey trousers/skirt, school tie, black polished leather shoes, and black socks.\n• **Wednesday & Saturday:**\n  - Sports Uniform: Respective DPS Sports Uniform T-shirt, navy blue track pants, and clean white sports sneakers.\n\n*Note: ID cards are mandatory every day.*`,
         suggestions: ['Show today homework', 'When is sports day?', 'School timings'],
       };
     }
