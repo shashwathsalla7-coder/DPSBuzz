@@ -36,6 +36,7 @@ export async function getD1Profiles(): Promise<Profile[]> {
     postCount: Number(r.post_count) || 0,
     spiritPoints: Number(r.spirit_points) || 50,
     createdAt: r.created_at || new Date().toISOString(),
+    alias_of: r.alias_of || null,
   }));
 }
 
@@ -68,6 +69,7 @@ export async function getD1ProfileByUsername(username: string): Promise<Profile 
     postCount: Number(r.post_count) || 0,
     spiritPoints: Number(r.spirit_points) || 50,
     createdAt: r.created_at || new Date().toISOString(),
+    alias_of: r.alias_of || null,
   };
 }
 

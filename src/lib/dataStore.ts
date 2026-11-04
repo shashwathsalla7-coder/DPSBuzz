@@ -25,6 +25,7 @@ export interface Profile {
   spiritPoints: number;
   song?: SongTrack;
   referredBy?: string;
+  alias_of?: string | null;
   referralCount?: number;
   createdAt: string;
 }
@@ -4859,6 +4860,7 @@ export const DataStore = {
     isPrivate?: boolean;
     song?: SongTrack;
     referredBy?: string;
+  alias_of?: string | null;
   }): { success: boolean; profile?: Profile; error?: string } {
     const roster = this.getRoster();
     const cleanAdm = (params.admissionNumber || '').toUpperCase().trim();
