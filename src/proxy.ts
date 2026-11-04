@@ -115,6 +115,7 @@ export function proxy(request: NextRequest) {
 
   // 6. Public API endpoints that don't require an active student session
   const isPublicApi =
+    pathname.startsWith('/api/auth') ||
     pathname.startsWith('/api/download') ||
     pathname === '/api/admin/login' ||
     pathname === '/api/media/sign-read' ||
