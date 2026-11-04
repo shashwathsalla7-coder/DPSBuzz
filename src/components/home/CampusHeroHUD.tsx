@@ -159,10 +159,10 @@ export function CampusHeroHUD() {
     ? (latestBroadcast.acknowledgedBy || []).includes(username)
     : false;
 
-  // Speech synthesis toggle
+  // Speech synthesis toggle with cross-platform natural voice normalization
   const toggleSpeech = () => {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
-      showToast('Speech audio is not supported in this browser.');
+      showToast('Speech audio synthesizer is not supported on this browser.');
       return;
     }
 
@@ -181,18 +181,33 @@ export function CampusHeroHUD() {
     utterance.rate = 0.95;
     utterance.pitch = 1.02;
 
-    const voices = window.speechSynthesis.getVoices();
-    const englishVoice =
-      voices.find((v) => v.lang.startsWith('en') && (v.name.includes('Natural') || v.name.includes('Female') || v.name.includes('Google'))) ||
+    const voices = window.speechSynthesis.getVoices() || [];
+    // Prioritize high-fidelity natural / regional voices
+    const naturalVoice =
+      voices.find((v) => v.lang.startsWith('en-IN') && (v.name.includes('Neural') || v.name.includes('Natural') || v.name.includes('Google'))) ||
+      voices.find((v) => v.lang.startsWith('en') && (v.name.includes('Natural') || v.name.includes('Online') || v.name.includes('Neural'))) ||
+      voices.find((v) => v.lang.startsWith('en-IN')) ||
+      voices.find((v) => v.lang.startsWith('en') && (v.name.includes('Female') || v.name.includes('Google') || v.name.includes('Samantha'))) ||
       voices.find((v) => v.lang.startsWith('en'));
 
-    if (englishVoice) utterance.voice = englishVoice;
+    if (naturalVoice) {
+      utterance.voice = naturalVoice;
+    }
 
     utterance.onend = () => setIsPlayingSpeech(false);
-    utterance.onerror = () => setIsPlayingSpeech(false);
+    utterance.onerror = (e) => {
+      console.warn('Speech synthesis playback notice:', e);
+      setIsPlayingSpeech(false);
+      showToast('Speech audio was paused or restricted by system permissions.');
+    };
 
-    window.speechSynthesis.speak(utterance);
-    setIsPlayingSpeech(true);
+    try {
+      window.speechSynthesis.speak(utterance);
+      setIsPlayingSpeech(true);
+    } catch {
+      setIsPlayingSpeech(false);
+      showToast('Audio playback could not be started.');
+    }
   };
 
   const handleAcknowledge = async () => {

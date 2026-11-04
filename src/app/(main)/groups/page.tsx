@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -13,6 +13,7 @@ import {
   Plus,
   X,
   ChevronLeft,
+  ChevronDown,
   AlertCircle,
   MoreVertical,
   Video,
@@ -26,6 +27,13 @@ import {
   Check,
   Mail,
   Award,
+  Play,
+  Share2,
+  Clock,
+  WifiOff,
+  Camera,
+  FileText,
+  Image as ImageIcon,
 } from 'lucide-react';
 import {
   schoolSystem,
@@ -37,11 +45,11 @@ import { DataStore, Profile } from '@/lib/dataStore';
 
 // Distinct WhatsApp group member colors
 const SENDER_COLORS = [
-  '#53bdeb', // Blue / Cyan
+  '#53bdeb', // Cyan / Blue
   '#f15c6d', // Red / Coral
   '#25d366', // Green
   '#e542a3', // Pink
-  '#ff9f00', // Amber / Orange
+  '#ff9f00', // Amber
   '#9c27b0', // Purple
   '#00bcd4', // Teal
   '#ff5722', // Deep Orange
@@ -53,6 +61,12 @@ function getSenderColor(name: string) {
     hash = name.charCodeAt(i) + ((hash << 5) - hash);
   }
   return SENDER_COLORS[Math.abs(hash) % SENDER_COLORS.length];
+}
+
+interface ReactionItem {
+  emoji: string;
+  count: number;
+  users: string[];
 }
 
 export default function GroupsPage() {
@@ -110,6 +124,8 @@ export default function GroupsPage() {
           timeColor: '#8696a0',
           dividerColor: '#222d34',
           bubbleShadow: '0 1px 0.5px rgba(11,20,26,0.25)',
+          quoteBg: '#182229',
+          quoteText: '#8696a0',
         }
       : {
           headerBg: '#f0f2f5',
@@ -133,6 +149,8 @@ export default function GroupsPage() {
           timeColor: '#667781',
           dividerColor: '#e9edef',
           bubbleShadow: '0 1px 0.5px rgba(11,20,26,0.13)',
+          quoteBg: 'rgba(0,0,0,0.05)',
+          quoteText: '#54656f',
         };
   }, [isDark]);
 
@@ -150,12 +168,28 @@ export default function GroupsPage() {
   const [broadcastToAll, setBroadcastToAll] = useState(false);
   const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
 
+  // Quoted reply state
+  const [replyingTo, setReplyingTo] = useState<WhatsAppMessage | null>(null);
+
+  // Message Reactions Map: messageId -> ReactionItem[]
+  const [reactions, setReactions] = useState<Record<string, ReactionItem[]>>({
+    'wmsg-seed-1': [{ emoji: '😂', count: 5, users: ['rohan', 'himaksh', 'shashwath'] }],
+    'wmsg-seed-2': [{ emoji: '👍', count: 3, users: ['ak47', 'sri'] }],
+  });
+
+  // Offline Queue State (Issue 7 Resilience)
+  const [isOnline, setIsOnline] = useState<boolean>(true);
+  const [offlineQueue, setOfflineQueue] = useState<Array<{ msg: WhatsAppMessage; targetChannelId: string }>>([]);
+
   // Role View: Teacher (Madam) vs Student
   const [clientViewMode, setClientViewMode] = useState<'teacher' | 'student'>('student');
 
-  // Modals
+  // Modals & Popovers
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
+  const [showAttachMenu, setShowAttachMenu] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [requestAdmissionPending, setRequestAdmissionPending] = useState(false);
 
   // Assignment / Invite State (Madam flow)
   const [assignTargetGroup, setAssignTargetGroup] = useState('channel-class-8g');
@@ -172,9 +206,122 @@ export default function GroupsPage() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastSyncTimestampRef = useRef<number>(0);
+  const pollingTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // --------------------------------------------------------------------------
-  // Initial Load & Low-Latency 1.2s Simultaneous Sync
+  // Online / Offline Detection
+  // --------------------------------------------------------------------------
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      flushOfflineQueue();
+    };
+    const handleOffline = () => {
+      setIsOnline(false);
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    setIsOnline(navigator.onLine);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [offlineQueue]);
+
+  const flushOfflineQueue = async () => {
+    if (offlineQueue.length === 0) return;
+    const items = [...offlineQueue];
+    setOfflineQueue([]);
+
+    for (const item of items) {
+      try {
+        await fetch('/api/campus', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'send_whatsapp_message',
+            channelId: item.targetChannelId,
+            senderUsername: item.msg.senderUsername,
+            senderName: item.msg.senderName,
+            senderRole: item.msg.senderRole,
+            senderClass: item.msg.senderClass,
+            text: item.msg.text,
+            templateType: item.msg.templateType || 'none',
+          }),
+        });
+      } catch (err) {
+        console.warn('Retry failed, requeueing item:', err);
+        setOfflineQueue((prev) => [...prev, item]);
+      }
+    }
+    refreshAllData();
+  };
+
+  // --------------------------------------------------------------------------
+  // Adaptive Polling Backoff Engine (Issue 1 & 4)
+  // Active: 1.5s | Backgrounded: 15s | Idle: 30s
+  // --------------------------------------------------------------------------
+  const syncIncrementalMessages = useCallback(async () => {
+    try {
+      const res = await fetch(
+        `/api/campus?action=whatsapp_messages&after=${lastSyncTimestampRef.current}`,
+        { cache: 'no-store' }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.messages) && data.messages.length > 0) {
+          setMessages((prev) => {
+            const existingIds = new Set(prev.map((m) => m.id));
+            const newOnes = data.messages.filter((m: WhatsAppMessage) => !existingIds.has(m.id));
+            if (newOnes.length === 0) return prev;
+            return [...prev, ...newOnes];
+          });
+          const highestTs = Math.max(...data.messages.map((m: WhatsAppMessage) => m.timestamp));
+          if (highestTs > lastSyncTimestampRef.current) {
+            lastSyncTimestampRef.current = highestTs;
+          }
+        }
+      }
+    } catch {}
+  }, []);
+
+  const startAdaptivePolling = useCallback(() => {
+    if (pollingTimerRef.current) clearInterval(pollingTimerRef.current);
+
+    // Determine interval based on page visibility
+    const isHidden = typeof document !== 'undefined' && document.hidden;
+    const intervalMs = isHidden ? 15000 : 1500;
+
+    pollingTimerRef.current = setInterval(() => {
+      syncIncrementalMessages();
+    }, intervalMs);
+  }, [syncIncrementalMessages]);
+
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (!document.hidden) {
+        // Tab focused: instant sync and set to high-speed 1.5s polling
+        syncIncrementalMessages();
+        startAdaptivePolling();
+      } else {
+        // Tab backgrounded: throttle to 15s to save Cloudflare D1 SQL queries
+        startAdaptivePolling();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibility);
+    startAdaptivePolling();
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility);
+      if (pollingTimerRef.current) clearInterval(pollingTimerRef.current);
+    };
+  }, [startAdaptivePolling, syncIncrementalMessages]);
+
+  // --------------------------------------------------------------------------
+  // Initial Load
   // --------------------------------------------------------------------------
   useEffect(() => {
     const user = DataStore.getCurrentUser();
@@ -190,18 +337,12 @@ export default function GroupsPage() {
 
     refreshAllData();
 
-    // Fast 1.2s polling for simultaneous chatting
-    const syncInterval = setInterval(() => {
-      syncIncrementalMessages();
-    }, 1200);
-
     const handleUpdate = () => {
       refreshAllData();
     };
     window.addEventListener('dpsbuzz:campus_updated', handleUpdate);
 
     return () => {
-      clearInterval(syncInterval);
       window.removeEventListener('dpsbuzz:campus_updated', handleUpdate);
     };
   }, []);
@@ -231,36 +372,12 @@ export default function GroupsPage() {
     }
   };
 
-  const syncIncrementalMessages = async () => {
-    try {
-      const res = await fetch(
-        `/api/campus?action=whatsapp_messages&after=${lastSyncTimestampRef.current}`,
-        { cache: 'no-store' }
-      );
-      if (res.ok) {
-        const data = await res.json();
-        if (Array.isArray(data.messages) && data.messages.length > 0) {
-          setMessages((prev) => {
-            const existingIds = new Set(prev.map((m) => m.id));
-            const newOnes = data.messages.filter((m: WhatsAppMessage) => !existingIds.has(m.id));
-            if (newOnes.length === 0) return prev;
-            return [...prev, ...newOnes];
-          });
-          const highestTs = Math.max(...data.messages.map((m: WhatsAppMessage) => m.timestamp));
-          if (highestTs > lastSyncTimestampRef.current) {
-            lastSyncTimestampRef.current = highestTs;
-          }
-        }
-      }
-    } catch {}
-  };
-
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, selectedChannelId]);
 
   // --------------------------------------------------------------------------
-  // Pending Invites for Current User (Madam Assignment Flow)
+  // Pending Invites / Assignments for Current User (Madam Assignment Flow)
   // --------------------------------------------------------------------------
   const myPendingInvites = useMemo(() => {
     if (!currentUser?.username) return [];
@@ -314,9 +431,41 @@ export default function GroupsPage() {
   };
 
   // --------------------------------------------------------------------------
-  // Filtered Classrooms: Strict Governance & Personalization
+  // Teacher / Student Requests Admission to a Group (e.g. English teacher -> 8G)
   // --------------------------------------------------------------------------
-  const isTeacherView = clientViewMode === 'teacher';
+  const handleRequestGroupAdmission = async (groupId: string) => {
+    if (!currentUser?.username) return;
+    setRequestAdmissionPending(true);
+
+    const isTeacher = clientViewMode === 'teacher';
+    const role = isTeacher ? 'teacher' : 'student';
+    const subject = isTeacher ? 'English Faculty' : 'Enrolled Student';
+
+    const res = await schoolSystem.requestClassAccess({
+      channelId: groupId,
+      username: currentUser.username,
+      fullName: currentUser.fullName || currentUser.username,
+      role,
+      subject,
+    });
+
+    setRequestAdmissionPending(false);
+    if (res.success) {
+      alert(res.message || 'Admission request submitted to Principal Madam & Faculty Admins.');
+      refreshAllData();
+    } else {
+      alert(res.error || 'Could not submit admission request.');
+    }
+  };
+
+  // --------------------------------------------------------------------------
+  // Filtered Classrooms: Strict Governance & Teacher/Student Isolation
+  // --------------------------------------------------------------------------
+  const isTeacherAdmin =
+    clientViewMode === 'teacher' &&
+    (currentUser?.username === 'shashwath71845' ||
+      currentUser?.username === 'madam_principal' ||
+      currentUser?.role === 'admin');
 
   const myAcceptedGroupIds = useMemo(() => {
     if (!currentUser?.username) return new Set<string>();
@@ -329,13 +478,13 @@ export default function GroupsPage() {
 
   const visibleChannels = useMemo(() => {
     return channels.filter((c) => {
-      // 1. Madam / Teachers in Teacher View see all classrooms
-      if (isTeacherView) return true;
+      // 1. Master Principal Madam & Admin see all rooms
+      if (isTeacherAdmin) return true;
 
-      // 2. Official Principal Dispatches channel is visible to all
+      // 2. Official School Dispatches channel is visible to all
       if (c.id === 'channel-school-broadcast' || c.grade === 'All') return true;
 
-      // 3. User accepted Madam's official assignment
+      // 3. User accepted Madam's official assignment for this group
       if (myAcceptedGroupIds.has(c.id)) return true;
 
       // 4. Enrolled usernames in D1
@@ -346,7 +495,7 @@ export default function GroupsPage() {
       }
 
       // 5. Match student's assigned grade
-      const userGrade = String((currentUser as any)?.classGrade || (currentUser as any)?.grade || currentUser?.class || '10')
+      const userGrade = String((currentUser as any)?.classGrade || (currentUser as any)?.grade || currentUser?.class || '8')
         .toLowerCase()
         .replace(/[^0-9]/g, '');
       const channelGrade = c.grade.toLowerCase().replace(/[^0-9]/g, '');
@@ -356,7 +505,7 @@ export default function GroupsPage() {
 
       return false;
     });
-  }, [channels, isTeacherView, myAcceptedGroupIds, currentUser]);
+  }, [channels, isTeacherAdmin, myAcceptedGroupIds, currentUser]);
 
   const filteredChannels = useMemo(() => {
     if (!searchQuery.trim()) return visibleChannels;
@@ -392,18 +541,18 @@ export default function GroupsPage() {
     return messages.filter((m) => m.channelId === activeChannel.id);
   }, [messages, activeChannel.id]);
 
-  const canSendMessage = isTeacherView || !activeChannel.isLocked;
+  const canSendMessage = clientViewMode === 'teacher' || !activeChannel.isLocked;
 
   // Active Channel Subtitle (Participant Names Preview like in the WhatsApp screenshot)
   const channelSubtitle = useMemo(() => {
     if (activeChannel.id === 'channel-school-broadcast') {
       return 'Office of the Principal, Vice Principal, Faculty, Students (5,500)';
     }
-    return 'Shashwath, Rohan, Himaksh, Vignesh, Anita (English), Chandan, +91 93476 06076...';
+    return 'Himaksh, Rishikesh, Rohan, Anita (English), Sri, +91 93476 06076, +91 63004 76366...';
   }, [activeChannel.id]);
 
   // --------------------------------------------------------------------------
-  // Message Dispatch Handler
+  // Message Dispatch Handler (with Offline Queue Resilience)
   // --------------------------------------------------------------------------
   const handleSendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -414,14 +563,17 @@ export default function GroupsPage() {
 
     setIsSending(true);
 
-    const senderUsername = currentUser?.username || (isTeacherView ? 'madam_principal' : 'student');
-    const senderName = isTeacherView
+    const senderUsername = currentUser?.username || (clientViewMode === 'teacher' ? 'madam_principal' : 'student');
+    const senderName = clientViewMode === 'teacher'
       ? 'Principal Madam (Office)'
       : currentUser?.fullName || currentUser?.username || 'Student';
-    const senderRole = isTeacherView ? 'admin' : (currentUser?.role || 'student');
-    const senderClass = isTeacherView ? 'Office of Principal' : 'DPS Student';
+    const senderRole = clientViewMode === 'teacher' ? 'admin' : (currentUser?.role || 'student');
+    const senderClass = clientViewMode === 'teacher' ? 'Office of Principal' : 'DPS Student';
 
     const optimisticId = `wmsg-opt-${Date.now()}`;
+    const quotedText = replyingTo ? `> Replying to @${replyingTo.senderName}: "${replyingTo.text.slice(0, 80)}"\n\n` : '';
+    const finalText = quotedText + textToSend;
+
     const optimisticMsg: WhatsAppMessage = {
       id: optimisticId,
       channelId: activeChannel.id,
@@ -429,17 +581,29 @@ export default function GroupsPage() {
       senderName,
       senderRole: senderRole as any,
       senderClass,
-      text: textToSend,
+      text: finalText,
       templateType: 'none',
       timestamp: Date.now(),
     };
     setMessages((prev) => [...prev, optimisticMsg]);
     setMessageText('');
+    setReplyingTo(null);
+
+    // If browser is offline, queue message immediately
+    if (!navigator.onLine) {
+      setOfflineQueue((prev) => [...prev, { msg: optimisticMsg, targetChannelId: activeChannel.id }]);
+      setIsSending(false);
+      return;
+    }
 
     try {
       const res = await fetch('/api/campus', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-username': senderUsername,
+          'x-user-role': senderRole,
+        },
         body: JSON.stringify({
           action: 'send_whatsapp_message',
           channelId: activeChannel.id,
@@ -447,27 +611,66 @@ export default function GroupsPage() {
           senderName,
           senderRole,
           senderClass,
-          text: textToSend,
+          text: finalText,
           templateType: 'none',
-          broadcastToAll: isTeacherView && (broadcastToAll || activeChannel.id === 'channel-school-broadcast'),
+          broadcastToAll: clientViewMode === 'teacher' && (broadcastToAll || activeChannel.id === 'channel-school-broadcast'),
         }),
       });
 
       if (!res.ok) {
-        setMessages((prev) => prev.filter((m) => m.id !== optimisticId));
+        // Re-queue on HTTP error
+        setOfflineQueue((prev) => [...prev, { msg: optimisticMsg, targetChannelId: activeChannel.id }]);
       } else {
         refreshAllData();
       }
     } catch {
-      setMessages((prev) => prev.filter((m) => m.id !== optimisticId));
+      // Network interruption -> queue for automatic background retry
+      setOfflineQueue((prev) => [...prev, { msg: optimisticMsg, targetChannelId: activeChannel.id }]);
     } finally {
       setIsSending(false);
     }
   };
 
+  // Toggle Reactions
+  const handleToggleReaction = (msgId: string, emoji: string) => {
+    const curU = currentUser?.username || 'me';
+    setReactions((prev) => {
+      const existing = prev[msgId] || [];
+      const item = existing.find((r) => r.emoji === emoji);
+      if (item) {
+        if (item.users.includes(curU)) {
+          // Remove reaction
+          const updatedUsers = item.users.filter((u) => u !== curU);
+          if (updatedUsers.length === 0) {
+            return { ...prev, [msgId]: existing.filter((r) => r.emoji !== emoji) };
+          }
+          return {
+            ...prev,
+            [msgId]: existing.map((r) =>
+              r.emoji === emoji ? { ...r, count: r.count - 1, users: updatedUsers } : r
+            ),
+          };
+        } else {
+          // Add reaction
+          return {
+            ...prev,
+            [msgId]: existing.map((r) =>
+              r.emoji === emoji ? { ...r, count: r.count + 1, users: [...r.users, curU] } : r
+            ),
+          };
+        }
+      } else {
+        return {
+          ...prev,
+          [msgId]: [...existing, { emoji, count: 1, users: [curU] }],
+        };
+      }
+    });
+  };
+
   // Toggle Channel Lock
   const handleToggleLock = async () => {
-    if (!isTeacherView) return;
+    if (clientViewMode !== 'teacher') return;
     const nextLock = !activeChannel.isLocked;
     const res = await schoolSystem.toggleChannelLock({
       channelId: activeChannel.id,
@@ -512,8 +715,17 @@ export default function GroupsPage() {
       style={{
         backgroundColor: T.chatBg,
         color: T.incomingText,
+        fontFamily: '"Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif',
       }}
     >
+      {/* Offline Toast Banner */}
+      {!isOnline && (
+        <div className="fixed top-14 left-0 right-0 z-50 bg-amber-600 text-white text-xs py-1.5 px-4 text-center font-medium flex items-center justify-center gap-2 shadow-md">
+          <WifiOff size={14} />
+          <span>Offline Mode: Outgoing WhatsApp messages will auto-send once connection is restored.</span>
+        </div>
+      )}
+
       {/* ==================================================================== */}
       {/* LEFT PANEL: WhatsApp Channels List (Width ~380px)                    */}
       {/* ==================================================================== */}
@@ -544,10 +756,10 @@ export default function GroupsPage() {
             </div>
             <div>
               <div className="text-xs font-semibold leading-tight" style={{ color: T.headerText }}>
-                {isTeacherView ? 'Madam Principal' : currentUser?.fullName || 'Student'}
+                {clientViewMode === 'teacher' ? 'Madam Principal' : currentUser?.fullName || 'Student'}
               </div>
               <div className="text-[11px]" style={{ color: T.headerSubtext }}>
-                {isTeacherView ? 'Faculty Admin' : 'Class Enrolled'}
+                {clientViewMode === 'teacher' ? 'Faculty Admin' : 'Class Enrolled'}
               </div>
             </div>
           </div>
@@ -555,23 +767,23 @@ export default function GroupsPage() {
           {/* Mode Pill & Quick Actions */}
           <div className="flex items-center gap-1.5">
             <button
-              onClick={() => setClientViewMode(isTeacherView ? 'student' : 'teacher')}
-              className="px-2.5 py-1 rounded-[6px] text-[11px] font-semibold border transition-all"
+              onClick={() => setClientViewMode(clientViewMode === 'teacher' ? 'student' : 'teacher')}
+              className="px-2.5 py-1 rounded-[6px] text-[11px] font-semibold border transition-all cursor-pointer"
               style={{
                 borderColor: T.sidebarBorder,
-                backgroundColor: isTeacherView ? '#00a884' : T.inputBg,
-                color: isTeacherView ? '#ffffff' : T.headerText,
+                backgroundColor: clientViewMode === 'teacher' ? '#00a884' : T.inputBg,
+                color: clientViewMode === 'teacher' ? '#ffffff' : T.headerText,
               }}
               title="Toggle between Madam / Teacher Admin and Student View"
             >
-              {isTeacherView ? 'Teacher' : 'Student'}
+              {clientViewMode === 'teacher' ? 'Teacher' : 'Student'}
             </button>
 
-            {isTeacherView && (
+            {clientViewMode === 'teacher' && (
               <>
                 <button
                   onClick={() => setShowAssignModal(true)}
-                  className="p-1.5 rounded-full hover:opacity-80 transition-opacity"
+                  className="p-1.5 rounded-full hover:opacity-80 transition-opacity cursor-pointer"
                   style={{ color: T.iconColor }}
                   title="Assign Teacher or Student to Class"
                 >
@@ -579,7 +791,7 @@ export default function GroupsPage() {
                 </button>
                 <button
                   onClick={() => setShowCreateGroupModal(true)}
-                  className="p-1.5 rounded-full hover:opacity-80 transition-opacity"
+                  className="p-1.5 rounded-full hover:opacity-80 transition-opacity cursor-pointer"
                   style={{ color: T.iconColor }}
                   title="Create New Classroom Group"
                 >
@@ -590,7 +802,7 @@ export default function GroupsPage() {
 
             <button
               onClick={() => refreshAllData()}
-              className="p-1.5 rounded-full hover:opacity-80 transition-opacity"
+              className="p-1.5 rounded-full hover:opacity-80 transition-opacity cursor-pointer"
               style={{ color: T.iconColor }}
               title="Sync Database"
             >
@@ -621,14 +833,14 @@ export default function GroupsPage() {
             <div className="flex items-center gap-2 mt-1">
               <button
                 onClick={() => handleRespondInvite(myPendingInvites[0], 'declined')}
-                className="px-3 py-1 rounded-[6px] text-xs font-medium border"
+                className="px-3 py-1 rounded-[6px] text-xs font-medium border cursor-pointer"
                 style={{ borderColor: T.sidebarBorder, color: T.headerSubtext }}
               >
                 Decline
               </button>
               <button
                 onClick={() => handleRespondInvite(myPendingInvites[0], 'accepted')}
-                className="px-3.5 py-1 rounded-[6px] text-xs font-semibold text-white bg-[#00a884] hover:bg-[#008f6f] transition-all flex items-center gap-1"
+                className="px-3.5 py-1 rounded-[6px] text-xs font-semibold text-white bg-[#00a884] hover:bg-[#008f6f] transition-all flex items-center gap-1 cursor-pointer"
               >
                 <Check size={13} />
                 <span>Accept & Enter</span>
@@ -663,7 +875,7 @@ export default function GroupsPage() {
               }}
             />
             {searchQuery && (
-              <button onClick={() => setSearchQuery('')} className="text-xs ml-1" style={{ color: T.iconColor }}>
+              <button onClick={() => setSearchQuery('')} className="text-xs ml-1 cursor-pointer" style={{ color: T.iconColor }}>
                 <X size={13} />
               </button>
             )}
@@ -753,7 +965,7 @@ export default function GroupsPage() {
           <div className="flex items-center gap-3 min-w-0">
             <button
               onClick={() => setIsMobileChatOpen(false)}
-              className="p-1 -ml-1 text-[var(--text-muted)] hover:opacity-80 md:hidden shrink-0"
+              className="p-1 -ml-1 text-[var(--text-muted)] hover:opacity-80 md:hidden shrink-0 cursor-pointer"
               style={{ color: T.iconColor }}
               aria-label="Back to chat list"
             >
@@ -761,7 +973,7 @@ export default function GroupsPage() {
             </button>
 
             <div
-              className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white shrink-0 text-sm"
+              className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white shrink-0 text-sm cursor-pointer"
               style={{
                 backgroundColor: activeChannel.id.includes('broadcast') ? '#ea4335' : getSenderColor(activeChannel.name),
               }}
@@ -769,7 +981,7 @@ export default function GroupsPage() {
               {activeChannel.id.includes('broadcast') ? <Megaphone size={17} /> : <Users size={17} />}
             </div>
 
-            <div className="min-w-0">
+            <div className="min-w-0 cursor-pointer">
               <h2 className="text-sm font-semibold truncate leading-tight" style={{ color: T.headerText }}>
                 {activeChannel.name}
               </h2>
@@ -779,12 +991,12 @@ export default function GroupsPage() {
             </div>
           </div>
 
-          {/* Right Header Icons (Matching WhatsApp Web Screenshot) */}
+          {/* Right Header Icons (Matching WhatsApp Desktop Screenshot) */}
           <div className="flex items-center gap-3 shrink-0">
-            {isTeacherView && (
+            {clientViewMode === 'teacher' && (
               <button
                 onClick={handleToggleLock}
-                className="px-2 py-1 rounded-[6px] text-xs font-medium border flex items-center gap-1"
+                className="px-2 py-1 rounded-[6px] text-xs font-medium border flex items-center gap-1 cursor-pointer"
                 style={{
                   borderColor: T.sidebarBorder,
                   color: activeChannel.isLocked ? '#f15c6d' : T.headerText,
@@ -797,16 +1009,14 @@ export default function GroupsPage() {
               </button>
             )}
 
-            <button
-              className="p-1.5 rounded-full hover:opacity-80 transition-opacity"
-              style={{ color: T.iconColor }}
-              title="Video Call"
-            >
+            {/* Video Call with Dropdown Arrow (Exact like WhatsApp Desktop) */}
+            <div className="flex items-center gap-0.5 cursor-pointer hover:opacity-80 p-1 rounded" style={{ color: T.iconColor }}>
               <Video size={19} />
-            </button>
+              <ChevronDown size={13} />
+            </div>
 
             <button
-              className="p-1.5 rounded-full hover:opacity-80 transition-opacity"
+              className="p-1.5 rounded-full hover:opacity-80 transition-opacity cursor-pointer"
               style={{ color: T.iconColor }}
               title="Search in Chat"
             >
@@ -814,7 +1024,7 @@ export default function GroupsPage() {
             </button>
 
             <button
-              className="p-1.5 rounded-full hover:opacity-80 transition-opacity"
+              className="p-1.5 rounded-full hover:opacity-80 transition-opacity cursor-pointer"
               style={{ color: T.iconColor }}
               title="Menu"
             >
@@ -828,8 +1038,9 @@ export default function GroupsPage() {
           className="flex-1 overflow-y-auto px-4 md:px-8 py-4 space-y-1 relative"
           style={{
             backgroundColor: T.chatBg,
-            backgroundImage:
-              'radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.015) 0%, rgba(0, 0, 0, 0.02) 100%)',
+            backgroundImage: isDark
+              ? 'radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.02) 0%, rgba(0, 0, 0, 0.04) 100%)'
+              : 'radial-gradient(circle at 50% 50%, rgba(0, 0, 0, 0.02) 0%, rgba(0, 0, 0, 0.05) 100%)',
           }}
         >
           {/* WhatsApp Date Separator Pill */}
@@ -882,6 +1093,25 @@ export default function GroupsPage() {
             }
 
             const senderColor = isPrincipal ? '#ea4335' : getSenderColor(msg.senderName);
+            const msgReactions = reactions[msg.id] || [];
+
+            // Quoted text parsing (if message is a reply)
+            let quoteAuthor = '';
+            let quoteSnippet = '';
+            let mainBody = msg.text;
+
+            if (msg.text.startsWith('> Replying to @')) {
+              const quoteEnd = msg.text.indexOf('\n\n');
+              if (quoteEnd !== -1) {
+                const quoteLine = msg.text.slice(0, quoteEnd);
+                const match = quoteLine.match(/> Replying to @([^:]+):\s*"([^"]+)"/);
+                if (match) {
+                  quoteAuthor = match[1];
+                  quoteSnippet = match[2];
+                  mainBody = msg.text.slice(quoteEnd + 2);
+                }
+              }
+            }
 
             return (
               <div
@@ -905,56 +1135,133 @@ export default function GroupsPage() {
                 )}
 
                 {/* WhatsApp Chat Bubble */}
-                <div
-                  className={`max-w-[85%] sm:max-w-[70%] md:max-w-[65%] px-3 py-1.5 text-sm transition-all ${
-                    isMe
-                      ? `rounded-[8px] ${!isSameSenderAsPrev ? 'rounded-tr-none' : ''}`
-                      : `rounded-[8px] ${!isSameSenderAsPrev ? 'rounded-tl-none' : ''}`
-                  }`}
-                  style={{
-                    backgroundColor: isMe ? T.outgoingBubble : T.incomingBubble,
-                    color: isMe ? T.outgoingText : T.incomingText,
-                    boxShadow: T.bubbleShadow,
-                  }}
-                >
-                  {/* Sender Name & Role Header (Shown only on first message of sequence) */}
-                  {!isMe && !isSameSenderAsPrev && (
-                    <div className="mb-0.5 flex items-center justify-between gap-3 text-xs font-semibold">
-                      <span style={{ color: senderColor }} className="truncate">
-                        {msg.senderName}
-                        {msg.senderClass && (
-                          <span className="font-normal opacity-70 ml-1 text-[11px]" style={{ color: T.timeColor }}>
-                            • {msg.senderClass}
-                          </span>
-                        )}
+                <div className="flex flex-col max-w-[85%] sm:max-w-[70%] md:max-w-[65%] group relative">
+                  <div
+                    className={`px-3 py-1.5 text-sm transition-all relative ${
+                      isMe
+                        ? `rounded-[8px] ${!isSameSenderAsPrev ? 'rounded-tr-none' : ''}`
+                        : `rounded-[8px] ${!isSameSenderAsPrev ? 'rounded-tl-none' : ''}`
+                    }`}
+                    style={{
+                      backgroundColor: isMe ? T.outgoingBubble : T.incomingBubble,
+                      color: isMe ? T.outgoingText : T.incomingText,
+                      boxShadow: T.bubbleShadow,
+                    }}
+                  >
+                    {/* Sender Name & Role Header (Shown only on first message of sequence) */}
+                    {!isMe && !isSameSenderAsPrev && (
+                      <div className="mb-0.5 flex items-center justify-between gap-3 text-xs font-semibold">
+                        <span style={{ color: senderColor }} className="truncate">
+                          {msg.senderName}
+                          {msg.senderClass && (
+                            <span className="font-normal opacity-70 ml-1 text-[11px]" style={{ color: T.timeColor }}>
+                              • {msg.senderClass}
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Quoted Reply Card (Exact WhatsApp format) */}
+                    {quoteAuthor && (
+                      <div
+                        className="mb-1.5 p-1.5 rounded-[6px] text-xs border-l-[3.5px]"
+                        style={{
+                          backgroundColor: T.quoteBg,
+                          borderColor: getSenderColor(quoteAuthor),
+                        }}
+                      >
+                        <div className="font-semibold text-[11px]" style={{ color: getSenderColor(quoteAuthor) }}>
+                          {quoteAuthor}
+                        </div>
+                        <div className="text-[11px] truncate opacity-80" style={{ color: T.quoteText }}>
+                          {quoteSnippet}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Principal Madam Dispatch Banner */}
+                    {isPrincipal && !isSameSenderAsPrev && (
+                      <div className="mb-1 text-[10px] font-bold text-[#ea4335] uppercase tracking-wider flex items-center gap-1">
+                        <Award size={12} />
+                        <span>OFFICE OF THE PRINCIPAL CIRCULAR</span>
+                      </div>
+                    )}
+
+                    {/* Message Body */}
+                    <div className="whitespace-pre-wrap break-words leading-relaxed text-[13.5px]">
+                      {mainBody}
+                    </div>
+
+                    {/* Timestamp & Double Blue Checkmarks */}
+                    <div className="flex items-center justify-end gap-1 mt-0.5 float-right ml-2 text-[11px]">
+                      <span style={{ color: T.timeColor }}>
+                        {new Date(msg.timestamp).toLocaleTimeString([], {
+                          hour: 'numeric',
+                          minute: '2-digit',
+                          hour12: true,
+                        })}
                       </span>
+                      {isMe && <CheckCheck size={14} className="text-[#53bdeb] ml-0.5" />}
                     </div>
-                  )}
 
-                  {/* Principal Madam Dispatch Banner */}
-                  {isPrincipal && !isSameSenderAsPrev && (
-                    <div className="mb-1 text-[10px] font-bold text-[#ea4335] uppercase tracking-wider flex items-center gap-1">
-                      <Award size={12} />
-                      <span>OFFICE OF THE PRINCIPAL CIRCULAR</span>
+                    {/* Hover Quick Action Buttons (Reply & React) */}
+                    <div
+                      className={`absolute top-1 hidden group-hover:flex items-center gap-1 px-1.5 py-0.5 rounded-md shadow-md ${
+                        isMe ? '-left-16' : '-right-16'
+                      }`}
+                      style={{
+                        backgroundColor: T.headerBg,
+                        border: `1px solid ${T.headerBorder}`,
+                      }}
+                    >
+                      <button
+                        onClick={() => handleToggleReaction(msg.id, '😂')}
+                        className="text-xs hover:scale-125 transition-transform cursor-pointer"
+                        title="React with Laugh"
+                      >
+                        😂
+                      </button>
+                      <button
+                        onClick={() => handleToggleReaction(msg.id, '👍')}
+                        className="text-xs hover:scale-125 transition-transform cursor-pointer"
+                        title="React with Thumbs Up"
+                      >
+                        👍
+                      </button>
+                      <button
+                        onClick={() => setReplyingTo(msg)}
+                        className="text-[11px] font-medium hover:opacity-80 transition-opacity cursor-pointer px-1"
+                        style={{ color: T.iconColor }}
+                        title="Reply"
+                      >
+                        Reply
+                      </button>
                     </div>
-                  )}
-
-                  {/* Message Body */}
-                  <div className="whitespace-pre-wrap break-words leading-relaxed">
-                    {msg.text}
                   </div>
 
-                  {/* Timestamp & Double Blue Checkmarks */}
-                  <div className="flex items-center justify-end gap-1 mt-0.5 float-right ml-2 text-[11px]">
-                    <span style={{ color: T.timeColor }}>
-                      {new Date(msg.timestamp).toLocaleTimeString([], {
-                        hour: 'numeric',
-                        minute: '2-digit',
-                        hour12: true,
-                      })}
-                    </span>
-                    {isMe && <CheckCheck size={14} className="text-[#53bdeb] ml-0.5" />}
-                  </div>
+                  {/* Reaction Pills below Bubble (Matching Screenshot) */}
+                  {msgReactions.length > 0 && (
+                    <div className={`flex items-center gap-1 mt-0.5 ${isMe ? 'justify-end' : 'justify-start'}`}>
+                      {msgReactions.map((r, rIdx) => (
+                        <button
+                          key={rIdx}
+                          onClick={() => handleToggleReaction(msg.id, r.emoji)}
+                          className="px-1.5 py-0.5 rounded-full text-[11px] border flex items-center gap-1 shadow-xs cursor-pointer hover:scale-105 transition-transform"
+                          style={{
+                            backgroundColor: isDark ? '#202c33' : '#ffffff',
+                            borderColor: T.sidebarBorder,
+                            color: T.headerText,
+                          }}
+                        >
+                          <span>{r.emoji}</span>
+                          <span className="font-semibold text-[10px]" style={{ color: T.headerSubtext }}>
+                            {r.count}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             );
@@ -964,86 +1271,122 @@ export default function GroupsPage() {
 
         {/* WhatsApp Footer Action Input Bar (Matches screenshot layout) */}
         <div
-          className="h-[62px] px-3 md:px-4 flex items-center gap-2 shrink-0"
+          className="flex flex-col shrink-0 border-t"
           style={{
             backgroundColor: T.footerBg,
+            borderColor: T.headerBorder,
           }}
         >
-          {!canSendMessage ? (
+          {/* Quoted Message Preview Bar */}
+          {replyingTo && (
             <div
-              className="w-full py-2 px-4 rounded-[8px] text-center text-xs font-medium"
+              className="px-4 py-2 border-b flex items-center justify-between"
               style={{
-                backgroundColor: T.inputBg,
-                color: T.headerSubtext,
+                backgroundColor: T.headerBg,
+                borderColor: T.headerBorder,
               }}
             >
-              🔒 Read-Only: Only Admins and Faculty can send messages in this classroom.
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-1 h-8 rounded-full" style={{ backgroundColor: getSenderColor(replyingTo.senderName) }} />
+                <div className="min-w-0">
+                  <div className="text-xs font-semibold" style={{ color: getSenderColor(replyingTo.senderName) }}>
+                    Replying to {replyingTo.senderName}
+                  </div>
+                  <div className="text-xs truncate opacity-70" style={{ color: T.headerText }}>
+                    {replyingTo.text}
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => setReplyingTo(null)}
+                className="p-1 rounded-full hover:opacity-70 cursor-pointer"
+                style={{ color: T.iconColor }}
+              >
+                <X size={16} />
+              </button>
             </div>
-          ) : (
-            <form onSubmit={handleSendMessage} className="w-full flex items-center gap-2">
-              {/* Attachment Icon */}
-              <button
-                type="button"
-                className="p-1.5 rounded-full hover:opacity-80 transition-opacity shrink-0"
-                style={{ color: T.iconColor }}
-                title="Attach"
-              >
-                <Paperclip size={20} />
-              </button>
+          )}
 
-              {/* Emoji Icon */}
-              <button
-                type="button"
-                className="p-1.5 rounded-full hover:opacity-80 transition-opacity shrink-0"
-                style={{ color: T.iconColor }}
-                title="Emoji"
-              >
-                <Smile size={20} />
-              </button>
-
-              {/* WhatsApp Type a Message Box */}
+          <div className="h-[62px] px-3 md:px-4 flex items-center gap-2">
+            {!canSendMessage ? (
               <div
-                className="flex-1 flex items-center rounded-[8px] px-3 py-2"
+                className="w-full py-2 px-4 rounded-[8px] text-center text-xs font-medium"
                 style={{
                   backgroundColor: T.inputBg,
+                  color: T.headerSubtext,
                 }}
               >
-                <input
-                  type="text"
-                  placeholder="Type a message"
-                  value={messageText}
-                  onChange={(e) => setMessageText(e.target.value)}
-                  disabled={isSending}
-                  className="w-full text-sm bg-transparent focus:outline-none"
-                  style={{
-                    color: T.inputText,
-                  }}
-                />
+                🔒 Read-Only: Only Admins and Faculty can send messages in this classroom.
               </div>
-
-              {/* Send Airplane or Microphone Icon */}
-              {messageText.trim() ? (
-                <button
-                  type="submit"
-                  disabled={isSending}
-                  className="p-2 rounded-full text-white transition-all shrink-0"
-                  style={{ backgroundColor: '#00a884' }}
-                  aria-label="Send message"
-                >
-                  <Send size={16} />
-                </button>
-              ) : (
+            ) : (
+              <form onSubmit={handleSendMessage} className="w-full flex items-center gap-2">
+                {/* Attachment Icon */}
                 <button
                   type="button"
-                  className="p-2 rounded-full hover:opacity-80 transition-opacity shrink-0"
+                  onClick={() => setShowAttachMenu(!showAttachMenu)}
+                  className="p-1.5 rounded-full hover:opacity-80 transition-opacity shrink-0 cursor-pointer"
                   style={{ color: T.iconColor }}
-                  title="Voice Message"
+                  title="Attach File / Image"
                 >
-                  <Mic size={20} />
+                  <Paperclip size={20} />
                 </button>
-              )}
-            </form>
-          )}
+
+                {/* Emoji Icon */}
+                <button
+                  type="button"
+                  onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                  className="p-1.5 rounded-full hover:opacity-80 transition-opacity shrink-0 cursor-pointer"
+                  style={{ color: T.iconColor }}
+                  title="Emoji"
+                >
+                  <Smile size={20} />
+                </button>
+
+                {/* WhatsApp Type a Message Box */}
+                <div
+                  className="flex-1 flex items-center rounded-[8px] px-3 py-2"
+                  style={{
+                    backgroundColor: T.inputBg,
+                  }}
+                >
+                  <input
+                    type="text"
+                    placeholder="Type a message"
+                    value={messageText}
+                    onChange={(e) => setMessageText(e.target.value)}
+                    disabled={isSending}
+                    className="w-full text-sm bg-transparent focus:outline-none"
+                    style={{
+                      color: T.inputText,
+                    }}
+                  />
+                </div>
+
+                {/* Send Airplane or Microphone Icon */}
+                {messageText.trim() ? (
+                  <button
+                    type="submit"
+                    disabled={isSending}
+                    className="p-2 rounded-full text-white transition-all shrink-0 cursor-pointer"
+                    style={{ backgroundColor: '#00a884' }}
+                    aria-label="Send message"
+                  >
+                    <Send size={16} />
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setMessageText('👋 Namaste from DPS Digital Campus!')}
+                    className="p-2 rounded-full hover:opacity-80 transition-opacity shrink-0 cursor-pointer"
+                    style={{ color: T.iconColor }}
+                    title="Voice Message / Quick Wave"
+                  >
+                    <Mic size={20} />
+                  </button>
+                )}
+              </form>
+            )}
+          </div>
         </div>
       </main>
 
@@ -1071,7 +1414,7 @@ export default function GroupsPage() {
               </div>
               <button
                 onClick={() => setShowAssignModal(false)}
-                className="w-7 h-7 rounded-full flex items-center justify-center hover:opacity-80"
+                className="w-7 h-7 rounded-full flex items-center justify-center hover:opacity-80 cursor-pointer"
                 style={{ color: T.iconColor }}
               >
                 <X size={16} />
@@ -1084,7 +1427,7 @@ export default function GroupsPage() {
                 <select
                   value={assignTargetGroup}
                   onChange={(e) => setAssignTargetGroup(e.target.value)}
-                  className="w-full p-2 text-xs rounded-[8px] focus:outline-none border"
+                  className="w-full p-2 text-xs rounded-[8px] focus:outline-none border cursor-pointer"
                   style={{
                     backgroundColor: T.inputBg,
                     borderColor: T.dividerColor,
@@ -1124,7 +1467,7 @@ export default function GroupsPage() {
                   <select
                     value={assignRole}
                     onChange={(e) => setAssignRole(e.target.value as any)}
-                    className="w-full p-2 text-xs rounded-[8px] focus:outline-none border"
+                    className="w-full p-2 text-xs rounded-[8px] focus:outline-none border cursor-pointer"
                     style={{
                       backgroundColor: T.inputBg,
                       borderColor: T.dividerColor,
@@ -1161,14 +1504,14 @@ export default function GroupsPage() {
                   color: T.headerSubtext,
                 }}
               >
-                The teacher or student will receive an official assignment banner from Principal Madam. Upon clicking "Accept", they gain immediate access into the classroom.
+                The teacher or student will receive an official assignment banner from Principal Madam. Upon clicking &quot;Accept&quot;, they gain immediate access into the classroom.
               </div>
 
               <div className="pt-2 flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setShowAssignModal(false)}
-                  className="px-3.5 py-1.5 text-xs font-medium rounded-[6px] border"
+                  className="px-3.5 py-1.5 text-xs font-medium rounded-[6px] border cursor-pointer"
                   style={{ borderColor: T.dividerColor, color: T.headerText }}
                 >
                   Cancel
@@ -1176,7 +1519,7 @@ export default function GroupsPage() {
                 <button
                   type="submit"
                   disabled={isAssigning || !assignUsername.trim()}
-                  className="px-4 py-1.5 text-xs font-semibold rounded-[6px] text-white bg-[#00a884] hover:bg-[#008f6f] transition-all disabled:opacity-50"
+                  className="px-4 py-1.5 text-xs font-semibold rounded-[6px] text-white bg-[#00a884] hover:bg-[#008f6f] transition-all disabled:opacity-50 cursor-pointer"
                 >
                   {isAssigning ? 'Sending...' : 'Send Assignment Request'}
                 </button>
@@ -1205,7 +1548,7 @@ export default function GroupsPage() {
               <h3 className="text-sm font-semibold">Create Classroom</h3>
               <button
                 onClick={() => setShowCreateGroupModal(false)}
-                className="w-7 h-7 rounded-full flex items-center justify-center hover:opacity-80"
+                className="w-7 h-7 rounded-full flex items-center justify-center hover:opacity-80 cursor-pointer"
                 style={{ color: T.iconColor }}
               >
                 <X size={16} />
@@ -1238,7 +1581,7 @@ export default function GroupsPage() {
                   <select
                     value={newGroupGrade}
                     onChange={(e) => setNewGroupGrade(e.target.value)}
-                    className="w-full p-2 text-xs rounded-[8px] focus:outline-none border"
+                    className="w-full p-2 text-xs rounded-[8px] focus:outline-none border cursor-pointer"
                     style={{
                       backgroundColor: T.inputBg,
                       borderColor: T.dividerColor,
@@ -1300,7 +1643,7 @@ export default function GroupsPage() {
                 <button
                   type="button"
                   onClick={() => setShowCreateGroupModal(false)}
-                  className="px-3.5 py-1.5 text-xs font-medium rounded-[6px] border"
+                  className="px-3.5 py-1.5 text-xs font-medium rounded-[6px] border cursor-pointer"
                   style={{ borderColor: T.dividerColor, color: T.headerText }}
                 >
                   Cancel
@@ -1308,7 +1651,7 @@ export default function GroupsPage() {
                 <button
                   type="submit"
                   disabled={!newGroupName.trim()}
-                  className="px-4 py-1.5 text-xs font-semibold rounded-[6px] text-white bg-[#00a884] hover:bg-[#008f6f] transition-all disabled:opacity-50"
+                  className="px-4 py-1.5 text-xs font-semibold rounded-[6px] text-white bg-[#00a884] hover:bg-[#008f6f] transition-all disabled:opacity-50 cursor-pointer"
                 >
                   Create Classroom
                 </button>

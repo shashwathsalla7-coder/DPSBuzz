@@ -45,6 +45,64 @@ interface ChatMessage {
   targetClass?: string;
 }
 
+// Client-side Canvas Image Compression (Compresses 15MB 4K photos to ~600KB to prevent HTTP 413)
+async function compressDiaryImage(file: File): Promise<File> {
+  if (file.size <= 800 * 1024) return file;
+
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const maxDim = 1600;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(file);
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) {
+              resolve(file);
+              return;
+            }
+            const cleanName = file.name.replace(/\.[^/.]+$/, '') + '.jpg';
+            const compressedFile = new File([blob], cleanName, {
+              type: 'image/jpeg',
+              lastModified: Date.now(),
+            });
+            resolve(compressedFile);
+          },
+          'image/jpeg',
+          0.82
+        );
+      };
+      img.onerror = () => resolve(file);
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = () => resolve(file);
+    reader.readAsDataURL(file);
+  });
+}
+
 export default function AiDiaryPage() {
   const [activeTab, setActiveTab] = useState<'chat' | 'diary_wall' | 'scheduler'>('chat');
   const [messages, setMessages] = useState<ChatMessage[]>(() => [
@@ -239,9 +297,12 @@ export default function AiDiaryPage() {
 
     setIsUploading(true);
     try {
+      // 0. Pre-compress large mobile camera photos (15MB -> ~600KB) to prevent HTTP 413
+      const fileToUpload = await compressDiaryImage(selectedFile);
+
       // 1. Upload to Cloudinary via /api/upload
       const formData = new FormData();
-      formData.append('file', selectedFile);
+      formData.append('file', fileToUpload);
       formData.append('folder', 'diary');
 
       const upRes = await fetch('/api/upload', {

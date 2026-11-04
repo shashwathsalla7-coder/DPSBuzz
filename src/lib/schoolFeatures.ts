@@ -875,27 +875,42 @@ export const SchoolFeatures = {
   },
 
   // --- CLASS DIARY & HOMEWORK IMAGES ---
-  getDiaryEntries(classGrade?: string): ClassDiaryEntry[] {
+  getDiaryEntries(classGrade?: string, section?: string): ClassDiaryEntry[] {
     if (!classGrade || classGrade === 'all') return dbDiaryEntries;
     const cleanGrade = classGrade.replace(/[^0-9]/g, '');
     return dbDiaryEntries.filter((d) => {
       const entryGrade = d.classGrade.replace(/[^0-9]/g, '');
-      return cleanGrade ? entryGrade === cleanGrade : d.classGrade.toLowerCase().includes(classGrade.toLowerCase());
+      const gradeMatches = cleanGrade ? entryGrade === cleanGrade : d.classGrade.toLowerCase().includes(classGrade.toLowerCase());
+      if (!gradeMatches) return false;
+      if (section && section !== 'all' && section !== 'All' && d.section) {
+        return d.section.toLowerCase() === section.toLowerCase() || d.section.toLowerCase() === 'all';
+      }
+      return true;
     });
   },
 
-  getTodayDiary(classGrade: string): ClassDiaryEntry | null {
+  getTodayDiary(classGrade: string, section?: string): ClassDiaryEntry | null {
     const cleanGrade = classGrade.replace(/[^0-9]/g, '');
     const todayStr = new Date().toISOString().split('T')[0];
     const todayMatch = dbDiaryEntries.find((d) => {
       const entryGrade = d.classGrade.replace(/[^0-9]/g, '');
-      return (cleanGrade ? entryGrade === cleanGrade : true) && d.dateStr === todayStr;
+      const gradeMatch = (cleanGrade ? entryGrade === cleanGrade : true) && d.dateStr === todayStr;
+      if (!gradeMatch) return false;
+      if (section && section !== 'all' && section !== 'All' && d.section) {
+        return d.section.toLowerCase() === section.toLowerCase() || d.section.toLowerCase() === 'all';
+      }
+      return true;
     });
     if (todayMatch) return todayMatch;
-    // Fallback to latest available for this class
+    // Fallback to latest available for this class and section
     return dbDiaryEntries.find((d) => {
       const entryGrade = d.classGrade.replace(/[^0-9]/g, '');
-      return cleanGrade ? entryGrade === cleanGrade : true;
+      const gradeMatch = cleanGrade ? entryGrade === cleanGrade : true;
+      if (!gradeMatch) return false;
+      if (section && section !== 'all' && section !== 'All' && d.section) {
+        return d.section.toLowerCase() === section.toLowerCase() || d.section.toLowerCase() === 'all';
+      }
+      return true;
     }) || null;
   },
 
@@ -1327,6 +1342,36 @@ export const SchoolFeatures = {
         return { success: true };
       }
       return { success: false, error: json.error };
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  },
+
+  async requestClassAccess(data: {
+    channelId: string;
+    username: string;
+    fullName: string;
+    role?: 'teacher' | 'student';
+    subject?: string;
+  }): Promise<{ success: boolean; message?: string; error?: string }> {
+    try {
+      const res = await fetch('/api/campus', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'request_class_access',
+          ...data,
+        }),
+      });
+      const json = await res.json();
+      if (res.ok) {
+        await syncFromDatabase();
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('dpsbuzz:campus_updated'));
+        }
+        return { success: true, message: json.message };
+      }
+      return { success: false, error: json.error || 'Failed to submit request' };
     } catch (e: any) {
       return { success: false, error: e.message };
     }
