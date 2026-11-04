@@ -148,6 +148,10 @@ export interface WhatsAppMessage {
   templateType?: 'none' | 'attendance' | 'homework' | 'exam';
   timestamp: number;
   createdAt?: string;
+  mediaUrl?: string;
+  mediaType?: 'video' | 'image' | 'audio' | 'document';
+  mediaDuration?: string;
+  reactions?: Record<string, number>;
 }
 
 export interface GroupInvite {
