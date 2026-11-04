@@ -4,7 +4,7 @@ import path from 'path';
 import { v2 as cloudinary } from 'cloudinary';
 import { isCloudinaryConfigured } from '@/lib/cloudinary';
 
-const ALLOWED_FOLDERS = ['posts', 'stories', 'avatars', 'groups', 'notices', 'reels', 'videos', 'notes'];
+const ALLOWED_FOLDERS = ['posts', 'stories', 'avatars', 'groups', 'notices', 'reels', 'videos', 'notes', 'diary'];
 const ALLOWED_MIME_TYPES = [
   'image/jpeg',
   'image/png',

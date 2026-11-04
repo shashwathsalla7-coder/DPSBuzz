@@ -384,6 +384,27 @@ export async function GET(req: NextRequest) {
       console.warn('D1 lost & found query notice:', e);
     }
 
+    // 10. Fetch Diary Entries from D1
+    let diaryEntries: any[] = [];
+    try {
+      const rawDiary = await d1Query<any>('SELECT * FROM campus_diary_entries ORDER BY date_str DESC, created_at DESC LIMIT 60;');
+      diaryEntries = rawDiary.map((d) => ({
+        id: d.id,
+        classGrade: d.class_grade,
+        section: d.section || 'All',
+        dateStr: d.date_str,
+        imageUrl: d.image_url,
+        homeworkSummary: d.homework_summary || '',
+        uploadedByUsername: d.uploaded_by_username,
+        uploadedByName: d.uploaded_by_name,
+        isFirstSubmission: Boolean(d.is_first_submission),
+        pointsAwarded: Number(d.points_awarded) || 0,
+        createdAt: d.created_at,
+      }));
+    } catch (e) {
+      console.warn('D1 diary entries query notice:', e);
+    }
+
     return NextResponse.json(
       {
         success: true,
@@ -397,6 +418,7 @@ export async function GET(req: NextRequest) {
         whatsappChannels,
         whatsappMessages,
         groupInvites,
+        diaryEntries,
       },
       { headers: NO_CACHE_HEADERS }
     );
@@ -413,6 +435,100 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { action } = body;
+
+    // ------------------------------------------------------------------------
+    // 0. UPLOAD DIARY ENTRY (Physical Diary Photo with First Submission Bonus)
+    // ------------------------------------------------------------------------
+    if (action === 'upload_diary_entry') {
+      const id = `diary-${Date.now()}`;
+      const rawGrade = (body.classGrade || '8').toString();
+      const classGrade = rawGrade.replace(/[^0-9]/g, '') || rawGrade;
+      const section = (body.section || 'All').toString().trim();
+      const imageUrl = (body.imageUrl || '').toString().trim();
+      const homeworkSummary = (body.homeworkSummary || '').toString().trim();
+      const username = (body.username || 'student').toString().trim();
+      const fullName = (body.fullName || username).toString().trim();
+      const dateStr = (body.dateStr || new Date().toISOString().split('T')[0]).toString().trim();
+
+      if (!imageUrl) {
+        return NextResponse.json({ success: false, error: 'Image URL is required for diary upload' }, { status: 400 });
+      }
+
+      // Check if ANY student in THIS class has submitted a diary for this date
+      const existing = await d1Query<any>(
+        'SELECT id, uploaded_by_username, uploaded_by_name FROM campus_diary_entries WHERE class_grade = ? AND date_str = ?;',
+        [classGrade, dateStr]
+      );
+
+      const isFirstSubmission = existing.length === 0;
+      const pointsAwarded = isFirstSubmission ? 50 : 0;
+
+      await d1Execute(
+        `INSERT INTO campus_diary_entries (
+          id, class_grade, section, date_str, image_url, homework_summary,
+          uploaded_by_username, uploaded_by_name, is_first_submission, points_awarded, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+        [
+          id,
+          classGrade,
+          section,
+          dateStr,
+          imageUrl,
+          homeworkSummary,
+          username,
+          fullName,
+          isFirstSubmission ? 1 : 0,
+          pointsAwarded,
+          new Date().toISOString(),
+        ]
+      );
+
+      // If first submission, award points to the student in campus_quiz_progress table
+      if (isFirstSubmission && username) {
+        try {
+          const userRows = await d1Query<any>('SELECT * FROM campus_quiz_progress WHERE username = ? LIMIT 1;', [username]);
+          if (userRows.length > 0) {
+            const curPoints = Number(userRows[0].total_points) || 0;
+            await d1Execute('UPDATE campus_quiz_progress SET total_points = ? WHERE username = ?;', [curPoints + pointsAwarded, username]);
+          } else {
+            await d1Execute('INSERT INTO campus_quiz_progress (username, streak, total_points, answered_dates) VALUES (?, 1, ?, ?);', [
+              username,
+              pointsAwarded,
+              JSON.stringify({}),
+            ]);
+          }
+        } catch (pe) {
+          console.warn('Failed to update quiz progress points:', pe);
+        }
+      }
+
+      const entry = {
+        id,
+        classGrade,
+        section,
+        dateStr,
+        imageUrl,
+        homeworkSummary,
+        uploadedByUsername: username,
+        uploadedByName: fullName,
+        isFirstSubmission,
+        pointsAwarded,
+        createdAt: new Date().toISOString(),
+      };
+
+      return NextResponse.json(
+        {
+          success: true,
+          entry,
+          isFirstSubmission,
+          pointsAwarded,
+          message: isFirstSubmission
+            ? `🎉 Incredible speed! You are the FIRST in Class ${classGrade} to upload today's diary! +50 Points awarded to your House!`
+            : `Diary photo recorded for Class ${classGrade}.`,
+        },
+        { headers: NO_CACHE_HEADERS }
+      );
+    }
 
     // ------------------------------------------------------------------------
     // 1. CREATE BROADCAST (Office of the Principal)
