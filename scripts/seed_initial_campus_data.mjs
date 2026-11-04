@@ -64,6 +64,20 @@ async function seedInitialCampusData() {
   // Clean up any test notes like 'hi'
   await d1Execute("DELETE FROM campus_study_notes WHERE title = 'hi' OR description = 'hi';");
 
+  // Seed sample real homework
+  const existingHw = await d1Query('SELECT count(*) as count FROM campus_homework;');
+  if (existingHw[0].count === 0) {
+    console.log('Inserting initial curriculum homework tasks...');
+    await d1Execute(`
+      INSERT INTO campus_homework (id, class_grade, section, subject, task, due_date, teacher_name)
+      VALUES 
+      ('hw-10-math', 'Class 10', 'All', 'Mathematics', 'Complete Exercise 8.4 Q5 (Trigonometric Identities proofs 1 to 5) in classwork notebook.', 'Tomorrow', 'Mr. Sharma (Senior Math Faculty)'),
+      ('hw-10-sci', 'Class 10', 'All', 'Science', 'Draw ray diagrams for concave mirror with Cartesian sign conventions in record book.', 'Friday', 'Mrs. Kulkarni (Physics Faculty)'),
+      ('hw-9-eng', 'Class 9', 'All', 'English', 'Write a 150-word analytical paragraph on The Road Not Taken theme in literature notebook.', 'Tomorrow', 'Mrs. Ananya Sen (English Faculty)');
+    `);
+    console.log('Curriculum homework seeded successfully.');
+  }
+
   // 3. Verify counts
   const qCount = await d1Query('SELECT count(*) as count FROM campus_questions;');
   const bCount = await d1Query('SELECT count(*) as count FROM campus_broadcasts;');
