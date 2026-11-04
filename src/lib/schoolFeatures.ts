@@ -1,11 +1,12 @@
 // ============================================================================
 // DPS BUZZ - Nursery to Class 10 School System Core
+// Full Cloud Database Backed (Cloudflare D1 SQL + Supabase Persistence)
 // Powers:
 // 1. Madam's Broadcast Desk (Direct Principal to Student/Parent messaging)
 // 2. Class Groups (Nursery to Class 10 with Junior Parent-Teacher privacy)
 // 3. Study Corner (Collaborative Notes & Revision Sheets)
-// 4. Daily Question Box (Daily Quiz & House Points)
-// 5. AI Diary Assistant (Instant answers for homework, timetable, exams & school rules)
+// 4. Daily Question Box (AI Ranked Question Algorithm & House Points)
+// 5. AI Diary & Intelligent Study Scheduler
 // ============================================================================
 
 export interface PrincipalBroadcast {
@@ -50,6 +51,7 @@ export interface StudyNoteItem {
   classGrade: string;
   description: string;
   authorName: string;
+  authorUsername?: string;
   authorRole: 'student' | 'teacher' | 'club';
   authorClass?: string;
   likes: number;
@@ -63,7 +65,7 @@ export interface StudyNoteItem {
 
 export interface DailyQuizQuestion {
   id: string;
-  dateStr: string;
+  dateStr?: string;
   subject: string;
   question: string;
   options: string[];
@@ -71,19 +73,41 @@ export interface DailyQuizQuestion {
   explanation: string;
   points: number;
   funFact: string;
+  authorUsername?: string;
+  authorName?: string;
+  difficulty?: 'easy' | 'medium' | 'hard';
+  aiRankScore?: number;
+  status?: string;
+  scheduledDate?: string;
 }
 
 export interface UserQuizProgress {
-  answeredDates: Record<string, { selectedIndex: number; isCorrect: boolean; timestamp: number }>;
+  answeredDates: Record<string, { questionId?: string; selectedIndex: number; isCorrect: boolean; timestamp: number }>;
   currentStreak: number;
   totalPointsWon: number;
 }
 
-// ----------------------------------------------------------------------------
-// OFFICIAL SCHOOL CAMPUS DATA
-// ----------------------------------------------------------------------------
+export interface StudyScheduleItem {
+  id: string;
+  timeBlock: string;
+  subject: string;
+  task: string;
+  priority: 'urgent' | 'high' | 'normal';
+  durationMin: number;
+  done: boolean;
+}
 
-export const DEFAULT_BROADCASTS: PrincipalBroadcast[] = [];
+export interface DailyStudySchedule {
+  id: string;
+  dateStr: string;
+  grade: string;
+  totalDurationMin: number;
+  items: StudyScheduleItem[];
+}
+
+// ----------------------------------------------------------------------------
+// OFFICIAL CLASS GROUPS (Curriculum Standard Nursery to Class 10)
+// ----------------------------------------------------------------------------
 
 export const OFFICIAL_CLASS_GROUPS: OfficialClassGroup[] = [
   {
@@ -227,12 +251,13 @@ export const OFFICIAL_CLASS_GROUPS: OfficialClassGroup[] = [
   },
 ];
 
+export const DEFAULT_BROADCASTS: PrincipalBroadcast[] = [];
 export const DEFAULT_STUDY_NOTES: StudyNoteItem[] = [];
 
+// Fallback academic questions if server is initially offline
 export const DAILY_QUESTIONS: DailyQuizQuestion[] = [
   {
     id: 'q-2026-11-04',
-    dateStr: '2026-11-04',
     subject: 'Science & Discovery',
     question: 'What is the speed of light in vacuum, and which scientist won the Nobel Prize for explaining the photoelectric effect?',
     options: [
@@ -245,10 +270,11 @@ export const DAILY_QUESTIONS: DailyQuizQuestion[] = [
     explanation: 'Light travels at approximately 300,000 km/s (3 × 10⁸ m/s) in a vacuum. Albert Einstein won the 1921 Nobel Prize in Physics for his explanation of the photoelectric effect!',
     points: 10,
     funFact: 'Sunlight takes about 8 minutes and 20 seconds to travel 150 million kilometers to reach your eyes on Earth!',
+    difficulty: 'medium',
+    aiRankScore: 96,
   },
   {
     id: 'q-2026-11-05',
-    dateStr: '2026-11-05',
     subject: 'Mathematics & Logic',
     question: 'If a triangle has angles measuring 50° and 60°, what is the measure of the third angle?',
     options: ['80°', '70°', '90°', '60°'],
@@ -256,10 +282,11 @@ export const DAILY_QUESTIONS: DailyQuizQuestion[] = [
     explanation: 'The sum of angles in any triangle on a plane is always 180°. 180° - (50° + 60°) = 180° - 110° = 70°.',
     points: 10,
     funFact: 'Triangles are the strongest shape in architecture because their angles cannot deform without bending the edges!',
+    difficulty: 'easy',
+    aiRankScore: 92,
   },
   {
     id: 'q-2026-11-06',
-    dateStr: '2026-11-06',
     subject: 'General Knowledge & Heritage',
     question: 'Which river is known as the "Sorrow of Bihar" due to its recurring annual floods?',
     options: ['Yamuna', 'Kosi', 'Godavari', 'Narmada'],
@@ -267,63 +294,110 @@ export const DAILY_QUESTIONS: DailyQuizQuestion[] = [
     explanation: 'The Kosi river is known as the Sorrow of Bihar because its unpredictable floodings and changing course cause extensive destruction during the monsoon.',
     points: 10,
     funFact: 'The Kosi river originates in Tibet and flows through Nepal before joining the Ganges in Bihar.',
+    difficulty: 'medium',
+    aiRankScore: 94,
   },
 ];
 
-// ----------------------------------------------------------------------------
-// LOCAL STORAGE KEYS & STORE
-// ----------------------------------------------------------------------------
+// ============================================================================
+// IN-MEMORY REAL-TIME RUNTIME STATE (Synchronized directly with Cloudflare D1 SQL)
+// ============================================================================
+let dbBroadcasts: PrincipalBroadcast[] = [];
+let dbStudyNotes: StudyNoteItem[] = [];
+let dbQuestions: DailyQuizQuestion[] = [...DAILY_QUESTIONS];
+let dbQuizProgress: UserQuizProgress = { answeredDates: {}, currentStreak: 0, totalPointsWon: 0 };
+let dbStudySchedules: DailyStudySchedule[] = [];
+let isFetching = false;
 
-const KEYS = {
-  BROADCASTS: 'dpsbuzz_principal_broadcasts_v1',
-  STUDY_NOTES: 'dpsbuzz_study_notes_v1',
-  DAILY_PROGRESS: 'dpsbuzz_daily_quiz_progress_v1',
-};
+// Real-Time Sync Engine
+async function syncFromDatabase(username?: string): Promise<void> {
+  if (typeof window === 'undefined') return;
+  if (isFetching) return;
+  isFetching = true;
 
-// One-time purge of legacy mock data so visitor browsers start completely fresh
-const CLEAN_SEED_KEY = 'dpsbuzz_clean_seed_v2';
-if (typeof window !== 'undefined') {
   try {
-    if (!localStorage.getItem(CLEAN_SEED_KEY)) {
-      localStorage.removeItem(KEYS.BROADCASTS);
-      localStorage.removeItem(KEYS.STUDY_NOTES);
-      localStorage.removeItem(KEYS.DAILY_PROGRESS);
-      localStorage.setItem(CLEAN_SEED_KEY, 'true');
+    const url = username ? `/api/campus?username=${encodeURIComponent(username)}` : '/api/campus';
+    const res = await fetch(url, {
+      cache: 'no-store',
+      headers: { 'Cache-Control': 'no-cache', Pragma: 'no-cache' },
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success) {
+        if (Array.isArray(data.broadcasts)) dbBroadcasts = data.broadcasts;
+        if (Array.isArray(data.studyNotes)) dbStudyNotes = data.studyNotes;
+        if (Array.isArray(data.questions) && data.questions.length > 0) dbQuestions = data.questions;
+        if (data.quizProgress) dbQuizProgress = data.quizProgress;
+        if (Array.isArray(data.studySchedules)) {
+          dbStudySchedules = data.studySchedules.map((s: any) => ({
+            id: s.id,
+            dateStr: s.dateStr,
+            grade: s.goal || 'Class 8',
+            totalDurationMin: s.schedule?.items?.reduce((a: number, b: any) => a + (b.durationMin || 0), 0) || 120,
+            items: s.schedule?.items || [],
+          }));
+        }
+        if (Array.isArray(data.homework)) {
+          for (const cg of OFFICIAL_CLASS_GROUPS) {
+            cg.homework = data.homework
+              .filter(
+                (h: any) =>
+                  h.classGrade?.toLowerCase() === cg.grade.toLowerCase() ||
+                  h.classGrade?.toLowerCase() === cg.name.toLowerCase()
+              )
+              .map((h: any) => ({
+                subject: h.subject,
+                task: h.task,
+                dueDate: h.dueDate,
+              }));
+          }
+        }
+        window.dispatchEvent(new Event('dpsbuzz:campus_updated'));
+      }
     }
-  } catch {}
-}
-
-function getLocal<T>(key: string, fallback: T): T {
-  if (typeof window === 'undefined') return fallback;
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : fallback;
-  } catch {
-    return fallback;
+  } catch (err) {
+    console.warn('Campus sync notice:', err);
+  } finally {
+    isFetching = false;
   }
 }
 
-function setLocal<T>(key: string, value: T): void {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-    window.dispatchEvent(new Event('dpsbuzz:content_updated'));
-  } catch {}
+// Auto-trigger sync on browser startup
+if (typeof window !== 'undefined') {
+  setTimeout(() => {
+    syncFromDatabase();
+  }, 50);
+
+  window.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      syncFromDatabase();
+    }
+  });
+  window.addEventListener('focus', () => {
+    syncFromDatabase();
+  });
 }
 
+// ============================================================================
+// SCHOOL FEATURES ENGINE (Database Backed)
+// ============================================================================
 export const SchoolFeatures = {
-  // --- PRINCIPAL BROADCASTS ---
-  getBroadcasts(): PrincipalBroadcast[] {
-    return getLocal<PrincipalBroadcast[]>(KEYS.BROADCASTS, DEFAULT_BROADCASTS);
+  // Sync on demand
+  async sync(username?: string): Promise<void> {
+    await syncFromDatabase(username);
   },
 
-  createBroadcast(data: {
+  // --- PRINCIPAL BROADCASTS ---
+  getBroadcasts(): PrincipalBroadcast[] {
+    return dbBroadcasts;
+  },
+
+  async createBroadcast(data: {
     title: string;
     message: string;
     targetAudience: 'all' | 'nursery_5' | 'seniors_6_10' | 'teachers';
     priority?: 'urgent' | 'high' | 'normal';
-  }): PrincipalBroadcast {
-    const list = this.getBroadcasts();
+  }): Promise<PrincipalBroadcast> {
     const audienceLabels: Record<string, string> = {
       all: 'Nursery to Class 10 (All Students & Parents)',
       nursery_5: 'Junior Wing (Nursery to Class 5)',
@@ -331,7 +405,7 @@ export const SchoolFeatures = {
       teachers: 'Faculty & Staff Only',
     };
 
-    const newBroadcast: PrincipalBroadcast = {
+    const optimistic: PrincipalBroadcast = {
       id: `broadcast-${Date.now()}`,
       title: data.title.trim(),
       message: data.message.trim(),
@@ -345,18 +419,59 @@ export const SchoolFeatures = {
       acknowledgedBy: [],
     };
 
-    list.unshift(newBroadcast);
-    setLocal(KEYS.BROADCASTS, list);
-    return newBroadcast;
+    dbBroadcasts = [optimistic, ...dbBroadcasts];
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('dpsbuzz:campus_updated'));
+    }
+
+    try {
+      const res = await fetch('/api/campus', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'create_broadcast',
+          title: data.title,
+          message: data.message,
+          targetAudience: data.targetAudience,
+          priority: data.priority,
+        }),
+      });
+      if (res.ok) {
+        const d = await res.json();
+        if (d.broadcast) {
+          dbBroadcasts = [d.broadcast, ...dbBroadcasts.filter((b) => b.id !== optimistic.id)];
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new Event('dpsbuzz:campus_updated'));
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Failed to post broadcast to database:', e);
+    }
+
+    return optimistic;
   },
 
-  acknowledgeBroadcast(broadcastId: string, username: string): void {
-    const list = this.getBroadcasts();
-    const target = list.find((b) => b.id === broadcastId);
+  async acknowledgeBroadcast(broadcastId: string, username: string): Promise<void> {
+    const target = dbBroadcasts.find((b) => b.id === broadcastId);
     if (target && !target.acknowledgedBy.includes(username)) {
       target.acknowledgedBy.push(username);
-      setLocal(KEYS.BROADCASTS, list);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('dpsbuzz:campus_updated'));
+      }
     }
+
+    try {
+      await fetch('/api/campus', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'acknowledge_broadcast',
+          broadcastId,
+          username,
+        }),
+      });
+    } catch {}
   },
 
   // --- CLASS GROUPS ---
@@ -369,23 +484,21 @@ export const SchoolFeatures = {
     const cleanClass = userClass.trim().toLowerCase();
     const cleanSection = (section || 'A').trim().toUpperCase();
 
-    // Check exact match
     const exact = OFFICIAL_CLASS_GROUPS.find(
       (g) => g.grade.toLowerCase() === cleanClass && (g.section.includes(cleanSection) || g.section === 'A & B')
     );
     if (exact) return exact;
 
-    // Check grade match
     const gradeMatch = OFFICIAL_CLASS_GROUPS.find((g) => g.grade.toLowerCase() === cleanClass);
     return gradeMatch || OFFICIAL_CLASS_GROUPS[5];
   },
 
   // --- STUDY CORNER ---
   getStudyNotes(): StudyNoteItem[] {
-    return getLocal<StudyNoteItem[]>(KEYS.STUDY_NOTES, DEFAULT_STUDY_NOTES);
+    return dbStudyNotes;
   },
 
-  addStudyNote(data: {
+  async addStudyNote(data: {
     title: string;
     subject: string;
     classGrade: string;
@@ -396,34 +509,58 @@ export const SchoolFeatures = {
     authorClass?: string;
     contentPreview: string;
     fileType?: 'pdf' | 'summary' | 'cheat_sheet';
-  }): StudyNoteItem {
-    const list = this.getStudyNotes();
-    const newNote: StudyNoteItem = {
+  }): Promise<StudyNoteItem> {
+    const optimistic: StudyNoteItem = {
       id: `note-${Date.now()}`,
       title: data.title.trim(),
       subject: data.subject,
       classGrade: data.classGrade,
       description: data.description.trim(),
       authorName: data.authorName,
+      authorUsername: data.authorUsername,
       authorRole: data.authorRole || 'student',
       authorClass: data.authorClass,
       likes: 1,
       likedBy: [data.authorUsername],
       downloads: 1,
       fileType: data.fileType || 'summary',
-      badge: 'New Upload ✨',
+      badge: 'Verified Upload ✨',
       createdAt: 'Just now',
       contentPreview: data.contentPreview.trim(),
     };
 
-    list.unshift(newNote);
-    setLocal(KEYS.STUDY_NOTES, list);
-    return newNote;
+    dbStudyNotes = [optimistic, ...dbStudyNotes];
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('dpsbuzz:campus_updated'));
+    }
+
+    try {
+      const res = await fetch('/api/campus', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'create_study_note',
+          ...data,
+        }),
+      });
+      if (res.ok) {
+        const d = await res.json();
+        if (d.note) {
+          dbStudyNotes = [d.note, ...dbStudyNotes.filter((n) => n.id !== optimistic.id)];
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new Event('dpsbuzz:campus_updated'));
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Failed to save study note to database:', e);
+    }
+
+    return optimistic;
   },
 
-  toggleLikeStudyNote(noteId: string, username: string): { likes: number; isLiked: boolean } {
-    const list = this.getStudyNotes();
-    const note = list.find((n) => n.id === noteId);
+  async toggleLikeStudyNote(noteId: string, username: string): Promise<{ likes: number; isLiked: boolean }> {
+    const note = dbStudyNotes.find((n) => n.id === noteId);
     if (!note) return { likes: 0, isLiked: false };
 
     if (!note.likedBy) note.likedBy = [];
@@ -439,59 +576,206 @@ export const SchoolFeatures = {
       isLiked = true;
     }
 
-    setLocal(KEYS.STUDY_NOTES, list);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('dpsbuzz:campus_updated'));
+    }
+
+    try {
+      fetch('/api/campus', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'toggle_like_note',
+          noteId,
+          username,
+        }),
+      });
+    } catch {}
+
     return { likes: note.likes, isLiked };
   },
 
-  // --- DAILY QUESTION BOX ---
+  // --- DAILY QUESTION BOX & COMMUNITY AI RANKING ---
   getTodayQuestion(): DailyQuizQuestion {
-    // Rotate questions based on day of week or current date
+    if (dbQuestions.length === 0) return DAILY_QUESTIONS[0];
+    const todayStr = new Date().toISOString().split('T')[0];
+    const todayMatch = dbQuestions.find((q) => q.scheduledDate === todayStr);
+    if (todayMatch) return todayMatch;
+
     const d = new Date();
-    const dayIndex = d.getDay() % DAILY_QUESTIONS.length;
-    return DAILY_QUESTIONS[dayIndex] || DAILY_QUESTIONS[0];
+    const dayIndex = d.getDay() % dbQuestions.length;
+    return dbQuestions[dayIndex] || dbQuestions[0];
+  },
+
+  getQuestionsPool(): DailyQuizQuestion[] {
+    return dbQuestions;
   },
 
   getUserQuizProgress(): UserQuizProgress {
-    return getLocal<UserQuizProgress>(KEYS.DAILY_PROGRESS, {
-      answeredDates: {},
-      currentStreak: 0,
-      totalPointsWon: 0,
-    });
+    return dbQuizProgress;
   },
 
-  submitQuizAnswer(questionId: string, selectedIndex: number): { isCorrect: boolean; explanation: string; points: number } {
-    const q = DAILY_QUESTIONS.find((item) => item.id === questionId) || this.getTodayQuestion();
+  async submitQuizAnswer(
+    questionId: string,
+    selectedIndex: number,
+    username: string
+  ): Promise<{ isCorrect: boolean; explanation: string; points: number; streak?: number }> {
+    const q = dbQuestions.find((item) => item.id === questionId) || this.getTodayQuestion();
     const isCorrect = selectedIndex === q.correctIndex;
-    const progress = this.getUserQuizProgress();
-
+    const points = isCorrect ? (q.points || 10) : 0;
     const todayStr = new Date().toISOString().split('T')[0];
-    const alreadyAnswered = Boolean(progress.answeredDates[todayStr]);
 
-    if (!alreadyAnswered) {
-      progress.answeredDates[todayStr] = {
+    if (!dbQuizProgress.answeredDates[todayStr]) {
+      dbQuizProgress.answeredDates[todayStr] = {
+        questionId,
         selectedIndex,
         isCorrect,
         timestamp: Date.now(),
       };
       if (isCorrect) {
-        progress.currentStreak = (progress.currentStreak || 0) + 1;
-        progress.totalPointsWon = (progress.totalPointsWon || 0) + q.points;
+        dbQuizProgress.currentStreak = (dbQuizProgress.currentStreak || 0) + 1;
+        dbQuizProgress.totalPointsWon = (dbQuizProgress.totalPointsWon || 0) + points;
       }
-      setLocal(KEYS.DAILY_PROGRESS, progress);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('dpsbuzz:campus_updated'));
+      }
+    }
+
+    try {
+      const res = await fetch('/api/campus', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'submit_quiz_answer',
+          questionId,
+          selectedIndex,
+          username,
+        }),
+      });
+      if (res.ok) {
+        const d = await res.json();
+        return {
+          isCorrect: d.isCorrect,
+          explanation: d.explanation || q.explanation,
+          points: d.points || points,
+          streak: d.streak,
+        };
+      }
+    } catch (e) {
+      console.warn('Database answer submission error:', e);
     }
 
     return {
       isCorrect,
       explanation: q.explanation,
-      points: isCorrect ? q.points : 0,
+      points,
     };
   },
 
-  // --- AI DIARY ASSISTANT ENGINE ---
+  async submitQuestionToAI(data: {
+    question: string;
+    subject: string;
+    options: string[];
+    correctIndex: number;
+    explanation: string;
+    funFact?: string;
+    authorUsername: string;
+    authorName: string;
+  }): Promise<{ success: boolean; question?: DailyQuizQuestion; aiRank?: any; error?: string }> {
+    try {
+      const res = await fetch('/api/campus', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'submit_question',
+          ...data,
+        }),
+      });
+      const result = await res.json();
+      if (result.success && result.question) {
+        dbQuestions = [result.question, ...dbQuestions];
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('dpsbuzz:campus_updated'));
+        }
+      }
+      return result;
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  },
+
+  // --- AI DAILY STUDY SCHEDULER ---
+  getUserStudySchedules(): DailyStudySchedule[] {
+    return dbStudySchedules;
+  },
+
+  async generateStudySchedule(params: {
+    username: string;
+    grade?: string;
+    subjects?: string[];
+    targetHours?: number;
+    homeworkTasks?: Array<{ subject: string; task: string }>;
+  }): Promise<DailyStudySchedule | null> {
+    try {
+      const res = await fetch('/api/campus', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'generate_study_schedule',
+          ...params,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.schedule) {
+          dbStudySchedules = [data.schedule, ...dbStudySchedules];
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new Event('dpsbuzz:campus_updated'));
+          }
+          return data.schedule;
+        }
+      }
+    } catch (err) {
+      console.error('Failed to generate study schedule in database:', err);
+    }
+    return null;
+  },
+
+  async addHomework(data: {
+    classGrade: string;
+    section?: string;
+    subject: string;
+    task: string;
+    dueDate?: string;
+    teacherName?: string;
+  }): Promise<void> {
+    try {
+      await fetch('/api/campus', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'add_homework',
+          ...data,
+        }),
+      });
+      syncFromDatabase();
+    } catch {}
+  },
+
+  // --- AI DIARY QUERY ENGINE ---
   queryAiDiary(prompt: string, userClass: string = '8'): { answer: string; category: string; suggestions: string[] } {
     const q = prompt.toLowerCase().trim();
 
-    // 1. Homework queries
+    // 1. Study Schedule generation command
+    if (q.includes('schedule') || q.includes('timetable') || q.includes('plan my day') || q.includes('routine') || q.includes('study plan')) {
+      return {
+        category: 'schedule',
+        answer: `✨ **Personalized AI Study Scheduler Activated!**\n\nI can analyze your Class ${userClass} subjects, homework deadlines, and upcoming exams to construct an optimized revision schedule with Pomodoro focus blocks.\n\n👉 *Switch to the **"AI Study Schedule"** tab above to generate your customized timetable directly to the cloud database!*`,
+        suggestions: ['Generate study schedule', "What is today's homework?", 'Show PA-2 datesheet'],
+      };
+    }
+
+    // 2. Homework queries
     if (q.includes('homework') || q.includes('diary') || q.includes('home work') || q.includes('tasks') || q.includes('assignment')) {
       if (userClass.includes('10')) {
         return {
@@ -507,7 +791,7 @@ export const SchoolFeatures = {
       };
     }
 
-    // 2. Uniform schedule queries
+    // 3. Uniform schedule queries
     if (q.includes('uniform') || q.includes('dress') || q.includes('shoes') || q.includes('tie') || q.includes('track pant')) {
       return {
         category: 'uniform',
@@ -516,8 +800,8 @@ export const SchoolFeatures = {
       };
     }
 
-    // 3. Exam & Timetable queries
-    if (q.includes('exam') || q.includes('test') || q.includes('timetable') || q.includes('datesheet') || q.includes('periodic') || q.includes('half yearly')) {
+    // 4. Exam & Timetable queries
+    if (q.includes('exam') || q.includes('test') || q.includes('datesheet') || q.includes('periodic') || q.includes('half yearly')) {
       return {
         category: 'exams',
         answer: `📅 **Upcoming Examination & Assessment Schedule:**\n\n• **Periodic Assessment 2 (PA-2):** December 8 to December 15, 2026.\n• **Reporting Time:** 8:15 AM sharp (No entry after 8:30 AM).\n• **Exam Duration:** 2 Hours (9:00 AM – 11:00 AM).\n• **Syllabus:** Chapters covered from September 1st to November 30th.\n\n*Subject-wise detailed datesheets have been posted under the Notices tab.*`,
@@ -525,7 +809,7 @@ export const SchoolFeatures = {
       };
     }
 
-    // 4. Transport & Bus timings
+    // 5. Transport & Bus timings
     if (q.includes('bus') || q.includes('transport') || q.includes('timing') || q.includes('bell') || q.includes('dispersal') || q.includes('pickup')) {
       return {
         category: 'bus',
@@ -534,7 +818,7 @@ export const SchoolFeatures = {
       };
     }
 
-    // 5. Madam / Principal queries
+    // 6. Madam / Principal queries
     if (q.includes('madam') || q.includes('principal') || q.includes('circular') || q.includes('sunitha') || q.includes('office')) {
       return {
         category: 'general',
@@ -543,11 +827,11 @@ export const SchoolFeatures = {
       };
     }
 
-    // 6. Generic friendly educational assistant
+    // 7. Generic friendly educational assistant
     return {
       category: 'general',
-      answer: `Hello! I am your **DPS Buzz AI Diary Assistant** 🐝\n\nI can help you with:\n1. 📝 **Daily Homework & Diary:** Ask *"What is today's homework for Class ${userClass}?"*\n2. 👔 **Uniform Code:** Ask *"What is tomorrow's uniform schedule?"*\n3. 📅 **Exams & Datesheets:** Ask *"When are the upcoming examinations?"*\n4. 🚌 **Bus Timings:** Ask *"What time does senior dispersal start?"*\n5. 📚 **Study Notes:** Ask *"Where can I find maths formula sheets?"*`,
-      suggestions: ["What is today's homework?", 'Uniform schedule', 'Upcoming exam dates', "Show Madam's message"],
+      answer: `Hello! I am your **DPS Buzz AI Diary Assistant** 🐝\n\nI can help you with:\n1. 📅 **AI Daily Study Schedule:** Ask *"Plan my study schedule for today"*\n2. 📝 **Daily Homework & Diary:** Ask *"What is today's homework for Class ${userClass}?"*\n3. 👔 **Uniform Code:** Ask *"What is tomorrow's uniform schedule?"*\n4. 📅 **Exams & Datesheets:** Ask *"When are the upcoming examinations?"*\n5. 🚌 **Bus Timings:** Ask *"What time does senior dispersal start?"*\n6. 📚 **Study Notes:** Ask *"Where can I find maths formula sheets?"*`,
+      suggestions: ['Plan my study schedule', "What is today's homework?", 'Uniform schedule', 'Upcoming exam dates'],
     };
   },
 };

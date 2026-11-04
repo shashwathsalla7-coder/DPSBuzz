@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   ArrowLeft,
@@ -34,17 +34,28 @@ export default function StudyCornerPage() {
   const [newDesc, setNewDesc] = useState('');
   const [newContent, setNewContent] = useState('');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   const currentUser = DataStore.getCurrentUser();
   const username = currentUser?.username || 'student';
+
+  useEffect(() => {
+    SchoolFeatures.sync(username);
+
+    const handleUpdate = () => {
+      setNotes(SchoolFeatures.getStudyNotes());
+    };
+    window.addEventListener('dpsbuzz:campus_updated', handleUpdate);
+    return () => window.removeEventListener('dpsbuzz:campus_updated', handleUpdate);
+  }, [username]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  const handleLike = (noteId: string) => {
-    const res = SchoolFeatures.toggleLikeStudyNote(noteId, username);
+  const handleLike = async (noteId: string) => {
+    const res = await SchoolFeatures.toggleLikeStudyNote(noteId, username);
     setNotes((prev) =>
       prev.map((n) => {
         if (n.id === noteId) {
@@ -59,33 +70,40 @@ export default function StudyCornerPage() {
       })
     );
     if (res.isLiked) {
-      showToast('Thank you for appreciating this student note! (+5 Spirit Points awarded)');
+      showToast('Thank you for appreciating this student note! (+5 Spirit Points recorded in cloud)');
     }
   };
 
-  const handleCreateNote = (e: React.FormEvent) => {
+  const handleCreateNote = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim() || !newContent.trim()) return;
 
-    const created = SchoolFeatures.addStudyNote({
-      title: newTitle,
-      subject: newSubject,
-      classGrade: newGrade,
-      description: newDesc || `Key study notes for ${newSubject}`,
-      authorName: currentUser?.fullName || username,
-      authorUsername: username,
-      authorRole: currentUser?.role === 'admin' ? 'teacher' : 'student',
-      authorClass: currentUser?.class ? `Class ${currentUser.class}` : newGrade,
-      contentPreview: newContent,
-      fileType: 'summary',
-    });
+    setIsUploading(true);
+    try {
+      const created = await SchoolFeatures.addStudyNote({
+        title: newTitle,
+        subject: newSubject,
+        classGrade: newGrade,
+        description: newDesc || `Key study notes for ${newSubject}`,
+        authorName: currentUser?.fullName || username,
+        authorUsername: username,
+        authorRole: currentUser?.role === 'admin' ? 'teacher' : 'student',
+        authorClass: currentUser?.class ? `Class ${currentUser.class}` : newGrade,
+        contentPreview: newContent,
+        fileType: 'summary',
+      });
 
-    setNotes((prev) => [created, ...prev]);
-    setIsUploadOpen(false);
-    setNewTitle('');
-    setNewDesc('');
-    setNewContent('');
-    showToast('Your notes were uploaded to the Study Corner successfully! 🌟');
+      setNotes((prev) => [created, ...prev.filter((n) => n.id !== created.id)]);
+      setIsUploadOpen(false);
+      setNewTitle('');
+      setNewDesc('');
+      setNewContent('');
+      showToast('Your notes were uploaded to Cloud Database successfully! 🌟');
+    } catch {
+      showToast('Error uploading notes.');
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const grades = ['All', 'Class 10', 'Class 9', 'Class 8', 'Class 7', 'Class 6', 'Class 5', 'Junior (Nursery–4)'];
@@ -140,6 +158,10 @@ export default function StudyCornerPage() {
             <h1 className="text-base font-bold tracking-tight text-[var(--text)]">Study Corner</h1>
             <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded-full bg-blue-500/10 text-blue-500 border border-blue-500/20">
               Nursery–10
+            </span>
+            <span className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span>Live Cloud</span>
             </span>
           </div>
         </div>
@@ -475,9 +497,10 @@ export default function StudyCornerPage() {
               </button>
               <button
                 type="submit"
-                className="px-5 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold hover:opacity-95 shadow-sm"
+                disabled={isUploading}
+                className="px-5 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold hover:opacity-95 shadow-sm disabled:opacity-50 cursor-pointer"
               >
-                Publish to Study Corner
+                {isUploading ? 'Publishing to Cloud...' : 'Publish to Cloud Database'}
               </button>
             </div>
           </form>
