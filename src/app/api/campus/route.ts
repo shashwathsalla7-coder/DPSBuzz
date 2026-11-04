@@ -523,7 +523,7 @@ export async function POST(req: NextRequest) {
           isFirstSubmission,
           pointsAwarded,
           message: isFirstSubmission
-            ? `🎉 Incredible speed! You are the FIRST in Class ${classGrade} to upload today's diary! +50 Points awarded to your House!`
+            ? `🎉 Incredible speed! You are the FIRST in Class ${classGrade} to upload today's diary! +50 Points awarded to your profile!`
             : `Diary photo recorded for Class ${classGrade}.`,
         },
         { headers: NO_CACHE_HEADERS }

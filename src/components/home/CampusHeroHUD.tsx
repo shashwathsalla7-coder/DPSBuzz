@@ -23,8 +23,10 @@ import {
   Radio,
   Send,
   Award,
+  Camera,
+  Eye,
 } from 'lucide-react';
-import { SchoolFeatures, type PrincipalBroadcast, type DailyQuizQuestion } from '@/lib/schoolFeatures';
+import { SchoolFeatures, type PrincipalBroadcast, type DailyQuizQuestion, type ClassDiaryEntry } from '@/lib/schoolFeatures';
 import { DataStore } from '@/lib/dataStore';
 
 function getCurrentSchoolPeriod(): { period: string; isRecess: boolean; subtitle: string } {
@@ -87,15 +89,8 @@ function getGreeting(name: string): string {
   return `Good evening, ${displayName}`;
 }
 
-const HOUSES = [
-  { id: 'ganges', name: 'Ganges House', color: '#2B4BFF', badge: '🌊', bg: 'bg-blue-500/10 text-blue-600 dark:text-blue-400', border: 'border-blue-500/30' },
-  { id: 'yamuna', name: 'Yamuna House', color: '#F59E0B', badge: '⚡', bg: 'bg-amber-500/10 text-amber-600 dark:text-amber-400', border: 'border-amber-500/30' },
-  { id: 'kaveri', name: 'Kaveri House', color: '#10B981', badge: '🍃', bg: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400', border: 'border-emerald-500/30' },
-  { id: 'krishna', name: 'Krishna House', color: '#EF4444', badge: '🔥', bg: 'bg-rose-500/10 text-rose-600 dark:text-rose-400', border: 'border-rose-500/30' },
-];
-
 export function CampusHeroHUD() {
-  const [activeTab, setActiveTab] = useState<'circular' | 'houses' | 'quiz'>('circular');
+  const [activeTab, setActiveTab] = useState<'circular' | 'diary' | 'quiz'>('circular');
   const [broadcasts, setBroadcasts] = useState<PrincipalBroadcast[]>(() => SchoolFeatures.getBroadcasts());
   const [question, setQuestion] = useState<DailyQuizQuestion>(() => SchoolFeatures.getTodayQuestion());
   const [progress, setProgress] = useState(() => SchoolFeatures.getUserQuizProgress());
@@ -118,27 +113,14 @@ export function CampusHeroHUD() {
   const currentUser = DataStore.getCurrentUser();
   const username = currentUser?.username || 'student';
   const userFullName = currentUser?.fullName || username;
-  const userClass = currentUser?.class ? `Class ${currentUser.class}` : 'Campus Student';
+  const rawClass = (currentUser?.class || '8').toString();
+  const userClassNumber = rawClass.replace(/[^0-9]/g, '') || '8';
+  const userClassLabel = `Class ${userClassNumber}`;
 
-  // Determine user's house
-  const userHouse = useMemo(() => {
-    let hash = 0;
-    for (let i = 0; i < username.length; i++) {
-      hash = (hash * 31 + username.charCodeAt(i)) % HOUSES.length;
-    }
-    return HOUSES[Math.abs(hash)];
-  }, [username]);
-
-  // House Points Standings
-  const houseStandings = useMemo(() => {
-    const bonus = progress.totalPointsWon || 0;
-    return [
-      { ...HOUSES[0], points: 1480 + (userHouse.id === 'ganges' ? bonus : 0), rank: 1 },
-      { ...HOUSES[1], points: 1420 + (userHouse.id === 'yamuna' ? bonus : 0), rank: 2 },
-      { ...HOUSES[2], points: 1390 + (userHouse.id === 'kaveri' ? bonus : 0), rank: 3 },
-      { ...HOUSES[3], points: 1350 + (userHouse.id === 'krishna' ? bonus : 0), rank: 4 },
-    ].sort((a, b) => b.points - a.points);
-  }, [progress.totalPointsWon, userHouse.id]);
+  // Diary snapshot for this student's class
+  const [todayDiary, setTodayDiary] = useState<ClassDiaryEntry | null>(() =>
+    SchoolFeatures.getTodayDiary(userClassNumber)
+  );
 
   useEffect(() => {
     // Sync broadcasts and quiz progress with Cloudflare D1 SQL / Supabase
@@ -148,6 +130,7 @@ export function CampusHeroHUD() {
       setBroadcasts(SchoolFeatures.getBroadcasts());
       setQuestion(SchoolFeatures.getTodayQuestion());
       setProgress(SchoolFeatures.getUserQuizProgress());
+      setTodayDiary(SchoolFeatures.getTodayDiary(userClassNumber));
     };
 
     window.addEventListener('dpsbuzz:campus_updated', handleUpdate);
@@ -164,7 +147,7 @@ export function CampusHeroHUD() {
         window.speechSynthesis.cancel();
       }
     };
-  }, [username]);
+  }, [username, userClassNumber]);
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -261,7 +244,7 @@ export function CampusHeroHUD() {
     const res = await SchoolFeatures.submitQuizAnswer(question.id, idx, username);
     setQuizIsCorrect(res.isCorrect);
     setProgress(SchoolFeatures.getUserQuizProgress());
-    showToast(res.isCorrect ? 'Correct! +10 Points added to your House! 🎉' : 'Nice try! Review the explanation.');
+    showToast(res.isCorrect ? 'Correct! +10 Spirit Points won! 🎉' : 'Nice try! Review the explanation.');
   };
 
   const isMadamOrAdmin =
@@ -288,7 +271,7 @@ export function CampusHeroHUD() {
           borderColor: 'var(--line)',
         }}
       >
-        {/* Top Status Strip: Real-time School Pulse & Personalized Identity */}
+        {/* Top Status Strip: Real-time School Pulse & Student Identity */}
         <div
           className="px-3.5 py-2.5 border-b flex items-center justify-between gap-2 flex-wrap"
           style={{
@@ -296,22 +279,22 @@ export function CampusHeroHUD() {
             borderColor: 'var(--line)',
           }}
         >
-          {/* Greeting & Student Class */}
+          {/* Greeting & Student Identity */}
           <div className="flex items-center gap-2 min-w-0">
             <span
-              className={`w-7 h-7 rounded-lg ${userHouse.bg} ${userHouse.border} border flex items-center justify-center text-sm font-bold shrink-0 shadow-2xs`}
-              title={`${userHouse.name} Member`}
+              className="w-7 h-7 rounded-lg bg-[var(--primary)]/10 text-[var(--primary)] border border-[var(--primary)]/20 flex items-center justify-center text-sm font-bold shrink-0 shadow-2xs"
+              title="Verified Student Account"
             >
-              {userHouse.badge}
+              🎓
             </span>
             <div className="min-w-0">
               <h2 className="text-xs font-bold text-[var(--text)] truncate leading-tight">
                 {getGreeting(userFullName)}
               </h2>
               <p className="text-[10px] text-[var(--text-muted)] truncate flex items-center gap-1.5">
-                <span>{userClass}</span>
+                <span className="font-semibold text-[var(--primary)]">{userClassLabel}</span>
                 <span>•</span>
-                <span className="font-semibold text-[var(--primary)]">{userHouse.name}</span>
+                <span>DPS Verified Account</span>
               </p>
             </div>
           </div>
@@ -331,7 +314,7 @@ export function CampusHeroHUD() {
           </div>
         </div>
 
-        {/* Segmented Control Bar: 3 Tabs (Principal's Desk, House Standings, Brain Teaser) */}
+        {/* Segmented Control Bar: 3 Clean Tabs */}
         <div
           className="p-1.5 mx-3 mt-3 rounded-xl flex items-center gap-1 border"
           style={{
@@ -364,19 +347,22 @@ export function CampusHeroHUD() {
           <button
             type="button"
             role="tab"
-            aria-selected={activeTab === 'houses'}
-            onClick={() => setActiveTab('houses')}
+            aria-selected={activeTab === 'diary'}
+            onClick={() => setActiveTab('diary')}
             className={`flex-1 py-1.5 px-2 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-              activeTab === 'houses'
+              activeTab === 'diary'
                 ? 'bg-[var(--surface)] text-[var(--text)] border shadow-2xs'
                 : 'text-[var(--text-muted)] hover:text-[var(--text)]'
             }`}
             style={{
-              borderColor: activeTab === 'houses' ? 'var(--line)' : 'transparent',
+              borderColor: activeTab === 'diary' ? 'var(--line)' : 'transparent',
             }}
           >
-            <Trophy size={13} className="text-blue-500 shrink-0" />
-            <span className="truncate">House Standings</span>
+            <Camera size={13} className="text-amber-500 shrink-0" />
+            <span className="truncate">Class Diary</span>
+            {todayDiary && (
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+            )}
           </button>
 
           <button
@@ -562,62 +548,64 @@ export function CampusHeroHUD() {
           </div>
         )}
 
-        {/* Tab 2: Inter-House Spirit Standings */}
-        {activeTab === 'houses' && (
-          <div className="p-3.5 space-y-2.5 animate-fade-in">
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-bold text-[var(--text)] flex items-center gap-1.5">
-                <Trophy size={14} className="text-amber-500" />
-                <span>Inter-House Championship 2026–27</span>
-              </span>
-              <span className="text-[10px] font-semibold text-[var(--text-muted)]">
-                Your House: <strong className="text-[var(--text)]">{userHouse.name}</strong>
-              </span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              {houseStandings.map((h) => {
-                const isMyHouse = h.id === userHouse.id;
-                return (
-                  <div
-                    key={h.id}
-                    className={`p-2.5 rounded-xl border transition-all ${
-                      isMyHouse
-                        ? 'border-[var(--primary)] bg-[var(--primary)]/5 shadow-2xs'
-                        : 'border-[var(--line)] bg-[var(--surface-sunken)]'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-1.5">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <span className="text-sm">{h.badge}</span>
-                        <span className="text-xs font-bold text-[var(--text)] truncate">
-                          {h.name}
-                        </span>
-                      </div>
-                      <span className="text-[10px] font-extrabold px-1.5 py-0.2 rounded-full bg-[var(--surface)] border border-[var(--line)] text-[var(--text-muted)]">
-                        #{h.rank}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between text-[11px] font-semibold">
-                      <span className="text-[var(--text-muted)]">Points:</span>
-                      <span className="font-bold text-[var(--text)] tabular-nums">{h.points} pts</span>
-                    </div>
-
-                    {/* Progress indicator */}
-                    <div className="w-full h-1.5 rounded-full bg-[var(--line)] mt-1.5 overflow-hidden">
-                      <div
-                        className="h-full rounded-full transition-all duration-500"
-                        style={{
-                          width: `${Math.min(100, (h.points / 1600) * 100)}%`,
-                          backgroundColor: h.color,
-                        }}
-                      />
-                    </div>
+        {/* Tab 2: Class Diary & Homework Snapshot */}
+        {activeTab === 'diary' && (
+          <div className="p-3.5 space-y-3 animate-fade-in">
+            {todayDiary ? (
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-1.5">
+                    <Camera size={14} className="text-amber-500" />
+                    <span className="font-bold text-[var(--text)]">Class {todayDiary.classGrade} Today&apos;s Diary</span>
                   </div>
-                );
-              })}
-            </div>
+                  {todayDiary.isFirstSubmission && (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 font-extrabold flex items-center gap-1 border border-amber-500/30">
+                      <Trophy size={11} />
+                      <span>First Submission (+{todayDiary.pointsAwarded} pts)</span>
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-start gap-3 p-2.5 rounded-xl border bg-[var(--surface-sunken)] border-[var(--line)]">
+                  <img
+                    src={todayDiary.imageUrl}
+                    alt="Class Diary"
+                    className="w-20 h-20 rounded-lg object-cover object-top border border-[var(--line)] shrink-0 shadow-2xs"
+                  />
+                  <div className="flex-1 min-w-0 space-y-1">
+                    <p className="text-[11px] font-semibold text-[var(--text)] line-clamp-2">
+                      {todayDiary.homeworkSummary || 'Blackboard notes logged for today.'}
+                    </p>
+                    <p className="text-[10px] text-[var(--text-muted)]">
+                      Submitted by <strong>{todayDiary.uploadedByName}</strong>
+                    </p>
+                    <Link
+                      href="/ai-diary"
+                      className="text-[10px] font-bold text-[var(--primary)] hover:underline inline-flex items-center gap-0.5 pt-0.5"
+                    >
+                      <span>Open Full Diary Wall</span>
+                      <ChevronRight size={11} />
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="p-3 rounded-xl border bg-[var(--surface-sunken)] border-[var(--line)] text-center space-y-2">
+                <p className="text-xs font-semibold text-[var(--text)]">
+                  No diary photo uploaded yet today for Class {userClassNumber}.
+                </p>
+                <p className="text-[11px] text-[var(--text-muted)]">
+                  Be the first student in your class to upload today&apos;s diary page and earn <strong>+50 Spirit Points</strong>!
+                </p>
+                <Link
+                  href="/ai-diary"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500 hover:bg-amber-600 text-black font-bold text-xs shadow-xs"
+                >
+                  <Camera size={13} strokeWidth={2.5} />
+                  <span>Upload Today&apos;s Diary (+50 pts)</span>
+                </Link>
+              </div>
+            )}
           </div>
         )}
 
@@ -731,7 +719,7 @@ export function CampusHeroHUD() {
               AI Diary
             </div>
             <div className="text-[10px] text-[var(--text-muted)] truncate">
-              Homework & Rules
+              Homework & Wall
             </div>
           </div>
         </Link>
