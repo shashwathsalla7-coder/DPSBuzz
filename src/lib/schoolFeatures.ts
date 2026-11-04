@@ -134,6 +134,18 @@ export interface WhatsAppMessage {
   createdAt?: string;
 }
 
+export interface GroupInvite {
+  id: string;
+  groupId: string;
+  groupName: string;
+  inviteeUsername: string;
+  inviteeRole: 'teacher' | 'student' | 'admin';
+  subject?: string;
+  invitedBy: string;
+  status: 'pending' | 'accepted' | 'declined';
+  createdAt?: string;
+}
+
 export interface RosterStudent {
   name: string;
   classSection: string;
@@ -372,6 +384,7 @@ let dbStudySchedules: DailyStudySchedule[] = [];
 let dbLostFound: LostFoundItem[] = [];
 let dbWhatsAppChannels: WhatsAppChannel[] = [];
 let dbWhatsAppMessages: WhatsAppMessage[] = [];
+let dbGroupInvites: GroupInvite[] = [];
 let isFetching = false;
 
 // Real-Time Sync Engine
@@ -425,6 +438,9 @@ async function syncFromDatabase(username?: string): Promise<void> {
         }
         if (Array.isArray(data.whatsappMessages)) {
           dbWhatsAppMessages = data.whatsappMessages;
+        }
+        if (Array.isArray(data.groupInvites)) {
+          dbGroupInvites = data.groupInvites;
         }
         window.dispatchEvent(new Event('dpsbuzz:campus_updated'));
       }
@@ -1141,6 +1157,75 @@ export const SchoolFeatures = {
       return { success: false, error: json.error };
     } catch (err: any) {
       return { success: false, error: err.message };
+    }
+  },
+
+  getGroupInvites(username?: string): GroupInvite[] {
+    if (!username) return dbGroupInvites;
+    const clean = username.toLowerCase().trim();
+    return dbGroupInvites.filter((inv) => inv.inviteeUsername.toLowerCase().trim() === clean);
+  },
+
+  async createGroupInvite(data: {
+    groupId: string;
+    groupName: string;
+    inviteeUsername: string;
+    inviteeRole?: 'teacher' | 'student';
+    subject?: string;
+    invitedBy?: string;
+  }): Promise<{ success: boolean; invite?: GroupInvite; error?: string }> {
+    try {
+      const res = await fetch('/api/campus', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'create_group_invite',
+          ...data,
+        }),
+      });
+      const json = await res.json();
+      if (res.ok && json.invite) {
+        dbGroupInvites = [json.invite, ...dbGroupInvites];
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('dpsbuzz:campus_updated'));
+        }
+        return { success: true, invite: json.invite };
+      }
+      return { success: false, error: json.error };
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  },
+
+  async respondGroupInvite(
+    inviteId: string,
+    response: 'accepted' | 'declined',
+    username: string
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const res = await fetch('/api/campus', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'respond_group_invite',
+          inviteId,
+          response,
+          username,
+        }),
+      });
+      const json = await res.json();
+      if (res.ok) {
+        const inv = dbGroupInvites.find((i) => i.id === inviteId);
+        if (inv) inv.status = response;
+        await syncFromDatabase();
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('dpsbuzz:campus_updated'));
+        }
+        return { success: true };
+      }
+      return { success: false, error: json.error };
+    } catch (e: any) {
+      return { success: false, error: e.message };
     }
   },
 
