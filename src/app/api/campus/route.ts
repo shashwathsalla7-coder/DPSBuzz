@@ -303,6 +303,7 @@ export async function GET(req: NextRequest) {
         avatar: c.avatar || '',
         isLocked: Boolean(c.is_locked),
         adminUsernames: JSON.parse(c.admin_usernames || '["shashwath71845", "madam_principal"]'),
+        enrolledUsernames: JSON.parse(c.enrolled_usernames || '[]'),
         memberCount: Number(c.member_count) || 40,
         lastMessage: c.last_message || '',
         lastMessageTime: c.last_message_time || 'Just now',
@@ -1003,6 +1004,40 @@ export async function POST(req: NextRequest) {
         WHERE id = ?;
       `, [cleanText.slice(0, 100), nowTime, channelId]);
 
+      // If sent by Principal Madam OR targeting school-wide broadcast, copy into ALL classroom channels!
+      if (channelId === 'channel-school-broadcast' || body.broadcastToAll || isSenderAdmin) {
+        if (channelId === 'channel-school-broadcast' || body.broadcastToAll) {
+          try {
+            const otherChannels = await d1Query('SELECT id FROM campus_whatsapp_channels WHERE id != ?;', [channelId]);
+            for (const chItem of otherChannels) {
+              const subId = `wmsg-bcast-${chItem.id}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+              await d1Execute(`
+                INSERT INTO campus_whatsapp_messages (
+                  id, channel_id, sender_username, sender_name, sender_role, sender_class, text, template_type, timestamp
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+              `, [
+                subId,
+                chItem.id,
+                cleanUser,
+                (senderName || 'Principal Madam (Office)').trim(),
+                'admin',
+                'Office of Principal',
+                cleanText,
+                templateType || 'none',
+                nowTs,
+              ]);
+              await d1Execute(`
+                UPDATE campus_whatsapp_channels 
+                SET last_message = ?, last_message_time = ? 
+                WHERE id = ?;
+              `, [cleanText.slice(0, 100), nowTime, chItem.id]);
+            }
+          } catch (e) {
+            console.warn('Multi-channel broadcast notice:', e);
+          }
+        }
+      }
+
       return NextResponse.json({
         success: true,
         message: {
@@ -1052,6 +1087,36 @@ export async function POST(req: NextRequest) {
       `, [sysId, channelId, noticeText, Date.now()]);
 
       return NextResponse.json({ success: true, isLocked: Boolean(lockVal) }, { headers: NO_CACHE_HEADERS });
+    }
+
+    // ------------------------------------------------------------------------
+    // 13.5 ADD STUDENT DIRECTLY TO CHANNEL (Faculty Enrolling)
+    // ------------------------------------------------------------------------
+    if (action === 'add_student_to_channel') {
+      const { channelId, usernameToAdd, studentName } = body;
+      const cleanTarget = (usernameToAdd || '').toLowerCase().trim();
+      if (!channelId || !cleanTarget) {
+        return NextResponse.json({ error: 'channelId and usernameToAdd are required' }, { status: 400 });
+      }
+
+      const chList = await d1Query('SELECT * FROM campus_whatsapp_channels WHERE id = ? LIMIT 1;', [channelId]);
+      if (!chList.length) return NextResponse.json({ error: 'Channel not found' }, { status: 404 });
+      const ch = chList[0];
+      const enrolled = JSON.parse(ch.enrolled_usernames || '[]');
+      if (!enrolled.includes(cleanTarget)) {
+        enrolled.push(cleanTarget);
+        await d1Execute('UPDATE campus_whatsapp_channels SET enrolled_usernames = ?, member_count = member_count + 1 WHERE id = ?;', [JSON.stringify(enrolled), channelId]);
+      }
+
+      const sysId = `wmsg-enroll-${Date.now()}`;
+      const notice = `👋 @${cleanTarget}${studentName ? ` (${studentName})` : ''} was directly enrolled into this classroom group by faculty.`;
+      await d1Execute(`
+        INSERT INTO campus_whatsapp_messages (
+          id, channel_id, sender_username, sender_name, sender_role, sender_class, text, template_type, timestamp
+        ) VALUES (?, ?, 'system', 'DPS Faculty Desk', 'admin', 'Administration', ?, 'none', ?);
+      `, [sysId, channelId, notice, Date.now()]);
+
+      return NextResponse.json({ success: true, enrolledUsernames: enrolled }, { headers: NO_CACHE_HEADERS });
     }
 
     // ------------------------------------------------------------------------
