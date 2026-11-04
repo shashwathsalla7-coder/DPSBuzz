@@ -547,6 +547,23 @@ export async function GET(req: NextRequest) {
       syncProfiles = Array.from(profileMap.values());
     }
 
+    // Sanitize syncProfiles:
+    // 1. Exclude test accounts and duplicate alias accounts from public profile list
+    // 2. Ensure NO profile ever leaks a base64 avatar string to mobile clients
+    const CDN_FALLBACK_AVATAR = 'https://res.cloudinary.com/ogfaxmjw/image/upload/v1793467674/dpsbuzz/avatars/avatar_shashwath71845.jpg';
+    syncProfiles = syncProfiles
+      .filter((p: any) => p.role !== 'test' && !p.alias_of)
+      .map((p: any) => {
+        let cleanAvatar = p.avatar;
+        if (cleanAvatar && typeof cleanAvatar === 'string' && cleanAvatar.startsWith('data:image/')) {
+          cleanAvatar = CDN_FALLBACK_AVATAR;
+        }
+        return {
+          ...p,
+          avatar: cleanAvatar,
+        };
+      });
+
     if (Array.isArray(dbPosts) && dbPosts.length > 0) {
       const postMap = new Map<string, any>();
       for (const sp of syncPosts) postMap.set(sp.id, sp);

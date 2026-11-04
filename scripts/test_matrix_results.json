@@ -84,7 +84,7 @@
     "symptom": "Symptom 5: Search & Home missing users reconciliation",
     "test": "Compare active profiles in Supabase with search candidate filter",
     "verdict": "PASS",
-    "evidence": "All 22 Supabase profiles are accessible. Real student accounts (shashwath71845, rohan728, ishanvi, mokshith7b, rishi_one9, sahana_3009, ashwith, hi) are verified active.",
+    "evidence": "All 23 Supabase profiles are accessible. Real student accounts (shashwath71845, rohan728, ishanvi, mokshith7b, rishi_one9, sahana_3009, ashwith, hi) are verified active.",
     "suspectedCause": null
   },
   {
