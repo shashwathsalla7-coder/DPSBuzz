@@ -32,9 +32,7 @@ import { GetAppWidget } from '@/components/home/GetAppWidget';
 import { HomeFeedSkeleton } from '@/components/home/HomeFeedSkeleton';
 import { SuggestedAccountsList } from '@/components/suggestions';
 import { HomeStreakWidget } from '@/components/home/HomeStreakWidget';
-import { MadamBroadcastCard } from '@/components/home/MadamBroadcastCard';
-import { CampusHubChips } from '@/components/home/CampusHubChips';
-import { HomeQuestionBoxTeaser } from '@/components/home/HomeQuestionBoxTeaser';
+import { CampusHeroHUD } from '@/components/home/CampusHeroHUD';
 import dynamic from 'next/dynamic';
 
 const SharePostModal = dynamic(
@@ -732,14 +730,8 @@ function HomeContent() {
       {/* 2. Story row: horizontal snap scroll, 60px avatars with neon ring */}
       <StoriesRow />
 
-      {/* Office of the Principal: Broadcast Card (Direct messaging from Madam) */}
-      <MadamBroadcastCard />
-
-      {/* Nursery to 10 Campus Hub (AI Diary, Study Corner, Question Box, Class Groups) */}
-      <CampusHubChips />
-
-      {/* Daily Question Box: Brain Teaser & House Points */}
-      <HomeQuestionBoxTeaser />
+      {/* Campus Command Hub: Wow Moment Live Assembly HUD (Principal's Desk with Speech Synthesis, House Standings, Daily Brain Teaser & 1-Tap Action Pills) */}
+      <CampusHeroHUD />
 
       {/* 3. Feed tabs "Following" and "Whole School" as segmented control */}
       <FeedTabs activeTab={activeTab} onChange={setActiveTab} />
