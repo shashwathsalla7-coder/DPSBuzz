@@ -55,7 +55,7 @@ export function HomeQuestionBoxTeaser() {
 
           <div className="flex items-center gap-1.5 text-xs font-bold text-amber-500">
             <Flame size={14} className="fill-amber-500" />
-            <span>{progress.currentStreak}d Streak</span>
+            <span>{progress.currentStreak || 0}d Streak</span>
           </div>
         </div>
 

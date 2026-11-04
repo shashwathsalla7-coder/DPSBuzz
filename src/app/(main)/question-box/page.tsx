@@ -81,11 +81,11 @@ export default function QuestionBoxPage() {
         <div className="flex items-center gap-2 text-xs font-bold">
           <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/20">
             <Flame size={14} className="fill-amber-500" />
-            <span>{progress.currentStreak} Day Streak</span>
+            <span>{progress.currentStreak || 0} Day Streak</span>
           </div>
           <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
             <Trophy size={14} />
-            <span>+{progress.totalPointsWon} pts</span>
+            <span>+{progress.totalPointsWon || 0} pts</span>
           </div>
         </div>
       </div>
