@@ -1,30 +1,31 @@
-feature,category,priority,clone_status,notes
-window_titlebar,shell,must,done,Windows native titlebar with Back to DPS Buzz and minimize/maximize/close
-navigation_rail,shell,must,done,Left icon bar for Chats/Status/Calls/Communities/Starred/Settings/Profile
-chat_list_sidebar,chats,must,done,Chat list with avatars timestamps unread badges and search
-filter_chips,chats,should,done,All / Unread / Groups filtering chips
-active_chat_header,chats,must,done,Header with avatar name members count subtitle audio/video/info buttons
-doodle_wallpaper,chat_ui,must,done,Authentic tiled WhatsApp SVG doodle wallpaper pattern with toggle
-message_bubbles,chat_ui,must,done,Incoming (#202c33) and outgoing (#005c4b) bubbles with tails
-media_video_card,media,must,done,2:20 duration badge play overlay forward button and caption matching screenshot
-quoted_replies,chat_ui,must,done,Quoted context with sender accent border and snippet
-message_reactions,chat_ui,must,done,Pills like 😂 5 with interactive toggle and hover action drawer
-star_messages,chat_ui,should,done,Star messages and inspect in Starred Messages drawer
-delete_messages,chat_ui,could,done,Delete message from current thread
-footer_input_bar,input,must,done,Pill input with dynamic mic and send icon toggle
-attachment_drawer,input,must,done,Photos Documents Class Diary upload drawer
-quick_emoji_tray,input,should,done,Emoji frequency bar
-status_stories_list,status,must,done,Status tab with My Status recent updates and viewed updates with green rings
-status_story_viewer,status,must,done,Full screen modal with segmented progress bars pause and reply input
-status_creator,status,should,done,Text status creator with color background palette
-calls_history,calls,must,done,Call logs with incoming/outgoing/missed icons audio/video types and duration
-active_call_overlay,calls,must,done,Encrypted call overlay with ringing connected timer mic/camera toggles
-communities_hub,communities,must,done,School-wide communities announcement dispatches and sub-groups
-group_info_drawer,info,must,done,Right drawer with hero avatar description participants and admin badges
-media_gallery_panel,info,should,done,Tabs for Media grid Documents list and Links
-starred_messages_panel,utility,should,done,Inspect starred messages and jump directly to chat
-settings_full_panel,settings,must,done,Account Privacy Chats Notifications Storage Linked Devices and Help
-privacy_controls,settings,must,done,Last seen read receipts and disappearing messages default timer
-wallpaper_toggle,settings,must,done,Enable/disable authentic doodle pattern
-new_chat_group_modal,chats,must,done,Modal with contact picker search and multi-select new group creator
-profile_editor_modal,utility,should,done,Modal to change username and about status
+feature,category,priority,original,clone,notes
+mobile_responsive_shell,shell,must,yes,done,Adaptive shell with bottom nav on mobile and icon rail on desktop
+mobile_bottom_nav,shell,must,yes,done,4-tab bottom navigation (Chats Updates Communities Calls) with badge counters
+mobile_fullscreen_chat,chats,must,yes,done,100vw chat view on mobile with back arrow returning to chat list
+mobile_floating_action_btn,chats,should,yes,done,Floating Action Button (FAB) for quick compose and call start
+chat_search_filter,chats,must,yes,done,Search bar and All Unread Groups filter chips
+active_chat_header,chats,must,yes,done,Header with back button avatar name subtitle voice/video call and menu
+doodle_wallpaper_toggle,chat_ui,must,yes,done,Authentic tiled WhatsApp SVG doodle wallpaper with settings toggle
+message_bubbles_mobile,chat_ui,must,yes,done,Touch-friendly bubbles with incoming and outgoing tails
+media_video_card,media,must,yes,done,Video card with 2:20 duration badge play overlay and forward button
+quoted_replies,chat_ui,must,yes,done,Touch reply with accent colored quote preview bar
+message_reactions,chat_ui,must,yes,done,Reaction badges like 😂 5 with tap toggle and long-press/hover action drawer
+star_messages,chat_ui,should,yes,done,Star messages and inspect in Starred Messages drawer
+delete_messages,chat_ui,could,yes,done,Delete message from thread
+touch_input_bar,input,must,yes,done,Bottom input bar with attachment drawer emoji picker and mic/send switch
+mobile_attachment_drawer,input,must,yes,done,Photos Documents Class Diary upload drawer
+quick_emoji_tray,input,should,yes,done,Touch scrollable emoji frequency tray
+status_updates_list,status,must,yes,done,Updates tab with My Status recent updates and viewed updates with green rings
+status_story_viewer,status,must,yes,done,Full screen story viewer with segmented progress bars pause and reply input
+status_creator,status,should,yes,done,Text status creator with color background palette
+calls_history_tab,calls,must,yes,done,Call logs with incoming outgoing missed icons audio video types and duration
+active_call_overlay,calls,must,yes,done,Mobile call overlay with ringing connected timer mic and video toggles
+communities_hub,communities,must,yes,done,School-wide communities announcement dispatches and sub-groups
+group_info_sheet,info,must,yes,done,Mobile sliding sheet with group details description and participant list
+media_gallery_sheet,info,should,yes,done,Tabs for Media grid Documents list and Links
+starred_messages_sheet,utility,should,yes,done,Inspect starred messages and jump directly to chat
+settings_full_sheet,settings,must,yes,done,Account Privacy Chats Notifications Storage Linked Devices and Help
+privacy_controls,settings,must,yes,done,Last seen read receipts and disappearing messages default timer
+new_chat_group_modal,chats,must,yes,done,Modal with contact picker search and multi-select new group creator
+profile_editor_modal,utility,should,yes,done,Modal to edit username and about status
+touch_button_hit_targets,ux,must,yes,done,Minimum 44px touch targets on all buttons to prevent missed taps

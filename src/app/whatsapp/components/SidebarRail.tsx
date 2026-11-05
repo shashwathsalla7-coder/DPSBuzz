@@ -36,7 +36,7 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
 }) => {
   return (
     <aside
-      className="w-16 h-full flex flex-col items-center justify-between py-3 border-r border-[#222d34] shrink-0 select-none z-20"
+      className="hidden md:flex w-16 h-full flex-col items-center justify-between py-3 border-r border-[#222d34] shrink-0 select-none z-20"
       style={{ backgroundColor: '#202c33' }}
     >
       {/* Top action icons */}

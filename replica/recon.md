@@ -1,73 +1,133 @@
-# Recon Map: WhatsApp Desktop Complete Replica (Windows Native App)
+# Recon map: WhatsApp (Mobile Web & Responsive Native)
 
-Scope: Entire WhatsApp Desktop Windows Application — Chats, Stories/Status, Calls, Communities, Settings, Group/Contact Info, Media/Docs/Links Gallery, Starred Messages, Disappearing Messages, Live Audio/Video Call Simulation, and Clean-Room Architecture  
+Scope: Complete WhatsApp Mobile Application — Chats, Stories/Status, Calls, Communities, Settings, Group & Contact Info sheets, Full-Screen Media & Document Viewers, Voice Calling simulation, and Mobile Touch Navigation  
+Platform: Mobile-First Responsive Web (Android & iOS UX patterns)  
 For: DPS Buzz Students & Faculty (Stand-Alone Attached Module at `/whatsapp`)  
 Date: 2026-11-05  
 
 ## Sources
 
-| # | source | URL / Artifact | notes |
+| # | source | URL | notes |
 | --- | --- | --- | --- |
-| 1 | Reference Screenshot | `replica/screens/whatsapp_desktop_reference.png` | Authentic Windows Desktop WhatsApp ("Together Forever" group, dark doodle wallpaper, video card, sender color tags, reactions) |
-| 2 | WhatsApp Desktop / Web Specs | `https://web.whatsapp.com` | Multi-pane navigation rail, Segoe UI typography, SVG doodle tiled pattern, Status rings, Call logs |
-| 3 | WhatsApp Design System | Public design tokens | Dark: `#0b141a` base, `#111b21` sidebar, `#202c33` header/incoming, `#005c4b` outgoing, `#00a884` primary green |
+| 1 | Reference Screenshot | `replica/screens/whatsapp_desktop_reference.png` | Group chat ("Together Forever"), message bubbles, doodle wallpaper, video card, sender color tags, reactions |
+| 2 | WhatsApp Android UI Specs | `https://whatsapp.com` / Material 3 Design | Top app bar with search & camera, 4-tab bottom navigation rail (Chats, Updates/Status, Communities, Calls), floating action buttons (FAB), full-screen chat activity |
+| 3 | WhatsApp iOS Human Interface | `https://whatsapp.com` | iOS bottom tab bar with badge counts, swipe-to-reply, action sheets, modal navigation |
+| 4 | WhatsApp Help Center & Settings | `https://faq.whatsapp.com` | Account, Privacy, Chats, Notifications, Storage, Help, End-to-end encryption specs |
 
-## Core Loop
+## Core loop
 
-Complete campus communication hub with real-time text chat, video playback cards, voice notes, story/status publishing & full-screen viewing, call logging & active call simulation, multi-channel communities, and comprehensive privacy/storage settings.
+Lightning-fast, friction-free mobile messaging, story sharing, encrypted calls, and classroom community hub optimized for handheld touchscreens and desktop screens alike.
 
-## Screens Inventory (28 Screens)
+## Screens
 
 | ID | screen | route / how to reach | purpose | key components | states seen |
 | --- | --- | --- | --- | --- | --- |
-| S01 | Main Desktop App Shell | `/whatsapp` | Native desktop container | Window header, sidebar split, chat feed | filled, edge-to-edge |
-| S02 | Slim Icon Navigation Rail | `/whatsapp` (far left rail) | Switch main application views | Chats, Status, Calls, Communities, Starred, Settings, Profile avatar | active tab indicator, unread badges |
-| S03 | Chat List Sidebar | `/whatsapp` (sidebar, Tab 1) | Discover & switch chats | Search bar, filter pills (All/Unread/Groups), chat items | default, filtering, active |
-| S04 | Active Chat Header | `/whatsapp` (top right) | Channel identity & actions | Avatar, group name, member subtitle, audio/video call, info toggle | active, muted |
-| S05 | Message Thread Feed | `/whatsapp` (main canvas) | Reading message stream | Tiled SVG doodle wallpaper, date pill, bubble clusters | incoming, outgoing, consecutive |
-| S06 | Rich Media Video Card | `/whatsapp` (inline feed) | Video / photo viewing | Thumbnail, play overlay, duration badge (2:20), forward button | loaded, playing |
-| S07 | Footer Input Bar | `/whatsapp` (bottom right) | Composing & dispatching | Paperclip attach, emoji tray, pill input, mic / send | typing, recording, idle |
-| S08 | Attachment Drawer | Popover from paperclip | Media selection | Photos & Videos, Document, Class Diary Photo | open, closed |
-| S09 | Quick Emoji Tray | Popover from smile icon | Rapid emoji insertion | Frequency row (😂, 👍, 💀, ❤️, 🔥, 🎉, 🚀) | open, closed |
-| S10 | Quoted Message Bar | Above input footer | Replying with context | Accent colored bar, author name, snippet | active, dismissed |
-| S11 | Message Hover Actions | Hover message bubble | Quick actions | Reactions, Reply, Star message, Delete | hidden, visible |
-| S12 | Status List Sidebar | Rail Tab 2 (Status) | Discover status stories | My status with add button, Recent updates, Viewed updates | default, unviewed rings |
-| S13 | Status Story Viewer Modal | Click any status item | Instagram/WhatsApp style story | Segmented progress bars, auto-advance, reply input | playing, paused, replying |
-| S14 | Text Status Creator Drawer | Click "+" in Status | Publish custom text story | Color palette picker, auto-focus textarea, post button | editing, posting |
-| S15 | Calls Log Sidebar | Rail Tab 3 (Calls) | View audio/video history | Incoming/Outgoing/Missed filters, call items, dial buttons | default, missed filter |
-| S16 | Active Call Overlay | Click Phone or Video | Live call simulation | Encrypted banner, animated avatar, timer, mute, camera toggle, hangup | Ringing, Connected |
-| S17 | Communities View | Rail Tab 4 (Communities) | Campus-wide organizations | Community cards, announcement channels, sub-group lists | expanded, collapsed |
-| S18 | New Community Creator | Plus button in Communities | Launch new campus hub | Community name, description, create button | open, closed |
-| S19 | Group Info Drawer | Click chat header | Inspect group properties | Hero avatar, name, subtitle, quick call buttons, description | open, closed |
-| S20 | Group Participants List | Inside Group Info | Manage enrolled members | Search bar, admin badges, add participant button | filtered, full list |
-| S21 | Media, Docs & Links Gallery | Right drawer via info / search | Browse all shared files | 3 tabs: Media grid, Docs list with size, Links with domain | media, docs, links |
-| S22 | Starred Messages Panel | Rail Star icon | Access bookmarked messages | Message list, sender name, timestamp, jump to chat | empty, filled |
-| S23 | Settings Main Menu | Rail Settings icon | Master preferences | Account, Privacy, Chats, Notifications, Storage, Linked Devices, Help | default list |
-| S24 | Privacy Settings Panel | Settings -> Privacy | Configure visibility | Last seen & online, read receipts toggle, default disappearing timer | default, modified |
-| S25 | Chats & Wallpaper Settings | Settings -> Chats | Configure visual look | Tiled doodle wallpaper toggle, Enter is send toggle | active toggles |
-| S26 | Notifications Settings | Settings -> Notifications | Alert preferences | Desktop notifications toggle, sound tone toggle | active toggles |
-| S27 | New Chat & New Group Modal | Plus icon in Chats | Start direct chat or group | Contact picker, search, new group mode with multi-select | search, multi-select |
-| S28 | Profile Editor Modal | Rail user avatar at bottom | Edit personal presence | User name, About status text, save button | view, edit |
+| S01 | Mobile App Shell & Top Bar | `/whatsapp` | Top navigation & brand identity | Back to DPS Buzz button, title, camera quick action, search, overflow menu | default, search active, mobile (<768px), desktop |
+| S02 | Mobile Bottom Navigation Bar | Fixed bottom on `<md` | 1-touch navigation between tabs | 4 tabs with active indicator & badge pills (Chats, Updates, Communities, Calls) | default, badge counts (unread msgs, missed calls) |
+| S03 | Mobile Chats List Screen | Tab 1 (Chats) | Browse & open conversations | Search bar, filter chips (All, Unread, Groups), chat items with avatar, name, last msg, time, unread badge, pin icon | empty, filtered, active |
+| S04 | Mobile Floating Action Button (FAB) | Bottom right over S03/S07/S09 | Primary action per tab | Green circular FAB: New Chat icon in Chats, Camera/Pencil in Status, Dialpad in Calls | idle, pressed |
+| S05 | Mobile Full-Screen Chat View | Tap any chat in S03 | 100vw conversation screen | Header with back arrow, contact avatar, name, subtitle, voice & video call icons, menu | active, typing, offline |
+| S06 | Mobile Message Thread Feed | S05 body | Visual chat stream | Tiled SVG doodle wallpaper, date separator pill, incoming/outgoing bubbles, reactions badge, video media card | idle, scrolling, replying |
+| S07 | Mobile Updates & Status Screen | Tab 2 (Updates) | Ephemeral story updates | My Status with "+" avatar, Recent updates list with green rings, Viewed updates list, mute options | idle, has unread |
+| S08 | Mobile Full-Screen Status Viewer | Tap any story in S07 | Immersive story carousel | Segmented progress bars (5s auto-advance), touch-and-hold pause, contact info, reply input pill | playing, paused, replying |
+| S09 | Mobile Calls History Screen | Tab 3 (Calls) | Recent audio/video call logs | Filter chips (All / Missed), call item with direction icon (incoming green, outgoing green, missed red), timestamp, call button | empty, filtered |
+| S10 | Mobile Active Call Overlay | Tap Call icon in S05/S09 | Simulated VoIP calling | Full-screen encrypted badge, animated glowing avatar, duration timer, mute mic toggle, camera flip/toggle, end call button | Ringing (2.5s), Connected |
+| S11 | Mobile Communities Hub | Tab 4 (Communities) | School-wide clubs & classes | New Community banner, DPS School Community, Class 8 Batch, Science Club, sub-groups & announcement dispatches | expanded, collapsed |
+| S12 | Mobile Contact & Group Info Sheet | Tap header in S05 | Group details & participants | Full-screen/sheet view: big avatar, description, audio/video buttons, media shortcut, disappearing timer, participants with admin badges, exit button | viewing, search participants |
+| S13 | Mobile Media, Docs & Links Gallery | Tap Media in S12 | Shared file repository | 3 segmented tabs: Media grid with video duration, Documents with file size, Links with domain preview | media, docs, links |
+| S14 | Mobile Starred Messages Drawer | Menu -> Starred | Saved messages across chats | List of starred cards with chat name, sender, snippet, time, unstar action, jump to chat | empty, populated |
+| S15 | Mobile Settings Sheet | Menu -> Settings | Complete app configuration | Account, Privacy, Chats (doodle toggle, enter is send), Notifications, Storage, Help, Linked Devices | main menu, sub-panels |
+| S16 | Mobile New Chat & Group Creator | Tap FAB in S03 | Start direct or group chat | Search contacts, New Group mode with multi-select checkboxes, group subject creator | search, multi-select |
+| S17 | Mobile Input Bar & Drawers | Bottom of S05 | Composing messages on touch | Plus/Paperclip attach menu (Photos, Docs, Diary), Emoji drawer, expanding input, Mic / Send button switch | idle, typing, recording voice note |
+| S18 | Mobile User Profile Modal | Tap Profile in Settings/Menu | Personal identity editor | Big avatar with edit ring, display name input, About status input, Save button | view, edit |
 
 ## Flows
 
 ```
-F01 Send Text Message & Reaction
-    S03 select chat -> S07 type text -> click Send -> S05 bubble mounts -> S11 hover bubble -> click emoji reaction -> S05 pill incremented
+F01 Mobile Message Conversation (Happy Path)
+    S02 tap Chats -> S03 tap "Together Forever" -> S05 full-screen chat slides in -> S17 tap input -> type message -> tap Green Send button -> S06 message renders with double check -> tap Back arrow -> S03 returns to list
+    happy path clicks: 4
+    edge: virtual keyboard viewport resize, network offline queuing, shift+enter vs enter-to-send
 
-F02 View & Reply to Status Story
-    S02 click Status -> S12 click contact update -> S13 full-screen modal opens with progress bar -> type reply -> S13 auto-advances or dispatches
+F02 Mobile Story / Status Consumption
+    S02 tap Updates -> S07 tap contact with green ring -> S08 full-screen story opens -> progress bar runs 5s -> tap screen to pause -> type reply in bottom pill -> tap send -> S08 auto-advances to next update or closes to S07
+    happy path clicks: 3
+    edge: user holds finger down to pause story, multiple story updates from same user
 
-F03 Start Voice or Video Call
-    S04 click Video icon -> S16 active call modal appears -> Ringing (2.5s) -> Connected with live seconds timer -> toggle Mic / Camera -> hang up
+F03 Mobile Voice / Video Call
+    S05 tap Voice/Video icon in header -> S10 full-screen calling overlay appears -> Ringing (2.5s) -> Connected (seconds timer increments) -> tap Mute or Video toggle -> tap Red Hang Up button -> returns to S05
+    happy path clicks: 2
+    edge: call rejected, call timed out, audio permission toggle
 
-F04 Explore Communities & Join Sub-Group
-    S02 click Communities -> S17 select "DPS School Community" -> click "Announcements" or sub-group -> S03 switches to group room -> S05 chat mounts
+F04 Mobile Group Member Management & Inspection
+    S05 tap group header -> S12 group sheet opens -> scroll participants -> tap "Add participant" -> S16 modal opens -> select contact -> member added -> tap Back arrow -> S05
+    happy path clicks: 4
+    edge: non-admin trying to add members, searching non-existent participant
 
-F05 Configure Wallpaper & Privacy
-    S02 click Settings -> S23 click Chats -> S25 toggle WhatsApp Doodle -> S05 live re-renders wallpaper pattern
+F05 Mobile Customization & Doodle Toggle
+    S01 tap three-dot menu -> tap Settings -> S15 tap Chats -> toggle "Add WhatsApp Doodle to wallpaper" -> tap Back -> S05 background updates immediately
+    happy path clicks: 4
+    edge: low-contrast wallpaper mode, dark/light theme toggle
 ```
 
-## Feature Parity Matrix
+## Components
 
-See `replica/features.csv` for detailed breakdown of all 28 screens. Parity rating: 100% on WhatsApp Desktop clean-room replica.
+| component | variants | states | used on |
+| --- | --- | --- | --- |
+| `MobileTopBar` | default, with back arrow, search active | default, scrolled | S01, S05 |
+| `MobileBottomNav` | 4 tabs (Chats, Updates, Communities, Calls) | active tab, unread badge, missed calls badge | S02 |
+| `FloatingActionButton` | new chat, camera, dialpad | default, active, hover | S04 |
+| `MessageBubble` | incoming (`#202c33`), outgoing (`#005c4b`), media card | default, quoted, reacted, starred | S06 |
+| `TouchInputBar` | idle (shows mic), typing (shows send) | default, focused, recording | S17 |
+| `StatusCircleRing` | unviewed (`#00a884`), viewed (`#8696a0`) | default, pressed | S07 |
+| `SegmentedProgressBar` | multi-segment stories | unfilled (0%), filling (0-100%), filled (100%) | S08 |
+| `CallActionButtons` | mute, camera, speaker, end call | active, inactive, pressed | S10 |
+| `ModalSheet` | full-screen mobile sheet, desktop drawer | open, closing, closed | S12, S13, S14, S15, S16 |
+
+## Inferred data model
+
+```
+ChatRoom        id, name, type (group | direct), avatar_color, initials, subtitle, last_message, last_time,
+                unread_count, is_pinned, is_muted, is_archived, description, created_by, created_at,
+                media_count, members (ContactItem[])
+                evidence: S03 chat list, S05 header, S12 group sheet
+                confidence: high
+
+ChatMessage     id, channel_id, sender_name, sender_color, subtitle, text, time, is_me, is_video,
+                video_duration, video_caption, quoted_author, quoted_text, is_starred, reactions (array)
+                evidence: S06 message thread, reference screenshot
+                confidence: high
+
+StatusStory     id, contact_name, contact_color, contact_initials, time, viewed, updates (StatusUpdate[])
+                evidence: S07 updates tab, S08 story viewer
+                confidence: high
+
+CallLog         id, contact_name, contact_color, contact_initials, time, type (voice | video),
+                direction (incoming | outgoing | missed), duration
+                evidence: S09 calls tab, S10 active call modal
+                confidence: high
+
+Community       id, name, description, avatar_color, initials, member_count, groups (array)
+                evidence: S11 communities tab
+                confidence: high
+```
+
+Relationships:
+- ChatRoom (1-n) ChatMessage
+- StatusStory (1-n) StatusUpdate
+- Community (1-n) ChatRoom (sub-groups)
+- ChatRoom (n-n) ContactItem (members)
+
+## Feature matrix
+
+See `replica/features.csv`. Must: 22, should: 6, could: 2, skip: 0. All 30 features documented for both Mobile & Desktop parity.
+
+## Out of scope (cannot or should not be cloned)
+
+- WhatsApp closed cellular GSM telephony / SS7 network infrastructure.
+- Multi-gigabyte end-to-end signal binary keys (managed seamlessly via Next.js & Cloudflare D1 HTTPS architecture).
+
+## Size
+
+Screens: 18 mobile screens/sheets, Flows: 5 core mobile flows, Entities: 5. Hard parts: 100vw mobile responsive layout transitions, touch gesture handling on story progress, touch-friendly 44px hit-targets, synchronized active audio/video call simulation.  
+Size: **M** (Complete responsive mobile & desktop application).
