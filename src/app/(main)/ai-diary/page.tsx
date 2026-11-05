@@ -19,6 +19,7 @@ import {
   Award,
   Flame,
   Check,
+  Copy,
   ListTodo,
   Camera,
   Upload,
@@ -103,6 +104,249 @@ async function compressDiaryImage(file: File): Promise<File> {
     reader.onerror = () => resolve(file);
     reader.readAsDataURL(file);
   });
+}
+
+// Client-side Math & LaTeX Sanitizer: Converts raw LaTeX tags into beautiful Unicode symbols
+function cleanMathText(str: string): string {
+  if (!str) return '';
+  let s = str;
+  s = s.replace(/\$\$+/g, '');
+  for (let iter = 0; iter < 6; iter++) {
+    s = s.replace(/\\sqrt(?:\[[^\]]*\])?\{([^{}]+)\}/g, '√($1)');
+    s = s.replace(/\\frac\{([^{}]+)\}\{([^{}]+)\}/g, '($1 / $2)');
+    s = s.replace(/\\(?:mathbf|textbf|text|mathrm|mathit|boldsymbol)\{([^{}]+)\}/g, '$1');
+  }
+  s = s.replace(/\\(?:mathbf|textbf|text|mathrm|mathit|boldsymbol)\b/g, '');
+  s = s.replace(/\\pm\b/g, '±')
+       .replace(/\\mp\b/g, '∓')
+       .replace(/\\times\b/g, '×')
+       .replace(/\\div\b/g, '÷')
+       .replace(/\\approx\b/g, '≈')
+       .replace(/\\implies\b/g, '⇒')
+       .replace(/\\iff\b/g, '⇔')
+       .replace(/\\rightarrow\b/g, '→')
+       .replace(/\\leftarrow\b/g, '←')
+       .replace(/\\leq?\b/g, '≤')
+       .replace(/\\geq?\b/g, '≥')
+       .replace(/\\neq?\b/g, '≠')
+       .replace(/\\theta\b/gi, 'θ')
+       .replace(/\\alpha\b/gi, 'α')
+       .replace(/\\beta\b/gi, 'β')
+       .replace(/\\gamma\b/gi, 'γ')
+       .replace(/\\pi\b/gi, 'π')
+       .replace(/\\Delta\b/g, 'Δ')
+       .replace(/\\lambda\b/gi, 'λ')
+       .replace(/\\mu\b/gi, 'μ')
+       .replace(/\\sigma\b/gi, 'σ')
+       .replace(/\\omega\b/gi, 'ω')
+       .replace(/\\Omega\b/g, 'Ω')
+       .replace(/\\infty\b/g, '∞')
+       .replace(/\\degree\b|\^\\circ/g, '°')
+       .replace(/\\cdot\b/g, '·')
+       .replace(/\\checkmark\b/g, '✓')
+       .replace(/\\angle\b/g, '∠')
+       .replace(/\\triangle\b/g, '△')
+       .replace(/\\quad|\\qquad|\\,|\\;|\\!/g, ' ');
+  s = s.replace(/\\left\s*([(\[{|])/g, '$1');
+  s = s.replace(/\\right\s*([)\]}|])/g, '$1');
+  s = s.replace(/\^2\b/g, '²')
+       .replace(/\^3\b/g, '³')
+       .replace(/\^4\b/g, '⁴')
+       .replace(/\^n\b/g, 'ⁿ');
+  s = s.replace(/\$([^$]+)\$/g, '$1');
+  s = s.replace(/\$/g, '');
+  s = s.replace(/\\([a-zA-Z]+)/g, '$1');
+  s = s.replace(/[{}]/g, '');
+  return s.replace(/[ \t]{2,}/g, ' ').trim();
+}
+
+// Inline Markdown Parser for bold and emphasis
+function renderInlineMarkdown(str: string): React.ReactNode {
+  if (!str) return null;
+  const parts: React.ReactNode[] = [];
+  const boldRegex = /\*\*([^*]+)\*\*/g;
+  let lastIndex = 0;
+  let match;
+
+  while ((match = boldRegex.exec(str)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(str.substring(lastIndex, match.index));
+    }
+    parts.push(
+      <strong key={`b-${match.index}`} className="font-bold text-[var(--text)]">
+        {match[1]}
+      </strong>
+    );
+    lastIndex = match.index + match[0].length;
+  }
+
+  if (lastIndex < str.length) {
+    parts.push(str.substring(lastIndex));
+  }
+
+  return parts.length > 0 ? parts : str;
+}
+
+// Apple-style Step & Formula Formatted Message Bubble
+function FormattedAiMessage({ text, isUser }: { text: string; isUser: boolean }) {
+  const [copied, setCopied] = useState(false);
+
+  if (isUser) {
+    return <p className="whitespace-pre-wrap">{text}</p>;
+  }
+
+  const cleaned = cleanMathText(text);
+
+  const handleCopy = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      navigator.clipboard.writeText(cleaned);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {}
+  };
+
+  const paragraphs = cleaned.split(/\n\n+/);
+
+  return (
+    <div className="space-y-2.5 relative group">
+      {paragraphs.map((para, pIdx) => {
+        const trimmed = para.trim();
+        if (!trimmed) return null;
+
+        // Step block matching (e.g., "**Step 1: ...**" or "Step 1: ...")
+        const stepMatch = trimmed.match(/^(?:\*\*)?(Step\s*\d+[^:*]*)(?:\*\*)?[:\-–]?\s*([\s\S]*)$/i);
+        if (stepMatch) {
+          const stepBadge = stepMatch[1].replace(/\*\*/g, '').trim();
+          const stepContent = stepMatch[2].trim();
+          return (
+            <div
+              key={pIdx}
+              className="p-3 rounded-xl bg-black/[0.02] dark:bg-white/[0.03] border border-[var(--line)] space-y-1.5 shadow-2xs"
+            >
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/20">
+                  {stepBadge}
+                </span>
+              </div>
+              <div className="text-xs sm:text-sm leading-relaxed pl-0.5 whitespace-pre-wrap">
+                {renderInlineMarkdown(stepContent)}
+              </div>
+            </div>
+          );
+        }
+
+        // Verification or Tip Callout
+        if (
+          trimmed.startsWith('💡') ||
+          trimmed.startsWith('✅') ||
+          trimmed.startsWith('✓') ||
+          trimmed.toLowerCase().includes('verification') ||
+          trimmed.toLowerCase().includes('cbse exam tip')
+        ) {
+          const isCheck = trimmed.startsWith('✅') || trimmed.startsWith('✓') || trimmed.toLowerCase().includes('verification');
+          return (
+            <div
+              key={pIdx}
+              className={`p-2.5 rounded-xl border text-xs sm:text-sm leading-relaxed flex items-start gap-2 shadow-2xs ${
+                isCheck
+                  ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-800 dark:text-emerald-200'
+                  : 'bg-amber-500/10 border-amber-500/25 text-amber-800 dark:text-amber-200'
+              }`}
+            >
+              <div className="mt-0.5 shrink-0 font-bold text-sm">
+                {isCheck ? '✓' : '💡'}
+              </div>
+              <div className="flex-1 whitespace-pre-wrap">
+                {renderInlineMarkdown(trimmed.replace(/^[💡✅✓]\s*/, ''))}
+              </div>
+            </div>
+          );
+        }
+
+        // Single-line Math equation callout
+        const isStandaloneEquation =
+          (trimmed.includes('=') || trimmed.includes('⇒') || trimmed.includes('→')) &&
+          !trimmed.includes('\n') &&
+          trimmed.length < 80 &&
+          !trimmed.startsWith('•') &&
+          !trimmed.startsWith('-') &&
+          !trimmed.startsWith('1.') &&
+          !trimmed.startsWith('2.');
+
+        if (isStandaloneEquation) {
+          return (
+            <div
+              key={pIdx}
+              className="px-3 py-2 rounded-xl bg-black/[0.03] dark:bg-white/[0.04] border border-[var(--line)] font-mono text-xs sm:text-sm font-semibold tracking-wide text-indigo-600 dark:text-indigo-400 my-1"
+            >
+              {renderInlineMarkdown(trimmed)}
+            </div>
+          );
+        }
+
+        // Multiline or bulleted paragraph
+        const lines = trimmed.split('\n');
+        return (
+          <div key={pIdx} className="space-y-1">
+            {lines.map((line, lIdx) => {
+              const lTrim = line.trim();
+              if (!lTrim) return null;
+
+              // Bullet item
+              if (lTrim.startsWith('•') || lTrim.startsWith('-')) {
+                return (
+                  <div key={lIdx} className="flex items-start gap-2 pl-1 text-xs sm:text-sm">
+                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0 mt-2" />
+                    <span className="flex-1 leading-relaxed">
+                      {renderInlineMarkdown(lTrim.replace(/^[•\-]\s*/, ''))}
+                    </span>
+                  </div>
+                );
+              }
+
+              // Headings
+              if (lTrim.startsWith('### ') || lTrim.startsWith('## ') || lTrim.startsWith('# ')) {
+                return (
+                  <h4 key={lIdx} className="font-bold text-xs sm:text-sm pt-1.5 pb-0.5 text-[var(--text)]">
+                    {renderInlineMarkdown(lTrim.replace(/^#+\s*/, ''))}
+                  </h4>
+                );
+              }
+
+              return (
+                <p key={lIdx} className="leading-relaxed">
+                  {renderInlineMarkdown(lTrim)}
+                </p>
+              );
+            })}
+          </div>
+        );
+      })}
+
+      {/* Copy Solution Action Bar */}
+      <div className="pt-1.5 flex justify-end">
+        <button
+          type="button"
+          onClick={handleCopy}
+          className="text-[11px] font-medium text-[var(--text-muted)] hover:text-[var(--text)] flex items-center gap-1 px-2 py-0.5 rounded-md hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+          title="Copy clean solution to clipboard"
+        >
+          {copied ? (
+            <>
+              <Check size={12} className="text-emerald-500" />
+              <span className="text-emerald-500 font-bold">Copied!</span>
+            </>
+          ) : (
+            <>
+              <Copy size={12} />
+              <span>Copy Solution</span>
+            </>
+          )}
+        </button>
+      </div>
+    </div>
+  );
 }
 
 export default function AiDiaryPage() {
@@ -281,12 +525,12 @@ export default function AiDiaryPage() {
             systemInstruction: {
               parts: [
                 {
-                  text: `You are the official DPS Buzz Academic AI Copilot for Delhi Public School. Your job is to solve CBSE Class ${userClass} academic problems (Mathematics, Physics, Chemistry, Biology, English) step-by-step with clear derivations, formulas, and encouraging explanations. Always solve the problem completely. Never give a generic canned template.`,
+                  text: `You are the official DPS Buzz Academic AI Copilot for Delhi Public School. Your job is to solve CBSE Class ${userClass} academic problems (Mathematics, Physics, Chemistry, Biology, English) step-by-step with clear derivations, formulas, and encouraging explanations. Always solve the problem completely. Never give a generic canned template. CRITICAL: NEVER use raw LaTeX markup (no \\frac, \\sqrt, \\mathbf, \\pm, or $$). Write clean Unicode math like x = (-b ± √(b² - 4ac)) / (2a), c² = a² + b², 3/4.`,
                 },
               ],
             },
             contents: [{ role: 'user', parts: [{ text }] }],
-            generationConfig: { temperature: 0.6, maxOutputTokens: 1024 },
+            generationConfig: { temperature: 0.5, maxOutputTokens: 1200 },
           }),
         });
 
@@ -297,7 +541,7 @@ export default function AiDiaryPage() {
             const aiMsg: ChatMessage = {
               id: `ai-${Date.now()}`,
               sender: 'ai',
-              text: generatedText,
+              text: cleanMathText(generatedText),
               timestamp: 'Just now',
               suggestions: [
                 'Explain the first step in detail',
@@ -718,7 +962,7 @@ export default function AiDiaryPage() {
                     }`}
                     style={msg.sender === 'ai' ? { borderColor: 'var(--line)' } : {}}
                   >
-                    <p className="whitespace-pre-wrap">{msg.text}</p>
+                    <FormattedAiMessage text={msg.text} isUser={msg.sender === 'user'} />
 
                     {/* Inline Physical Diary Image Card */}
                     {msg.imageUrl && (

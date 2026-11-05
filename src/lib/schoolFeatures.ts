@@ -1188,10 +1188,10 @@ export const SchoolFeatures = {
 
       return {
         category: 'academic_math',
-        answer: `🧮 **Step-by-Step Algebraic Solution:**\n\nGiven equation: **$${a === 1 ? '' : a}x ${b > 0 ? `${sign} ${b}` : ''} = ${c}$**\n\n` +
-          (b > 0 ? `1. **Transpose constant to RHS:**\n   $$${a === 1 ? '' : a}x = ${c} ${sign === '+' ? '-' : '+'} ${b} = ${rightSide}$$\n\n` : '') +
-          `2. **Divide both sides by ${a}:**\n   $$x = \\frac{${rightSide}}{${a}}$$\n   $$\\mathbf{x = ${isInteger ? xVal : xVal.toFixed(2)}}$$\n\n` +
-          `✅ **Verification:** Substituting $x = ${isInteger ? xVal : xVal.toFixed(2)}$ into LHS gives $${a}(${isInteger ? xVal : xVal.toFixed(2)}) ${b > 0 ? `${sign} ${b}` : ''} = ${c} = \\text{RHS}$.`,
+        answer: `🧮 **Step-by-Step Algebraic Solution:**\n\nGiven equation: **${a === 1 ? '' : a}x ${b > 0 ? `${sign} ${b}` : ''} = ${c}**\n\n` +
+          (b > 0 ? `1. **Transpose constant to RHS:**\n   ${a === 1 ? '' : a}x = ${c} ${sign === '+' ? '-' : '+'} ${b} = ${rightSide}\n\n` : '') +
+          `2. **Divide both sides by ${a}:**\n   x = ${rightSide} / ${a}\n   **x = ${isInteger ? xVal : xVal.toFixed(2)}**\n\n` +
+          `✅ **Verification:** Substituting x = ${isInteger ? xVal : xVal.toFixed(2)} into LHS gives ${a}(${isInteger ? xVal : xVal.toFixed(2)}) ${b > 0 ? `${sign} ${b}` : ''} = ${c} = RHS ✓ (Verified!)`,
         suggestions: ['Solve another equation', 'Pythagoras theorem formula', 'What is today math homework?'],
       };
     }
@@ -1208,10 +1208,10 @@ export const SchoolFeatures = {
 
       return {
         category: 'academic_math',
-        answer: `🧮 **Step-by-Step Quadratic Solution for $x^2 ${b >= 0 ? `+ ${b}` : `- ${Math.abs(b)}`}x ${c >= 0 ? `+ ${c}` : `- ${Math.abs(c)}`} = 0$:**\n\n` +
-          `1. **Discriminant ($D = b^2 - 4ac$):**\n   $$D = (${b})^2 - 4(1)(${c}) = ${D}$$\n\n` +
-          `2. **Roots via Quadratic Formula ($x = \\frac{-b \\pm \\sqrt{D}}{2a}$):**\n   $$\\mathbf{x_1 = ${Number.isInteger(r1) ? r1 : r1.toFixed(2)}, \\quad x_2 = ${Number.isInteger(r2) ? r2 : r2.toFixed(2)}}$$\n\n` +
-          `💡 *In CBSE examinations, write down the formula $x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$ before substituting values to secure full method marks!*`,
+        answer: `🧮 **Step-by-Step Quadratic Solution for x² ${b >= 0 ? `+ ${b}` : `- ${Math.abs(b)}`}x ${c >= 0 ? `+ ${c}` : `- ${Math.abs(c)}`} = 0:**\n\n` +
+          `1. **Discriminant (D = b² - 4ac):**\n   D = (${b})² - 4(1)(${c}) = ${D}\n\n` +
+          `2. **Roots via Quadratic Formula (x = (-b ± √D) / (2a)):**\n   **x₁ = ${Number.isInteger(r1) ? r1 : r1.toFixed(2)},  x₂ = ${Number.isInteger(r2) ? r2 : r2.toFixed(2)}**\n\n` +
+          `💡 *In CBSE examinations, write down the formula x = (-b ± √(b² - 4ac)) / (2a) before substituting values to secure full method marks!*`,
         suggestions: ['Solve 2x + 7 = 19', 'Trigonometry formulas', 'Class 10 sample papers'],
       };
     }
@@ -1220,7 +1220,7 @@ export const SchoolFeatures = {
     if (q.includes('pythagoras') || q.includes('hypotenuse') || q.includes('right angle triangle')) {
       return {
         category: 'academic_math',
-        answer: `📐 **Pythagoras Theorem (CBSE Mathematics):**\n\nIn any right-angled triangle, the area of the square whose side is the hypotenuse is equal to the sum of the areas of the squares on the other two sides:\n\n$$\\mathbf{c^2 = a^2 + b^2} \\implies c = \\sqrt{a^2 + b^2}$$\n\n• If Base = 3 cm and Perpendicular = 4 cm:\n  $$c = \\sqrt{3^2 + 4^2} = \\sqrt{9 + 16} = \\sqrt{25} = 5\\text{ cm}$$\n\n💡 **Pythagorean Triplets to Memorize:** $(3, 4, 5)$, $(5, 12, 13)$, $(6, 8, 10)$, $(8, 15, 17)$.`,
+        answer: `📐 **Pythagoras Theorem (CBSE Mathematics):**\n\nIn any right-angled triangle, the area of the square on the hypotenuse is equal to the sum of the squares on the other two sides:\n\nc² = a² + b²   ⇒   c = √(a² + b²)\n\n• If Base = 3 cm and Perpendicular = 4 cm:\n  c = √(3² + 4²) = √(9 + 16) = √25 = 5 cm\n\n💡 **Pythagorean Triplets to Memorize:** (3, 4, 5), (5, 12, 13), (6, 8, 10), (8, 15, 17).`,
         suggestions: ['Trigonometry ratios', 'Area of triangle formula', 'Class 8 math homework'],
       };
     }
@@ -1229,7 +1229,7 @@ export const SchoolFeatures = {
     if (q.includes('ohm') || q.includes('resistance') || q.includes('voltage') || q.includes('circuit')) {
       return {
         category: 'academic_science',
-        answer: `⚡ **Ohm's Law & Circuit Formulas (Physics):**\n\n$$\\mathbf{V = I \\times R}$$\n\n• **$V$ (Potential Difference):** Measured in Volts ($\\text{V}$)\n• **$I$ (Electric Current):** Measured in Amperes ($\\text{A}$)\n• **$R$ (Resistance):** Measured in Ohms ($\\Omega$)\n\n**Example Problem:**\nIf an electric lamp has resistance $R = 20\\,\\Omega$ and current $I = 0.5\\,\\text{A}$ flows through it:\n$$V = 0.5 \\times 20 = 10\\,\\text{Volts}$$\n\n• **Series Resistors:** $R_s = R_1 + R_2 + R_3$\n• **Parallel Resistors:** $\\frac{1}{R_p} = \\frac{1}{R_1} + \\frac{1}{R_2} + \\frac{1}{R_3}$`,
+        answer: `⚡ **Ohm's Law & Circuit Formulas (Physics):**\n\nV = I × R\n\n• **V (Potential Difference):** Measured in Volts (V)\n• **I (Electric Current):** Measured in Amperes (A)\n• **R (Resistance):** Measured in Ohms (Ω)\n\n**Example Problem:**\nIf an electric lamp has resistance R = 20 Ω and current I = 0.5 A flows through it:\nV = 0.5 × 20 = 10 Volts\n\n• **Series Resistors:** R_total = R₁ + R₂ + R₃\n• **Parallel Resistors:** 1 / R_total = (1 / R₁) + (1 / R₂) + (1 / R₃)`,
         suggestions: ['Laws of Reflection', 'What is photosynthesis?', 'Physics study notes'],
       };
     }
@@ -1238,7 +1238,7 @@ export const SchoolFeatures = {
     if (q.includes('photosynthesis') || q.includes('chlorophyll') || q.includes('autotroph')) {
       return {
         category: 'academic_science',
-        answer: `🍃 **Photosynthesis: Life Processes (Biology):**\n\n**Balanced Chemical Equation:**\n$$6\\text{CO}_2 + 12\\text{H}_2\\text{O} \\xrightarrow[\\text{Chlorophyll}]{\\text{Sunlight}} \\text{C}_6\\text{H}_{12}\\text{O}_6 + 6\\text{O}_2 + 6\\text{H}_2\\text{O}$$\n\n**Key Events:**\n1. Absorption of light energy by chlorophyll.\n2. Conversion of light energy into chemical energy and photolysis of water ($2\\text{H}_2\\text{O} \\to 4\\text{H}^+ + \\text{O}_2 + 4e^-$).\n3. Reduction of carbon dioxide ($\\text{CO}_2$) to carbohydrates (glucose).`,
+        answer: `🍃 **Photosynthesis: Life Processes (Biology):**\n\n**Balanced Chemical Equation:**\n6 CO₂ + 12 H₂O  --(Sunlight / Chlorophyll)-->  C₆H₁₂O₆ + 6 O₂ + 6 H₂O\n\n**Key Events:**\n1. Absorption of light energy by chlorophyll.\n2. Conversion of light energy into chemical energy and photolysis of water (2 H₂O → 4 H⁺ + O₂ + 4 e⁻).\n3. Reduction of carbon dioxide (CO₂) to carbohydrates (glucose).`,
         suggestions: ['Respiration vs photosynthesis', 'Digestive system organs', 'Plant tissues'],
       };
     }
@@ -1255,7 +1255,7 @@ export const SchoolFeatures = {
     // 13. Generic friendly educational assistant
     return {
       category: 'general',
-      answer: `Hello! I am your **DPS Buzz AI Academic Copilot** 🐝\n\nSend me your exact problem and I will break it down step-by-step:\n• 🧮 **Mathematics:** Equations (e.g. *"Solve 2x + 5 = 15"* or *"Roots of x^2 - 5x + 6 = 0"*), Pythagoras theorem, Trigonometry.\n• 🔬 **Science:** Physics numericals (Ohm's law $V=IR$), Chemistry balancing, Biology life processes.\n• 📝 **English:** Letter to Editor format, Notice writing, Analytical paragraphs.\n• 📸 **Class Diary:** Show verified daily blackboard notes.\n\nType your question above!`,
+      answer: `Hello! I am your **DPS Buzz AI Academic Copilot** 🐝\n\nSend me your exact problem and I will break it down step-by-step:\n• 🧮 **Mathematics:** Equations (e.g. *"Solve 2x + 5 = 15"* or *"Roots of x^2 - 5x + 6 = 0"*), Pythagoras theorem, Trigonometry.\n• 🔬 **Science:** Physics numericals (Ohm's law V = I × R), Chemistry balancing, Biology life processes.\n• 📝 **English:** Letter to Editor format, Notice writing, Analytical paragraphs.\n• 📸 **Class Diary:** Show verified daily blackboard notes.\n\nType your question above!`,
       suggestions: ['Solve 2x + 7 = 19', 'Explain Ohm law', "Show today's diary image", 'Letter to Editor format'],
     };
   },
