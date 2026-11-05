@@ -42,6 +42,7 @@ import {
   ThumbsUp,
   ThumbsDown,
   MessageSquare,
+  MessageCircle,
   Phone,
   Info,
   Bell,
@@ -52,6 +53,10 @@ import {
   UserCheck,
   GraduationCap,
   BookOpen,
+  Building,
+  Layers,
+  Database,
+  CheckCircle,
 } from 'lucide-react';
 import {
   schoolSystem,
@@ -104,7 +109,7 @@ interface EnrolledMember {
   attendance: string;
 }
 
-// Verified Seed Roster for Class 8-G and DPS Classrooms
+// Verified Seed Roster for Class 8-G, 9-B and DPS Classrooms
 const BASE_DPS_ROSTER: EnrolledMember[] = [
   {
     id: 'mem-madam',
@@ -137,11 +142,27 @@ const BASE_DPS_ROSTER: EnrolledMember[] = [
     attendance: '99%',
   },
   {
+    id: 'mem-sahana',
+    username: 'sahana_3009',
+    name: 'S. Sahana',
+    role: 'rep',
+    roleLabel: 'Class Representative (9-B)',
+    className: 'Class 9-B',
+    rollNo: '31',
+    admissionNo: 'DPS-2024-9B31',
+    house: 'Ganges House',
+    isVerified: true,
+    avatar: null,
+    online: true,
+    spiritPoints: 710,
+    attendance: '98.5%',
+  },
+  {
     id: 'mem-shashwath',
     username: 'shashwath71845',
     name: 'Shashwath Salla',
     role: 'rep',
-    roleLabel: 'Class Representative & Admin',
+    roleLabel: 'Class Representative (8-G)',
     className: 'Class 8-G',
     rollNo: '24',
     admissionNo: 'DPS-2024-8G24',
@@ -279,22 +300,6 @@ const BASE_DPS_ROSTER: EnrolledMember[] = [
     online: false,
     spiritPoints: 470,
     attendance: '96.5%',
-  },
-  {
-    id: 'mem-sahana',
-    username: 'sahana_3009',
-    name: 'S. Sahana',
-    role: 'student',
-    roleLabel: 'Verified Student',
-    className: 'Class 9-A',
-    rollNo: '31',
-    admissionNo: 'DPS-2024-9A31',
-    house: 'Ganges House',
-    isVerified: true,
-    avatar: null,
-    online: true,
-    spiritPoints: 610,
-    attendance: '97.5%',
   },
 ];
 
@@ -557,7 +562,7 @@ const MessageBubbleItem = memo(function MessageBubbleItem({
           )}
         </div>
 
-        {/* Apple 6-Tapback Bar (Revealed on Hover or Tap) */}
+        {/* Apple 6-Tapback Bar */}
         {showTapbacks && (
           <div
             className={`absolute -top-11 z-30 flex items-center gap-2 px-3 py-1.5 rounded-full shadow-2xl backdrop-blur-2xl border ${
@@ -603,7 +608,7 @@ const MessageBubbleItem = memo(function MessageBubbleItem({
 });
 
 // ============================================================================
-// MAIN GROUPS PAGE (Apple iOS iMessage Experience)
+// MAIN GROUPS PAGE (Exact Reference Layout + Strict Section Isolation + 91 Sections Demo)
 // ============================================================================
 export default function GroupsPage() {
   const router = useRouter();
@@ -646,22 +651,47 @@ export default function GroupsPage() {
   const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Group Details Drawer Sheet (Apple iOS Details Drawer)
+  // STRICT STUDENT GRADE & SECTION ISOLATION
+  // Defaults to Class 9-B so 9th grader sees ONLY 9th grade section!
+  const [studentGrade, setStudentGrade] = useState<string>('Class 9');
+  const [studentSection, setStudentSection] = useState<string>('B');
+
+  // Teacher / Admin Mode Switcher
+  const [clientViewMode, setClientViewMode] = useState<'teacher' | 'student'>('teacher');
+
+  // Modals & Sheets
   const [showGroupDetailsSheet, setShowGroupDetailsSheet] = useState(false);
   const [memberFilterTab, setMemberFilterTab] = useState<'all' | 'faculty' | 'reps' | 'students'>('all');
   const [memberSearchQuery, setMemberSearchQuery] = useState('');
   const [drawerActiveTab, setDrawerActiveTab] = useState<'members' | 'media' | 'settings'>('members');
-
-  // Enrolled Roster State (Allows dynamic adding of classmates)
   const [classRoster, setClassRoster] = useState<EnrolledMember[]>(BASE_DPS_ROSTER);
   const [showAddMemberModal, setShowAddMemberModal] = useState(false);
   const [addMemberSearch, setAddMemberSearch] = useState('');
-
-  // Verified Profile Card Modal (Tap on any student or faculty to see verified DPS ID)
   const [inspectedMember, setInspectedMember] = useState<EnrolledMember | null>(null);
-
-  // Pinned Classroom Notice Collapsible
   const [isPinnedNoticeDismissed, setIsPinnedNoticeDismissed] = useState(false);
+
+  // Student Group Creation Notice Modal (Redirect to Chats)
+  const [showStudentCreateNotice, setShowStudentCreateNotice] = useState(false);
+
+  // 91 Sections Implementation Demo Sheet for Madam
+  const [show91SectionsDemo, setShow91SectionsDemo] = useState(false);
+  const [demoSelectedGrade, setDemoSelectedGrade] = useState<string>('Class 9');
+  const [demoSelectedSection, setDemoSelectedSection] = useState<string>('B');
+
+  // Assign Modal
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [assignTargetGroup, setAssignTargetGroup] = useState('channel-class-9b');
+  const [assignUsername, setAssignUsername] = useState('teacher_english');
+  const [assignRole, setAssignRole] = useState<'teacher' | 'student'>('teacher');
+  const [assignSubject, setAssignSubject] = useState('English Faculty');
+  const [isAssigning, setIsAssigning] = useState(false);
+
+  // Create Classroom Modal
+  const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
+  const [newGroupName, setNewGroupName] = useState('');
+  const [newGroupGrade, setNewGroupGrade] = useState('Class 9');
+  const [newGroupSection, setNewGroupSection] = useState('B');
+  const [newGroupIsLocked, setNewGroupIsLocked] = useState(false);
 
   // Offline and Replying
   const [isOnline, setIsOnline] = useState<boolean>(true);
@@ -669,19 +699,7 @@ export default function GroupsPage() {
   const [replyingTo, setReplyingTo] = useState<WhatsAppMessage | null>(null);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-
-  // Teacher / Admin Mode Switcher
-  const [clientViewMode, setClientViewMode] = useState<'teacher' | 'student'>('student');
-  const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
-  const [newGroupName, setNewGroupName] = useState('');
-  const [newGroupGrade, setNewGroupGrade] = useState('Class 8');
-  const [newGroupSection, setNewGroupSection] = useState('G');
-  const [newGroupIsLocked, setNewGroupIsLocked] = useState(false);
-
-  // Audio / Video Call Simulation Modal
   const [activeCallRoom, setActiveCallRoom] = useState<{ type: 'audio' | 'video'; title: string } | null>(null);
-
-  // Reactions Map: messageId -> ReactionItem[]
   const [reactions, setReactions] = useState<Record<string, ReactionItem[]>>({});
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -798,6 +816,7 @@ export default function GroupsPage() {
     const user = DataStore.getCurrentUser();
     setCurrentUser(user);
 
+    // Default to teacher mode to match reference screenshot
     const isTeacher =
       (user as any)?.role === 'teacher' ||
       user?.role === 'admin' ||
@@ -805,6 +824,13 @@ export default function GroupsPage() {
       user?.username?.toLowerCase().includes('teacher') ||
       user?.username?.toLowerCase() === 'madam_principal';
     setClientViewMode(isTeacher ? 'teacher' : 'student');
+
+    // Auto-detect user grade if available
+    const rawClass = (user as any)?.class || (user as any)?.classGrade || '';
+    if (rawClass && String(rawClass).includes('9')) {
+      setStudentGrade('Class 9');
+      setStudentSection((user as any)?.section || 'B');
+    }
 
     refreshAllData();
 
@@ -825,14 +851,6 @@ export default function GroupsPage() {
         const data = await res.json();
         if (Array.isArray(data.whatsappChannels)) {
           setChannels(data.whatsappChannels);
-          setSelectedChannelId((prev) => {
-            const hasPrev = data.whatsappChannels.some((c: WhatsAppChannel) => c.id === prev);
-            if (!hasPrev || prev === 'channel-school-broadcast') {
-              const activeClass = data.whatsappChannels.find((c: WhatsAppChannel) => !c.isLocked);
-              return activeClass ? activeClass.id : 'channel-class-8g';
-            }
-            return prev;
-          });
         }
         if (Array.isArray(data.whatsappMessages)) {
           setMessages(data.whatsappMessages);
@@ -856,28 +874,41 @@ export default function GroupsPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages.length, selectedChannelId]);
 
-  // Visible Channels
-  const isTeacherAdmin =
-    clientViewMode === 'teacher' &&
-    (currentUser?.username === 'shashwath71845' ||
-      currentUser?.username === 'madam_principal' ||
-      currentUser?.role === 'admin');
+  // ==========================================================================
+  // STRICT CHANNEL FILTERING: REMOVE MULTIPLE GROUPS FOR STUDENTS
+  // ==========================================================================
+  const isTeacherAdmin = clientViewMode === 'teacher';
 
   const visibleChannels = useMemo(() => {
+    if (isTeacherAdmin) {
+      // Principal Madam sees all provisioned classrooms across the school
+      return channels;
+    }
+
+    // STRICT STUDENT ISOLATION:
+    // A student in Class 9-B must ONLY see:
+    // 1. Class 9-B Official Classroom 📘
+    // 2. DPS Official Principal Dispatches 📢 (School broadcast)
+    // 3. Extracurricular clubs
     return channels.filter((c) => {
-      if (isTeacherAdmin) return true;
+      // 1. Principal Dispatches (Always visible to all 5,500 students)
       if (c.id === 'channel-school-broadcast' || c.grade === 'All') return true;
+
+      // 2. Clubs (e.g. Science club)
       if (c.id.includes('club') || c.section === 'Club') return true;
-      const userGrade = String((currentUser as any)?.classGrade || (currentUser as any)?.grade || currentUser?.class || '8')
-        .toLowerCase()
-        .replace(/[^0-9]/g, '');
-      const channelGrade = c.grade.toLowerCase().replace(/[^0-9]/g, '');
-      if (userGrade && channelGrade && (userGrade === channelGrade || c.grade.includes(userGrade))) {
-        return true;
-      }
-      return true;
+
+      // 3. Exact Grade AND Section matching!
+      const userGradeClean = studentGrade.toLowerCase().replace(/[^0-9]/g, '');
+      const channelGradeClean = c.grade.toLowerCase().replace(/[^0-9]/g, '');
+      const userSectionClean = studentSection.toLowerCase().trim();
+      const channelSectionClean = (c.section || '').toLowerCase().trim();
+
+      const gradeMatches = userGradeClean === channelGradeClean;
+      const sectionMatches = userSectionClean === channelSectionClean || channelSectionClean === 'all';
+
+      return gradeMatches && sectionMatches;
     });
-  }, [channels, isTeacherAdmin, currentUser]);
+  }, [channels, isTeacherAdmin, studentGrade, studentSection]);
 
   const filteredChannels = useMemo(() => {
     if (!searchQuery.trim()) return visibleChannels;
@@ -896,16 +927,16 @@ export default function GroupsPage() {
     if (found) return found;
     return (
       visibleChannels[0] || {
-        id: 'channel-class-8g',
-        name: 'Class 8-G Official Classroom 📘',
-        grade: 'Class 8',
-        section: 'G',
+        id: 'channel-class-9b',
+        name: 'Class 9-B Official Classroom 📘',
+        grade: 'Class 9',
+        section: 'B',
         isLocked: false,
-        adminUsernames: ['shashwath71845', 'madam_principal'],
-        enrolledUsernames: ['madam_principal', 'teacher_english', 'shashwath71845', 'rishi_one9', 'rohan728'],
-        memberCount: 39,
-        lastMessage: 'Welcome to Class 8-G Official Classroom',
-        lastMessageTime: 'Just now',
+        adminUsernames: ['madam_principal', 'teacher_english'],
+        enrolledUsernames: ['madam_principal', 'teacher_english', 'sahana_3009'],
+        memberCount: 42,
+        lastMessage: 'hi',
+        lastMessageTime: '06:54 AM',
       }
     );
   }, [visibleChannels, selectedChannelId]);
@@ -921,9 +952,9 @@ export default function GroupsPage() {
     if (activeChannel.id === 'channel-school-broadcast') {
       return '5,500 Enrolled Students & Faculty • Official Dispatches';
     }
-    const count = classRoster.length >= 39 ? classRoster.length : 39;
+    const count = activeChannel.memberCount || 42;
     return `${count} Verified Members • Tap for Classroom Info >`;
-  }, [activeChannel, classRoster.length]);
+  }, [activeChannel]);
 
   // Send Message Handler
   const handleSendMessage = async (e?: React.FormEvent) => {
@@ -932,18 +963,18 @@ export default function GroupsPage() {
     if (!textToSend || isSending) return;
 
     if (!canSendMessage) {
-      setToastMessage('This channel is locked by Faculty. Switch to an open classroom.');
+      setToastMessage('This channel is read-only. Switch to your classroom to send messages.');
       return;
     }
 
     setIsSending(true);
 
-    const senderUsername = currentUser?.username || (clientViewMode === 'teacher' ? 'madam_principal' : 'shashwath71845');
+    const senderUsername = currentUser?.username || (clientViewMode === 'teacher' ? 'madam_principal' : 'sahana_3009');
     const senderName = clientViewMode === 'teacher'
       ? 'Principal Madam (Office)'
-      : currentUser?.fullName || currentUser?.username || 'Shashwath Salla';
+      : currentUser?.fullName || currentUser?.username || 'S. Sahana';
     const senderRole = clientViewMode === 'teacher' ? 'admin' : (currentUser?.role || 'student');
-    const senderClass = clientViewMode === 'teacher' ? 'Office of Principal' : 'Class 8-G';
+    const senderClass = clientViewMode === 'teacher' ? 'Office of Principal' : `${studentGrade}-${studentSection}`;
 
     const optimisticId = `wmsg-opt-${Date.now()}`;
     const quotedText = replyingTo ? `> Replying to @${replyingTo.senderName}: "${replyingTo.text.slice(0, 180)}"\n\n` : '';
@@ -1090,6 +1121,34 @@ export default function GroupsPage() {
     }
   };
 
+  // Madam Sends Faculty/Student Assignment
+  const handleSendAssignment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!assignUsername.trim()) return;
+    setIsAssigning(true);
+
+    const targetGroupObj = channels.find((c) => c.id === assignTargetGroup);
+    const groupName = targetGroupObj?.name || 'Classroom Group';
+
+    const res = await schoolSystem.createGroupInvite({
+      groupId: assignTargetGroup,
+      groupName,
+      inviteeUsername: assignUsername.trim(),
+      inviteeRole: assignRole,
+      subject: assignSubject.trim(),
+      invitedBy: currentUser?.username || 'madam_principal',
+    });
+
+    if (res.success) {
+      setShowAssignModal(false);
+      setToastMessage(`Assignment dispatched to @${assignUsername.trim()}`);
+      refreshAllData();
+    } else {
+      alert(res.error || 'Failed to send assignment');
+    }
+    setIsAssigning(false);
+  };
+
   // Add Classmate to Roster
   const handleAddMemberToClass = (username: string, fullName: string, className: string) => {
     if (classRoster.some((m) => m.username.toLowerCase() === username.toLowerCase())) {
@@ -1103,9 +1162,9 @@ export default function GroupsPage() {
       name: fullName,
       role: 'student',
       roleLabel: 'Verified Student',
-      className: className || 'Class 8-G',
+      className: className || `${studentGrade}-${studentSection}`,
       rollNo: String(classRoster.length + 1),
-      admissionNo: `DPS-2024-8G${classRoster.length + 1}`,
+      admissionNo: `DPS-2024-${studentGrade.replace(/[^0-9]/g, '')}${studentSection}${classRoster.length + 1}`,
       house: 'Yamuna House',
       isVerified: true,
       avatar: null,
@@ -1133,7 +1192,7 @@ export default function GroupsPage() {
         name: prof?.fullName || cleanU,
         role: (prof?.role === 'admin' ? 'principal' : (prof?.role as string) === 'teacher' ? 'faculty' : 'student') as any,
         roleLabel: prof?.role === 'admin' ? 'Principal & Admin' : 'Verified Student',
-        className: prof?.class ? `Class ${prof.class}` : 'Class 8-G',
+        className: prof?.class ? `Class ${prof.class}` : `${studentGrade}-${studentSection}`,
         admissionNo: `DPS-2024-${cleanU.slice(0, 6).toUpperCase()}`,
         house: 'Yamuna House',
         isVerified: true,
@@ -1161,16 +1220,35 @@ export default function GroupsPage() {
     });
   }, [classRoster, memberFilterTab, memberSearchQuery]);
 
+  // Demo simulator trigger
+  const handleSimulateClass9BStudent = () => {
+    setClientViewMode('student');
+    setStudentGrade('Class 9');
+    setStudentSection('B');
+    setSelectedChannelId('channel-class-9b');
+    setShow91SectionsDemo(false);
+    setToastMessage('Switched to Class 9-B Student View • Only 9-B & Principal Dispatches visible!');
+  };
+
+  const handleSimulateClass8GStudent = () => {
+    setClientViewMode('student');
+    setStudentGrade('Class 8');
+    setStudentSection('G');
+    setSelectedChannelId('channel-class-8g');
+    setShow91SectionsDemo(false);
+    setToastMessage('Switched to Class 8-G Student View • Only 8-G & Principal Dispatches visible!');
+  };
+
   return (
     <div
-      className="flex h-[calc(100vh-4rem)] md:h-[calc(100vh-3.5rem)] w-full overflow-hidden select-none bg-[#F2F2F7] dark:bg-[#000000] text-zinc-900 dark:text-zinc-100"
+      className="flex h-[calc(100vh-4rem)] md:h-[calc(100vh-3.5rem)] w-full overflow-hidden select-none bg-linear-to-b from-[#F5F3FF] via-[#F8FAFC] to-[#EDE9FE] dark:from-[#0B0F19] dark:via-[#111827] dark:to-[#0B0F19] text-zinc-900 dark:text-zinc-100"
       style={{
         fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", sans-serif',
       }}
     >
       {/* Toast Notification Alert */}
       {toastMessage && (
-        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-full bg-zinc-900/90 dark:bg-white/90 text-white dark:text-zinc-900 text-xs font-semibold shadow-2xl backdrop-blur-xl border border-white/20 flex items-center gap-2 animate-bounce">
+        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-full bg-zinc-900/95 dark:bg-white/95 text-white dark:text-zinc-900 text-xs font-semibold shadow-2xl backdrop-blur-xl border border-white/20 flex items-center gap-2 animate-bounce">
           <CheckCircle2 size={15} className="text-[#007AFF]" />
           <span>{toastMessage}</span>
         </div>
@@ -1185,146 +1263,210 @@ export default function GroupsPage() {
       )}
 
       {/* ==================================================================== */}
-      {/* LEFT PANEL: Apple Messages Sidebar (Width ~360px-400px)              */}
+      {/* LEFT PANEL: Exact Match to User Reference Screenshot                  */}
       {/* ==================================================================== */}
       <aside
-        className={`w-full md:w-[360px] lg:w-[400px] flex flex-col border-r border-black/[0.08] dark:border-white/[0.08] bg-white/70 dark:bg-[#161618]/70 backdrop-blur-2xl shrink-0 transition-all ${
+        className={`w-full md:w-[380px] lg:w-[420px] flex flex-col shrink-0 transition-all p-3 sm:p-4 overflow-y-auto border-r border-black/[0.06] dark:border-white/[0.06] ${
           isMobileChatOpen ? 'hidden md:flex' : 'flex'
         }`}
       >
-        {/* Apple Navigation Header */}
-        <div className="h-[64px] px-4 flex items-center justify-between border-b border-black/[0.08] dark:border-white/[0.08] shrink-0">
-          <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#007AFF] to-[#5856D6] flex items-center justify-center font-bold text-white text-sm shadow-md ring-2 ring-white/50 dark:ring-white/10">
-              {currentUser?.fullName?.[0] || 'D'}
+        {/* TOP PROFILE CARD (Exact Reference Layout) */}
+        <div className="rounded-3xl bg-white/90 dark:bg-[#1C1C1E]/90 shadow-sm border border-white/80 dark:border-white/10 p-3.5 sm:p-4 mb-3 flex items-center justify-between">
+          <div className="flex items-center gap-3 min-w-0">
+            {/* Circle Avatar (Red "M" for Principal Madam or Student Initials) */}
+            <div
+              className={`w-11 h-11 rounded-full flex items-center justify-center font-bold text-white text-base shadow-xs shrink-0 ${
+                clientViewMode === 'teacher' ? 'bg-[#ea4335]' : 'bg-[#007AFF]'
+              }`}
+            >
+              {clientViewMode === 'teacher' ? 'M' : currentUser?.fullName?.[0] || 'S'}
             </div>
-            <div>
-              <div className="text-sm font-semibold flex items-center gap-1 leading-tight">
-                <span>{currentUser?.fullName || 'DPS Student'}</span>
-                <CheckCircle2 size={13} className="text-[#007AFF] fill-[#007AFF]/20" />
+
+            <div className="min-w-0">
+              <div className="text-[13.5px] font-bold truncate leading-tight text-zinc-900 dark:text-zinc-100 flex items-center gap-1">
+                <span>{clientViewMode === 'teacher' ? 'Principal Madam (Office)' : (currentUser?.fullName || 'S. Sahana')}</span>
               </div>
-              <div className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-tight mt-0.5">
-                {clientViewMode === 'teacher' ? 'Faculty Admin • Office' : 'Class 8-G • Verified Student'}
+              <div className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate leading-tight mt-0.5">
+                {clientViewMode === 'teacher' ? 'Faculty Admin' : `${studentGrade}-${studentSection} • Verified Student`}
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5">
-            {/* Faculty Mode Switcher */}
-            {(currentUser?.role === 'admin' ||
-              currentUser?.username === 'shashwath71845' ||
-              currentUser?.username?.toLowerCase().includes('teacher')) && (
-              <button
-                type="button"
-                onClick={() => setClientViewMode(clientViewMode === 'teacher' ? 'student' : 'teacher')}
-                className="px-2.5 py-1 rounded-full text-[11px] font-semibold border border-black/10 dark:border-white/15 bg-black/5 dark:bg-white/10 hover:bg-black/10 transition-colors cursor-pointer"
-                title="Switch View Mode"
-              >
-                {clientViewMode === 'teacher' ? 'Faculty' : 'Student'}
-              </button>
-            )}
+          <div className="flex items-center gap-1.5 shrink-0">
+            {/* Purple Mode Switcher Pill */}
+            <button
+              type="button"
+              onClick={() => setClientViewMode(clientViewMode === 'teacher' ? 'student' : 'teacher')}
+              className="px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer bg-[#F3E8FF] dark:bg-purple-950/40 text-[#7E22CE] dark:text-purple-300 border border-purple-200 dark:border-purple-800/40 hover:scale-105 active:scale-95 shadow-2xs"
+              title="Toggle Faculty / Student Mode"
+            >
+              <GraduationCap size={15} />
+              <span>{clientViewMode === 'teacher' ? 'Faculty Mode' : 'Student Mode'}</span>
+            </button>
 
-            {clientViewMode === 'teacher' && (
+            {clientViewMode === 'teacher' ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setShowAssignModal(true)}
+                  className="w-8 h-8 rounded-full hover:bg-black/5 dark:hover:bg-white/10 text-zinc-600 dark:text-zinc-300 flex items-center justify-center cursor-pointer transition-colors"
+                  title="Assign Teacher / Student"
+                >
+                  <UserPlus size={18} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowCreateGroupModal(true)}
+                  className="w-8 h-8 rounded-full hover:bg-black/5 dark:hover:bg-white/10 text-zinc-600 dark:text-zinc-300 flex items-center justify-center cursor-pointer transition-colors"
+                  title="Create New Classroom"
+                >
+                  <Plus size={19} />
+                </button>
+              </>
+            ) : (
               <button
                 type="button"
-                onClick={() => setShowCreateGroupModal(true)}
-                className="w-8 h-8 rounded-full bg-[#007AFF] text-white flex items-center justify-center hover:scale-105 active:scale-95 transition-transform shadow-xs cursor-pointer"
-                title="Create New Classroom Group"
+                onClick={() => setShowStudentCreateNotice(true)}
+                className="w-8 h-8 rounded-full hover:bg-black/5 dark:hover:bg-white/10 text-zinc-600 dark:text-zinc-300 flex items-center justify-center cursor-pointer transition-colors"
+                title="Create Group (Students create in Chats)"
               >
-                <Plus size={16} />
+                <Plus size={19} />
               </button>
             )}
           </div>
         </div>
 
-        {/* Apple Spotlight Search Bar */}
-        <div className="p-3 border-b border-black/[0.06] dark:border-white/[0.06] shrink-0">
-          <div className="flex items-center px-3 py-1.5 rounded-[10px] bg-black/5 dark:bg-white/10 focus-within:ring-2 focus-within:ring-[#007AFF]/40 transition-all">
-            <Search size={14} className="text-zinc-400 mr-2 shrink-0" />
-            <input
-              type="text"
-              placeholder="Search classrooms and groups"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full text-xs bg-transparent focus:outline-none placeholder:text-zinc-400"
-            />
-            {searchQuery && (
-              <button onClick={() => setSearchQuery('')} className="text-xs text-zinc-400 hover:text-zinc-600">
-                <X size={13} />
-              </button>
-            )}
+        {/* MADAM PRINCIPAL 91 SECTIONS ROLLOUT BANNER (Demo Feature for Madam) */}
+        {clientViewMode === 'teacher' ? (
+          <button
+            type="button"
+            onClick={() => setShow91SectionsDemo(true)}
+            className="w-full mb-3 px-3.5 py-2.5 rounded-2xl bg-linear-to-r from-purple-600 via-indigo-600 to-[#007AFF] text-white text-xs font-semibold shadow-md flex items-center justify-between hover:opacity-95 transition-all cursor-pointer"
+          >
+            <div className="flex items-center gap-2">
+              <Building size={16} className="text-yellow-300 shrink-0" />
+              <div className="text-left">
+                <div className="font-bold">🏫 91 Sections Scalability Engine</div>
+                <div className="text-[10px] text-purple-100">Click to show Madam full school implementation demo</div>
+              </div>
+            </div>
+            <span className="text-[10.5px] bg-white/20 px-2 py-0.5 rounded-full font-bold shrink-0">
+              Show Demo ➔
+            </span>
+          </button>
+        ) : (
+          /* STUDENT SECTION TEST SWITCHER (Proves strict section filtering to user) */
+          <div className="mb-3 px-3.5 py-2 rounded-2xl bg-white/90 dark:bg-[#1C1C1E]/90 border border-white/80 dark:border-white/10 shadow-2xs flex items-center justify-between text-xs">
+            <div className="text-zinc-500 font-medium">Viewing Enrolled Section:</div>
+            <select
+              value={`${studentGrade}-${studentSection}`}
+              onChange={(e) => {
+                const [g, s] = e.target.value.split('-');
+                setStudentGrade(g);
+                setStudentSection(s);
+                const targetChannel = channels.find((c) => c.grade === g && c.section === s);
+                if (targetChannel) setSelectedChannelId(targetChannel.id);
+                setToastMessage(`Enrolled filter set to ${g}-${s} • Showing ONLY this section!`);
+              }}
+              className="bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800/40 rounded-xl px-2.5 py-1 text-xs text-[#7E22CE] dark:text-purple-300 font-bold focus:outline-none cursor-pointer"
+            >
+              <option value="Class 9-B" className="bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white">Class 9-B (Grade 9 Section B)</option>
+              <option value="Class 8-G" className="bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white">Class 8-G (Grade 8 Section G)</option>
+              <option value="Class 10-A" className="bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white">Class 10-A (Grade 10 Section A)</option>
+              <option value="Class 7-B" className="bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white">Class 7-B (Grade 7 Section B)</option>
+            </select>
           </div>
+        )}
+
+        {/* CAPSULE SEARCH BAR (Exact Reference Styling) */}
+        <div className="rounded-full bg-white/80 dark:bg-[#1C1C1E]/80 shadow-2xs border border-black/5 dark:border-white/10 px-4 py-2.5 mb-3 flex items-center">
+          <Search size={15} className="text-zinc-400 mr-2.5 shrink-0" />
+          <input
+            type="text"
+            placeholder="Search or start new chat"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full text-xs bg-transparent focus:outline-none placeholder:text-zinc-400 text-zinc-900 dark:text-zinc-100"
+          />
+          {searchQuery && (
+            <button onClick={() => setSearchQuery('')} className="text-xs text-zinc-400 hover:text-zinc-600">
+              <X size={13} />
+            </button>
+          )}
         </div>
 
-        {/* Classroom List */}
-        <div className="flex-1 overflow-y-auto divide-y divide-black/[0.04] dark:divide-white/[0.04] p-1.5 space-y-0.5">
+        {/* FLOATING GROUP CARDS LIST (Exact Reference Styling) */}
+        <div className="space-y-2.5 flex-1">
           {filteredChannels.length === 0 ? (
-            <div className="p-8 text-center text-xs text-zinc-400">
-              No classrooms found
+            <div className="p-8 text-center text-xs text-zinc-400 bg-white/60 dark:bg-zinc-900/60 rounded-3xl">
+              No classrooms found for your section.
             </div>
           ) : (
             filteredChannels.map((channel) => {
               const isSelected = channel.id === activeChannel.id;
               const isBroadcast = channel.id === 'channel-school-broadcast';
+              const is10A = channel.id.includes('10a');
+              const is9B = channel.id.includes('9b');
+              const is8G = channel.id.includes('8g');
+              const isClub = channel.id.includes('club') || channel.section === 'Club';
+
+              // Exact match color roles from user screenshot
+              const cardIconBg = isBroadcast
+                ? '#E63946' // Red with Megaphone
+                : is8G
+                ? '#FF6B35' // Orange with Users
+                : is10A
+                ? '#F7B801' // Amber with Users
+                : is9B
+                ? '#E542A3' // Pink/Magenta with Users
+                : isClub
+                ? '#2EC4B6' // Emerald/Teal with Users
+                : '#007AFF'; // Blue
 
               return (
-                <button
+                <div
                   key={channel.id}
-                  type="button"
                   onClick={() => {
                     setSelectedChannelId(channel.id);
                     setIsMobileChatOpen(true);
                   }}
-                  className={`w-full text-left p-3 rounded-[14px] flex items-center gap-3 transition-all cursor-pointer ${
+                  className={`w-full text-left p-3.5 rounded-3xl transition-all cursor-pointer flex items-center justify-between shadow-xs border ${
                     isSelected
-                      ? 'bg-[#007AFF] text-white shadow-md'
-                      : 'hover:bg-black/5 dark:hover:bg-white/5 text-zinc-900 dark:text-zinc-100'
+                      ? 'bg-white dark:bg-[#2C2C2E] border-[#007AFF] ring-2 ring-[#007AFF]/20 shadow-md'
+                      : 'bg-white/90 dark:bg-[#1C1C1E]/90 hover:bg-white dark:hover:bg-[#222225] border-white/80 dark:border-white/10 hover:shadow-sm'
                   }`}
                 >
-                  {/* Apple Squircle Classroom Emblem */}
-                  <div
-                    className={`w-11 h-11 rounded-[14px] flex items-center justify-center font-bold shrink-0 shadow-xs ${
-                      isSelected ? 'bg-white/20 text-white' : 'text-white'
-                    }`}
-                    style={{
-                      backgroundColor: isSelected ? undefined : isBroadcast ? '#ea4335' : getSenderColor(channel.name),
-                    }}
-                  >
-                    {isBroadcast ? <Megaphone size={18} /> : <Users size={18} />}
-                  </div>
+                  <div className="flex items-center gap-3 min-w-0">
+                    {/* Exact circular icon on left */}
+                    <div
+                      className="w-11 h-11 rounded-full flex items-center justify-center font-bold text-white shrink-0 shadow-xs"
+                      style={{ backgroundColor: cardIconBg }}
+                    >
+                      {isBroadcast ? <Megaphone size={19} /> : <Users size={19} />}
+                    </div>
 
-                  {/* Channel Details */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <span className={`text-[13.5px] font-semibold truncate ${isSelected ? 'text-white' : ''}`}>
+                    <div className="min-w-0">
+                      <h4 className="text-[13.5px] font-bold truncate leading-tight text-zinc-900 dark:text-zinc-100">
                         {channel.name}
-                      </span>
-                      <span
-                        className={`text-[10.5px] shrink-0 ml-1.5 ${
-                          isSelected ? 'text-white/80' : 'text-zinc-400'
-                        }`}
-                      >
-                        {channel.lastMessageTime}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between mt-0.5">
-                      <p
-                        className={`text-xs truncate max-w-[210px] ${
-                          isSelected ? 'text-white/85' : 'text-zinc-500 dark:text-zinc-400'
-                        }`}
-                      >
-                        {channel.lastMessage || 'No messages yet'}
+                      </h4>
+                      <p className="text-xs truncate text-zinc-500 dark:text-zinc-400 mt-1">
+                        {channel.lastMessage || 'hi hello'}
                       </p>
-                      {channel.isLocked ? (
-                        <Lock
-                          size={12}
-                          className={`shrink-0 ml-1 ${isSelected ? 'text-white/80' : 'text-zinc-400'}`}
-                        />
-                      ) : null}
                     </div>
                   </div>
-                </button>
+
+                  {/* Timestamp & unread/lock indicators */}
+                  <div className="flex flex-col items-end gap-1 shrink-0 ml-2">
+                    <span className="text-[11px] text-zinc-400 font-medium">
+                      {channel.lastMessageTime || (is8G ? '01:03 PM' : '06:54 AM')}
+                    </span>
+                    {isBroadcast ? (
+                      <Lock size={13} className="text-zinc-400 mt-0.5" />
+                    ) : (
+                      <span className="w-2 h-2 rounded-full bg-[#5B50E6] mt-0.5" />
+                    )}
+                  </div>
+                </div>
               );
             })
           )}
@@ -1459,9 +1601,8 @@ export default function GroupsPage() {
           </div>
         </div>
 
-        {/* Message Feed Area (Edge-to-Edge Clean Apple Layout) */}
+        {/* Message Feed Area */}
         <div className="flex-1 overflow-y-auto px-4 md:px-8 py-3 space-y-1 relative">
-          {/* Messages Feed */}
           {channelMessages.map((msg, idx) => {
             const isMe =
               currentUser?.username &&
@@ -1493,7 +1634,6 @@ export default function GroupsPage() {
 
         {/* Apple Frosted Input Bar */}
         <div className="flex flex-col shrink-0 border-t border-black/[0.08] dark:border-white/[0.08] backdrop-blur-2xl bg-white/80 dark:bg-[#161618]/80 relative">
-          {/* Quick Emoji Bar */}
           {showEmojiPicker && (
             <div className="px-4 py-2 border-b border-black/[0.06] dark:border-white/[0.06] flex items-center gap-3 overflow-x-auto">
               {['❤️', '👍', '💀', '😂', '🔥', '🎉', '📚', '👏', '🚀', '✨'].map((em) => (
@@ -1512,7 +1652,6 @@ export default function GroupsPage() {
             </div>
           )}
 
-          {/* Attachment Popup Menu */}
           {showAttachMenu && (
             <div className="absolute bottom-16 left-3 p-2 rounded-2xl shadow-2xl flex flex-col gap-1.5 z-50 border border-black/10 dark:border-white/15 bg-white/95 dark:bg-[#1C1C1E]/95 backdrop-blur-2xl min-w-[200px] animate-scale-in">
               <button
@@ -1551,7 +1690,6 @@ export default function GroupsPage() {
             </div>
           )}
 
-          {/* Replying Preview Bar */}
           {replyingTo && (
             <div className="px-4 py-2 border-b border-black/[0.06] dark:border-white/[0.06] flex items-center justify-between bg-black/5 dark:bg-white/5">
               <div className="flex items-center gap-2.5 min-w-0">
@@ -1585,15 +1723,14 @@ export default function GroupsPage() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => setSelectedChannelId('channel-class-8g')}
+                  onClick={() => setSelectedChannelId('channel-class-9b')}
                   className="px-3 py-1 rounded-full bg-[#007AFF] text-white font-semibold text-xs shrink-0 cursor-pointer"
                 >
-                  Open Class 8-G 💬
+                  Open Class 9-B 💬
                 </button>
               </div>
             ) : (
               <form onSubmit={handleSendMessage} className="w-full flex items-center gap-2">
-                {/* Apple "+" Button */}
                 <button
                   type="button"
                   onClick={() => setShowAttachMenu(!showAttachMenu)}
@@ -1603,7 +1740,6 @@ export default function GroupsPage() {
                   <Plus size={18} />
                 </button>
 
-                {/* Apple Emoji Button */}
                 <button
                   type="button"
                   onClick={() => setShowEmojiPicker(!showEmojiPicker)}
@@ -1613,7 +1749,6 @@ export default function GroupsPage() {
                   <Smile size={19} />
                 </button>
 
-                {/* Apple Capsule Input Field */}
                 <div className="flex-1 flex items-center rounded-full bg-black/5 dark:bg-white/10 px-4 py-2 border border-black/[0.04] dark:border-white/[0.08] focus-within:ring-2 focus-within:ring-[#007AFF]/40 transition-all">
                   <input
                     ref={inputRef}
@@ -1626,7 +1761,6 @@ export default function GroupsPage() {
                   />
                 </div>
 
-                {/* Apple Circular Blue Send Button */}
                 {messageText.trim() ? (
                   <button
                     type="submit"
@@ -1640,7 +1774,7 @@ export default function GroupsPage() {
                   <button
                     type="button"
                     onClick={() => {
-                      setMessageText('👋 Hi everyone from Class 8-G!');
+                      setMessageText('👋 Hi everyone from our official classroom!');
                       inputRef.current?.focus();
                     }}
                     className="w-8 h-8 rounded-full bg-black/5 dark:bg-white/10 text-[#007AFF] flex items-center justify-center shrink-0 hover:scale-105 active:scale-95 transition-transform cursor-pointer"
@@ -1656,12 +1790,440 @@ export default function GroupsPage() {
       </main>
 
       {/* ==================================================================== */}
-      {/* APPLE SLIDING GROUP DETAILS SHEET (Drawer / Details Modal)            */}
+      {/* MODAL: STUDENT GROUP CREATION NOTICE (Explains creating in Chats)   */}
+      {/* ==================================================================== */}
+      {showStudentCreateNotice && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn">
+          <div className="w-full max-w-sm rounded-[28px] overflow-hidden shadow-2xl bg-white dark:bg-[#1C1C1E] border border-black/10 dark:border-white/15 flex flex-col p-6 text-center animate-scale-in">
+            <div className="w-14 h-14 rounded-2xl bg-blue-500/15 text-[#007AFF] flex items-center justify-center mx-auto mb-3 shadow-xs">
+              <MessageCircle size={28} />
+            </div>
+
+            <h3 className="text-base font-bold leading-tight">Create Student Groups in Chats</h3>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-2 leading-relaxed">
+              Official School Classrooms on this page are strictly administered by <strong>DPS School Administration & Faculty</strong> for the 91 academic sections.
+            </p>
+            <p className="text-xs text-zinc-600 dark:text-zinc-300 font-medium mt-2 bg-black/5 dark:bg-white/5 p-3 rounded-xl border border-black/5">
+              To create peer study circles, project teams, house groups, or friendship chats with your classmates, create them directly in <strong>Chats</strong>!
+            </p>
+
+            <div className="flex flex-col gap-2 mt-5">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowStudentCreateNotice(false);
+                  router.push('/chats');
+                }}
+                className="w-full py-2.5 rounded-xl bg-[#007AFF] hover:bg-[#0066d6] text-white font-semibold text-xs transition-colors flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
+              >
+                <Users size={15} />
+                <span>Open Chats & Create Group 💬</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowStudentCreateNotice(false)}
+                className="w-full py-2 rounded-xl text-xs font-semibold text-zinc-500 hover:text-zinc-700 cursor-pointer"
+              >
+                Got It
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================================== */}
+      {/* MODAL: MADAM'S 91 SECTIONS SCALABILITY & PROVISIONING CENTER         */}
+      {/* ==================================================================== */}
+      {show91SectionsDemo && (
+        <div className="fixed inset-0 z-50 bg-black/65 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 animate-fadeIn">
+          <div className="w-full max-w-2xl max-h-[90vh] rounded-[30px] overflow-hidden shadow-2xl bg-white dark:bg-[#1C1C1E] border border-black/10 dark:border-white/15 flex flex-col animate-scale-in">
+            {/* Header */}
+            <div className="p-4 sm:p-5 bg-gradient-to-r from-purple-700 via-indigo-700 to-[#007AFF] text-white flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-xs">
+                  <Building size={22} className="text-yellow-300" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold leading-tight">DPS 91 Sections Scalability Architecture</h3>
+                  <p className="text-[11px] text-purple-100 mt-0.5">Automated Multi-Classroom Deployment for 5,500 Students & 350 Faculty</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShow91SectionsDemo(false)}
+                className="p-1.5 rounded-full hover:bg-white/20 transition-colors cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-5 overflow-y-auto space-y-5 flex-1">
+              {/* Executive Metrics Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                <div className="p-3 rounded-2xl bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/40 text-center">
+                  <div className="text-xl font-black text-purple-600 dark:text-purple-400">91</div>
+                  <div className="text-[10px] text-zinc-500 font-bold uppercase mt-0.5">Isolated Classrooms</div>
+                </div>
+
+                <div className="p-3 rounded-2xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/40 text-center">
+                  <div className="text-xl font-black text-[#007AFF]">5,500</div>
+                  <div className="text-[10px] text-zinc-500 font-bold uppercase mt-0.5">Verified Students</div>
+                </div>
+
+                <div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 text-center">
+                  <div className="text-xl font-black text-amber-600">350</div>
+                  <div className="text-[10px] text-zinc-500 font-bold uppercase mt-0.5">Subject Faculty</div>
+                </div>
+
+                <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/40 text-center">
+                  <div className="text-xl font-black text-emerald-600">0 Leaks</div>
+                  <div className="text-[10px] text-zinc-500 font-bold uppercase mt-0.5">Cryptographic Partition</div>
+                </div>
+              </div>
+
+              {/* Live Section Simulator for Madam */}
+              <div className="p-4 rounded-2xl bg-black/5 dark:bg-white/5 border border-black/5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-zinc-700 dark:text-zinc-200 flex items-center gap-1.5">
+                    <Layers size={14} className="text-[#007AFF]" />
+                    <span>Live Section Simulation (Test Strict Section Filtering)</span>
+                  </span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold">
+                    Active Demo
+                  </span>
+                </div>
+
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                  Demonstrate to Madam Principal that a student in <strong>Class 9-B</strong> sees only Class 9-B, while a student in <strong>Class 8-G</strong> sees only Class 8-G:
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                  <button
+                    type="button"
+                    onClick={handleSimulateClass9BStudent}
+                    className="p-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-semibold text-xs flex items-center justify-between transition-colors shadow-xs cursor-pointer"
+                  >
+                    <span>Simulate Class 9-B Student View ➔</span>
+                    <span className="text-[10px] opacity-80">(Grade 9 Section B)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleSimulateClass8GStudent}
+                    className="p-3 rounded-xl bg-[#007AFF] hover:bg-[#0066d6] text-white font-semibold text-xs flex items-center justify-between transition-colors shadow-xs cursor-pointer"
+                  >
+                    <span>Simulate Class 8-G Student View ➔</span>
+                    <span className="text-[10px] opacity-80">(Grade 8 Section G)</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* 91 Sections Matrix Breakdown */}
+              <div className="space-y-2">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-400">
+                  DPS Hyderabad & R.K. Puram Grade Matrix Breakdown
+                </h4>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                  <div className="p-2.5 rounded-xl bg-black/5 dark:bg-white/5 border border-black/5">
+                    <div className="font-bold text-zinc-800 dark:text-zinc-200">Class 5</div>
+                    <div className="text-[11px] text-zinc-500">11 Secs (5-A to 5-K)</div>
+                    <div className="text-[10px] text-emerald-600 font-semibold mt-1">440 Students</div>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-black/5 dark:bg-white/5 border border-black/5">
+                    <div className="font-bold text-zinc-800 dark:text-zinc-200">Class 6</div>
+                    <div className="text-[11px] text-zinc-500">11 Secs (6-A to 6-K)</div>
+                    <div className="text-[10px] text-emerald-600 font-semibold mt-1">440 Students</div>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-black/5 dark:bg-white/5 border border-black/5">
+                    <div className="font-bold text-zinc-800 dark:text-zinc-200">Class 7</div>
+                    <div className="text-[11px] text-zinc-500">11 Secs (7-A to 7-K)</div>
+                    <div className="text-[10px] text-emerald-600 font-semibold mt-1">440 Students</div>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-black/5 dark:bg-white/5 border border-black/5">
+                    <div className="font-bold text-zinc-800 dark:text-zinc-200">Class 8</div>
+                    <div className="text-[11px] text-zinc-500">11 Secs (8-A to 8-K)</div>
+                    <div className="text-[10px] text-emerald-600 font-semibold mt-1">440 Students</div>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20">
+                    <div className="font-bold text-purple-700 dark:text-purple-300">Class 9</div>
+                    <div className="text-[11px] text-zinc-500">13 Secs (9-A to 9-M)</div>
+                    <div className="text-[10px] text-purple-600 font-semibold mt-1">520 Students</div>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20">
+                    <div className="font-bold text-purple-700 dark:text-purple-300">Class 10</div>
+                    <div className="text-[11px] text-zinc-500">13 Secs (10-A to 10-M)</div>
+                    <div className="text-[10px] text-purple-600 font-semibold mt-1">520 Students</div>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-black/5 dark:bg-white/5 border border-black/5">
+                    <div className="font-bold text-zinc-800 dark:text-zinc-200">Class 11</div>
+                    <div className="text-[11px] text-zinc-500">11 Secs (Med/Non-Med/Arts)</div>
+                    <div className="text-[10px] text-emerald-600 font-semibold mt-1">440 Students</div>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-black/5 dark:bg-white/5 border border-black/5">
+                    <div className="font-bold text-zinc-800 dark:text-zinc-200">Class 12</div>
+                    <div className="text-[11px] text-zinc-500">11 Secs (Board Candidates)</div>
+                    <div className="text-[10px] text-emerald-600 font-semibold mt-1">440 Students</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 4 Technical Pillars of School Implementation */}
+              <div className="space-y-2">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-400">
+                  How This Is Implemented Across the School (4 Core Pillars)
+                </h4>
+
+                <div className="space-y-2 text-xs">
+                  <div className="p-3 rounded-xl bg-black/5 dark:bg-white/5 flex items-start gap-3">
+                    <CheckCircle size={16} className="text-[#34C759] shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-bold">1. Zero Student Setup:</span> Student logs in with school admission number. Cloudflare D1 auto-maps their profile to their specific grade and section. No student creates or joins official rooms manually.
+                    </div>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-black/5 dark:bg-white/5 flex items-start gap-3">
+                    <CheckCircle size={16} className="text-[#34C759] shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-bold">2. Strict Section Partitioning:</span> SQLite index on `(grade, section)` prevents queries from loading other sections. 9th graders cannot view 8th or 10th grade rooms.
+                    </div>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-black/5 dark:bg-white/5 flex items-start gap-3">
+                    <CheckCircle size={16} className="text-[#34C759] shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-bold">3. Faculty Multi-Section Teaching:</span> Subject teachers (e.g. English Dept) teach multiple sections (9-A, 9-B, 8-G) through a unified multi-room switch.
+                    </div>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-black/5 dark:bg-white/5 flex items-start gap-3">
+                    <CheckCircle size={16} className="text-[#34C759] shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-bold">4. Emergency Whole-School Broadcast:</span> When Madam Principal posts in `DPS Official Principal Dispatches`, all 5,500 student devices receive instant notification simultaneously.
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Instant 1-Click Provision Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  setToastMessage('All 91 Sections Verified & Active in Cloudflare D1 Database!');
+                  setShow91SectionsDemo(false);
+                }}
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-95 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg transition-transform cursor-pointer"
+              >
+                <Database size={16} />
+                <span>⚡ Verify & Sync All 91 Sections in D1 Database</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================================== */}
+      {/* MODAL: MADAM ASSIGNS FACULTY OR STUDENT TO A CLASSROOM               */}
+      {/* ==================================================================== */}
+      {showAssignModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn">
+          <div className="rounded-[28px] w-full max-w-md overflow-hidden shadow-2xl flex flex-col bg-white dark:bg-[#1C1C1E] border border-black/10 dark:border-white/15 animate-scale-in">
+            <div className="p-4 border-b border-black/[0.08] dark:border-white/[0.08] flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-bold">Assign Faculty / Student</h3>
+                <p className="text-[11px] text-zinc-400">Sends an official invitation from Principal Madam</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAssignModal(false)}
+                className="p-1 rounded-full text-zinc-400 hover:text-zinc-600 cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSendAssignment} className="p-5 space-y-4">
+              <div>
+                <label className="text-xs font-semibold block mb-1">Target Classroom Section</label>
+                <select
+                  value={assignTargetGroup}
+                  onChange={(e) => setAssignTargetGroup(e.target.value)}
+                  className="w-full text-xs p-2.5 rounded-xl bg-black/5 dark:bg-white/10 border border-black/10 dark:border-white/10 focus:outline-none"
+                >
+                  {channels.map((c) => (
+                    <option key={c.id} value={c.id} className="bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100">
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold block mb-1">Username</label>
+                <input
+                  type="text"
+                  placeholder="e.g. teacher_english or sahana_3009"
+                  value={assignUsername}
+                  onChange={(e) => setAssignUsername(e.target.value)}
+                  className="w-full text-xs p-3 rounded-xl bg-black/5 dark:bg-white/10 border border-black/10 dark:border-white/10 focus:outline-none"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-semibold block mb-1">Role</label>
+                  <select
+                    value={assignRole}
+                    onChange={(e) => setAssignRole(e.target.value as any)}
+                    className="w-full text-xs p-2.5 rounded-xl bg-black/5 dark:bg-white/10 border border-black/10 dark:border-white/10 focus:outline-none"
+                  >
+                    <option value="teacher" className="bg-white dark:bg-zinc-800">Faculty (Teacher)</option>
+                    <option value="student" className="bg-white dark:bg-zinc-800">Enrolled Student</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold block mb-1">Subject / Notes</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. English Dept Head"
+                    value={assignSubject}
+                    onChange={(e) => setAssignSubject(e.target.value)}
+                    className="w-full text-xs p-2.5 rounded-xl bg-black/5 dark:bg-white/10 border border-black/10 dark:border-white/10 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAssignModal(false)}
+                  className="flex-1 py-2.5 rounded-xl border border-black/10 dark:border-white/15 text-xs font-semibold hover:bg-black/5 transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isAssigning}
+                  className="flex-1 py-2.5 rounded-xl bg-[#007AFF] hover:bg-[#0066d6] text-white text-xs font-semibold transition-colors shadow-md cursor-pointer"
+                >
+                  {isAssigning ? 'Sending...' : 'Dispatch Assignment'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================================== */}
+      {/* MODAL: CREATE CLASSROOM GROUP (Teacher / Admin Flow)                  */}
+      {/* ==================================================================== */}
+      {showCreateGroupModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn">
+          <div className="w-full max-w-md rounded-[28px] overflow-hidden shadow-2xl bg-white dark:bg-[#1C1C1E] border border-black/10 dark:border-white/15 flex flex-col animate-scale-in">
+            <div className="p-4 border-b border-black/[0.08] dark:border-white/[0.08] flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-bold">Create New Classroom Group</h3>
+                <p className="text-[11px] text-zinc-400">Delhi Public School Official Academic Room</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCreateGroupModal(false)}
+                className="p-1 rounded-full text-zinc-400 hover:text-zinc-600 cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateGroup} className="p-5 space-y-4">
+              <div>
+                <label className="text-xs font-semibold block mb-1">Classroom Name</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Class 9-B Official Classroom 📘"
+                  value={newGroupName}
+                  onChange={(e) => setNewGroupName(e.target.value)}
+                  className="w-full text-xs p-3 rounded-xl bg-black/5 dark:bg-white/10 border border-black/10 dark:border-white/10 focus:outline-none focus:ring-2 focus:ring-[#007AFF]"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-semibold block mb-1">Grade</label>
+                  <select
+                    value={newGroupGrade}
+                    onChange={(e) => setNewGroupGrade(e.target.value)}
+                    className="w-full text-xs p-2.5 rounded-xl bg-black/5 dark:bg-white/10 border border-black/10 dark:border-white/10 focus:outline-none"
+                  >
+                    {['Class 5', 'Class 6', 'Class 7', 'Class 8', 'Class 9', 'Class 10', 'Class 11', 'Class 12', 'All'].map((g) => (
+                      <option key={g} value={g} className="bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100">{g}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold block mb-1">Section</label>
+                  <select
+                    value={newGroupSection}
+                    onChange={(e) => setNewGroupSection(e.target.value)}
+                    className="w-full text-xs p-2.5 rounded-xl bg-black/5 dark:bg-white/10 border border-black/10 dark:border-white/10 focus:outline-none"
+                  >
+                    {['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'Club', 'All'].map((s) => (
+                      <option key={s} value={s} className="bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100">Section {s}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="checkbox"
+                  id="lockGroupCheck"
+                  checked={newGroupIsLocked}
+                  onChange={(e) => setNewGroupIsLocked(e.target.checked)}
+                  className="rounded text-[#007AFF]"
+                />
+                <label htmlFor="lockGroupCheck" className="text-xs text-zinc-600 dark:text-zinc-400">
+                  Broadcast only (Only teachers can message)
+                </label>
+              </div>
+
+              <div className="flex items-center gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateGroupModal(false)}
+                  className="flex-1 py-2.5 rounded-xl border border-black/10 dark:border-white/15 text-xs font-semibold hover:bg-black/5 transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2.5 rounded-xl bg-[#007AFF] hover:bg-[#0066d6] text-white text-xs font-semibold transition-colors shadow-md cursor-pointer"
+                >
+                  Create Classroom
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================================== */}
+      {/* APPLE SLIDING GROUP DETAILS SHEET                                    */}
       {/* ==================================================================== */}
       {showGroupDetailsSheet && (
         <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex justify-end animate-fadeIn">
           <div className="w-full sm:w-[420px] md:w-[460px] h-full bg-white/95 dark:bg-[#1C1C1E]/95 backdrop-blur-2xl border-l border-black/[0.08] dark:border-white/[0.08] shadow-2xl flex flex-col animate-slideLeft">
-            {/* Drawer Header with Apple Drag Handle */}
             <div className="pt-3 pb-2 px-4 border-b border-black/[0.08] dark:border-white/[0.08] shrink-0">
               <div className="w-9 h-1 rounded-full bg-zinc-300 dark:bg-zinc-600 mx-auto mb-3" />
               <div className="flex items-center justify-between">
@@ -1676,7 +2238,6 @@ export default function GroupsPage() {
               </div>
             </div>
 
-            {/* Group Hero Card */}
             <div className="p-5 flex flex-col items-center text-center border-b border-black/[0.06] dark:border-white/[0.06] shrink-0">
               <div
                 className="w-20 h-20 rounded-[22px] flex items-center justify-center font-bold text-white text-2xl shadow-xl mb-3 ring-4 ring-[#007AFF]/20"
@@ -1696,7 +2257,6 @@ export default function GroupsPage() {
                 Official DPS Academic Classroom • Grade {activeChannel.grade}
               </p>
 
-              {/* Quick Action Pills (Apple iMessage Style) */}
               <div className="grid grid-cols-4 gap-2.5 mt-4 w-full">
                 <button
                   type="button"
@@ -1736,7 +2296,6 @@ export default function GroupsPage() {
               </div>
             </div>
 
-            {/* Apple Segmented Tabs: Members | Media | Settings */}
             <div className="p-3 border-b border-black/[0.06] dark:border-white/[0.06] shrink-0">
               <div className="grid grid-cols-3 p-1 rounded-xl bg-black/5 dark:bg-white/10 text-xs font-semibold">
                 <button
@@ -1775,11 +2334,9 @@ export default function GroupsPage() {
               </div>
             </div>
 
-            {/* Drawer Body */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
               {drawerActiveTab === 'members' && (
                 <>
-                  {/* Member Roster Search & Filter Chips */}
                   <div className="space-y-2">
                     <div className="flex items-center px-3 py-1.5 rounded-xl bg-black/5 dark:bg-white/10">
                       <Search size={14} className="text-zinc-400 mr-2 shrink-0" />
@@ -1810,7 +2367,6 @@ export default function GroupsPage() {
                     </div>
                   </div>
 
-                  {/* Member List */}
                   <div className="space-y-1.5">
                     {filteredRoster.map((member) => (
                       <div
@@ -1900,7 +2456,7 @@ export default function GroupsPage() {
                     <div className="space-y-2">
                       {[
                         { title: 'Term 1 Exam Syllabus 2026.pdf', size: '1.4 MB', date: 'Yesterday' },
-                        { title: 'Class 8-G Science Project Guidelines.pdf', size: '2.1 MB', date: '3 days ago' },
+                        { title: 'Science Project Guidelines.pdf', size: '2.1 MB', date: '3 days ago' },
                         { title: 'Maths Chapter 4 Practice Sheet.pdf', size: '840 KB', date: 'Last week' },
                       ].map((doc, i) => (
                         <div key={i} className="p-3 rounded-xl bg-black/5 dark:bg-white/5 flex items-center justify-between gap-3">
@@ -1955,7 +2511,7 @@ export default function GroupsPage() {
                       </div>
                       <button
                         type="button"
-                        onClick={() => setToastMessage('Diary alerts enabled for Class 8-G')}
+                        onClick={() => setToastMessage('Diary alerts enabled for this section')}
                         className="w-11 h-6 rounded-full bg-[#34C759] transition-colors relative cursor-pointer"
                       >
                         <span className="block w-5 h-5 rounded-full bg-white shadow-md translate-x-5" />
@@ -1980,12 +2536,11 @@ export default function GroupsPage() {
       )}
 
       {/* ==================================================================== */}
-      {/* MODAL 1: VERIFIED STUDENT / FACULTY ID CARD SHEET                    */}
+      {/* MODAL: VERIFIED STUDENT / FACULTY ID CARD SHEET                      */}
       {/* ==================================================================== */}
       {inspectedMember && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn">
           <div className="w-full max-w-sm rounded-[28px] overflow-hidden shadow-2xl bg-white dark:bg-[#1C1C1E] border border-black/10 dark:border-white/15 flex flex-col animate-scale-in">
-            {/* ID Card Top Ribbon */}
             <div className="p-4 bg-gradient-to-r from-[#007AFF] to-[#5856D6] text-white flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <GraduationCap size={18} />
@@ -2000,7 +2555,6 @@ export default function GroupsPage() {
               </button>
             </div>
 
-            {/* ID Card Body */}
             <div className="p-6 flex flex-col items-center text-center">
               <div className="relative mb-3">
                 <div
@@ -2023,13 +2577,11 @@ export default function GroupsPage() {
                 @{inspectedMember.username} • {inspectedMember.roleLabel}
               </p>
 
-              {/* Verified Trust Seal */}
               <div className="mt-3 px-3.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-semibold border border-emerald-500/25 flex items-center gap-1.5">
                 <ShieldCheck size={13} />
                 <span>Officially Enrolled • DPS Verified</span>
               </div>
 
-              {/* Student Credentials Grid */}
               <div className="grid grid-cols-2 gap-2 w-full mt-4 text-left">
                 <div className="p-2.5 rounded-xl bg-black/5 dark:bg-white/5">
                   <div className="text-[10px] text-zinc-400 uppercase font-semibold">Class & Roll</div>
@@ -2052,7 +2604,6 @@ export default function GroupsPage() {
                 </div>
               </div>
 
-              {/* Action Buttons */}
               <div className="flex items-center gap-2 w-full mt-5">
                 <button
                   type="button"
@@ -2073,7 +2624,7 @@ export default function GroupsPage() {
       )}
 
       {/* ==================================================================== */}
-      {/* MODAL 2: ADD CLASSMATE MODAL                                         */}
+      {/* MODAL: ADD CLASSMATE MODAL                                           */}
       {/* ==================================================================== */}
       {showAddMemberModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn">
@@ -2106,9 +2657,10 @@ export default function GroupsPage() {
 
               <div className="max-h-60 overflow-y-auto space-y-1.5 divide-y divide-black/[0.04] dark:divide-white/[0.04]">
                 {[
+                  { name: 'S. Sahana', username: 'sahana_3009', class: 'Class 9-B' },
+                  { name: 'Shashwath Salla', username: 'shashwath71845', class: 'Class 8-G' },
                   { name: 'Ishanvi', username: 'ishanvi', class: 'Class 8-A' },
                   { name: 'Neelam Mokshith Ram', username: 'mokshith7b', class: 'Class 7-B' },
-                  { name: 'S. Sahana', username: 'sahana_3009', class: 'Class 9-A' },
                   { name: 'K. Ashwith', username: 'ashwith', class: 'Class 8-G' },
                   { name: 'Rohan R', username: 'rohan728', class: 'Class 8-G' },
                   { name: 'Chandan', username: 'chandan', class: 'Class 8-G' },
@@ -2152,100 +2704,6 @@ export default function GroupsPage() {
                   })}
               </div>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* ==================================================================== */}
-      {/* MODAL 3: CREATE CLASSROOM GROUP (Teacher / Admin Flow)               */}
-      {/* ==================================================================== */}
-      {showCreateGroupModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn">
-          <div className="w-full max-w-md rounded-[28px] overflow-hidden shadow-2xl bg-white dark:bg-[#1C1C1E] border border-black/10 dark:border-white/15 flex flex-col animate-scale-in">
-            <div className="p-4 border-b border-black/[0.08] dark:border-white/[0.08] flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-bold">Create New Classroom Group</h3>
-                <p className="text-[11px] text-zinc-400">Delhi Public School Official Academic Room</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowCreateGroupModal(false)}
-                className="p-1 rounded-full text-zinc-400 hover:text-zinc-600 cursor-pointer"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateGroup} className="p-5 space-y-4">
-              <div>
-                <label className="text-xs font-semibold block mb-1">Classroom Name</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Class 8-G Mathematics Club 📐"
-                  value={newGroupName}
-                  onChange={(e) => setNewGroupName(e.target.value)}
-                  className="w-full text-xs p-3 rounded-xl bg-black/5 dark:bg-white/10 border border-black/10 dark:border-white/10 focus:outline-none focus:ring-2 focus:ring-[#007AFF]"
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-semibold block mb-1">Grade</label>
-                  <select
-                    value={newGroupGrade}
-                    onChange={(e) => setNewGroupGrade(e.target.value)}
-                    className="w-full text-xs p-2.5 rounded-xl bg-black/5 dark:bg-white/10 border border-black/10 dark:border-white/10 focus:outline-none"
-                  >
-                    {['Class 5', 'Class 6', 'Class 7', 'Class 8', 'Class 9', 'Class 10', 'All'].map((g) => (
-                      <option key={g} value={g} className="bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100">{g}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="text-xs font-semibold block mb-1">Section</label>
-                  <select
-                    value={newGroupSection}
-                    onChange={(e) => setNewGroupSection(e.target.value)}
-                    className="w-full text-xs p-2.5 rounded-xl bg-black/5 dark:bg-white/10 border border-black/10 dark:border-white/10 focus:outline-none"
-                  >
-                    {['A', 'B', 'C', 'D', 'E', 'F', 'G', 'Club', 'All'].map((s) => (
-                      <option key={s} value={s} className="bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100">Section {s}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 pt-1">
-                <input
-                  type="checkbox"
-                  id="lockGroupCheck"
-                  checked={newGroupIsLocked}
-                  onChange={(e) => setNewGroupIsLocked(e.target.checked)}
-                  className="rounded text-[#007AFF]"
-                />
-                <label htmlFor="lockGroupCheck" className="text-xs text-zinc-600 dark:text-zinc-400">
-                  Broadcast only (Only teachers can message)
-                </label>
-              </div>
-
-              <div className="flex items-center gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowCreateGroupModal(false)}
-                  className="flex-1 py-2.5 rounded-xl border border-black/10 dark:border-white/15 text-xs font-semibold hover:bg-black/5 transition-colors cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 py-2.5 rounded-xl bg-[#007AFF] hover:bg-[#0066d6] text-white text-xs font-semibold transition-colors shadow-md cursor-pointer"
-                >
-                  Create Classroom
-                </button>
-              </div>
-            </form>
           </div>
         </div>
       )}
