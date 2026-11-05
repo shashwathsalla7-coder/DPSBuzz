@@ -260,11 +260,21 @@ function readLocalStore(): ServerStoreData | null {
   return null;
 }
 
+let localWriteTimer: NodeJS.Timeout | null = null;
+let pendingLocalData: ServerStoreData | null = null;
+
 function writeLocalStore(data: ServerStoreData): void {
-  try {
-    ensureDataDirectory();
-    fs.writeFileSync(STORE_FILE, JSON.stringify(data, null, 2), 'utf-8');
-  } catch {}
+  pendingLocalData = data;
+  if (localWriteTimer) return;
+  localWriteTimer = setTimeout(() => {
+    localWriteTimer = null;
+    if (!pendingLocalData) return;
+    try {
+      ensureDataDirectory();
+      fs.writeFileSync(STORE_FILE, JSON.stringify(pendingLocalData), 'utf-8');
+    } catch {}
+    pendingLocalData = null;
+  }, 1500);
 }
 
 let lastCloudFetchFailure = 0;

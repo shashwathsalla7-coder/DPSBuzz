@@ -1291,6 +1291,7 @@ export default function GroupsPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastSyncTimestampRef = useRef<number>(0);
   const pollingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const isSyncingRef = useRef<boolean>(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Auto-dismiss toast
@@ -1346,8 +1347,10 @@ export default function GroupsPage() {
     refreshAllData();
   };
 
-  // Adaptive Polling Engine
+  // Adaptive Polling Engine with concurrency lock to prevent connection starvation
   const syncIncrementalMessages = useCallback(async () => {
+    if (isSyncingRef.current) return;
+    isSyncingRef.current = true;
     try {
       const res = await fetch(
         `/api/campus?action=whatsapp_messages&after=${lastSyncTimestampRef.current}`,
@@ -1368,13 +1371,15 @@ export default function GroupsPage() {
           }
         }
       }
-    } catch {}
+    } catch {} finally {
+      isSyncingRef.current = false;
+    }
   }, []);
 
   const startAdaptivePolling = useCallback(() => {
     if (pollingTimerRef.current) clearInterval(pollingTimerRef.current);
     const isHidden = typeof document !== 'undefined' && document.hidden;
-    const intervalMs = isHidden ? 15000 : 2000;
+    const intervalMs = isHidden ? 20000 : 3500;
 
     pollingTimerRef.current = setInterval(() => {
       syncIncrementalMessages();

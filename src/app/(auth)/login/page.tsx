@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Eye, EyeOff } from 'lucide-react';
 import { school } from '@/config/school';
 import Logo from '@/components/ui/Logo';
+import { DataStore } from '@/lib/dataStore';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -150,7 +151,7 @@ export default function LoginPage() {
       return;
     }
 
-    // Check DataStore profiles locally first
+    // Check DataStore profiles locally first for instantaneous (0ms) login
     let profiles = JSON.parse(localStorage.getItem('dpsbuzz_profiles_v2') || '[]');
     let match = profiles.find(
       (p: any) =>
@@ -158,10 +159,30 @@ export default function LoginPage() {
         (p.fullName || '').toLowerCase() === cleanInput
     );
 
-    // If not found in localStorage, fetch from authoritative /api/auth/profile (checks Cloudflare D1 + Supabase + ServerStore fast)
+    // If not found in raw localStorage array, check DataStore registry & seeds directly
+    if (!match) {
+      const dsProfile =
+        DataStore.getProfileByUsername(cleanInput) ||
+        DataStore.getProfiles().find(
+          (p: any) =>
+            (p.username || '').toLowerCase().replace(/^@+/, '') === cleanInput ||
+            (p.fullName || '').toLowerCase() === cleanInput
+        );
+      if (dsProfile) {
+        match = dsProfile;
+      }
+    }
+
+    // If not found locally, fetch from authoritative /api/auth/profile with 3.5s timeout (prevents login stalls)
     if (!match || (match as any).alias_of) {
       try {
-        const profRes = await fetch(`/api/auth/profile?username=${encodeURIComponent(cleanInput)}`, { cache: 'no-store' });
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3500);
+        const profRes = await fetch(`/api/auth/profile?username=${encodeURIComponent(cleanInput)}`, {
+          cache: 'no-store',
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
         if (profRes.ok) {
           const profData = await profRes.json();
           if (profData.success && profData.profile) {

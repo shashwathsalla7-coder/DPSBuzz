@@ -96,7 +96,8 @@
       "comments": 2,
       "views": 74,
       "createdAt": "2026-10-28T18:40:00.000Z",
-      "timeAgo": "2d ago"
+      "timeAgo": "2d ago",
+      "userAvatar": "https://res.cloudinary.com/ogfaxmjw/image/upload/v1793797297/dpsbuzz/avatars/avatar_shashwath71845_cdn.jpg"
     },
     {
       "id": "post-1791976342088",
@@ -114,11 +115,31 @@
       "comments": 6,
       "views": 112,
       "createdAt": "2026-10-14T10:00:00.000Z",
-      "timeAgo": "2w ago"
+      "timeAgo": "2w ago",
+      "userAvatar": "https://res.cloudinary.com/ogfaxmjw/image/upload/v1793797297/dpsbuzz/avatars/avatar_shashwath71845_cdn.jpg"
     }
   ],
   "stories": [],
   "profiles": [
+    {
+      "id": "7b80acfc-33d6-5691-b4dc-bc6a99271650",
+      "username": "shashwath71845",
+      "fullName": "Shashwath Salla",
+      "role": "admin",
+      "isVerified": true,
+      "isApproved": true,
+      "avatar": "https://res.cloudinary.com/ogfaxmjw/image/upload/v1793797297/dpsbuzz/avatars/avatar_shashwath71845_cdn.jpg",
+      "bio": "DPS Buzz Super Administrator 🛡️ • Full Systems & Moderation Access",
+      "class": "Staff",
+      "section": "Admin",
+      "followerCount": 3,
+      "followingCount": 1,
+      "postCount": 3,
+      "spiritPoints": 90,
+      "createdAt": "2026-10-16T10:54:48.449923+00:00",
+      "isPrivate": false,
+      "alias_of": null
+    },
     {
       "id": "171f8584-2c00-50ff-a9a9-dc9ee8507561",
       "username": "rohan728",
@@ -138,23 +159,6 @@
       "referredBy": "shashwath71845",
       "referralCount": 0,
       "createdAt": "2026-10-26T14:55:46.886983+00:00"
-    },
-    {
-      "id": "admin-shashwath-id",
-      "username": "shashwath71845",
-      "fullName": "Shashwath Salla",
-      "role": "admin",
-      "isVerified": true,
-      "isApproved": true,
-      "avatar": "https://res.cloudinary.com/ogfaxmjw/image/upload/v1793285816/dpsbuzz/avatars/shashwath71845.jpg",
-      "bio": "DPS Buzz Super Administrator 🛡️ • Full Systems & Moderation Access",
-      "class": "Staff",
-      "section": "Admin",
-      "followerCount": 3,
-      "followingCount": 1,
-      "postCount": 1,
-      "spiritPoints": 0,
-      "createdAt": "2026-10-01T00:00:00.000Z"
     },
     {
       "id": "student-1792120705683",
@@ -4179,5 +4183,5 @@
   "groups": [],
   "groupMembers": {},
   "groupJoinRequests": [],
-  "lastUpdated": 1793861857510
+  "lastUpdated": 1793873006343
 }

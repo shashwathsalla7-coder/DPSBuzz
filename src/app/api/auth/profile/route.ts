@@ -45,6 +45,32 @@ export async function GET(req: NextRequest) {
     const checkClass = searchParams.get('class');
     const checkSection = searchParams.get('section')?.toUpperCase();
 
+    // ------------------------------------------------------------------------
+    // FAST PATH: Lookup single user in Cloudflare D1 first (<100ms)
+    // ------------------------------------------------------------------------
+    if (username && !checkName) {
+      if (isD1Configured()) {
+        try {
+          const d1Profile = await getD1ProfileByUsername(username);
+          if (d1Profile && (d1Profile as any).alias_of) {
+            const primaryUser = (d1Profile as any).alias_of;
+            const primaryProfile = await getD1ProfileByUsername(primaryUser);
+            if (primaryProfile) {
+              return NextResponse.json(
+                { success: true, profile: primaryProfile, resolvedFromAlias: username },
+                { headers: NO_CACHE_HEADERS }
+              );
+            }
+          }
+          if (d1Profile) {
+            return NextResponse.json({ success: true, profile: d1Profile }, { headers: NO_CACHE_HEADERS });
+          }
+        } catch (d1Err) {
+          console.warn('Cloudflare D1 profile lookup notice:', d1Err);
+        }
+      }
+    }
+
     const store = await getServerStore();
 
     if (checkName && checkClass) {
