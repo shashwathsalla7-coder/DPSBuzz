@@ -86,7 +86,7 @@ export async function GET(req: NextRequest) {
     })();
 
     const sbGroupsPromise: Promise<any[]> = (async () => {
-      if (!sb) return [];
+      if (!sb || isLightweightMode) return [];
       try {
         const { data } = await sb.from('groups').select('*').limit(200);
         return Array.isArray(data) ? data : [];
@@ -97,7 +97,7 @@ export async function GET(req: NextRequest) {
     })();
 
     const sbMemPromise: Promise<any> = (async () => {
-      if (!sb) return null;
+      if (!sb || isLightweightMode) return null;
       try {
         const { data } = await sb
           .from('app_settings')
@@ -112,7 +112,7 @@ export async function GET(req: NextRequest) {
     })();
 
     const sbInvPromise: Promise<any> = (async () => {
-      if (!sb) return null;
+      if (!sb || isLightweightMode) return null;
       try {
         const { data } = await sb
           .from('app_settings')

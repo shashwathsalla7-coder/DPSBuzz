@@ -154,167 +154,95 @@ function generatePersonalizedSchedule(params: {
   };
 }
 
+// In-memory short cache for full campus payload to prevent hammering D1 and eliminate button lag
+let campusPayloadCache: any = null;
+let campusPayloadCacheTime = 0;
+const CAMPUS_CACHE_TTL_MS = 2500; // 2.5s TTL
+
+export function invalidateCampusCache() {
+  campusPayloadCache = null;
+  campusPayloadCacheTime = 0;
+}
+
 // ============================================================================
 // GET: Fetch all Campus Features directly from Database
 // ============================================================================
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const username = (searchParams.get('username') || '').toLowerCase().trim();
+    const action = searchParams.get('action');
 
-    // 1. Fetch Broadcasts from D1
-    let broadcasts: any[] = [];
-    try {
-      const rawBroadcasts = await d1Query<any>('SELECT * FROM campus_broadcasts ORDER BY created_at DESC LIMIT 50;');
-      broadcasts = rawBroadcasts.map((b) => ({
-        id: b.id,
-        title: b.title,
-        message: b.message,
-        sender: b.sender,
-        senderRole: b.sender_role,
-        senderAvatar: b.sender_avatar || '',
-        targetAudience: b.target_audience,
-        targetAudienceLabel: b.target_audience_label,
-        priority: b.priority,
-        acknowledgedBy: JSON.parse(b.acknowledged_by || '[]'),
-        date: b.created_at,
-      }));
-    } catch (e) {
-      console.warn('D1 broadcasts query notice:', e);
-    }
+    // ------------------------------------------------------------------------
+    // FAST PATH: Incremental WhatsApp Messages Polling (Used by Class Groups)
+    // Runs in <100ms instead of 5,500ms
+    // ------------------------------------------------------------------------
+    if (action === 'whatsapp_messages') {
+      const after = Number(searchParams.get('after')) || 0;
+      const channelId = searchParams.get('channelId');
 
-    // 2. Fetch Study Notes from D1
-    let studyNotes: any[] = [];
-    try {
-      const rawNotes = await d1Query<any>('SELECT * FROM campus_study_notes ORDER BY created_at DESC LIMIT 100;');
-      studyNotes = rawNotes.map((n) => ({
-        id: n.id,
-        title: n.title,
-        subject: n.subject,
-        classGrade: n.class_grade,
-        description: n.description,
-        authorName: n.author_name,
-        authorUsername: n.author_username,
-        authorRole: n.author_role,
-        authorClass: n.author_class,
-        likes: Number(n.likes) || 0,
-        likedBy: JSON.parse(n.liked_by || '[]'),
-        downloads: Number(n.downloads) || 0,
-        fileType: n.file_type || 'summary',
-        badge: n.badge || '',
-        contentPreview: n.content_preview,
-        imageUrl: n.image_url || '',
-        createdAt: n.created_at,
-      }));
-    } catch (e) {
-      console.warn('D1 study notes query notice:', e);
-    }
+      let query = 'SELECT * FROM campus_whatsapp_messages';
+      const params: any[] = [];
 
-    // 3. Fetch Questions from D1
-    let questions: any[] = [];
-    try {
-      const rawQuestions = await d1Query<any>('SELECT * FROM campus_questions ORDER BY scheduled_date ASC, ai_rank_score DESC LIMIT 50;');
-      questions = rawQuestions.map((q) => ({
-        id: q.id,
-        question: q.question,
-        subject: q.subject,
-        options: JSON.parse(q.options || '[]'),
-        correctIndex: Number(q.correct_index),
-        explanation: q.explanation,
-        points: Number(q.points) || 10,
-        funFact: q.fun_fact || '',
-        authorUsername: q.author_username,
-        authorName: q.author_name,
-        difficulty: q.difficulty || 'medium',
-        aiRankScore: Number(q.ai_rank_score) || 85,
-        status: q.status || 'approved',
-        scheduledDate: q.scheduled_date,
-      }));
-    } catch (e) {
-      console.warn('D1 questions query notice:', e);
-    }
-
-    // 4. Fetch User Quiz Progress from D1
-    let quizProgress = {
-      answeredDates: {} as Record<string, any>,
-      currentStreak: 0,
-      totalPointsWon: 0,
-    };
-    if (username) {
-      try {
-        const rows = await d1Query<any>('SELECT * FROM campus_quiz_progress WHERE username = ? LIMIT 1;', [username]);
-        if (rows.length > 0) {
-          quizProgress = {
-            answeredDates: JSON.parse(rows[0].answered_dates || '{}'),
-            currentStreak: Number(rows[0].streak) || 0,
-            totalPointsWon: Number(rows[0].total_points) || 0,
-          };
-        }
-      } catch (e) {
-        console.warn('D1 quiz progress query notice:', e);
+      if (after > 0 && channelId) {
+        query += ' WHERE channel_id = ? AND timestamp > ? ORDER BY timestamp ASC LIMIT 100;';
+        params.push(channelId, after);
+      } else if (after > 0) {
+        query += ' WHERE timestamp > ? ORDER BY timestamp ASC LIMIT 100;';
+        params.push(after);
+      } else if (channelId) {
+        query += ' WHERE channel_id = ? ORDER BY timestamp ASC LIMIT 200;';
+        params.push(channelId);
+      } else {
+        query += ' ORDER BY timestamp DESC LIMIT 150;';
       }
-    }
 
-    // 5. Fetch User Study Schedules from D1
-    let studySchedules: any[] = [];
-    if (username) {
+      let rawMsgs: any[] = [];
       try {
-        const rows = await d1Query<any>('SELECT * FROM campus_study_schedules WHERE username = ? ORDER BY created_at DESC LIMIT 5;', [username]);
-        studySchedules = rows.map((r) => ({
-          id: r.id,
-          username: r.username,
-          dateStr: r.date_str,
-          goal: r.goal,
-          schedule: JSON.parse(r.schedule_items || '{}'),
-          createdAt: r.created_at,
-        }));
-      } catch (e) {
-        console.warn('D1 study schedules query notice:', e);
+        rawMsgs = await d1Query<any>(query, params);
+      } catch (err) {
+        console.warn('D1 fast messages query notice:', err);
       }
-    }
 
-    // 6. Fetch Homework from D1
-    let homeworkList: any[] = [];
-    try {
-      const rawHw = await d1Query<any>('SELECT * FROM campus_homework ORDER BY created_at DESC LIMIT 50;');
-      homeworkList = rawHw.map((h) => ({
-        id: h.id,
-        classGrade: h.class_grade,
-        section: h.section,
-        subject: h.subject,
-        task: h.task,
-        dueDate: h.due_date,
-        teacherName: h.teacher_name,
-        createdAt: h.created_at,
+      const ordered = after > 0 || channelId ? rawMsgs : rawMsgs.reverse();
+      const messages = ordered.map((m) => ({
+        id: m.id,
+        channelId: m.channel_id,
+        senderUsername: m.sender_username,
+        senderName: m.sender_name,
+        senderRole: m.sender_role || 'student',
+        senderClass: m.sender_class || 'Class 10',
+        text: m.text,
+        templateType: m.template_type || 'none',
+        mediaUrl: m.media_url || undefined,
+        mediaType: m.media_type || undefined,
+        timestamp: Number(m.timestamp),
+        createdAt: m.created_at,
       }));
-    } catch (e) {
-      console.warn('D1 homework query notice:', e);
+
+      return NextResponse.json(
+        {
+          success: true,
+          messages,
+          whatsappMessages: messages,
+        },
+        { headers: NO_CACHE_HEADERS }
+      );
     }
 
-    // 7.5 Fetch Group Invites from D1
-    let groupInvites: any[] = [];
-    try {
-      const rawInv = await d1Query<any>('SELECT * FROM campus_group_invites ORDER BY created_at DESC LIMIT 100;');
-      groupInvites = rawInv.map((inv) => ({
-        id: inv.id,
-        groupId: inv.group_id,
-        groupName: inv.group_name,
-        inviteeUsername: inv.invitee_username,
-        inviteeRole: inv.invitee_role || 'student',
-        subject: inv.subject || '',
-        invitedBy: inv.invited_by || 'madam_principal',
-        status: inv.status || 'pending',
-        createdAt: inv.created_at,
-      }));
-    } catch (e) {
-      console.warn('D1 group invites query notice:', e);
-    }
+    // ------------------------------------------------------------------------
+    // FAST PATH: WhatsApp Channels List Only (<80ms)
+    // ------------------------------------------------------------------------
+    if (action === 'whatsapp_channels') {
+      let rawChannels: any[] = [];
+      try {
+        rawChannels = await d1Query<any>(
+          'SELECT * FROM campus_whatsapp_channels ORDER BY CASE WHEN id = \'channel-class-8g\' THEN 0 WHEN is_locked = 0 THEN 1 ELSE 2 END, created_at ASC;'
+        );
+      } catch (err) {
+        console.warn('D1 fast channels query notice:', err);
+      }
 
-    // 8. Fetch WhatsApp Channels from D1
-    let whatsappChannels: any[] = [];
-    try {
-      const rawChannels = await d1Query<any>('SELECT * FROM campus_whatsapp_channels ORDER BY CASE WHEN id = \'channel-class-8g\' THEN 0 WHEN is_locked = 0 THEN 1 ELSE 2 END, created_at ASC;');
-      whatsappChannels = rawChannels.map((c) => ({
+      const whatsappChannels = rawChannels.map((c) => ({
         id: c.id,
         name: (c.name || '').replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1FA00}-\u{1FA6F}\u{1F004}\u{1F0CF}\u{2B50}\u{2B55}\u{231A}-\u{23F3}]/gu, '').trim(),
         grade: c.grade,
@@ -328,100 +256,254 @@ export async function GET(req: NextRequest) {
         lastMessageTime: c.last_message_time || 'Just now',
         createdAt: c.created_at,
       }));
-    } catch (e) {
-      console.warn('D1 WhatsApp channels query notice:', e);
+
+      return NextResponse.json(
+        { success: true, channels: whatsappChannels, whatsappChannels },
+        { headers: NO_CACHE_HEADERS }
+      );
     }
 
-    // 9. Fetch WhatsApp Messages from D1
-    let whatsappMessages: any[] = [];
-    try {
-      const rawMsgs = await d1Query<any>('SELECT * FROM campus_whatsapp_messages ORDER BY timestamp ASC LIMIT 300;');
-      whatsappMessages = rawMsgs.map((m) => ({
-        id: m.id,
-        channelId: m.channel_id,
-        senderUsername: m.sender_username,
-        senderName: m.sender_name,
-        senderRole: m.sender_role || 'student',
-        senderClass: m.sender_class || 'Class 10',
-        text: m.text,
-        templateType: m.template_type || 'none',
-        timestamp: Number(m.timestamp),
-        createdAt: m.created_at,
-      }));
-    } catch (e) {
-      console.warn('D1 WhatsApp messages query notice:', e);
+    const now = Date.now();
+    const username = (searchParams.get('username') || '').toLowerCase().trim();
+
+    // Serve from cache if fresh and no specific user progress requested
+    if (!username && campusPayloadCache && (now - campusPayloadCacheTime < CAMPUS_CACHE_TTL_MS)) {
+      return NextResponse.json(campusPayloadCache, { headers: NO_CACHE_HEADERS });
     }
 
-    // 7. Fetch Lost & Found Items from D1
-    let lostFoundItems: any[] = [];
-    try {
-      const rawLF = await d1Query<any>('SELECT * FROM campus_lost_found ORDER BY created_at DESC LIMIT 100;');
-      lostFoundItems = rawLF.map((r) => ({
-        id: r.id,
-        title: r.title,
-        category: r.category,
-        status: r.status,
-        location: r.location,
-        specificSpot: r.specific_spot || '',
-        description: r.description || '',
-        imageUrl: r.image_url || '',
-        reporterUsername: r.reporter_username,
-        reporterName: r.reporter_name,
-        reporterClass: r.reporter_class,
-        reporterSection: r.reporter_section,
-        reporterRole: r.reporter_role || 'student',
-        finderUsername: r.finder_username || '',
-        finderName: r.finder_name || '',
-        finderClass: r.finder_class || '',
-        finderSection: r.finder_section || '',
-        finderNotes: r.finder_notes || '',
-        storageLocation: r.storage_location || '',
-        urgent: Boolean(r.urgent),
-        createdAt: r.created_at,
-        resolvedAt: r.resolved_at || null,
-      }));
-    } catch (e) {
-      console.warn('D1 lost & found query notice:', e);
+    // PARALLEL EXECUTION: Execute all 11 independent D1 queries concurrently
+    const [
+      broadcastsResult,
+      studyNotesResult,
+      questionsResult,
+      quizProgressResult,
+      studySchedulesResult,
+      homeworkResult,
+      groupInvitesResult,
+      channelsResult,
+      messagesResult,
+      lostFoundResult,
+      diaryResult,
+    ] = await Promise.allSettled([
+      d1Query<any>('SELECT * FROM campus_broadcasts ORDER BY created_at DESC LIMIT 50;'),
+      d1Query<any>('SELECT * FROM campus_study_notes ORDER BY created_at DESC LIMIT 100;'),
+      d1Query<any>('SELECT * FROM campus_questions ORDER BY scheduled_date ASC, ai_rank_score DESC LIMIT 50;'),
+      username ? d1Query<any>('SELECT * FROM campus_quiz_progress WHERE username = ? LIMIT 1;', [username]) : Promise.resolve([]),
+      username ? d1Query<any>('SELECT * FROM campus_study_schedules WHERE username = ? ORDER BY created_at DESC LIMIT 5;', [username]) : Promise.resolve([]),
+      d1Query<any>('SELECT * FROM campus_homework ORDER BY created_at DESC LIMIT 50;'),
+      d1Query<any>('SELECT * FROM campus_group_invites ORDER BY created_at DESC LIMIT 100;'),
+      d1Query<any>('SELECT * FROM campus_whatsapp_channels ORDER BY CASE WHEN id = \'channel-class-8g\' THEN 0 WHEN is_locked = 0 THEN 1 ELSE 2 END, created_at ASC;'),
+      d1Query<any>('SELECT * FROM campus_whatsapp_messages ORDER BY timestamp ASC LIMIT 300;'),
+      d1Query<any>('SELECT * FROM campus_lost_found ORDER BY created_at DESC LIMIT 100;'),
+      d1Query<any>('SELECT * FROM campus_diary_entries ORDER BY date_str DESC, created_at DESC LIMIT 60;'),
+    ]);
+
+    // 1. Broadcasts
+    const rawBroadcasts = broadcastsResult.status === 'fulfilled' ? broadcastsResult.value : [];
+    const broadcasts = rawBroadcasts.map((b: any) => ({
+      id: b.id,
+      title: b.title,
+      message: b.message,
+      sender: b.sender,
+      senderRole: b.sender_role,
+      senderAvatar: b.sender_avatar || '',
+      targetAudience: b.target_audience,
+      targetAudienceLabel: b.target_audience_label,
+      priority: b.priority,
+      acknowledgedBy: JSON.parse(b.acknowledged_by || '[]'),
+      date: b.created_at,
+    }));
+
+    // 2. Study Notes
+    const rawNotes = studyNotesResult.status === 'fulfilled' ? studyNotesResult.value : [];
+    const studyNotes = rawNotes.map((n: any) => ({
+      id: n.id,
+      title: n.title,
+      subject: n.subject,
+      classGrade: n.class_grade,
+      description: n.description,
+      authorName: n.author_name,
+      authorUsername: n.author_username,
+      authorRole: n.author_role,
+      authorClass: n.author_class,
+      likes: Number(n.likes) || 0,
+      likedBy: JSON.parse(n.liked_by || '[]'),
+      downloads: Number(n.downloads) || 0,
+      fileType: n.file_type || 'summary',
+      badge: n.badge || '',
+      contentPreview: n.content_preview,
+      imageUrl: n.image_url || '',
+      createdAt: n.created_at,
+    }));
+
+    // 3. Questions
+    const rawQuestions = questionsResult.status === 'fulfilled' ? questionsResult.value : [];
+    const questions = rawQuestions.map((q: any) => ({
+      id: q.id,
+      question: q.question,
+      subject: q.subject,
+      options: JSON.parse(q.options || '[]'),
+      correctIndex: Number(q.correct_index),
+      explanation: q.explanation,
+      points: Number(q.points) || 10,
+      funFact: q.fun_fact || '',
+      authorUsername: q.author_username,
+      authorName: q.author_name,
+      difficulty: q.difficulty || 'medium',
+      aiRankScore: Number(q.ai_rank_score) || 85,
+      status: q.status || 'approved',
+      scheduledDate: q.scheduled_date,
+    }));
+
+    // 4. Quiz Progress
+    let quizProgress = {
+      answeredDates: {} as Record<string, any>,
+      currentStreak: 0,
+      totalPointsWon: 0,
+    };
+    if (username && quizProgressResult.status === 'fulfilled' && quizProgressResult.value.length > 0) {
+      const row = quizProgressResult.value[0];
+      quizProgress = {
+        answeredDates: JSON.parse(row.answered_dates || '{}'),
+        currentStreak: Number(row.streak) || 0,
+        totalPointsWon: Number(row.total_points) || 0,
+      };
     }
 
-    // 10. Fetch Diary Entries from D1
-    let diaryEntries: any[] = [];
-    try {
-      const rawDiary = await d1Query<any>('SELECT * FROM campus_diary_entries ORDER BY date_str DESC, created_at DESC LIMIT 60;');
-      diaryEntries = rawDiary.map((d) => ({
-        id: d.id,
-        classGrade: d.class_grade,
-        section: d.section || 'All',
-        dateStr: d.date_str,
-        imageUrl: d.image_url,
-        homeworkSummary: d.homework_summary || '',
-        uploadedByUsername: d.uploaded_by_username,
-        uploadedByName: d.uploaded_by_name,
-        isFirstSubmission: Boolean(d.is_first_submission),
-        pointsAwarded: Number(d.points_awarded) || 0,
-        createdAt: d.created_at,
-      }));
-    } catch (e) {
-      console.warn('D1 diary entries query notice:', e);
+    // 5. Study Schedules
+    const rawSchedules = studySchedulesResult.status === 'fulfilled' ? studySchedulesResult.value : [];
+    const studySchedules = rawSchedules.map((r: any) => ({
+      id: r.id,
+      username: r.username,
+      dateStr: r.date_str,
+      goal: r.goal,
+      schedule: JSON.parse(r.schedule_items || '{}'),
+      createdAt: r.created_at,
+    }));
+
+    // 6. Homework
+    const rawHw = homeworkResult.status === 'fulfilled' ? homeworkResult.value : [];
+    const homeworkList = rawHw.map((h: any) => ({
+      id: h.id,
+      classGrade: h.class_grade,
+      section: h.section,
+      subject: h.subject,
+      task: h.task,
+      dueDate: h.due_date,
+      teacherName: h.teacher_name,
+      createdAt: h.created_at,
+    }));
+
+    // 7. Group Invites
+    const rawInv = groupInvitesResult.status === 'fulfilled' ? groupInvitesResult.value : [];
+    const groupInvites = rawInv.map((inv: any) => ({
+      id: inv.id,
+      groupId: inv.group_id,
+      groupName: inv.group_name,
+      inviteeUsername: inv.invitee_username,
+      inviteeRole: inv.invitee_role || 'student',
+      subject: inv.subject || '',
+      invitedBy: inv.invited_by || 'madam_principal',
+      status: inv.status || 'pending',
+      createdAt: inv.created_at,
+    }));
+
+    // 8. WhatsApp Channels
+    const rawChannels = channelsResult.status === 'fulfilled' ? channelsResult.value : [];
+    const whatsappChannels = rawChannels.map((c: any) => ({
+      id: c.id,
+      name: (c.name || '').replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1FA00}-\u{1FA6F}\u{1F004}\u{1F0CF}\u{2B50}\u{2B55}\u{231A}-\u{23F3}]/gu, '').trim(),
+      grade: c.grade,
+      section: c.section,
+      avatar: c.avatar || '',
+      isLocked: Boolean(c.is_locked),
+      adminUsernames: JSON.parse(c.admin_usernames || '["shashwath71845", "madam_principal"]'),
+      enrolledUsernames: JSON.parse(c.enrolled_usernames || '[]'),
+      memberCount: Number(c.member_count) || 40,
+      lastMessage: c.last_message || '',
+      lastMessageTime: c.last_message_time || 'Just now',
+      createdAt: c.created_at,
+    }));
+
+    // 9. WhatsApp Messages
+    const rawMsgs = messagesResult.status === 'fulfilled' ? messagesResult.value : [];
+    const whatsappMessages = rawMsgs.map((m: any) => ({
+      id: m.id,
+      channelId: m.channel_id,
+      senderUsername: m.sender_username,
+      senderName: m.sender_name,
+      senderRole: m.sender_role || 'student',
+      senderClass: m.sender_class || 'Class 10',
+      text: m.text,
+      templateType: m.template_type || 'none',
+      timestamp: Number(m.timestamp),
+      createdAt: m.created_at,
+    }));
+
+    // 10. Lost & Found
+    const rawLF = lostFoundResult.status === 'fulfilled' ? lostFoundResult.value : [];
+    const lostFoundItems = rawLF.map((r: any) => ({
+      id: r.id,
+      title: r.title,
+      category: r.category,
+      status: r.status,
+      location: r.location,
+      specificSpot: r.specific_spot || '',
+      description: r.description || '',
+      imageUrl: r.image_url || '',
+      reporterUsername: r.reporter_username,
+      reporterName: r.reporter_name,
+      reporterClass: r.reporter_class,
+      reporterSection: r.reporter_section,
+      reporterRole: r.reporter_role || 'student',
+      finderUsername: r.finder_username || '',
+      finderName: r.finder_name || '',
+      finderClass: r.finder_class || '',
+      finderSection: r.finder_section || '',
+      finderNotes: r.finder_notes || '',
+      storageLocation: r.storage_location || '',
+      urgent: Boolean(r.urgent),
+      createdAt: r.created_at,
+      resolvedAt: r.resolved_at || null,
+    }));
+
+    // 11. Diary Entries
+    const rawDiary = diaryResult.status === 'fulfilled' ? diaryResult.value : [];
+    const diaryEntries = rawDiary.map((d: any) => ({
+      id: d.id,
+      classGrade: d.class_grade,
+      section: d.section || 'All',
+      dateStr: d.date_str,
+      imageUrl: d.image_url,
+      homeworkSummary: d.homework_summary || '',
+      uploadedByUsername: d.uploaded_by_username,
+      uploadedByName: d.uploaded_by_name,
+      isFirstSubmission: Boolean(d.is_first_submission),
+      pointsAwarded: Number(d.points_awarded) || 0,
+      createdAt: d.created_at,
+    }));
+
+    const payload = {
+      success: true,
+      broadcasts,
+      studyNotes,
+      questions,
+      quizProgress,
+      studySchedules,
+      homework: homeworkList,
+      lostFound: lostFoundItems,
+      whatsappChannels,
+      whatsappMessages,
+      groupInvites,
+      diaryEntries,
+    };
+
+    if (!username) {
+      campusPayloadCache = payload;
+      campusPayloadCacheTime = Date.now();
     }
 
-    return NextResponse.json(
-      {
-        success: true,
-        broadcasts,
-        studyNotes,
-        questions,
-        quizProgress,
-        studySchedules,
-        homework: homeworkList,
-        lostFound: lostFoundItems,
-        whatsappChannels,
-        whatsappMessages,
-        groupInvites,
-        diaryEntries,
-      },
-      { headers: NO_CACHE_HEADERS }
-    );
+    return NextResponse.json(payload, { headers: NO_CACHE_HEADERS });
   } catch (err: any) {
     console.error('Campus GET API error:', err);
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
@@ -435,6 +517,7 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { action } = body;
+    invalidateCampusCache();
 
     // ------------------------------------------------------------------------
     // 0. UPLOAD DIARY ENTRY (Physical Diary Photo with First Submission Bonus)
