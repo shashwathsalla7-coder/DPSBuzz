@@ -121,7 +121,7 @@ export default function WhatsAppDesktopPage() {
     },
     {
       id: 'chat-class-8g',
-      name: 'Class 8-G Official Classroom 📘',
+      name: 'Class 8-G Official Classroom',
       subtitle: 'Anita Madam (Faculty), Shashwath, Rishi + 36 enrolled students',
       avatarColor: '#25d366',
       initials: '8G',
@@ -148,7 +148,7 @@ export default function WhatsAppDesktopPage() {
     },
     {
       id: 'chat-science-club',
-      name: 'DPS Ramanujan Science Club 🔬',
+      name: 'DPS Ramanujan Science Club',
       subtitle: 'Faculty & Class 8-10 Members (68 Members)',
       avatarColor: '#ff9f00',
       initials: 'SC',
@@ -162,10 +162,10 @@ export default function WhatsAppDesktopPage() {
     },
     {
       id: 'chat-school-broadcast',
-      name: 'DPS Official Principal Dispatches 📢',
+      name: 'DPS Official Principal Dispatches',
       subtitle: 'Office of the Principal • 5,500 Students & Faculty',
       avatarColor: '#ea4335',
-      initials: '📢',
+      initials: 'DP',
       lastMessage: 'Half-Yearly examination instructions published.',
       lastTime: 'Yesterday',
       isGroup: true,
@@ -182,33 +182,32 @@ export default function WhatsAppDesktopPage() {
         id: 'msg-video-1',
         senderName: 'Himaksh',
         senderColor: '#53bdeb',
-        text: 'Me in my prime💀💀😂',
+        text: 'Me in my prime',
         time: '7:04 pm',
         isVideo: true,
         videoDuration: '2:20',
-        videoCaption: 'Me in my prime💀💀😂',
-        reactions: [{ emoji: '😂', count: 5, users: ['rohan', 'rishi', 'me'] }],
+        videoCaption: 'Me in my prime',
       },
       {
         id: 'msg-rohan-1',
         senderName: 'Rohan',
         senderColor: '#53bdeb',
         subtitle: 'Jaddu bhai forever',
-        text: 'Kamboj !!',
+        text: 'I will submit the assignment by tomorrow morning.',
         time: '7:09 pm',
       },
       {
         id: 'msg-ak-1',
         senderName: 'Ak 47',
         senderColor: '#ffffff',
-        text: 'I think pbks will get hardik and mi will get Paaji and Vinod kumar',
+        text: 'Cricket team practice starts at 4:30 PM.',
         time: '7:12 pm',
       },
       {
         id: 'msg-ak-2',
         senderName: 'Ak 47',
         senderColor: '#ffffff',
-        text: 'shreyas and hardik💀',
+        text: 'Bring your sports kit.',
         time: '7:15 pm',
       },
       {
@@ -1159,7 +1158,7 @@ export default function WhatsAppDesktopPage() {
                   type="button"
                   onClick={() => {
                     setShowAttachMenu(false);
-                    setMessageText((prev) => `${prev} [Video: Campus Prime 2026 🎬]`);
+                    setMessageText((prev) => `${prev} [Video: Campus Prime 2026]`);
                   }}
                   className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs hover:bg-[#2a3942] transition-colors cursor-pointer text-left text-[#e9edef] active:scale-95"
                 >
@@ -1170,7 +1169,7 @@ export default function WhatsAppDesktopPage() {
                   type="button"
                   onClick={() => {
                     setShowAttachMenu(false);
-                    setMessageText((prev) => `${prev} [Document: Class Homework PDF 📄]`);
+                    setMessageText((prev) => `${prev} [Document: Class Homework PDF]`);
                   }}
                   className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs hover:bg-[#2a3942] transition-colors cursor-pointer text-left text-[#e9edef] active:scale-95"
                 >
@@ -1181,7 +1180,7 @@ export default function WhatsAppDesktopPage() {
                   type="button"
                   onClick={() => {
                     setShowAttachMenu(false);
-                    setMessageText((prev) => `${prev} [Diary Submission 📸]`);
+                    setMessageText((prev) => `${prev} [Diary Submission]`);
                   }}
                   className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs hover:bg-[#2a3942] transition-colors cursor-pointer text-left text-[#e9edef] active:scale-95"
                 >

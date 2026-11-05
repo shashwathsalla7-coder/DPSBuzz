@@ -88,6 +88,13 @@ function getSenderColor(name: string) {
   return SENDER_COLORS[Math.abs(hash) % SENDER_COLORS.length];
 }
 
+export function cleanChannelName(name: string): string {
+  if (!name) return '';
+  return name
+    .replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1FA00}-\u{1FA6F}\u{1F004}\u{1F0CF}\u{2B50}\u{2B55}\u{231A}-\u{23F3}]/gu, '')
+    .trim();
+}
+
 interface ReactionItem {
   emoji: string;
   count: number;
@@ -819,7 +826,7 @@ const SEED_CLASS_MESSAGES: WhatsAppMessage[] = [
     senderName: 'Ananya Sharma',
     senderRole: 'student',
     senderClass: 'Class 9-B • Roll 4',
-    text: 'Thank you Madam! Group 4 presentation is uploaded to study drive 👍',
+    text: 'Thank you Madam! Group 4 presentation is uploaded to the study drive.',
     templateType: 'none',
     timestamp: Date.now() - 1800000,
   },
@@ -954,8 +961,6 @@ const MessageBubbleItem = memo(function MessageBubbleItem({
   onReply,
   onOpenProfile,
 }: MessageBubbleProps) {
-  const [showTapbacks, setShowTapbacks] = useState(false);
-
   const isPrincipal =
     msg.senderRole === 'admin' ||
     msg.senderUsername.toLowerCase() === 'madam_principal' ||
@@ -1082,14 +1087,29 @@ const MessageBubbleItem = memo(function MessageBubbleItem({
           </div>
         )}
 
+        {/* Subtle Apple-style Reply Action on Hover */}
         <div
-          onClick={() => setShowTapbacks((prev) => !prev)}
-          className={`relative px-4 py-2.5 text-[15px] leading-relaxed break-words whitespace-pre-wrap [overflow-wrap:anywhere] word-break:break-word transition-all select-text cursor-pointer ${
+          className={`absolute top-2 ${
+            isMe ? '-left-14' : '-right-14'
+          } opacity-0 group-hover:opacity-100 transition-opacity flex items-center z-10`}
+        >
+          <button
+            type="button"
+            onClick={() => onReply(msg)}
+            className="px-2 py-0.5 rounded-full bg-white/90 dark:bg-[#2C2C2E]/90 text-[11px] font-medium text-[#007AFF] shadow-xs border border-black/10 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
+            title="Reply"
+          >
+            Reply
+          </button>
+        </div>
+
+        <div
+          className={`relative px-3.5 py-2 text-[14.5px] leading-relaxed break-words whitespace-pre-wrap [overflow-wrap:anywhere] word-break:break-word transition-all select-text ${
             isMe
-              ? 'bg-[#007AFF] text-white rounded-[20px] rounded-br-[4px] shadow-[0_1px_2px_rgba(0,122,255,0.2)]'
+              ? 'bg-[#007AFF] text-white rounded-[18px] rounded-br-[4px] shadow-[0_1px_2px_rgba(0,122,255,0.2)]'
               : isDark
-              ? 'bg-[#2C2C2E] text-zinc-100 rounded-[20px] rounded-bl-[4px] shadow-xs border border-white/[0.06]'
-              : 'bg-[#E9E9EB] text-zinc-900 rounded-[20px] rounded-bl-[4px] shadow-xs border border-black/[0.04]'
+              ? 'bg-[#2C2C2E] text-zinc-100 rounded-[18px] rounded-bl-[4px] shadow-xs border border-white/[0.06]'
+              : 'bg-[#E9E9EB] text-zinc-900 rounded-[18px] rounded-bl-[4px] shadow-xs border border-black/[0.04]'
           }`}
           style={{
             fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", sans-serif',
@@ -1097,17 +1117,16 @@ const MessageBubbleItem = memo(function MessageBubbleItem({
         >
           {quoteAuthor && (
             <div
-              className={`mb-2 p-2.5 rounded-[14px] text-xs border-l-[3.5px] text-left break-words [overflow-wrap:anywhere] ${
+              className={`mb-2 p-2 rounded-xl text-xs border-l-2 text-left break-words [overflow-wrap:anywhere] ${
                 isMe
                   ? 'bg-white/15 border-white text-white/95'
                   : 'bg-black/5 dark:bg-white/5 border-[#007AFF] text-zinc-700 dark:text-zinc-300'
               }`}
             >
-              <div className="font-semibold text-[11px] flex items-center gap-1 mb-0.5">
-                <CheckCircle2 size={11} className="text-[#007AFF]" />
-                <span>@{quoteAuthor}</span>
+              <div className="font-semibold text-[11px] text-[#007AFF] dark:text-blue-400 mb-0.5">
+                @{quoteAuthor}
               </div>
-              <div className="text-[12px] opacity-90 line-clamp-3 leading-relaxed">
+              <div className="text-[12px] opacity-90 line-clamp-2 leading-snug">
                 {quoteSnippet}
               </div>
             </div>
@@ -1145,8 +1164,8 @@ const MessageBubbleItem = memo(function MessageBubbleItem({
           )}
 
           <div
-            className={`flex items-center justify-end gap-1 mt-1 text-[10.5px] select-none ${
-              isMe ? 'text-white/70' : 'text-zinc-500 dark:text-zinc-400'
+            className={`flex items-center justify-end gap-1 mt-0.5 text-[10px] select-none ${
+              isMe ? 'text-white/75' : 'text-zinc-500 dark:text-zinc-400'
             }`}
           >
             <span>
@@ -1156,76 +1175,9 @@ const MessageBubbleItem = memo(function MessageBubbleItem({
                 hour12: true,
               })}
             </span>
-            {isMe && <CheckCheck size={13} className="text-white/90 ml-0.5" />}
+            {isMe && <CheckCheck size={12} className="text-white/90 ml-0.5" />}
           </div>
-
-          {reactions.length > 0 && (
-            <div
-              className={`absolute -bottom-2.5 ${
-                isMe ? 'right-3' : 'left-3'
-              } flex items-center gap-1 bg-white dark:bg-[#3A3A3C] border border-black/10 dark:border-white/15 px-2 py-0.5 rounded-full shadow-md z-10 select-none animate-scale-in`}
-            >
-              {reactions.map((r, rIdx) => (
-                <button
-                  key={rIdx}
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onToggleReaction(msg.id, r.emoji);
-                  }}
-                  className="flex items-center gap-1 text-[11px] hover:scale-115 active:scale-95 transition-transform"
-                >
-                  <span>{r.emoji}</span>
-                  {r.count > 1 && (
-                    <span className="font-semibold text-[10px] text-zinc-600 dark:text-zinc-300">
-                      {r.count}
-                    </span>
-                  )}
-                </button>
-              ))}
-            </div>
-          )}
         </div>
-
-        {showTapbacks && (
-          <div
-            className={`absolute -top-11 z-30 flex items-center gap-2 px-3 py-1.5 rounded-full shadow-2xl backdrop-blur-2xl border ${
-              isMe ? 'right-0' : 'left-0'
-            } ${
-              isDark
-                ? 'bg-[#1C1C1E]/95 border-white/15 text-white'
-                : 'bg-white/95 border-black/10 text-zinc-900'
-            } animate-fadeIn`}
-          >
-            {['❤️', '👍', '👎', '😂', '‼️', '❓'].map((em) => (
-              <button
-                key={em}
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onToggleReaction(msg.id, em);
-                  setShowTapbacks(false);
-                }}
-                className="text-base hover:scale-130 active:scale-95 transition-transform cursor-pointer p-0.5"
-                title={`React ${em}`}
-              >
-                {em}
-              </button>
-            ))}
-            <div className="w-[1px] h-4 bg-zinc-300 dark:bg-zinc-700 mx-0.5" />
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onReply(msg);
-                setShowTapbacks(false);
-              }}
-              className="text-[11px] font-semibold text-[#007AFF] hover:opacity-80 transition-opacity px-1"
-            >
-              Reply
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );
@@ -1282,6 +1234,7 @@ export default function GroupsPage() {
 
   // Teacher / Admin Mode Switcher (defaults to teacher mode for reference match)
   const [clientViewMode, setClientViewMode] = useState<'teacher' | 'student'>('teacher');
+  const [facultyFilter, setFacultyFilter] = useState<'all' | '9b' | '8g' | '10a' | 'broadcast'>('all');
 
   // SECTION ROSTERS STATE (Strictly Isolated per Channel)
   const [sectionRosters, setSectionRosters] = useState<Record<string, EnrolledMember[]>>(ROSTERS_BY_CHANNEL);
@@ -1481,49 +1434,55 @@ export default function GroupsPage() {
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data.whatsappChannels) && data.whatsappChannels.length > 0) {
-          setChannels(data.whatsappChannels);
+          setChannels(
+            data.whatsappChannels.map((c: any) => ({
+              ...c,
+              name: cleanChannelName(c.name),
+              lastMessage: cleanChannelName(c.lastMessage),
+            }))
+          );
         } else {
           // Fallback channels matching 91 sections architecture
           setChannels([
             {
               id: 'channel-class-9b',
-              name: 'Class 9-B Official Classroom 📘',
+              name: 'Class 9-B Official Classroom',
               grade: 'Class 9',
               section: 'B',
               isLocked: false,
               adminUsernames: ['madam_principal', 'teacher_english'],
               enrolledUsernames: ['madam_principal', 'teacher_english', 'sahana_3009', 'aarav_mehta9'],
               memberCount: 42,
-              lastMessage: 'Anita Sharma: Merchant of Venice review on Wednesday',
-              lastMessageTime: '06:54 AM',
+              lastMessage: 'Anita Sharma Madam: Merchant of Venice review on Wednesday',
+              lastMessageTime: '08:30 AM',
             },
             {
               id: 'channel-class-8g',
-              name: 'Class 8-G Official Classroom 📘',
+              name: 'Class 8-G Official Classroom',
               grade: 'Class 8',
               section: 'G',
               isLocked: false,
               adminUsernames: ['madam_principal', 'shashwath71845'],
               enrolledUsernames: ['madam_principal', 'shashwath71845', 'rishi_one9', 'rohan728'],
               memberCount: 39,
-              lastMessage: 'Shashwath Salla: Science lab notebooks collection period 3',
-              lastMessageTime: '01:03 PM',
+              lastMessage: 'Shashwath Salla: Science lab notebooks submission today',
+              lastMessageTime: '09:15 AM',
             },
             {
               id: 'channel-class-10a',
-              name: 'Class 10-A Official Classroom 🎓',
+              name: 'Class 10-A Official Classroom',
               grade: 'Class 10',
               section: 'A',
               isLocked: false,
               adminUsernames: ['madam_principal', 'bhattacharya_maths'],
               enrolledUsernames: ['madam_principal', 'bhattacharya_maths', 'kvsishaan', 'meera_p10'],
               memberCount: 44,
-              lastMessage: 'R. K. Bhattacharya: Quadratic equations practice exercise',
-              lastMessageTime: '06:54 AM',
+              lastMessage: 'R. K. Bhattacharya: Quadratic equations practice exercises',
+              lastMessageTime: '10:00 AM',
             },
             {
               id: 'channel-science-club',
-              name: 'DPS Ramanujan & Aryabhatta Science Club 🔬',
+              name: 'DPS Ramanujan & Aryabhatta Science Club',
               grade: 'Class 8-10',
               section: 'Club',
               isLocked: false,
@@ -1531,11 +1490,11 @@ export default function GroupsPage() {
               enrolledUsernames: ['shashwath71845', 'sahana_3009', 'kvsishaan'],
               memberCount: 68,
               lastMessage: 'Dr. Verma: Regional Science Fair registration open',
-              lastMessageTime: '06:54 AM',
+              lastMessageTime: '11:20 AM',
             },
             {
               id: 'channel-school-broadcast',
-              name: 'DPS Official Principal Dispatches 📢',
+              name: 'DPS Official Principal Dispatches',
               grade: 'All',
               section: 'All',
               isLocked: true,
@@ -1543,7 +1502,7 @@ export default function GroupsPage() {
               enrolledUsernames: [],
               memberCount: 5500,
               lastMessage: 'Dr. Pratibha Kohli: Term 1 examination schedule published',
-              lastMessageTime: '06:54 AM',
+              lastMessageTime: '07:45 AM',
             },
           ]);
         }
@@ -1573,38 +1532,45 @@ export default function GroupsPage() {
   // ==========================================================================
   // STRICT CHANNEL FILTERING: STUDENTS SEE ONLY THEIR SECTION & DISPATCHES
   // ==========================================================================
-  const isTeacherAdmin = clientViewMode === 'teacher';
-
   const visibleChannels = useMemo(() => {
-    if (isTeacherAdmin) {
-      // Principal Madam sees all provisioned channels across the school
+    if (clientViewMode === 'teacher') {
+      if (facultyFilter === '9b') {
+        return channels.filter((c) => c.id === 'channel-class-9b' || c.id === 'channel-school-broadcast');
+      }
+      if (facultyFilter === '8g') {
+        return channels.filter((c) => c.id === 'channel-class-8g' || c.id === 'channel-school-broadcast');
+      }
+      if (facultyFilter === '10a') {
+        return channels.filter((c) => c.id === 'channel-class-10a' || c.id === 'channel-school-broadcast');
+      }
+      if (facultyFilter === 'broadcast') {
+        return channels.filter((c) => c.id === 'channel-school-broadcast' || c.grade === 'All');
+      }
+      // All sections across 91 classrooms
       return channels;
     }
 
     // STRICT STUDENT ISOLATION:
     // A student in Class 9-B sees ONLY:
-    // 1. Class 9-B Official Classroom 📘
-    // 2. DPS Official Principal Dispatches 📢 (School broadcast)
-    // 3. Extracurricular clubs
+    // 1. Class 9-B Official Classroom (their exact section)
+    // 2. DPS Official Principal Dispatches (School broadcast)
+    // They NEVER see Class 8-G, 10-A, or other grade/section rooms!
     return channels.filter((c) => {
       // 1. Principal Dispatches (Always visible to all 5,500 students)
       if (c.id === 'channel-school-broadcast' || c.grade === 'All') return true;
 
-      // 2. Clubs (e.g. Science club)
-      if (c.id.includes('club') || c.section === 'Club') return true;
-
-      // 3. Exact Grade AND Section matching!
+      // 2. Exact Grade AND Section matching
       const userGradeClean = studentGrade.toLowerCase().replace(/[^0-9]/g, '');
-      const channelGradeClean = c.grade.toLowerCase().replace(/[^0-9]/g, '');
+      const channelGradeClean = (c.grade || '').toLowerCase().replace(/[^0-9]/g, '');
       const userSectionClean = studentSection.toLowerCase().trim();
       const channelSectionClean = (c.section || '').toLowerCase().trim();
 
       const gradeMatches = userGradeClean === channelGradeClean;
-      const sectionMatches = userSectionClean === channelSectionClean || channelSectionClean === 'all';
+      const sectionMatches = userSectionClean === channelSectionClean;
 
       return gradeMatches && sectionMatches;
     });
-  }, [channels, isTeacherAdmin, studentGrade, studentSection]);
+  }, [channels, clientViewMode, facultyFilter, studentGrade, studentSection]);
 
   const filteredChannels = useMemo(() => {
     if (!searchQuery.trim()) return visibleChannels;
@@ -1624,15 +1590,15 @@ export default function GroupsPage() {
     return (
       visibleChannels[0] || {
         id: 'channel-class-9b',
-        name: 'Class 9-B Official Classroom 📘',
+        name: 'Class 9-B Official Classroom',
         grade: 'Class 9',
         section: 'B',
         isLocked: false,
         adminUsernames: ['madam_principal', 'teacher_english'],
         enrolledUsernames: ['madam_principal', 'teacher_english', 'sahana_3009'],
         memberCount: 42,
-        lastMessage: 'Anita Sharma: Merchant of Venice review on Wednesday',
-        lastMessageTime: '06:54 AM',
+        lastMessage: 'Anita Sharma Madam: Merchant of Venice review on Wednesday',
+        lastMessageTime: '08:30 AM',
       }
     );
   }, [visibleChannels, selectedChannelId]);
@@ -1939,7 +1905,7 @@ export default function GroupsPage() {
     const nowTs = Date.now();
     const timeNow = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
     const isUrgent = broadcastPriority === 'urgent';
-    const prefix = isUrgent ? '🚨 [URGENT PRINCIPAL DISPATCH]: ' : '📢 [OFFICIAL PRINCIPAL CIRCULAR]: ';
+    const prefix = isUrgent ? '[URGENT PRINCIPAL DISPATCH]: ' : '[OFFICIAL PRINCIPAL CIRCULAR]: ';
     const fullText = cleanText ? `${prefix}${cleanText}` : `${prefix}Official Notice Attachment`;
 
     try {
@@ -1994,7 +1960,7 @@ export default function GroupsPage() {
       // 4. Update Home Feed Broadcast Alert Banner in DataStore
       try {
         DataStore.setBroadcastAlert({
-          title: isUrgent ? '🚨 URGENT: Office of the Principal' : '📢 Official Principal Circular',
+          title: isUrgent ? 'URGENT: Office of the Principal' : 'Official Principal Circular',
           text: cleanText || 'Official circular published to all school classroom groups.',
           isUrgent,
         });
@@ -2010,7 +1976,7 @@ export default function GroupsPage() {
               id: `notif-broad-${nowTs}-${p.username}`,
               userId: p.username,
               type: 'notice',
-              title: isUrgent ? '🚨 Urgent Dispatch from Principal Madam' : '📢 New Circular from Principal Madam',
+              title: isUrgent ? 'Urgent Dispatch from Principal Madam' : 'New Circular from Principal Madam',
               body: cleanText.slice(0, 100) || 'Official circular and image published to your classroom group.',
               link: '/groups',
               timeAgo: 'Just now',
@@ -2024,7 +1990,7 @@ export default function GroupsPage() {
       setShowPrincipalBroadcastModal(false);
       setBroadcastText('');
       handleClearBroadcastImage();
-      setToastMessage('🎉 Broadcast successfully delivered to all 91 school groups & 5,500 students!');
+      setToastMessage('Broadcast successfully delivered to all 91 school groups & 5,500 students.');
       setTimeout(() => setToastMessage(null), 4000);
     } catch (err) {
       console.error('Error broadcasting message:', err);
@@ -2335,12 +2301,12 @@ export default function GroupsPage() {
             <div className="flex items-center gap-2">
               <Building size={16} className="text-yellow-300 shrink-0" />
               <div className="text-left">
-                <div className="font-bold">🏫 91 Sections Scalability Engine</div>
+                <div className="font-bold">91 Sections Scalability Engine</div>
                 <div className="text-[10px] text-purple-100">Click to show Madam full school implementation demo</div>
               </div>
             </div>
-            <span className="text-[10.5px] bg-white/20 px-2 py-0.5 rounded-full font-bold shrink-0">
-              Show Demo ➔
+            <span className="text-[10.5px] bg-white/20 px-2.5 py-0.5 rounded-full font-bold shrink-0">
+              Show Demo
             </span>
           </button>
         ) : (
@@ -2368,7 +2334,7 @@ export default function GroupsPage() {
         )}
 
         {/* CAPSULE SEARCH BAR */}
-        <div className="rounded-full bg-white/80 dark:bg-[#1C1C1E]/80 shadow-2xs border border-black/5 dark:border-white/10 px-4 py-2.5 mb-3 flex items-center">
+        <div className="rounded-full bg-white/80 dark:bg-[#1C1C1E]/80 shadow-2xs border border-black/5 dark:border-white/10 px-4 py-2.5 mb-2.5 flex items-center">
           <Search size={15} className="text-zinc-400 mr-2.5 shrink-0" />
           <input
             type="text"
@@ -2383,6 +2349,47 @@ export default function GroupsPage() {
             </button>
           )}
         </div>
+
+        {/* SECTION FILTER PILLS (Faculty / Principal Mode) */}
+        {clientViewMode === 'teacher' && (
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-2.5 mb-1 scrollbar-none text-xs">
+            {[
+              { id: 'all', label: 'All Sections' },
+              { id: '9b', label: 'Class 9-B' },
+              { id: '8g', label: 'Class 8-G' },
+              { id: '10a', label: 'Class 10-A' },
+              { id: 'broadcast', label: 'Dispatches' },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => {
+                  setFacultyFilter(tab.id as any);
+                  if (tab.id === '9b') {
+                    const c = channels.find((ch) => ch.id === 'channel-class-9b');
+                    if (c) setSelectedChannelId(c.id);
+                  } else if (tab.id === '8g') {
+                    const c = channels.find((ch) => ch.id === 'channel-class-8g');
+                    if (c) setSelectedChannelId(c.id);
+                  } else if (tab.id === '10a') {
+                    const c = channels.find((ch) => ch.id === 'channel-class-10a');
+                    if (c) setSelectedChannelId(c.id);
+                  } else if (tab.id === 'broadcast') {
+                    const c = channels.find((ch) => ch.id === 'channel-school-broadcast');
+                    if (c) setSelectedChannelId(c.id);
+                  }
+                }}
+                className={`px-3 py-1.5 rounded-full font-semibold transition-all shrink-0 cursor-pointer text-xs ${
+                  facultyFilter === tab.id
+                    ? 'bg-[#007AFF] text-white shadow-xs'
+                    : 'bg-white/80 dark:bg-[#1C1C1E]/80 text-zinc-600 dark:text-zinc-300 border border-black/5 dark:border-white/10 hover:bg-black/5'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* FLOATING GROUP CARDS LIST (Exact Reference Styling) */}
         <div className="space-y-2.5 flex-1">
@@ -2434,17 +2441,17 @@ export default function GroupsPage() {
 
                     <div className="min-w-0">
                       <h4 className="text-[13.5px] font-bold truncate leading-tight text-zinc-900 dark:text-zinc-100">
-                        {channel.name}
+                        {cleanChannelName(channel.name)}
                       </h4>
                       <p className="text-xs truncate text-zinc-500 dark:text-zinc-400 mt-1">
-                        {channel.lastMessage || (is9B ? 'Anita Sharma: Merchant of Venice review on Wednesday' : 'hi hello')}
+                        {cleanChannelName(channel.lastMessage) || (is9B ? 'Anita Sharma: Merchant of Venice review on Wednesday' : is8G ? 'Shashwath Salla: Science lab notebooks submission today' : is10A ? 'R. K. Bhattacharya: Quadratic equations practice exercises' : isBroadcast ? 'Term 1 examination schedule published' : 'DPS Academic Update')}
                       </p>
                     </div>
                   </div>
 
                   <div className="flex flex-col items-end gap-1 shrink-0 ml-2">
                     <span className="text-[11px] text-zinc-400 font-medium">
-                      {channel.lastMessageTime || (is8G ? '01:03 PM' : '06:54 AM')}
+                      {channel.lastMessageTime || (is8G ? '09:15 AM' : is9B ? '08:30 AM' : '10:00 AM')}
                     </span>
                     {isBroadcast ? (
                       <Lock size={13} className="text-zinc-400 mt-0.5" />
@@ -2497,7 +2504,7 @@ export default function GroupsPage() {
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
                   <h2 className="text-sm font-semibold truncate leading-tight">
-                    {activeChannel.name}
+                    {cleanChannelName(activeChannel.name)}
                   </h2>
                   <CheckCircle2 size={14} className="text-[#007AFF] fill-[#007AFF]/20 shrink-0" />
                 </div>
@@ -2540,7 +2547,7 @@ export default function GroupsPage() {
             {/* Audio Call */}
             <button
               type="button"
-              onClick={() => setActiveCallRoom({ type: 'audio', title: `${activeChannel.name} - Audio Room` })}
+              onClick={() => setActiveCallRoom({ type: 'audio', title: `${cleanChannelName(activeChannel.name)} - Audio Room` })}
               className="w-8 h-8 rounded-full bg-black/5 dark:bg-white/10 hover:bg-black/10 text-[#007AFF] flex items-center justify-center transition-colors cursor-pointer"
               title="Start Audio Room"
             >
@@ -2550,7 +2557,7 @@ export default function GroupsPage() {
             {/* Video Call */}
             <button
               type="button"
-              onClick={() => setActiveCallRoom({ type: 'video', title: `${activeChannel.name} - Video Classroom` })}
+              onClick={() => setActiveCallRoom({ type: 'video', title: `${cleanChannelName(activeChannel.name)} - Video Classroom` })}
               className="w-8 h-8 rounded-full bg-black/5 dark:bg-white/10 hover:bg-black/10 text-[#007AFF] flex items-center justify-center transition-colors cursor-pointer"
               title="Start Video Classroom"
             >
@@ -2633,31 +2640,13 @@ export default function GroupsPage() {
 
         {/* Apple Frosted Input Bar */}
         <div className="flex flex-col shrink-0 border-t border-black/[0.08] dark:border-white/[0.08] backdrop-blur-2xl bg-white/80 dark:bg-[#161618]/80 relative">
-          {showEmojiPicker && (
-            <div className="px-4 py-2 border-b border-black/[0.06] dark:border-white/[0.06] flex items-center gap-3 overflow-x-auto">
-              {['❤️', '👍', '💀', '😂', '🔥', '🎉', '📚', '👏', '🚀', '✨'].map((em) => (
-                <button
-                  key={em}
-                  type="button"
-                  onClick={() => {
-                    setMessageText((prev) => prev + em);
-                    inputRef.current?.focus();
-                  }}
-                  className="text-xl hover:scale-125 transition-transform cursor-pointer"
-                >
-                  {em}
-                </button>
-              ))}
-            </div>
-          )}
-
           {showAttachMenu && (
             <div className="absolute bottom-16 left-3 p-2 rounded-2xl shadow-2xl flex flex-col gap-1.5 z-50 border border-black/10 dark:border-white/15 bg-white/95 dark:bg-[#1C1C1E]/95 backdrop-blur-2xl min-w-[200px] animate-scale-in">
               <button
                 type="button"
                 onClick={() => {
                   setShowAttachMenu(false);
-                  setMessageText((prev) => `${prev} [Class Photo: Science Lab Experiment 📸]`);
+                  setMessageText((prev) => `${prev} [Class Photo: Science Lab Experiment]`);
                 }}
                 className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer text-left"
               >
@@ -2668,7 +2657,7 @@ export default function GroupsPage() {
                 type="button"
                 onClick={() => {
                   setShowAttachMenu(false);
-                  setMessageText((prev) => `${prev} [Document: Term 1 Syllabus PDF 📄]`);
+                  setMessageText((prev) => `${prev} [Document: Term 1 Syllabus PDF]`);
                 }}
                 className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer text-left"
               >
@@ -2724,7 +2713,7 @@ export default function GroupsPage() {
                   onClick={() => setSelectedChannelId('channel-class-9b')}
                   className="px-3 py-1 rounded-full bg-[#007AFF] text-white font-semibold text-xs shrink-0 cursor-pointer"
                 >
-                  Open Class 9-B 💬
+                  Open Class 9-B
                 </button>
               </div>
             ) : (
@@ -2736,15 +2725,6 @@ export default function GroupsPage() {
                   title="Attach"
                 >
                   <Plus size={18} />
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                  className="w-8 h-8 rounded-full hover:bg-black/5 dark:hover:bg-white/10 text-zinc-500 dark:text-zinc-400 flex items-center justify-center shrink-0 cursor-pointer transition-colors"
-                  title="Emoji"
-                >
-                  <Smile size={19} />
                 </button>
 
                 <div className="flex-1 flex items-center rounded-full bg-black/5 dark:bg-white/10 px-4 py-2 border border-black/[0.04] dark:border-white/[0.08] focus-within:ring-2 focus-within:ring-[#007AFF]/40 transition-all">
@@ -2772,11 +2752,11 @@ export default function GroupsPage() {
                   <button
                     type="button"
                     onClick={() => {
-                      setMessageText('👋 Hi everyone from our official classroom!');
+                      setMessageText('Good morning everyone from our official classroom.');
                       inputRef.current?.focus();
                     }}
                     className="w-8 h-8 rounded-full bg-black/5 dark:bg-white/10 text-[#007AFF] flex items-center justify-center shrink-0 hover:scale-105 active:scale-95 transition-transform cursor-pointer"
-                    title="Quick Wave"
+                    title="Quick Text"
                   >
                     <Mic size={16} />
                   </button>
@@ -2815,7 +2795,7 @@ export default function GroupsPage() {
                 className="w-full py-2.5 rounded-xl bg-[#007AFF] hover:bg-[#0066d6] text-white font-semibold text-xs transition-colors flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
               >
                 <Users size={15} />
-                <span>Open Chats & Create Group 💬</span>
+                <span>Open Chats & Create Group</span>
               </button>
 
               <button
@@ -2899,7 +2879,7 @@ export default function GroupsPage() {
                     onClick={handleSimulateClass9BStudent}
                     className="p-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-semibold text-xs flex items-center justify-between transition-colors shadow-xs cursor-pointer"
                   >
-                    <span>Simulate Class 9-B Student View ➔</span>
+                    <span>Simulate Class 9-B Student View</span>
                     <span className="text-[10px] opacity-80">(Grade 9 Section B)</span>
                   </button>
 
@@ -2908,7 +2888,7 @@ export default function GroupsPage() {
                     onClick={handleSimulateClass8GStudent}
                     className="p-3 rounded-xl bg-[#007AFF] hover:bg-[#0066d6] text-white font-semibold text-xs flex items-center justify-between transition-colors shadow-xs cursor-pointer"
                   >
-                    <span>Simulate Class 8-G Student View ➔</span>
+                    <span>Simulate Class 8-G Student View</span>
                     <span className="text-[10px] opacity-80">(Grade 8 Section G)</span>
                   </button>
                 </div>
@@ -3014,7 +2994,7 @@ export default function GroupsPage() {
                 className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-95 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg transition-transform cursor-pointer"
               >
                 <Database size={16} />
-                <span>⚡ Verify & Sync All 91 Sections in D1 Database</span>
+                <span>Verify & Sync All 91 Sections in D1 Database</span>
               </button>
             </div>
           </div>
@@ -3070,16 +3050,16 @@ export default function GroupsPage() {
                 </p>
                 <div className="flex items-center gap-1.5 mt-2 flex-wrap text-[10px]">
                   <span className="px-2 py-0.5 rounded-full bg-white/80 dark:bg-black/40 font-semibold border border-red-500/20 text-zinc-700 dark:text-zinc-300">
-                    📘 Class 8-G
+                    Class 8-G
                   </span>
                   <span className="px-2 py-0.5 rounded-full bg-white/80 dark:bg-black/40 font-semibold border border-red-500/20 text-zinc-700 dark:text-zinc-300">
-                    📘 Class 9-B
+                    Class 9-B
                   </span>
                   <span className="px-2 py-0.5 rounded-full bg-white/80 dark:bg-black/40 font-semibold border border-red-500/20 text-zinc-700 dark:text-zinc-300">
-                    🎓 Class 10-A
+                    Class 10-A
                   </span>
                   <span className="px-2 py-0.5 rounded-full bg-white/80 dark:bg-black/40 font-semibold border border-red-500/20 text-zinc-700 dark:text-zinc-300">
-                    🔬 Science Club
+                    Science Club
                   </span>
                   <span className="px-2 py-0.5 rounded-full bg-red-600 text-white font-bold">
                     + 87 Academic Sections
@@ -3094,7 +3074,7 @@ export default function GroupsPage() {
                     Priority Classification
                   </div>
                   <div className="text-[11px] text-zinc-500 dark:text-zinc-400">
-                    {broadcastPriority === 'urgent' ? '🚨 Red Alert: High-priority immediate alert' : '📢 Official: Standard school circular & notice'}
+                    {broadcastPriority === 'urgent' ? 'Red Alert: High-priority immediate school dispatch' : 'Official: Standard school circular & notice'}
                   </div>
                 </div>
 
@@ -3141,10 +3121,10 @@ export default function GroupsPage() {
                 <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                   <span className="text-[10.5px] font-medium text-zinc-400">Templates:</span>
                   {[
-                    { label: '📅 Exam Datesheet', text: 'DELHI PUBLIC SCHOOL NOTICE: The Term Examination Datesheet & syllabus breakdown has been officially published. All students must review their schedule.' },
-                    { label: '🏆 Sports Day', text: 'ANNUAL ATHLETIC MEET: Inter-house trials for track and field events begin this Friday on the Main Grounds. House uniforms mandatory.' },
-                    { label: '🏖️ Holiday', text: 'SCHOOL CIRCULAR: Delhi Public School will remain closed on Monday on account of the state festival. Classes resume on Tuesday.' },
-                    { label: '⚠️ Uniform Check', text: 'FACULTY ADVISORY: Tomorrow is formal inspection day. Students are reminded that school blazer, verified ID card and ties are mandatory.' },
+                    { label: 'Exam Datesheet', text: 'DELHI PUBLIC SCHOOL NOTICE: The Term Examination Datesheet & syllabus breakdown has been officially published. All students must review their schedule.' },
+                    { label: 'Sports Day', text: 'ANNUAL ATHLETIC MEET: Inter-house trials for track and field events begin this Friday on the Main Grounds. House uniforms mandatory.' },
+                    { label: 'Holiday Circular', text: 'SCHOOL CIRCULAR: Delhi Public School will remain closed on Monday on account of the state festival. Classes resume on Tuesday.' },
+                    { label: 'Uniform Check', text: 'FACULTY ADVISORY: Tomorrow is formal inspection day. Students are reminded that school blazer, verified ID card and ties are mandatory.' },
                   ].map((tpl) => (
                     <button
                       key={tpl.label}
@@ -3228,9 +3208,9 @@ export default function GroupsPage() {
                       </span>
                       <div className="space-y-1">
                         {[
-                          { label: '📄 Exam Datesheet Sheet', url: 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=800&auto=format&fit=crop&q=80' },
-                          { label: '🏅 Sports Meet Poster', url: 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=800&auto=format&fit=crop&q=80' },
-                          { label: '🤖 Science Fair Banner', url: 'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=800&auto=format&fit=crop&q=80' },
+                          { label: 'Exam Datesheet Sheet', url: 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=800&auto=format&fit=crop&q=80' },
+                          { label: 'Sports Meet Poster', url: 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=800&auto=format&fit=crop&q=80' },
+                          { label: 'Science Fair Banner', url: 'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=800&auto=format&fit=crop&q=80' },
                         ].map((s) => (
                           <button
                             key={s.label}
@@ -3265,7 +3245,7 @@ export default function GroupsPage() {
                   className="flex-2 py-2.5 rounded-2xl bg-linear-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 disabled:opacity-50 text-white text-xs font-bold shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
                 >
                   <Megaphone size={15} />
-                  <span>{isSendingBroadcast ? 'Broadcasting...' : 'Broadcast to All Groups 🚀'}</span>
+                  <span>{isSendingBroadcast ? 'Broadcasting...' : 'Broadcast to All Groups'}</span>
                 </button>
               </div>
             </form>
@@ -3392,7 +3372,7 @@ export default function GroupsPage() {
                 <label className="text-xs font-semibold block mb-1">Classroom Name</label>
                 <input
                   type="text"
-                  placeholder="e.g. Class 9-B Official Classroom 📘"
+                  placeholder="e.g. Class 9-B Official Classroom"
                   value={newGroupName}
                   onChange={(e) => setNewGroupName(e.target.value)}
                   className="w-full text-xs p-3 rounded-xl bg-black/5 dark:bg-white/10 border border-black/10 dark:border-white/10 focus:outline-none focus:ring-2 focus:ring-[#007AFF]"
@@ -3976,8 +3956,9 @@ export default function GroupsPage() {
             </p>
           </div>
 
-          <div className="p-4 rounded-2xl bg-white/10 backdrop-blur-md text-xs text-white/80 max-w-sm text-center">
-            🔒 High-fidelity encrypted calling is active. All members of {activeChannel.name} have been invited.
+          <div className="p-4 rounded-2xl bg-white/10 backdrop-blur-md text-xs text-white/80 max-w-sm text-center flex items-center justify-center gap-1.5">
+            <ShieldCheck size={14} className="text-emerald-400 shrink-0" />
+            <span>High-fidelity encrypted calling is active. All members of {cleanChannelName(activeChannel.name)} have been invited.</span>
           </div>
 
           <div className="pb-8 flex items-center gap-4">

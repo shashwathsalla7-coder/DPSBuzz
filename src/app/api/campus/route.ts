@@ -316,7 +316,7 @@ export async function GET(req: NextRequest) {
       const rawChannels = await d1Query<any>('SELECT * FROM campus_whatsapp_channels ORDER BY CASE WHEN id = \'channel-class-8g\' THEN 0 WHEN is_locked = 0 THEN 1 ELSE 2 END, created_at ASC;');
       whatsappChannels = rawChannels.map((c) => ({
         id: c.id,
-        name: c.name,
+        name: (c.name || '').replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1FA00}-\u{1FA6F}\u{1F004}\u{1F0CF}\u{2B50}\u{2B55}\u{231A}-\u{23F3}]/gu, '').trim(),
         grade: c.grade,
         section: c.section,
         avatar: c.avatar || '',
