@@ -864,17 +864,17 @@ export default function ProfileClient({ username }: { username: string }) {
   // Followers & Following lists for interactive modal
   const followersList = useMemo(() => {
     return DataStore.getFollowers(profile.username);
-  }, [profile.username, postsVersion]);
+  }, [profile.username, postsVersion, isFollowing]);
 
   const followingList = useMemo(() => {
     return DataStore.getFollowing(profile.username);
-  }, [profile.username, postsVersion]);
+  }, [profile.username, postsVersion, isFollowing]);
 
   const mutualFollowers = useMemo(() => {
     const cur = DataStore.getCurrentUser();
     if (!cur || isOwnProfile) return [];
     return DataStore.getMutualFollows(cur.username, profile.username);
-  }, [profile.username, isOwnProfile, postsVersion]);
+  }, [profile.username, isOwnProfile, postsVersion, isFollowing]);
 
   const displayedFollowList = useMemo(() => {
     const baseList = followListModalTab === 'followers' ? followersList : followingList;
@@ -1168,7 +1168,7 @@ export default function ProfileClient({ username }: { username: string }) {
               title={!isOwnProfile && Boolean(profile.isPrivate) && !isFollowing ? `🔒 Account is private` : `View ${profile.username}'s followers`}
             >
               <div className="text-base font-bold leading-tight" style={{ color: 'var(--text)' }}>
-                {followersList.length}
+                {Math.max(followersList.length, profile.followerCount || 0)}
               </div>
               <div className="text-[12px] lowercase font-normal" style={{ color: 'var(--text-muted)' }}>
                 followers
@@ -1180,7 +1180,7 @@ export default function ProfileClient({ username }: { username: string }) {
               title={!isOwnProfile && Boolean(profile.isPrivate) && !isFollowing ? `🔒 Account is private` : `View who ${profile.username} follows`}
             >
               <div className="text-base font-bold leading-tight" style={{ color: 'var(--text)' }}>
-                {followingList.length}
+                {Math.max(followingList.length, profile.followingCount || 0)}
               </div>
               <div className="text-[12px] lowercase font-normal" style={{ color: 'var(--text-muted)' }}>
                 following
