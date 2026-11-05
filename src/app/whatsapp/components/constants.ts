@@ -54,14 +54,14 @@ export const WHATSAPP_DOODLE_DARK = `data:image/svg+xml;utf8,<svg xmlns='http://
 // Demo data
 export const DEMO_CONTACTS: import('./types').ContactItem[] = [
   { id: 'c1', name: 'Himaksh', phone: '+91 93476 06076', about: 'Available', avatarColor: '#53bdeb', initials: 'HM', isOnline: true },
-  { id: 'c2', name: 'Rishikesh', phone: '+91 63004 76366', about: 'At school 📚', avatarColor: '#f15c6d', initials: 'RK', lastSeen: '5 min ago' },
-  { id: 'c3', name: 'Rohan', phone: '+91 98765 43210', about: 'Jaddu bhai forever', avatarColor: '#53bdeb', initials: 'RN', lastSeen: '8:21 pm' },
-  { id: 'c4', name: 'Krishna', phone: '+91 87654 32109', about: 'Hey there! I am using DPS Buzz', avatarColor: '#e542a3', initials: 'KR', lastSeen: 'Yesterday' },
-  { id: 'c5', name: 'Ak 47', phone: '+91 76543 21098', about: 'Cricket is life 🏏', avatarColor: '#ff9f00', initials: 'AK', lastSeen: '7:15 pm' },
+  { id: 'c2', name: 'Rishikesh', phone: '+91 63004 76366', about: 'At school', avatarColor: '#f15c6d', initials: 'RK', lastSeen: '5 min ago' },
+  { id: 'c3', name: 'Rohan', phone: '+91 98765 43210', about: 'DPS student', avatarColor: '#53bdeb', initials: 'RN', lastSeen: '8:21 pm' },
+  { id: 'c4', name: 'Krishna', phone: '+91 87654 32109', about: 'Available on DPS Buzz', avatarColor: '#e542a3', initials: 'KR', lastSeen: 'Yesterday' },
+  { id: 'c5', name: 'Ak 47', phone: '+91 76543 21098', about: 'Cricket Team', avatarColor: '#ff9f00', initials: 'AK', lastSeen: '7:15 pm' },
   { id: 'c6', name: 'Anita Madam', phone: '+91 99887 76655', about: 'English Faculty | DPS', avatarColor: '#e542a3', initials: 'AM', lastSeen: '10 min ago' },
-  { id: 'c7', name: 'Sri', phone: '+91 98001 23456', about: 'DPS Buzz Admin 🚀', avatarColor: '#25d366', initials: 'SR', isOnline: true },
+  { id: 'c7', name: 'Sri', phone: '+91 98001 23456', about: 'DPS Buzz Admin', avatarColor: '#25d366', initials: 'SR', isOnline: true },
   { id: 'c8', name: 'Rishi Sunak', phone: '+91 88776 65544', about: '11th Science', avatarColor: '#7c5ce0', initials: 'RS', lastSeen: '2 hours ago' },
-  { id: 'c9', name: 'Priya', phone: '+91 77665 54433', about: 'Art Club President 🎨', avatarColor: '#00bcd4', initials: 'PR', isOnline: true },
+  { id: 'c9', name: 'Priya', phone: '+91 77665 54433', about: 'Art Club President', avatarColor: '#00bcd4', initials: 'PR', isOnline: true },
   { id: 'c10', name: 'Vikas Sir', phone: '+91 99112 23344', about: 'Mathematics Faculty', avatarColor: '#ff5722', initials: 'VS', lastSeen: '1 hour ago' },
 ];
 
@@ -72,19 +72,19 @@ export const DEMO_STATUSES: import('./types').StatusItem[] = [
   },
   {
     id: 'st2', contactName: 'Himaksh', contactColor: '#53bdeb', contactInitials: 'HM', time: '25 minutes ago', viewed: false,
-    updates: [{ id: 'su1', type: 'text', content: 'Exam prep going strong 💪', backgroundColor: '#005c4b', time: '25 minutes ago', viewCount: 12 }],
+    updates: [{ id: 'su1', type: 'text', content: 'Exam prep in progress', backgroundColor: '#005c4b', time: '25 minutes ago', viewCount: 12 }],
   },
   {
     id: 'st3', contactName: 'Rohan', contactColor: '#53bdeb', contactInitials: 'RN', time: '1 hour ago', viewed: false,
-    updates: [{ id: 'su2', type: 'text', content: 'Me in my prime 💀😂', backgroundColor: '#0b141a', time: '1 hour ago', viewCount: 8 }],
+    updates: [{ id: 'su2', type: 'text', content: 'Preparing for physics practicals', backgroundColor: '#0b141a', time: '1 hour ago', viewCount: 8 }],
   },
   {
     id: 'st4', contactName: 'Priya', contactColor: '#00bcd4', contactInitials: 'PR', time: '3 hours ago', viewed: true,
-    updates: [{ id: 'su3', type: 'text', content: 'Art exhibition tomorrow! Don\'t miss it 🎨', backgroundColor: '#7c5ce0', time: '3 hours ago', viewCount: 45 }],
+    updates: [{ id: 'su3', type: 'text', content: 'Art exhibition tomorrow at school gallery', backgroundColor: '#7c5ce0', time: '3 hours ago', viewCount: 45 }],
   },
   {
     id: 'st5', contactName: 'Krishna', contactColor: '#e542a3', contactInitials: 'KR', time: '5 hours ago', viewed: true,
-    updates: [{ id: 'su4', type: 'text', content: 'Holiday homework reminder 📝', backgroundColor: '#ff5722', time: '5 hours ago', viewCount: 22 }],
+    updates: [{ id: 'su4', type: 'text', content: 'Holiday homework reminder', backgroundColor: '#ff5722', time: '5 hours ago', viewCount: 22 }],
   },
 ];
 
