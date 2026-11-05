@@ -109,202 +109,827 @@ interface EnrolledMember {
   attendance: string;
 }
 
-// Verified Seed Roster for Class 8-G, 9-B and DPS Classrooms
-const BASE_DPS_ROSTER: EnrolledMember[] = [
+// ============================================================================
+// STRICT ROSTERS PER CHANNEL (ZERO Cross-Class Student Pollution)
+// ============================================================================
+const ROSTERS_BY_CHANNEL: Record<string, EnrolledMember[]> = {
+  // --------------------------------------------------------------------------
+  // CLASS 9-B ROSTER: ONLY Grade 9, Section B Students + Assigned Teachers
+  // --------------------------------------------------------------------------
+  'channel-class-9b': [
+    {
+      id: 'mem-9b-principal',
+      username: 'madam_principal',
+      name: 'Dr. Pratibha Kohli',
+      role: 'principal',
+      roleLabel: 'Office of the Principal',
+      className: 'Official Staff',
+      admissionNo: 'DPS-STAFF-001',
+      house: 'Ex-Officio',
+      isVerified: true,
+      avatar: null,
+      online: true,
+      spiritPoints: 1250,
+      attendance: '100%',
+    },
+    {
+      id: 'mem-9b-teacher',
+      username: 'teacher_english',
+      name: 'Anita Sharma Madam',
+      role: 'faculty',
+      roleLabel: 'Faculty (English Dept Head & 9-B Mentor)',
+      className: 'Staff Faculty',
+      admissionNo: 'DPS-FAC-2018',
+      house: 'Ganges House',
+      isVerified: true,
+      avatar: null,
+      online: true,
+      spiritPoints: 890,
+      attendance: '99%',
+    },
+    {
+      id: 'mem-9b-sahana',
+      username: 'sahana_3009',
+      name: 'S. Sahana',
+      role: 'rep',
+      roleLabel: 'Class Representative (9-B)',
+      className: 'Class 9-B',
+      rollNo: '31',
+      admissionNo: 'DPS-2024-9B31',
+      house: 'Ganges House',
+      isVerified: true,
+      avatar: null,
+      online: true,
+      spiritPoints: 710,
+      attendance: '98.5%',
+    },
+    {
+      id: 'mem-9b-aarav',
+      username: 'aarav_mehta9',
+      name: 'Aarav Mehta',
+      role: 'student',
+      roleLabel: 'Verified Student',
+      className: 'Class 9-B',
+      rollNo: '1',
+      admissionNo: 'DPS-2024-9B01',
+      house: 'Yamuna House',
+      isVerified: true,
+      avatar: null,
+      online: true,
+      spiritPoints: 580,
+      attendance: '97.4%',
+    },
+    {
+      id: 'mem-9b-ananya',
+      username: 'ananya_sharma9',
+      name: 'Ananya Sharma',
+      role: 'student',
+      roleLabel: 'Verified Student',
+      className: 'Class 9-B',
+      rollNo: '4',
+      admissionNo: 'DPS-2024-9B04',
+      house: 'Kaveri House',
+      isVerified: true,
+      avatar: null,
+      online: true,
+      spiritPoints: 620,
+      attendance: '98.1%',
+    },
+    {
+      id: 'mem-9b-kabir',
+      username: 'kabir_j9',
+      name: 'Kabir Joshi',
+      role: 'student',
+      roleLabel: 'Verified Student',
+      className: 'Class 9-B',
+      rollNo: '12',
+      admissionNo: 'DPS-2024-9B12',
+      house: 'Narmada House',
+      isVerified: true,
+      avatar: null,
+      online: false,
+      spiritPoints: 490,
+      attendance: '95.8%',
+    },
+    {
+      id: 'mem-9b-diya',
+      username: 'diya_k9',
+      name: 'Diya Kapoor',
+      role: 'student',
+      roleLabel: 'Verified Student',
+      className: 'Class 9-B',
+      rollNo: '15',
+      admissionNo: 'DPS-2024-9B15',
+      house: 'Ganges House',
+      isVerified: true,
+      avatar: null,
+      online: true,
+      spiritPoints: 530,
+      attendance: '96.5%',
+    },
+    {
+      id: 'mem-9b-ishaan',
+      username: 'ishaan_v9',
+      name: 'Ishaan Verma',
+      role: 'student',
+      roleLabel: 'Verified Student',
+      className: 'Class 9-B',
+      rollNo: '19',
+      admissionNo: 'DPS-2024-9B19',
+      house: 'Yamuna House',
+      isVerified: true,
+      avatar: null,
+      online: true,
+      spiritPoints: 510,
+      attendance: '96.0%',
+    },
+    {
+      id: 'mem-9b-priya',
+      username: 'priya_n9',
+      name: 'Priya Nair',
+      role: 'student',
+      roleLabel: 'Verified Student',
+      className: 'Class 9-B',
+      rollNo: '24',
+      admissionNo: 'DPS-2024-9B24',
+      house: 'Kaveri House',
+      isVerified: true,
+      avatar: null,
+      online: false,
+      spiritPoints: 470,
+      attendance: '95.1%',
+    },
+    {
+      id: 'mem-9b-rohan',
+      username: 'rohan_sen9b',
+      name: 'Rohan Sen',
+      role: 'student',
+      roleLabel: 'Verified Student',
+      className: 'Class 9-B',
+      rollNo: '27',
+      admissionNo: 'DPS-2024-9B27',
+      house: 'Narmada House',
+      isVerified: true,
+      avatar: null,
+      online: true,
+      spiritPoints: 540,
+      attendance: '97.0%',
+    },
+    {
+      id: 'mem-9b-tanvi',
+      username: 'tanvi_r9',
+      name: 'Tanvi Reddy',
+      role: 'student',
+      roleLabel: 'Verified Student',
+      className: 'Class 9-B',
+      rollNo: '35',
+      admissionNo: 'DPS-2024-9B35',
+      house: 'Ganges House',
+      isVerified: true,
+      avatar: null,
+      online: true,
+      spiritPoints: 600,
+      attendance: '98.0%',
+    },
+    {
+      id: 'mem-9b-vivaan',
+      username: 'vivaan_g9',
+      name: 'Vivaan Gupta',
+      role: 'student',
+      roleLabel: 'Verified Student',
+      className: 'Class 9-B',
+      rollNo: '39',
+      admissionNo: 'DPS-2024-9B39',
+      house: 'Yamuna House',
+      isVerified: true,
+      avatar: null,
+      online: false,
+      spiritPoints: 460,
+      attendance: '94.8%',
+    },
+  ],
+
+  // --------------------------------------------------------------------------
+  // CLASS 8-G ROSTER: ONLY Grade 8, Section G Students + Assigned Teachers
+  // --------------------------------------------------------------------------
+  'channel-class-8g': [
+    {
+      id: 'mem-8g-principal',
+      username: 'madam_principal',
+      name: 'Dr. Pratibha Kohli',
+      role: 'principal',
+      roleLabel: 'Office of the Principal',
+      className: 'Official Staff',
+      admissionNo: 'DPS-STAFF-001',
+      house: 'Ex-Officio',
+      isVerified: true,
+      avatar: null,
+      online: true,
+      spiritPoints: 1250,
+      attendance: '100%',
+    },
+    {
+      id: 'mem-8g-teacher',
+      username: 'teacher_english',
+      name: 'Anita Sharma Madam',
+      role: 'faculty',
+      roleLabel: 'Faculty (Class Teacher 8-G)',
+      className: 'Staff Faculty',
+      admissionNo: 'DPS-FAC-2018',
+      house: 'Ganges House',
+      isVerified: true,
+      avatar: null,
+      online: true,
+      spiritPoints: 890,
+      attendance: '99%',
+    },
+    {
+      id: 'mem-8g-shashwath',
+      username: 'shashwath71845',
+      name: 'Shashwath Salla',
+      role: 'rep',
+      roleLabel: 'Class Representative (8-G)',
+      className: 'Class 8-G',
+      rollNo: '24',
+      admissionNo: 'DPS-2024-8G24',
+      house: 'Yamuna House',
+      isVerified: true,
+      avatar: null,
+      online: true,
+      spiritPoints: 720,
+      attendance: '98.5%',
+    },
+    {
+      id: 'mem-8g-rishi',
+      username: 'rishi_one9',
+      name: 'Y Rishikesh Reddy',
+      role: 'student',
+      roleLabel: 'Verified Student',
+      className: 'Class 8-G',
+      rollNo: '36',
+      admissionNo: 'DPS-2024-8G36',
+      house: 'Kaveri House',
+      isVerified: true,
+      avatar: null,
+      online: true,
+      spiritPoints: 640,
+      attendance: '97.2%',
+    },
+    {
+      id: 'mem-8g-rohan',
+      username: 'rohan728',
+      name: 'Rohan R',
+      role: 'student',
+      roleLabel: 'Verified Student',
+      className: 'Class 8-G',
+      rollNo: '28',
+      admissionNo: 'DPS-2024-8G28',
+      house: 'Ganges House',
+      isVerified: true,
+      avatar: null,
+      online: true,
+      spiritPoints: 510,
+      attendance: '96.8%',
+    },
+    {
+      id: 'mem-8g-chandan',
+      username: 'chandan',
+      name: 'Chandan',
+      role: 'student',
+      roleLabel: 'Verified Student',
+      className: 'Class 8-G',
+      rollNo: '12',
+      admissionNo: 'DPS-2024-8G12',
+      house: 'Narmada House',
+      isVerified: true,
+      avatar: null,
+      online: false,
+      spiritPoints: 480,
+      attendance: '95.4%',
+    },
+    {
+      id: 'mem-8g-ashwith',
+      username: 'ashwith',
+      name: 'K. Ashwith',
+      role: 'student',
+      roleLabel: 'Verified Student',
+      className: 'Class 8-G',
+      rollNo: '19',
+      admissionNo: 'DPS-2024-8G19',
+      house: 'Yamuna House',
+      isVerified: true,
+      avatar: null,
+      online: true,
+      spiritPoints: 530,
+      attendance: '97.0%',
+    },
+    {
+      id: 'mem-8g-sreekrishna',
+      username: 'sreekrishna',
+      name: 'G. Ananth Sree Krishna',
+      role: 'student',
+      roleLabel: 'Verified Student',
+      className: 'Class 8-G',
+      rollNo: '15',
+      admissionNo: 'DPS-2024-8G15',
+      house: 'Ganges House',
+      isVerified: true,
+      avatar: null,
+      online: false,
+      spiritPoints: 490,
+      attendance: '96.1%',
+    },
+    {
+      id: 'mem-8g-vignesh',
+      username: 'vignesh',
+      name: 'Vignesh',
+      role: 'student',
+      roleLabel: 'Verified Student',
+      className: 'Class 8-G',
+      rollNo: '41',
+      admissionNo: 'DPS-2024-8G41',
+      house: 'Kaveri House',
+      isVerified: true,
+      avatar: null,
+      online: true,
+      spiritPoints: 420,
+      attendance: '94.8%',
+    },
+    {
+      id: 'mem-8g-varshith',
+      username: 'varshithjella',
+      name: 'Jella Varshith',
+      role: 'student',
+      roleLabel: 'Verified Student',
+      className: 'Class 8-G',
+      rollNo: '21',
+      admissionNo: 'DPS-2024-8G21',
+      house: 'Yamuna House',
+      isVerified: true,
+      avatar: null,
+      online: true,
+      spiritPoints: 495,
+      attendance: '96.4%',
+    },
+  ],
+
+  // --------------------------------------------------------------------------
+  // CLASS 10-A ROSTER: ONLY Grade 10, Section A Students + Senior Teachers
+  // --------------------------------------------------------------------------
+  'channel-class-10a': [
+    {
+      id: 'mem-10a-principal',
+      username: 'madam_principal',
+      name: 'Dr. Pratibha Kohli',
+      role: 'principal',
+      roleLabel: 'Office of the Principal',
+      className: 'Official Staff',
+      admissionNo: 'DPS-STAFF-001',
+      house: 'Ex-Officio',
+      isVerified: true,
+      avatar: null,
+      online: true,
+      spiritPoints: 1250,
+      attendance: '100%',
+    },
+    {
+      id: 'mem-10a-teacher',
+      username: 'bhattacharya_maths',
+      name: 'R. K. Bhattacharya Sir',
+      role: 'faculty',
+      roleLabel: 'Senior Faculty (Class Teacher 10-A)',
+      className: 'Senior Staff',
+      admissionNo: 'DPS-FAC-2012',
+      house: 'Kaveri House',
+      isVerified: true,
+      avatar: null,
+      online: true,
+      spiritPoints: 950,
+      attendance: '100%',
+    },
+    {
+      id: 'mem-10a-ishaan',
+      username: 'kvsishaan',
+      name: 'Kvsishaan',
+      role: 'rep',
+      roleLabel: 'Class Representative (10-A)',
+      className: 'Class 10-A',
+      rollNo: '14',
+      admissionNo: 'DPS-2024-10A14',
+      house: 'Yamuna House',
+      isVerified: true,
+      avatar: null,
+      online: true,
+      spiritPoints: 730,
+      attendance: '98.9%',
+    },
+    {
+      id: 'mem-10a-meera',
+      username: 'meera_p10',
+      name: 'Meera Patel',
+      role: 'student',
+      roleLabel: 'Verified Student',
+      className: 'Class 10-A',
+      rollNo: '18',
+      admissionNo: 'DPS-2024-10A18',
+      house: 'Ganges House',
+      isVerified: true,
+      avatar: null,
+      online: true,
+      spiritPoints: 640,
+      attendance: '98.0%',
+    },
+    {
+      id: 'mem-10a-aditya',
+      username: 'aditya_r10',
+      name: 'Aditya Rao',
+      role: 'student',
+      roleLabel: 'Verified Student',
+      className: 'Class 10-A',
+      rollNo: '3',
+      admissionNo: 'DPS-2024-10A03',
+      house: 'Kaveri House',
+      isVerified: true,
+      avatar: null,
+      online: false,
+      spiritPoints: 560,
+      attendance: '96.2%',
+    },
+    {
+      id: 'mem-10a-sneha',
+      username: 'sneha_p10',
+      name: 'Sneha Pillai',
+      role: 'student',
+      roleLabel: 'Verified Student',
+      className: 'Class 10-A',
+      rollNo: '29',
+      admissionNo: 'DPS-2024-10A29',
+      house: 'Narmada House',
+      isVerified: true,
+      avatar: null,
+      online: true,
+      spiritPoints: 590,
+      attendance: '97.5%',
+    },
+    {
+      id: 'mem-10a-aryan',
+      username: 'aryan_c10',
+      name: 'Aryan Chopra',
+      role: 'student',
+      roleLabel: 'Verified Student',
+      className: 'Class 10-A',
+      rollNo: '7',
+      admissionNo: 'DPS-2024-10A07',
+      house: 'Yamuna House',
+      isVerified: true,
+      avatar: null,
+      online: true,
+      spiritPoints: 520,
+      attendance: '95.8%',
+    },
+  ],
+
+  // --------------------------------------------------------------------------
+  // SCIENCE CLUB ROSTER: Inter-Grade STEM Society Members
+  // --------------------------------------------------------------------------
+  'channel-science-club': [
+    {
+      id: 'mem-sc-teacher',
+      username: 'science_faculty',
+      name: 'Dr. A. P. J. Verma',
+      role: 'faculty',
+      roleLabel: 'Faculty Advisor (Science Society)',
+      className: 'Science Dept',
+      admissionNo: 'DPS-FAC-2015',
+      house: 'Narmada House',
+      isVerified: true,
+      avatar: null,
+      online: true,
+      spiritPoints: 920,
+      attendance: '100%',
+    },
+    {
+      id: 'mem-sc-shashwath',
+      username: 'shashwath71845',
+      name: 'Shashwath Salla',
+      role: 'rep',
+      roleLabel: 'Club President (Class 8-G)',
+      className: 'Class 8-G',
+      rollNo: '24',
+      admissionNo: 'DPS-2024-8G24',
+      house: 'Yamuna House',
+      isVerified: true,
+      avatar: null,
+      online: true,
+      spiritPoints: 720,
+      attendance: '98.5%',
+    },
+    {
+      id: 'mem-sc-sahana',
+      username: 'sahana_3009',
+      name: 'S. Sahana',
+      role: 'rep',
+      roleLabel: 'Club Vice-President (Class 9-B)',
+      className: 'Class 9-B',
+      rollNo: '31',
+      admissionNo: 'DPS-2024-9B31',
+      house: 'Ganges House',
+      isVerified: true,
+      avatar: null,
+      online: true,
+      spiritPoints: 710,
+      attendance: '98.5%',
+    },
+    {
+      id: 'mem-sc-kvsishaan',
+      username: 'kvsishaan',
+      name: 'Kvsishaan',
+      role: 'student',
+      roleLabel: 'Club Secretary (Class 10-A)',
+      className: 'Class 10-A',
+      rollNo: '14',
+      admissionNo: 'DPS-2024-10A14',
+      house: 'Yamuna House',
+      isVerified: true,
+      avatar: null,
+      online: true,
+      spiritPoints: 730,
+      attendance: '98.9%',
+    },
+  ],
+
+  // --------------------------------------------------------------------------
+  // PRINCIPAL DISPATCHES: School-Wide Central Announcements
+  // --------------------------------------------------------------------------
+  'channel-school-broadcast': [
+    {
+      id: 'mem-broad-principal',
+      username: 'madam_principal',
+      name: 'Dr. Pratibha Kohli',
+      role: 'principal',
+      roleLabel: 'School Principal & Head of Institution',
+      className: 'Office of Principal',
+      admissionNo: 'DPS-STAFF-001',
+      house: 'Ex-Officio',
+      isVerified: true,
+      avatar: null,
+      online: true,
+      spiritPoints: 1250,
+      attendance: '100%',
+    },
+    {
+      id: 'mem-broad-vice',
+      username: 'vice_principal',
+      name: 'Mrs. S. Chona',
+      role: 'faculty',
+      roleLabel: 'Vice-Principal (Academic Affairs)',
+      className: 'Administrative Office',
+      admissionNo: 'DPS-STAFF-002',
+      house: 'Ex-Officio',
+      isVerified: true,
+      avatar: null,
+      online: true,
+      spiritPoints: 1100,
+      attendance: '100%',
+    },
+  ],
+};
+
+// ============================================================================
+// STUDENT DIRECTORY FOR ADDING MEMBERS (Categorized by Strict Grade)
+// ============================================================================
+// STUDENT DIRECTORY FOR ADDING MEMBERS (Strict Grade AND Section Isolation)
+// ============================================================================
+const ALL_STUDENT_DIRECTORY = [
+  // Class 8, Section G Candidates (Strictly 8-G only)
+  { name: 'Shashwath Salla', username: 'shashwath71845', class: 'Class 8-G', grade: 'Class 8', section: 'G', house: 'Yamuna House', rollNo: '24' },
+  { name: 'Y Rishikesh Reddy', username: 'rishi_one9', class: 'Class 8-G', grade: 'Class 8', section: 'G', house: 'Kaveri House', rollNo: '36' },
+  { name: 'Rohan R', username: 'rohan728', class: 'Class 8-G', grade: 'Class 8', section: 'G', house: 'Ganges House', rollNo: '28' },
+  { name: 'Chandan', username: 'chandan', class: 'Class 8-G', grade: 'Class 8', section: 'G', house: 'Narmada House', rollNo: '12' },
+  { name: 'K. Ashwith', username: 'ashwith', class: 'Class 8-G', grade: 'Class 8', section: 'G', house: 'Yamuna House', rollNo: '19' },
+  { name: 'G. Ananth Sree Krishna', username: 'sreekrishna', class: 'Class 8-G', grade: 'Class 8', section: 'G', house: 'Ganges House', rollNo: '15' },
+  { name: 'Vignesh', username: 'vignesh', class: 'Class 8-G', grade: 'Class 8', section: 'G', house: 'Kaveri House', rollNo: '41' },
+  { name: 'Jella Varshith', username: 'varshithjella', class: 'Class 8-G', grade: 'Class 8', section: 'G', house: 'Yamuna House', rollNo: '21' },
+  { name: 'Pranav Nair', username: 'pranav_n8g', class: 'Class 8-G', grade: 'Class 8', section: 'G', house: 'Kaveri House', rollNo: '29' },
+  { name: 'Sai Teja Reddy', username: 'saiteja_8g', class: 'Class 8-G', grade: 'Class 8', section: 'G', house: 'Ganges House', rollNo: '31' },
+  { name: 'Anirudh Rao', username: 'anirudh_r8g', class: 'Class 8-G', grade: 'Class 8', section: 'G', house: 'Yamuna House', rollNo: '7' },
+  { name: 'B. Karthik', username: 'karthik_b8g', class: 'Class 8-G', grade: 'Class 8', section: 'G', house: 'Narmada House', rollNo: '9' },
+  { name: 'Niharika Reddy', username: 'niharika_8g', class: 'Class 8-G', grade: 'Class 8', section: 'G', house: 'Kaveri House', rollNo: '23' },
+  { name: 'Aditi Deshpande', username: 'aditi_d8g', class: 'Class 8-G', grade: 'Class 8', section: 'G', house: 'Ganges House', rollNo: '2' },
+  { name: 'Tanmay Kulkarni', username: 'tanmay_k8g', class: 'Class 8-G', grade: 'Class 8', section: 'G', house: 'Yamuna House', rollNo: '38' },
+  { name: 'Kavya Menon', username: 'kavya_m8g', class: 'Class 8-G', grade: 'Class 8', section: 'G', house: 'Kaveri House', rollNo: '17' },
+
+  // Class 9, Section B Candidates (Strictly 9-B only)
+  { name: 'S. Sahana', username: 'sahana_3009', class: 'Class 9-B', grade: 'Class 9', section: 'B', house: 'Ganges House', rollNo: '31' },
+  { name: 'Aarav Mehta', username: 'aarav_mehta9', class: 'Class 9-B', grade: 'Class 9', section: 'B', house: 'Yamuna House', rollNo: '1' },
+  { name: 'Ananya Sharma', username: 'ananya_sharma9', class: 'Class 9-B', grade: 'Class 9', section: 'B', house: 'Kaveri House', rollNo: '4' },
+  { name: 'Kabir Joshi', username: 'kabir_j9', class: 'Class 9-B', grade: 'Class 9', section: 'B', house: 'Narmada House', rollNo: '12' },
+  { name: 'Diya Kapoor', username: 'diya_k9', class: 'Class 9-B', grade: 'Class 9', section: 'B', house: 'Ganges House', rollNo: '15' },
+  { name: 'Ishaan Verma', username: 'ishaan_v9', class: 'Class 9-B', grade: 'Class 9', section: 'B', house: 'Yamuna House', rollNo: '19' },
+  { name: 'Priya Nair', username: 'priya_n9', class: 'Class 9-B', grade: 'Class 9', section: 'B', house: 'Kaveri House', rollNo: '24' },
+  { name: 'Rohan Sen', username: 'rohan_sen9b', class: 'Class 9-B', grade: 'Class 9', section: 'B', house: 'Narmada House', rollNo: '27' },
+  { name: 'Tanvi Reddy', username: 'tanvi_r9', class: 'Class 9-B', grade: 'Class 9', section: 'B', house: 'Ganges House', rollNo: '35' },
+  { name: 'Vivaan Gupta', username: 'vivaan_g9', class: 'Class 9-B', grade: 'Class 9', section: 'B', house: 'Yamuna House', rollNo: '39' },
+  { name: 'Mehak Kaur', username: 'mehak_k9', class: 'Class 9-B', grade: 'Class 9', section: 'B', house: 'Kaveri House', rollNo: '22' },
+  { name: 'Aditya Jain', username: 'aditya_j9', class: 'Class 9-B', grade: 'Class 9', section: 'B', house: 'Narmada House', rollNo: '3' },
+  { name: 'Devansh Rastogi', username: 'devansh_r9', class: 'Class 9-B', grade: 'Class 9', section: 'B', house: 'Yamuna House', rollNo: '8' },
+  { name: 'Samaira Seth', username: 'samaira_s9', class: 'Class 9-B', grade: 'Class 9', section: 'B', house: 'Ganges House', rollNo: '33' },
+  { name: 'Tarun Aggarwal', username: 'tarun_a9', class: 'Class 9-B', grade: 'Class 9', section: 'B', house: 'Kaveri House', rollNo: '37' },
+  { name: 'Ritika Roy', username: 'ritika_r9', class: 'Class 9-B', grade: 'Class 9', section: 'B', house: 'Yamuna House', rollNo: '26' },
+
+  // Class 10, Section A Candidates (Strictly 10-A only)
+  { name: 'Kvsishaan', username: 'kvsishaan', class: 'Class 10-A', grade: 'Class 10', section: 'A', house: 'Yamuna House', rollNo: '14' },
+  { name: 'Meera Patel', username: 'meera_p10', class: 'Class 10-A', grade: 'Class 10', section: 'A', house: 'Ganges House', rollNo: '18' },
+  { name: 'Aditya Rao', username: 'aditya_r10', class: 'Class 10-A', grade: 'Class 10', section: 'A', house: 'Kaveri House', rollNo: '3' },
+  { name: 'Sneha Pillai', username: 'sneha_p10', class: 'Class 10-A', grade: 'Class 10', section: 'A', house: 'Narmada House', rollNo: '29' },
+  { name: 'Aryan Chopra', username: 'aryan_c10', class: 'Class 10-A', grade: 'Class 10', section: 'A', house: 'Yamuna House', rollNo: '7' },
+  { name: 'Rahul Verma', username: 'rahul_v10', class: 'Class 10-A', grade: 'Class 10', section: 'A', house: 'Kaveri House', rollNo: '22' },
+  { name: 'Pooja Nair', username: 'pooja_n10', class: 'Class 10-A', grade: 'Class 10', section: 'A', house: 'Ganges House', rollNo: '20' },
+  { name: 'Tarun Joshi', username: 'tarun_j10', class: 'Class 10-A', grade: 'Class 10', section: 'A', house: 'Narmada House', rollNo: '32' },
+  { name: 'Anika Singhal', username: 'anika_s10', class: 'Class 10-A', grade: 'Class 10', section: 'A', house: 'Yamuna House', rollNo: '5' },
+  { name: 'Karan Malhotra', username: 'karan_m10', class: 'Class 10-A', grade: 'Class 10', section: 'A', house: 'Kaveri House', rollNo: '15' },
+
+  // Class 8, Section A Candidates (Strictly 8-A only - Never appears in 8-G)
+  { name: 'Ishanvi', username: 'ishanvi', class: 'Class 8-A', grade: 'Class 8', section: 'A', house: 'Yamuna House', rollNo: '18' },
+  { name: 'Dhruv Patil', username: 'dhruv_p8a', class: 'Class 8-A', grade: 'Class 8', section: 'A', house: 'Ganges House', rollNo: '11' },
+  { name: 'Sanya Verma', username: 'sanya_v8a', class: 'Class 8-A', grade: 'Class 8', section: 'A', house: 'Kaveri House', rollNo: '27' },
+
+  // Class 7, Section B Candidates (Strictly 7-B only)
+  { name: 'Neelam Mokshith Ram', username: 'mokshith7b', class: 'Class 7-B', grade: 'Class 7', section: 'B', house: 'Narmada House', rollNo: '22' },
+  { name: 'Aarav Deshmukh', username: 'aarav_d7', class: 'Class 7-B', grade: 'Class 7', section: 'B', house: 'Yamuna House', rollNo: '1' },
+  { name: 'Charvi Sharma', username: 'charvi_s7', class: 'Class 7-B', grade: 'Class 7', section: 'B', house: 'Ganges House', rollNo: '9' },
+  { name: 'Vihaan Kulkarni', username: 'vihaan_k7b', class: 'Class 7-B', grade: 'Class 7', section: 'B', house: 'Kaveri House', rollNo: '34' },
+];
+
+// ============================================================================
+// AUTHENTIC SEED MESSAGES ISOLATED PER CLASSROOM
+// ============================================================================
+const SEED_CLASS_MESSAGES: WhatsAppMessage[] = [
+  // Class 9-B Messages (ONLY 9-B students & teachers)
   {
-    id: 'mem-madam',
-    username: 'madam_principal',
-    name: 'Dr. Pratibha Kohli',
-    role: 'principal',
-    roleLabel: 'Office of the Principal',
-    className: 'Official Staff',
-    admissionNo: 'DPS-STAFF-001',
-    house: 'Ex-Officio',
-    isVerified: true,
-    avatar: null,
-    online: true,
-    spiritPoints: 1250,
-    attendance: '100%',
+    id: 'msg-9b-1',
+    channelId: 'channel-class-9b',
+    senderUsername: 'teacher_english',
+    senderName: 'Anita Sharma Madam',
+    senderRole: 'teacher',
+    senderClass: 'English Dept Head',
+    text: 'Good morning Class 9-B! Please ensure your Term 1 English Literature projects on "The Merchant of Venice" are ready for review this Wednesday.',
+    templateType: 'none',
+    timestamp: Date.now() - 3600000 * 4,
   },
   {
-    id: 'mem-anita',
-    username: 'teacher_english',
-    name: 'Anita Sharma Madam',
-    role: 'faculty',
-    roleLabel: 'Faculty (English Dept Head)',
-    className: 'Staff Faculty',
-    admissionNo: 'DPS-FAC-2018',
-    house: 'Ganges House',
-    isVerified: true,
-    avatar: null,
-    online: true,
-    spiritPoints: 890,
-    attendance: '99%',
+    id: 'msg-9b-2',
+    channelId: 'channel-class-9b',
+    senderUsername: 'sahana_3009',
+    senderName: 'S. Sahana',
+    senderRole: 'student',
+    senderClass: 'Class 9-B • Roll 31',
+    text: 'Good morning Anita Madam! I have compiled the class list for group presentations. All 10 groups have submitted their slide decks.',
+    templateType: 'none',
+    timestamp: Date.now() - 3600000 * 3,
   },
   {
-    id: 'mem-sahana',
-    username: 'sahana_3009',
-    name: 'S. Sahana',
-    role: 'rep',
-    roleLabel: 'Class Representative (9-B)',
-    className: 'Class 9-B',
-    rollNo: '31',
-    admissionNo: 'DPS-2024-9B31',
-    house: 'Ganges House',
-    isVerified: true,
-    avatar: null,
-    online: true,
-    spiritPoints: 710,
-    attendance: '98.5%',
+    id: 'msg-9b-3',
+    channelId: 'channel-class-9b',
+    senderUsername: 'aarav_mehta9',
+    senderName: 'Aarav Mehta',
+    senderRole: 'student',
+    senderClass: 'Class 9-B • Roll 1',
+    text: 'Madam, are we presenting in the AV room or our regular classroom 302?',
+    templateType: 'none',
+    timestamp: Date.now() - 3600000 * 2,
   },
   {
-    id: 'mem-shashwath',
-    username: 'shashwath71845',
-    name: 'Shashwath Salla',
-    role: 'rep',
-    roleLabel: 'Class Representative (8-G)',
-    className: 'Class 8-G',
-    rollNo: '24',
-    admissionNo: 'DPS-2024-8G24',
-    house: 'Yamuna House',
-    isVerified: true,
-    avatar: null,
-    online: true,
-    spiritPoints: 720,
-    attendance: '98.5%',
+    id: 'msg-9b-4',
+    channelId: 'channel-class-9b',
+    senderUsername: 'teacher_english',
+    senderName: 'Anita Sharma Madam',
+    senderRole: 'teacher',
+    senderClass: 'English Dept Head',
+    text: '> Replying to @Aarav Mehta: "Madam, are we presenting in the AV room or our regular classroom 302?"\n\nWe have booked the AV Room 1 for periods 4 and 5. Please bring your presentations on a pendrive or shared drive.',
+    templateType: 'none',
+    timestamp: Date.now() - 3600000 * 1,
   },
   {
-    id: 'mem-rishi',
-    username: 'rishi_one9',
-    name: 'Y Rishikesh Reddy',
-    role: 'student',
-    roleLabel: 'Verified Student',
-    className: 'Class 8-G',
-    rollNo: '36',
-    admissionNo: 'DPS-2024-8G36',
-    house: 'Kaveri House',
-    isVerified: true,
-    avatar: null,
-    online: true,
-    spiritPoints: 640,
-    attendance: '97.2%',
+    id: 'msg-9b-5',
+    channelId: 'channel-class-9b',
+    senderUsername: 'ananya_sharma9',
+    senderName: 'Ananya Sharma',
+    senderRole: 'student',
+    senderClass: 'Class 9-B • Roll 4',
+    text: 'Thank you Madam! Group 4 presentation is uploaded to study drive 👍',
+    templateType: 'none',
+    timestamp: Date.now() - 1800000,
+  },
+
+  // Class 8-G Messages (ONLY 8-G students & teachers)
+  {
+    id: 'msg-8g-1',
+    channelId: 'channel-class-8g',
+    senderUsername: 'teacher_english',
+    senderName: 'Anita Sharma Madam',
+    senderRole: 'teacher',
+    senderClass: 'Class Teacher 8-G',
+    text: 'Good morning Class 8-G! Science lab practical notebooks must be submitted by this Friday 3 PM at Lab 204.',
+    templateType: 'none',
+    timestamp: Date.now() - 3600000 * 5,
   },
   {
-    id: 'mem-rohan',
-    username: 'rohan728',
-    name: 'Rohan R',
-    role: 'student',
-    roleLabel: 'Verified Student',
-    className: 'Class 8-G',
-    rollNo: '28',
-    admissionNo: 'DPS-2024-8G28',
-    house: 'Ganges House',
-    isVerified: true,
-    avatar: null,
-    online: true,
-    spiritPoints: 510,
-    attendance: '96.8%',
+    id: 'msg-8g-2',
+    channelId: 'channel-class-8g',
+    senderUsername: 'shashwath71845',
+    senderName: 'Shashwath Salla',
+    senderRole: 'admin',
+    senderClass: 'Class 8-G • Roll 24',
+    text: 'Understood Madam, I will collect all notebooks from roll 1 to 41 during period 3 and deposit them at Lab 204.',
+    templateType: 'none',
+    timestamp: Date.now() - 3600000 * 3,
   },
   {
-    id: 'mem-chandan',
-    username: 'chandan',
-    name: 'Chandan',
-    role: 'student',
-    roleLabel: 'Verified Student',
-    className: 'Class 8-G',
-    rollNo: '12',
-    admissionNo: 'DPS-2024-8G12',
-    house: 'Narmada House',
-    isVerified: true,
-    avatar: null,
-    online: false,
-    spiritPoints: 480,
-    attendance: '95.4%',
+    id: 'msg-8g-3',
+    channelId: 'channel-class-8g',
+    senderUsername: 'rishi_one9',
+    senderName: 'Y Rishikesh Reddy',
+    senderRole: 'student',
+    senderClass: 'Class 8-G • Roll 36',
+    text: 'Shashwath, are diagrams compulsory for chapter 5 practicals?',
+    templateType: 'none',
+    timestamp: Date.now() - 3600000 * 2,
   },
   {
-    id: 'mem-ashwith',
-    username: 'ashwith',
-    name: 'K. Ashwith',
-    role: 'student',
-    roleLabel: 'Verified Student',
-    className: 'Class 8-G',
-    rollNo: '19',
-    admissionNo: 'DPS-2024-8G19',
-    house: 'Yamuna House',
-    isVerified: true,
-    avatar: null,
-    online: true,
-    spiritPoints: 530,
-    attendance: '97.0%',
+    id: 'msg-8g-4',
+    channelId: 'channel-class-8g',
+    senderUsername: 'shashwath71845',
+    senderName: 'Shashwath Salla',
+    senderRole: 'admin',
+    senderClass: 'Class 8-G • Roll 24',
+    text: '> Replying to @Y Rishikesh Reddy: "Shashwath, are diagrams compulsory for chapter 5 practicals?"\n\nYes Rishi, page 42 circuit diagram is compulsory with HB pencil.',
+    templateType: 'none',
+    timestamp: Date.now() - 3600000 * 1,
   },
   {
-    id: 'mem-sreekrishna',
-    username: 'sreekrishna',
-    name: 'G. Ananth Sree Krishna',
-    role: 'student',
-    roleLabel: 'Verified Student',
-    className: 'Class 8-G',
-    rollNo: '15',
-    admissionNo: 'DPS-2024-8G15',
-    house: 'Ganges House',
-    isVerified: true,
-    avatar: null,
-    online: false,
-    spiritPoints: 490,
-    attendance: '96.1%',
+    id: 'msg-8g-5',
+    channelId: 'channel-class-8g',
+    senderUsername: 'rohan728',
+    senderName: 'Rohan R',
+    senderRole: 'student',
+    senderClass: 'Class 8-G • Roll 28',
+    text: 'Completed mine! See you all in period 3.',
+    templateType: 'none',
+    timestamp: Date.now() - 1200000,
+  },
+
+  // Class 10-A Messages (ONLY 10-A students & teachers)
+  {
+    id: 'msg-10a-1',
+    channelId: 'channel-class-10a',
+    senderUsername: 'bhattacharya_maths',
+    senderName: 'R. K. Bhattacharya Sir',
+    senderRole: 'teacher',
+    senderClass: 'Senior Mathematics Faculty',
+    text: 'Class 10-A, Quadratic Equations board preparatory mock test is scheduled for next Tuesday.',
+    templateType: 'none',
+    timestamp: Date.now() - 3600000 * 4,
   },
   {
-    id: 'mem-vignesh',
-    username: 'vignesh',
-    name: 'Vignesh',
-    role: 'student',
-    roleLabel: 'Verified Student',
-    className: 'Class 8-G',
-    rollNo: '41',
-    admissionNo: 'DPS-2024-8G41',
-    house: 'Kaveri House',
-    isVerified: true,
-    avatar: null,
-    online: true,
-    spiritPoints: 420,
-    attendance: '94.8%',
+    id: 'msg-10a-2',
+    channelId: 'channel-class-10a',
+    senderUsername: 'kvsishaan',
+    senderName: 'Kvsishaan',
+    senderRole: 'student',
+    senderClass: 'Class 10-A • Roll 14',
+    text: 'Sir, will NCERT Exemplar problems be included in the test?',
+    templateType: 'none',
+    timestamp: Date.now() - 3600000 * 2,
   },
   {
-    id: 'mem-ishanvi',
-    username: 'ishanvi',
-    name: 'Ishanvi',
-    role: 'student',
-    roleLabel: 'Verified Student',
-    className: 'Class 8-A',
-    rollNo: '18',
-    admissionNo: 'DPS-2024-8A18',
-    house: 'Yamuna House',
-    isVerified: true,
-    avatar: null,
-    online: true,
-    spiritPoints: 560,
-    attendance: '98.0%',
+    id: 'msg-10a-3',
+    channelId: 'channel-class-10a',
+    senderUsername: 'bhattacharya_maths',
+    senderName: 'R. K. Bhattacharya Sir',
+    senderRole: 'teacher',
+    senderClass: 'Senior Mathematics Faculty',
+    text: '> Replying to @Kvsishaan: "Sir, will NCERT Exemplar problems be included in the test?"\n\nYes Kvsishaan, practice exercise 4.3 and 4.4 thoroughly along with 5-mark word problems.',
+    templateType: 'none',
+    timestamp: Date.now() - 3600000 * 1,
   },
+
+  // Principal Dispatches (Central School Announcements)
   {
-    id: 'mem-mokshith',
-    username: 'mokshith7b',
-    name: 'Neelam Mokshith Ram',
-    role: 'student',
-    roleLabel: 'Verified Student',
-    className: 'Class 7-B',
-    rollNo: '22',
-    admissionNo: 'DPS-2024-7B22',
-    house: 'Narmada House',
-    isVerified: true,
-    avatar: null,
-    online: false,
-    spiritPoints: 470,
-    attendance: '96.5%',
+    id: 'msg-broadcast-1',
+    channelId: 'channel-school-broadcast',
+    senderUsername: 'madam_principal',
+    senderName: 'Dr. Pratibha Kohli',
+    senderRole: 'admin',
+    senderClass: 'Office of the Principal',
+    text: 'CIRCULAR NO. 42 / 2026: Delhi Public School Term 1 Examination Date Sheet and Syllabus guidelines have been officially released. All students from Grades 5 to 12 must review their subject timetables.',
+    templateType: 'exam',
+    timestamp: Date.now() - 3600000 * 8,
   },
 ];
 
 // ============================================================================
-// APPLE MESSAGE BUBBLE COMPONENT (iMessage Styling, Zero Cut-Off, Full Trust)
+// APPLE MESSAGE BUBBLE COMPONENT
 // ============================================================================
 interface MessageBubbleProps {
   msg: WhatsAppMessage;
@@ -333,7 +958,7 @@ const MessageBubbleItem = memo(function MessageBubbleItem({
     msg.senderRole === 'admin' ||
     msg.senderUsername.toLowerCase() === 'madam_principal' ||
     msg.senderName.toLowerCase().includes('principal');
-  const isFaculty = msg.senderRole === 'teacher' || msg.senderUsername.toLowerCase().includes('teacher');
+  const isFaculty = msg.senderRole === 'teacher' || msg.senderUsername.toLowerCase().includes('teacher') || msg.senderUsername.includes('maths');
   const isSystem = msg.senderUsername === 'system';
 
   if (isSystem) {
@@ -348,7 +973,7 @@ const MessageBubbleItem = memo(function MessageBubbleItem({
 
   const senderColor = isPrincipal ? '#ea4335' : isFaculty ? '#f59e0b' : getSenderColor(msg.senderName);
 
-  // Quoted text parsing (if message is a reply)
+  // Quoted text parsing
   let quoteAuthor = '';
   let quoteSnippet = '';
   let mainBody = msg.text;
@@ -366,7 +991,6 @@ const MessageBubbleItem = memo(function MessageBubbleItem({
     }
   }
 
-  // Media inspection
   const isVideoPost = msg.mediaType === 'video' || mainBody.includes('Me in my prime');
   const isImagePost = msg.mediaType === 'image' || Boolean(msg.mediaUrl && !isVideoPost);
 
@@ -376,7 +1000,6 @@ const MessageBubbleItem = memo(function MessageBubbleItem({
         isSameSenderAsPrev ? 'mt-1' : 'mt-3.5'
       }`}
     >
-      {/* Sender Avatar on Left (Only for Incoming messages on first of cluster) */}
       {!isMe && (
         <div className="w-8 shrink-0">
           {!isSameSenderAsPrev ? (
@@ -406,9 +1029,7 @@ const MessageBubbleItem = memo(function MessageBubbleItem({
         </div>
       )}
 
-      {/* Bubble Container: Max Width Optimized for Zero Horizontal Cut-Off */}
       <div className="flex flex-col max-w-[86%] sm:max-w-[76%] md:max-w-[70%] group relative">
-        {/* Sender Name & Trust Header above bubble (Incoming only) */}
         {!isMe && !isSameSenderAsPrev && (
           <div className="mb-1 ml-1 flex items-center gap-1.5 text-xs flex-wrap">
             <button
@@ -444,7 +1065,6 @@ const MessageBubbleItem = memo(function MessageBubbleItem({
           </div>
         )}
 
-        {/* Principal Circular Banner */}
         {isPrincipal && !isSameSenderAsPrev && (
           <div className="mb-1.5 px-3 py-1.5 rounded-xl bg-red-500/10 border border-red-500/25 flex items-center gap-2 text-xs font-semibold text-red-600 dark:text-red-400 shadow-2xs">
             <Award size={14} className="shrink-0 text-red-500" />
@@ -452,7 +1072,6 @@ const MessageBubbleItem = memo(function MessageBubbleItem({
           </div>
         )}
 
-        {/* Apple iMessage Bubble */}
         <div
           onClick={() => setShowTapbacks((prev) => !prev)}
           className={`relative px-4 py-2.5 text-[15px] leading-relaxed break-words whitespace-pre-wrap [overflow-wrap:anywhere] word-break:break-word transition-all select-text cursor-pointer ${
@@ -466,7 +1085,6 @@ const MessageBubbleItem = memo(function MessageBubbleItem({
             fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", sans-serif',
           }}
         >
-          {/* Quoted Message Card */}
           {quoteAuthor && (
             <div
               className={`mb-2 p-2.5 rounded-[14px] text-xs border-l-[3.5px] text-left break-words [overflow-wrap:anywhere] ${
@@ -485,7 +1103,6 @@ const MessageBubbleItem = memo(function MessageBubbleItem({
             </div>
           )}
 
-          {/* Media: Video Card */}
           {isVideoPost && (
             <div className="mb-2 relative rounded-[16px] overflow-hidden bg-black/60 border border-white/10 group/video cursor-pointer">
               <div className="h-48 sm:h-56 w-full bg-linear-to-b from-stone-900 via-zinc-900 to-black flex items-center justify-center relative">
@@ -500,7 +1117,6 @@ const MessageBubbleItem = memo(function MessageBubbleItem({
             </div>
           )}
 
-          {/* Media: Image Card */}
           {isImagePost && msg.mediaUrl && (
             <div className="mb-2 rounded-[16px] overflow-hidden max-h-72 cursor-pointer shadow-xs">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -512,12 +1128,10 @@ const MessageBubbleItem = memo(function MessageBubbleItem({
             </div>
           )}
 
-          {/* Message Text Body */}
           <div className="leading-relaxed break-words whitespace-pre-wrap [overflow-wrap:anywhere] word-break:break-word">
             {mainBody}
           </div>
 
-          {/* Metadata Row: Timestamp & Status Checkmarks */}
           <div
             className={`flex items-center justify-end gap-1 mt-1 text-[10.5px] select-none ${
               isMe ? 'text-white/70' : 'text-zinc-500 dark:text-zinc-400'
@@ -533,7 +1147,6 @@ const MessageBubbleItem = memo(function MessageBubbleItem({
             {isMe && <CheckCheck size={13} className="text-white/90 ml-0.5" />}
           </div>
 
-          {/* Apple Tapback Bubble Reaction Pill */}
           {reactions.length > 0 && (
             <div
               className={`absolute -bottom-2.5 ${
@@ -562,7 +1175,6 @@ const MessageBubbleItem = memo(function MessageBubbleItem({
           )}
         </div>
 
-        {/* Apple 6-Tapback Bar */}
         {showTapbacks && (
           <div
             className={`absolute -top-11 z-30 flex items-center gap-2 px-3 py-1.5 rounded-full shadow-2xl backdrop-blur-2xl border ${
@@ -608,12 +1220,12 @@ const MessageBubbleItem = memo(function MessageBubbleItem({
 });
 
 // ============================================================================
-// MAIN GROUPS PAGE (Exact Reference Layout + Strict Section Isolation + 91 Sections Demo)
+// MAIN GROUPS PAGE COMPONENT
 // ============================================================================
 export default function GroupsPage() {
   const router = useRouter();
 
-  // Theme Detection (Apple Dark / Light)
+  // Theme Detection
   const [isDark, setIsDark] = useState<boolean>(true);
 
   useEffect(() => {
@@ -642,8 +1254,8 @@ export default function GroupsPage() {
   // Core State
   const [currentUser, setCurrentUser] = useState<Profile | null>(null);
   const [channels, setChannels] = useState<WhatsAppChannel[]>([]);
-  const [selectedChannelId, setSelectedChannelId] = useState<string>('channel-class-8g');
-  const [messages, setMessages] = useState<WhatsAppMessage[]>([]);
+  const [selectedChannelId, setSelectedChannelId] = useState<string>('channel-class-9b');
+  const [messages, setMessages] = useState<WhatsAppMessage[]>(SEED_CLASS_MESSAGES);
   const [groupInvites, setGroupInvites] = useState<GroupInvite[]>([]);
   const [messageText, setMessageText] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -656,15 +1268,17 @@ export default function GroupsPage() {
   const [studentGrade, setStudentGrade] = useState<string>('Class 9');
   const [studentSection, setStudentSection] = useState<string>('B');
 
-  // Teacher / Admin Mode Switcher
+  // Teacher / Admin Mode Switcher (defaults to teacher mode for reference match)
   const [clientViewMode, setClientViewMode] = useState<'teacher' | 'student'>('teacher');
+
+  // SECTION ROSTERS STATE (Strictly Isolated per Channel)
+  const [sectionRosters, setSectionRosters] = useState<Record<string, EnrolledMember[]>>(ROSTERS_BY_CHANNEL);
 
   // Modals & Sheets
   const [showGroupDetailsSheet, setShowGroupDetailsSheet] = useState(false);
   const [memberFilterTab, setMemberFilterTab] = useState<'all' | 'faculty' | 'reps' | 'students'>('all');
   const [memberSearchQuery, setMemberSearchQuery] = useState('');
   const [drawerActiveTab, setDrawerActiveTab] = useState<'members' | 'media' | 'settings'>('members');
-  const [classRoster, setClassRoster] = useState<EnrolledMember[]>(BASE_DPS_ROSTER);
   const [showAddMemberModal, setShowAddMemberModal] = useState(false);
   const [addMemberSearch, setAddMemberSearch] = useState('');
   const [inspectedMember, setInspectedMember] = useState<EnrolledMember | null>(null);
@@ -675,8 +1289,6 @@ export default function GroupsPage() {
 
   // 91 Sections Implementation Demo Sheet for Madam
   const [show91SectionsDemo, setShow91SectionsDemo] = useState(false);
-  const [demoSelectedGrade, setDemoSelectedGrade] = useState<string>('Class 9');
-  const [demoSelectedSection, setDemoSelectedSection] = useState<string>('B');
 
   // Assign Modal
   const [showAssignModal, setShowAssignModal] = useState(false);
@@ -816,7 +1428,6 @@ export default function GroupsPage() {
     const user = DataStore.getCurrentUser();
     setCurrentUser(user);
 
-    // Default to teacher mode to match reference screenshot
     const isTeacher =
       (user as any)?.role === 'teacher' ||
       user?.role === 'admin' ||
@@ -825,7 +1436,6 @@ export default function GroupsPage() {
       user?.username?.toLowerCase() === 'madam_principal';
     setClientViewMode(isTeacher ? 'teacher' : 'student');
 
-    // Auto-detect user grade if available
     const rawClass = (user as any)?.class || (user as any)?.classGrade || '';
     if (rawClass && String(rawClass).includes('9')) {
       setStudentGrade('Class 9');
@@ -849,17 +1459,83 @@ export default function GroupsPage() {
       const res = await fetch('/api/campus', { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
-        if (Array.isArray(data.whatsappChannels)) {
+        if (Array.isArray(data.whatsappChannels) && data.whatsappChannels.length > 0) {
           setChannels(data.whatsappChannels);
+        } else {
+          // Fallback channels matching 91 sections architecture
+          setChannels([
+            {
+              id: 'channel-class-9b',
+              name: 'Class 9-B Official Classroom 📘',
+              grade: 'Class 9',
+              section: 'B',
+              isLocked: false,
+              adminUsernames: ['madam_principal', 'teacher_english'],
+              enrolledUsernames: ['madam_principal', 'teacher_english', 'sahana_3009', 'aarav_mehta9'],
+              memberCount: 42,
+              lastMessage: 'Anita Sharma: Merchant of Venice review on Wednesday',
+              lastMessageTime: '06:54 AM',
+            },
+            {
+              id: 'channel-class-8g',
+              name: 'Class 8-G Official Classroom 📘',
+              grade: 'Class 8',
+              section: 'G',
+              isLocked: false,
+              adminUsernames: ['madam_principal', 'shashwath71845'],
+              enrolledUsernames: ['madam_principal', 'shashwath71845', 'rishi_one9', 'rohan728'],
+              memberCount: 39,
+              lastMessage: 'Shashwath Salla: Science lab notebooks collection period 3',
+              lastMessageTime: '01:03 PM',
+            },
+            {
+              id: 'channel-class-10a',
+              name: 'Class 10-A Official Classroom 🎓',
+              grade: 'Class 10',
+              section: 'A',
+              isLocked: false,
+              adminUsernames: ['madam_principal', 'bhattacharya_maths'],
+              enrolledUsernames: ['madam_principal', 'bhattacharya_maths', 'kvsishaan', 'meera_p10'],
+              memberCount: 44,
+              lastMessage: 'R. K. Bhattacharya: Quadratic equations practice exercise',
+              lastMessageTime: '06:54 AM',
+            },
+            {
+              id: 'channel-science-club',
+              name: 'DPS Ramanujan & Aryabhatta Science Club 🔬',
+              grade: 'Class 8-10',
+              section: 'Club',
+              isLocked: false,
+              adminUsernames: ['madam_principal', 'science_faculty'],
+              enrolledUsernames: ['shashwath71845', 'sahana_3009', 'kvsishaan'],
+              memberCount: 68,
+              lastMessage: 'Dr. Verma: Regional Science Fair registration open',
+              lastMessageTime: '06:54 AM',
+            },
+            {
+              id: 'channel-school-broadcast',
+              name: 'DPS Official Principal Dispatches 📢',
+              grade: 'All',
+              section: 'All',
+              isLocked: true,
+              adminUsernames: ['madam_principal'],
+              enrolledUsernames: [],
+              memberCount: 5500,
+              lastMessage: 'Dr. Pratibha Kohli: Term 1 examination schedule published',
+              lastMessageTime: '06:54 AM',
+            },
+          ]);
         }
-        if (Array.isArray(data.whatsappMessages)) {
-          setMessages(data.whatsappMessages);
-          if (data.whatsappMessages.length > 0) {
-            lastSyncTimestampRef.current = Math.max(
-              ...data.whatsappMessages.map((m: WhatsAppMessage) => m.timestamp)
-            );
-          }
+
+        if (Array.isArray(data.whatsappMessages) && data.whatsappMessages.length > 0) {
+          // Merge API messages with SEED_CLASS_MESSAGES
+          setMessages((prev) => {
+            const seedIds = new Set(prev.map((m) => m.id));
+            const newOnes = data.whatsappMessages.filter((m: WhatsAppMessage) => !seedIds.has(m.id));
+            return [...prev, ...newOnes];
+          });
         }
+
         if (Array.isArray(data.groupInvites)) {
           setGroupInvites(data.groupInvites);
         }
@@ -869,24 +1545,23 @@ export default function GroupsPage() {
     }
   };
 
-  // Scroll smoothly when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages.length, selectedChannelId]);
 
   // ==========================================================================
-  // STRICT CHANNEL FILTERING: REMOVE MULTIPLE GROUPS FOR STUDENTS
+  // STRICT CHANNEL FILTERING: STUDENTS SEE ONLY THEIR SECTION & DISPATCHES
   // ==========================================================================
   const isTeacherAdmin = clientViewMode === 'teacher';
 
   const visibleChannels = useMemo(() => {
     if (isTeacherAdmin) {
-      // Principal Madam sees all provisioned classrooms across the school
+      // Principal Madam sees all provisioned channels across the school
       return channels;
     }
 
     // STRICT STUDENT ISOLATION:
-    // A student in Class 9-B must ONLY see:
+    // A student in Class 9-B sees ONLY:
     // 1. Class 9-B Official Classroom 📘
     // 2. DPS Official Principal Dispatches 📢 (School broadcast)
     // 3. Extracurricular clubs
@@ -935,11 +1610,49 @@ export default function GroupsPage() {
         adminUsernames: ['madam_principal', 'teacher_english'],
         enrolledUsernames: ['madam_principal', 'teacher_english', 'sahana_3009'],
         memberCount: 42,
-        lastMessage: 'hi',
+        lastMessage: 'Anita Sharma: Merchant of Venice review on Wednesday',
         lastMessageTime: '06:54 AM',
       }
     );
   }, [visibleChannels, selectedChannelId]);
+
+  // Active Roster Strictly for the Selected Classroom
+  const activeClassRoster = useMemo(() => {
+    if (sectionRosters[activeChannel.id]) {
+      return sectionRosters[activeChannel.id];
+    }
+    // Fallback: Generate an authentic strictly partitioned roster for this grade & section
+    return [
+      {
+        id: `gen-p-${activeChannel.id}`,
+        username: 'madam_principal',
+        name: 'Dr. Pratibha Kohli',
+        role: 'principal' as const,
+        roleLabel: 'Office of the Principal',
+        className: 'Staff',
+        admissionNo: 'DPS-STAFF-001',
+        house: 'Ex-Officio',
+        isVerified: true,
+        online: true,
+        spiritPoints: 1250,
+        attendance: '100%',
+      },
+      {
+        id: `gen-t-${activeChannel.id}`,
+        username: 'teacher_english',
+        name: 'Anita Sharma Madam',
+        role: 'faculty' as const,
+        roleLabel: `Faculty (${activeChannel.grade}-${activeChannel.section})`,
+        className: 'Staff',
+        admissionNo: 'DPS-FAC-2018',
+        house: 'Ganges House',
+        isVerified: true,
+        online: true,
+        spiritPoints: 890,
+        attendance: '99%',
+      },
+    ];
+  }, [sectionRosters, activeChannel]);
 
   const channelMessages = useMemo(() => {
     return messages.filter((m) => m.channelId === activeChannel.id);
@@ -947,14 +1660,18 @@ export default function GroupsPage() {
 
   const canSendMessage = clientViewMode === 'teacher' || !activeChannel.isLocked;
 
-  // Header Subtitle
+  // Header Subtitle showing ONLY this classroom's students
   const channelSubtitle = useMemo(() => {
     if (activeChannel.id === 'channel-school-broadcast') {
       return '5,500 Enrolled Students & Faculty • Official Dispatches';
     }
-    const count = activeChannel.memberCount || 42;
-    return `${count} Verified Members • Tap for Classroom Info >`;
-  }, [activeChannel]);
+    const currentList = activeClassRoster;
+    const students = currentList.filter((m) => m.role === 'student' || m.role === 'rep');
+    const teacher = currentList.find((m) => m.role === 'faculty')?.name.split(' ')[0] || 'Anita';
+    const firstTwoStudents = students.slice(0, 2).map((m) => m.name.split(' ')[0]).join(', ');
+    const count = activeChannel.memberCount || Math.max(currentList.length, 38);
+    return `${activeChannel.grade}${activeChannel.section && activeChannel.section !== 'All' ? `-${activeChannel.section}` : ''} • ${teacher} Madam, ${firstTwoStudents} + ${Math.max(1, count - 3)} enrolled students`;
+  }, [activeChannel, activeClassRoster]);
 
   // Send Message Handler
   const handleSendMessage = async (e?: React.FormEvent) => {
@@ -969,12 +1686,27 @@ export default function GroupsPage() {
 
     setIsSending(true);
 
-    const senderUsername = currentUser?.username || (clientViewMode === 'teacher' ? 'madam_principal' : 'sahana_3009');
+    const is9B = activeChannel.id === 'channel-class-9b';
+    const is8G = activeChannel.id === 'channel-class-8g';
+
+    const senderUsername = currentUser?.username || (
+      clientViewMode === 'teacher'
+        ? 'madam_principal'
+        : is9B
+        ? 'sahana_3009'
+        : is8G
+        ? 'shashwath71845'
+        : 'student'
+    );
     const senderName = clientViewMode === 'teacher'
       ? 'Principal Madam (Office)'
-      : currentUser?.fullName || currentUser?.username || 'S. Sahana';
+      : is9B
+      ? 'S. Sahana'
+      : is8G
+      ? 'Shashwath Salla'
+      : (currentUser?.fullName || 'DPS Student');
     const senderRole = clientViewMode === 'teacher' ? 'admin' : (currentUser?.role || 'student');
-    const senderClass = clientViewMode === 'teacher' ? 'Office of Principal' : `${studentGrade}-${studentSection}`;
+    const senderClass = clientViewMode === 'teacher' ? 'Office of Principal' : `${activeChannel.grade}-${activeChannel.section}`;
 
     const optimisticId = `wmsg-opt-${Date.now()}`;
     const quotedText = replyingTo ? `> Replying to @${replyingTo.senderName}: "${replyingTo.text.slice(0, 180)}"\n\n` : '';
@@ -1149,10 +1881,11 @@ export default function GroupsPage() {
     setIsAssigning(false);
   };
 
-  // Add Classmate to Roster
-  const handleAddMemberToClass = (username: string, fullName: string, className: string) => {
-    if (classRoster.some((m) => m.username.toLowerCase() === username.toLowerCase())) {
-      setToastMessage(`@${username} is already enrolled in this classroom.`);
+  // Add Classmate to this Specific Classroom ONLY
+  const handleAddMemberToClass = (username: string, fullName: string, className: string, rollNo?: string, house?: string) => {
+    const currentList = sectionRosters[activeChannel.id] || [];
+    if (currentList.some((m) => m.username.toLowerCase() === username.toLowerCase())) {
+      setToastMessage(`@${username} is already enrolled in ${activeChannel.name}.`);
       return;
     }
 
@@ -1162,10 +1895,10 @@ export default function GroupsPage() {
       name: fullName,
       role: 'student',
       roleLabel: 'Verified Student',
-      className: className || `${studentGrade}-${studentSection}`,
-      rollNo: String(classRoster.length + 1),
-      admissionNo: `DPS-2024-${studentGrade.replace(/[^0-9]/g, '')}${studentSection}${classRoster.length + 1}`,
-      house: 'Yamuna House',
+      className: className || `${activeChannel.grade}-${activeChannel.section}`,
+      rollNo: rollNo || String(currentList.length + 1),
+      admissionNo: `DPS-2024-${activeChannel.grade.replace(/[^0-9]/g, '')}${activeChannel.section}${currentList.length + 1}`,
+      house: house || 'Yamuna House',
       isVerified: true,
       avatar: null,
       online: true,
@@ -1173,15 +1906,18 @@ export default function GroupsPage() {
       attendance: '98%',
     };
 
-    setClassRoster((prev) => [...prev, newMember]);
+    setSectionRosters((prev) => ({
+      ...prev,
+      [activeChannel.id]: [...(prev[activeChannel.id] || []), newMember],
+    }));
     setShowAddMemberModal(false);
-    setToastMessage(`Added ${fullName} (@${username}) to ${activeChannel.name}`);
+    setToastMessage(`Added ${fullName} to ${activeChannel.name}`);
   };
 
   // Open Profile Sheet
   const handleOpenProfileByUsername = (username: string) => {
     const cleanU = (username || '').toLowerCase().trim();
-    const found = classRoster.find((m) => m.username.toLowerCase().trim() === cleanU);
+    const found = activeClassRoster.find((m) => m.username.toLowerCase().trim() === cleanU);
     if (found) {
       setInspectedMember(found);
     } else {
@@ -1192,7 +1928,7 @@ export default function GroupsPage() {
         name: prof?.fullName || cleanU,
         role: (prof?.role === 'admin' ? 'principal' : (prof?.role as string) === 'teacher' ? 'faculty' : 'student') as any,
         roleLabel: prof?.role === 'admin' ? 'Principal & Admin' : 'Verified Student',
-        className: prof?.class ? `Class ${prof.class}` : `${studentGrade}-${studentSection}`,
+        className: prof?.class ? `Class ${prof.class}` : `${activeChannel.grade}-${activeChannel.section}`,
         admissionNo: `DPS-2024-${cleanU.slice(0, 6).toUpperCase()}`,
         house: 'Yamuna House',
         isVerified: true,
@@ -1204,9 +1940,9 @@ export default function GroupsPage() {
     }
   };
 
-  // Filtered Members for Drawer
+  // Filtered Members for Drawer (Strictly from THIS class roster)
   const filteredRoster = useMemo(() => {
-    return classRoster.filter((m) => {
+    return activeClassRoster.filter((m) => {
       if (memberFilterTab === 'faculty' && m.role !== 'faculty' && m.role !== 'principal') return false;
       if (memberFilterTab === 'reps' && m.role !== 'rep') return false;
       if (memberFilterTab === 'students' && m.role !== 'student' && m.role !== 'rep') return false;
@@ -1218,16 +1954,77 @@ export default function GroupsPage() {
         m.className.toLowerCase().includes(q)
       );
     });
-  }, [classRoster, memberFilterTab, memberSearchQuery]);
+  }, [activeClassRoster, memberFilterTab, memberSearchQuery]);
 
-  // Demo simulator trigger
+  // Candidates for "Add Classmate" STRICTLY FILTERED to this Class & Section!
+  const eligibleAddCandidates = useMemo(() => {
+    const channelGradeNum = activeChannel.grade.replace(/[^0-9]/g, '');
+    const channelSection = (activeChannel.section || '').toUpperCase().trim();
+    const isAcademicSection = Boolean(channelSection && channelSection !== 'ALL' && channelSection !== 'CLUB');
+    const currentEnrolledUsernames = new Set(activeClassRoster.map((m) => m.username.toLowerCase()));
+
+    // Pull registered students from DataStore as well
+    const dynamicStudents = DataStore.getProfiles()
+      .filter((p) => p.role !== 'admin' && p.class)
+      .map((p) => {
+        const sec = (p.section || 'A').toUpperCase();
+        return {
+          name: p.fullName || p.username,
+          username: p.username,
+          class: `Class ${p.class}-${sec}`,
+          grade: `Class ${p.class}`,
+          section: sec,
+          house: 'Yamuna House',
+          rollNo: p.admissionNumber?.replace(/[^0-9]/g, '').slice(-2) || '25',
+        };
+      });
+
+    const combinedDirectory = [...ALL_STUDENT_DIRECTORY];
+    const seenUsernames = new Set(combinedDirectory.map((c) => c.username.toLowerCase()));
+    for (const ds of dynamicStudents) {
+      if (!seenUsernames.has(ds.username.toLowerCase())) {
+        seenUsernames.add(ds.username.toLowerCase());
+        combinedDirectory.push(ds);
+      }
+    }
+
+    return combinedDirectory.filter((candidate) => {
+      const candGradeNum = (candidate.grade || candidate.class || '').replace(/[^0-9]/g, '');
+      const candSection = (
+        candidate.section ||
+        (candidate.class || '').match(/([A-Z])$/i)?.[1] ||
+        ''
+      ).toUpperCase().trim();
+
+      // 1. Strict Grade Match (e.g. Class 8 matches ONLY Class 8)
+      const matchesGrade = channelGradeNum ? candGradeNum === channelGradeNum : true;
+
+      // 2. Strict Section Match (e.g. Section G matches ONLY Section G)
+      const matchesSection = isAcademicSection ? candSection === channelSection : true;
+
+      // 3. Not already enrolled in this classroom
+      const notAlreadyIn = !currentEnrolledUsernames.has(candidate.username.toLowerCase());
+
+      // 4. Search query matching
+      const q = addMemberSearch.trim().toLowerCase();
+      const matchesSearch =
+        !q ||
+        candidate.name.toLowerCase().includes(q) ||
+        candidate.username.toLowerCase().includes(q) ||
+        (candidate.rollNo && candidate.rollNo.includes(q));
+
+      return matchesGrade && matchesSection && notAlreadyIn && matchesSearch;
+    });
+  }, [activeChannel, activeClassRoster, addMemberSearch]);
+
+  // Demo simulator triggers for Madam
   const handleSimulateClass9BStudent = () => {
     setClientViewMode('student');
     setStudentGrade('Class 9');
     setStudentSection('B');
     setSelectedChannelId('channel-class-9b');
     setShow91SectionsDemo(false);
-    setToastMessage('Switched to Class 9-B Student View • Only 9-B & Principal Dispatches visible!');
+    setToastMessage('Switched to Class 9-B Student View • Notice: Only 9-B & Dispatches visible!');
   };
 
   const handleSimulateClass8GStudent = () => {
@@ -1236,7 +2033,7 @@ export default function GroupsPage() {
     setStudentSection('G');
     setSelectedChannelId('channel-class-8g');
     setShow91SectionsDemo(false);
-    setToastMessage('Switched to Class 8-G Student View • Only 8-G & Principal Dispatches visible!');
+    setToastMessage('Switched to Class 8-G Student View • Notice: Only 8-G & Dispatches visible!');
   };
 
   return (
@@ -1273,7 +2070,6 @@ export default function GroupsPage() {
         {/* TOP PROFILE CARD (Exact Reference Layout) */}
         <div className="rounded-3xl bg-white/90 dark:bg-[#1C1C1E]/90 shadow-sm border border-white/80 dark:border-white/10 p-3.5 sm:p-4 mb-3 flex items-center justify-between">
           <div className="flex items-center gap-3 min-w-0">
-            {/* Circle Avatar (Red "M" for Principal Madam or Student Initials) */}
             <div
               className={`w-11 h-11 rounded-full flex items-center justify-center font-bold text-white text-base shadow-xs shrink-0 ${
                 clientViewMode === 'teacher' ? 'bg-[#ea4335]' : 'bg-[#007AFF]'
@@ -1284,7 +2080,7 @@ export default function GroupsPage() {
 
             <div className="min-w-0">
               <div className="text-[13.5px] font-bold truncate leading-tight text-zinc-900 dark:text-zinc-100 flex items-center gap-1">
-                <span>{clientViewMode === 'teacher' ? 'Principal Madam (Office)' : (currentUser?.fullName || 'S. Sahana')}</span>
+                <span>{clientViewMode === 'teacher' ? 'Principal Madam (Office)' : (studentGrade === 'Class 9' ? 'S. Sahana' : 'Shashwath Salla')}</span>
               </div>
               <div className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate leading-tight mt-0.5">
                 {clientViewMode === 'teacher' ? 'Faculty Admin' : `${studentGrade}-${studentSection} • Verified Student`}
@@ -1336,7 +2132,7 @@ export default function GroupsPage() {
           </div>
         </div>
 
-        {/* MADAM PRINCIPAL 91 SECTIONS ROLLOUT BANNER (Demo Feature for Madam) */}
+        {/* MADAM PRINCIPAL 91 SECTIONS ROLLOUT BANNER */}
         {clientViewMode === 'teacher' ? (
           <button
             type="button"
@@ -1355,7 +2151,7 @@ export default function GroupsPage() {
             </span>
           </button>
         ) : (
-          /* STUDENT SECTION TEST SWITCHER (Proves strict section filtering to user) */
+          /* STUDENT SECTION TEST SWITCHER */
           <div className="mb-3 px-3.5 py-2 rounded-2xl bg-white/90 dark:bg-[#1C1C1E]/90 border border-white/80 dark:border-white/10 shadow-2xs flex items-center justify-between text-xs">
             <div className="text-zinc-500 font-medium">Viewing Enrolled Section:</div>
             <select
@@ -1366,7 +2162,7 @@ export default function GroupsPage() {
                 setStudentSection(s);
                 const targetChannel = channels.find((c) => c.grade === g && c.section === s);
                 if (targetChannel) setSelectedChannelId(targetChannel.id);
-                setToastMessage(`Enrolled filter set to ${g}-${s} • Showing ONLY this section!`);
+                setToastMessage(`Showing ONLY ${g}-${s} classroom and student roster!`);
               }}
               className="bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800/40 rounded-xl px-2.5 py-1 text-xs text-[#7E22CE] dark:text-purple-300 font-bold focus:outline-none cursor-pointer"
             >
@@ -1378,7 +2174,7 @@ export default function GroupsPage() {
           </div>
         )}
 
-        {/* CAPSULE SEARCH BAR (Exact Reference Styling) */}
+        {/* CAPSULE SEARCH BAR */}
         <div className="rounded-full bg-white/80 dark:bg-[#1C1C1E]/80 shadow-2xs border border-black/5 dark:border-white/10 px-4 py-2.5 mb-3 flex items-center">
           <Search size={15} className="text-zinc-400 mr-2.5 shrink-0" />
           <input
@@ -1410,7 +2206,6 @@ export default function GroupsPage() {
               const is8G = channel.id.includes('8g');
               const isClub = channel.id.includes('club') || channel.section === 'Club';
 
-              // Exact match color roles from user screenshot
               const cardIconBg = isBroadcast
                 ? '#E63946' // Red with Megaphone
                 : is8G
@@ -1437,7 +2232,6 @@ export default function GroupsPage() {
                   }`}
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    {/* Exact circular icon on left */}
                     <div
                       className="w-11 h-11 rounded-full flex items-center justify-center font-bold text-white shrink-0 shadow-xs"
                       style={{ backgroundColor: cardIconBg }}
@@ -1450,12 +2244,11 @@ export default function GroupsPage() {
                         {channel.name}
                       </h4>
                       <p className="text-xs truncate text-zinc-500 dark:text-zinc-400 mt-1">
-                        {channel.lastMessage || 'hi hello'}
+                        {channel.lastMessage || (is9B ? 'Anita Sharma: Merchant of Venice review on Wednesday' : 'hi hello')}
                       </p>
                     </div>
                   </div>
 
-                  {/* Timestamp & unread/lock indicators */}
                   <div className="flex flex-col items-end gap-1 shrink-0 ml-2">
                     <span className="text-[11px] text-zinc-400 font-medium">
                       {channel.lastMessageTime || (is8G ? '01:03 PM' : '06:54 AM')}
@@ -1494,7 +2287,7 @@ export default function GroupsPage() {
               <span>Chats</span>
             </button>
 
-            {/* Tap group icon or name to open Apple Group Details Sheet */}
+            {/* Tap group icon or name to open Group Details Sheet */}
             <div
               onClick={() => setShowGroupDetailsSheet(true)}
               className="flex items-center gap-2.5 min-w-0 cursor-pointer hover:opacity-85 transition-opacity"
@@ -1579,7 +2372,9 @@ export default function GroupsPage() {
               <Pin size={14} className="shrink-0 text-amber-500" />
               <span className="font-semibold shrink-0">Class Notice:</span>
               <span className="truncate">
-                Science Project submissions & Practical Notebooks due this Friday by 3:00 PM (Lab 204).
+                {activeChannel.id === 'channel-class-9b'
+                  ? 'English Literature Projects on "The Merchant of Venice" due Wednesday in AV Room 1.'
+                  : 'Science Project submissions & Practical Notebooks due this Friday by 3:00 PM (Lab 204).'}
               </span>
             </div>
             <button
@@ -1597,7 +2392,7 @@ export default function GroupsPage() {
         <div className="flex justify-center pt-2 select-none">
           <div className="px-3.5 py-1 rounded-full text-[10.5px] font-medium bg-black/5 dark:bg-white/10 text-zinc-500 dark:text-zinc-400 flex items-center gap-1.5 border border-black/5 dark:border-white/5 shadow-2xs">
             <ShieldCheck size={12} className="text-[#007AFF]" />
-            <span>DPS Intranet Verified Classroom • 100% Enrolled Students & Faculty Only</span>
+            <span>DPS Intranet Verified Classroom • {activeChannel.grade}-{activeChannel.section} Enrolled Members Only</span>
           </div>
         </div>
 
@@ -1713,7 +2508,6 @@ export default function GroupsPage() {
             </div>
           )}
 
-          {/* Input Row */}
           <div className="min-h-[64px] px-3 md:px-5 py-2.5 flex items-center gap-2">
             {!canSendMessage ? (
               <div className="w-full py-2.5 px-4 rounded-xl bg-black/5 dark:bg-white/10 flex items-center justify-between text-xs font-medium gap-3">
@@ -1790,7 +2584,7 @@ export default function GroupsPage() {
       </main>
 
       {/* ==================================================================== */}
-      {/* MODAL: STUDENT GROUP CREATION NOTICE (Explains creating in Chats)   */}
+      {/* MODAL: STUDENT GROUP CREATION NOTICE                                 */}
       {/* ==================================================================== */}
       {showStudentCreateNotice && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn">
@@ -1838,7 +2632,6 @@ export default function GroupsPage() {
       {show91SectionsDemo && (
         <div className="fixed inset-0 z-50 bg-black/65 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 animate-fadeIn">
           <div className="w-full max-w-2xl max-h-[90vh] rounded-[30px] overflow-hidden shadow-2xl bg-white dark:bg-[#1C1C1E] border border-black/10 dark:border-white/15 flex flex-col animate-scale-in">
-            {/* Header */}
             <div className="p-4 sm:p-5 bg-gradient-to-r from-purple-700 via-indigo-700 to-[#007AFF] text-white flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2.5">
                 <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-xs">
@@ -1858,9 +2651,7 @@ export default function GroupsPage() {
               </button>
             </div>
 
-            {/* Body */}
             <div className="p-5 overflow-y-auto space-y-5 flex-1">
-              {/* Executive Metrics Grid */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                 <div className="p-3 rounded-2xl bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/40 text-center">
                   <div className="text-xl font-black text-purple-600 dark:text-purple-400">91</div>
@@ -1883,7 +2674,6 @@ export default function GroupsPage() {
                 </div>
               </div>
 
-              {/* Live Section Simulator for Madam */}
               <div className="p-4 rounded-2xl bg-black/5 dark:bg-white/5 border border-black/5 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-zinc-700 dark:text-zinc-200 flex items-center gap-1.5">
@@ -1896,7 +2686,7 @@ export default function GroupsPage() {
                 </div>
 
                 <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
-                  Demonstrate to Madam Principal that a student in <strong>Class 9-B</strong> sees only Class 9-B, while a student in <strong>Class 8-G</strong> sees only Class 8-G:
+                  Demonstrate to Madam Principal that a student in <strong>Class 9-B</strong> sees only Class 9-B students & messages, while a student in <strong>Class 8-G</strong> sees only Class 8-G:
                 </p>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
@@ -1920,7 +2710,6 @@ export default function GroupsPage() {
                 </div>
               </div>
 
-              {/* 91 Sections Matrix Breakdown */}
               <div className="space-y-2">
                 <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-400">
                   DPS Hyderabad & R.K. Puram Grade Matrix Breakdown
@@ -1976,7 +2765,6 @@ export default function GroupsPage() {
                 </div>
               </div>
 
-              {/* 4 Technical Pillars of School Implementation */}
               <div className="space-y-2">
                 <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-400">
                   How This Is Implemented Across the School (4 Core Pillars)
@@ -2013,7 +2801,6 @@ export default function GroupsPage() {
                 </div>
               </div>
 
-              {/* Instant 1-Click Provision Button */}
               <button
                 type="button"
                 onClick={() => {
@@ -2219,7 +3006,7 @@ export default function GroupsPage() {
       )}
 
       {/* ==================================================================== */}
-      {/* APPLE SLIDING GROUP DETAILS SHEET                                    */}
+      {/* APPLE SLIDING GROUP DETAILS SHEET (Strictly THIS Class's Roster)      */}
       {/* ==================================================================== */}
       {showGroupDetailsSheet && (
         <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex justify-end animate-fadeIn">
@@ -2254,7 +3041,7 @@ export default function GroupsPage() {
               </h3>
 
               <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-                Official DPS Academic Classroom • Grade {activeChannel.grade}
+                Official DPS Academic Classroom • {activeChannel.grade} Section {activeChannel.section}
               </p>
 
               <div className="grid grid-cols-4 gap-2.5 mt-4 w-full">
@@ -2307,7 +3094,7 @@ export default function GroupsPage() {
                       : 'text-zinc-500 hover:text-zinc-700'
                   }`}
                 >
-                  Members ({classRoster.length})
+                  Members ({activeClassRoster.length})
                 </button>
                 <button
                   type="button"
@@ -2342,7 +3129,7 @@ export default function GroupsPage() {
                       <Search size={14} className="text-zinc-400 mr-2 shrink-0" />
                       <input
                         type="text"
-                        placeholder="Search enrolled members"
+                        placeholder={`Search ${activeChannel.grade}-${activeChannel.section} members`}
                         value={memberSearchQuery}
                         onChange={(e) => setMemberSearchQuery(e.target.value)}
                         className="w-full text-xs bg-transparent focus:outline-none placeholder:text-zinc-400"
@@ -2367,6 +3154,7 @@ export default function GroupsPage() {
                     </div>
                   </div>
 
+                  {/* STRICT MEMBERS ROSTER: ONLY STUDENTS OF THIS EXACT CLASS & SECTION */}
                   <div className="space-y-1.5">
                     {filteredRoster.map((member) => (
                       <div
@@ -2395,7 +3183,7 @@ export default function GroupsPage() {
                               <CheckCircle2 size={12} className="text-[#007AFF] shrink-0" />
                             </div>
                             <div className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate leading-tight mt-0.5">
-                              @{member.username} • {member.className}
+                              @{member.username} • {member.className} {member.rollNo ? `(Roll #${member.rollNo})` : ''}
                             </div>
                           </div>
                         </div>
@@ -2455,9 +3243,9 @@ export default function GroupsPage() {
                     <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-2">Classroom Documents</h4>
                     <div className="space-y-2">
                       {[
-                        { title: 'Term 1 Exam Syllabus 2026.pdf', size: '1.4 MB', date: 'Yesterday' },
-                        { title: 'Science Project Guidelines.pdf', size: '2.1 MB', date: '3 days ago' },
-                        { title: 'Maths Chapter 4 Practice Sheet.pdf', size: '840 KB', date: 'Last week' },
+                        { title: `${activeChannel.grade} Term 1 Exam Syllabus.pdf`, size: '1.4 MB', date: 'Yesterday' },
+                        { title: `${activeChannel.grade} Project Guidelines.pdf`, size: '2.1 MB', date: '3 days ago' },
+                        { title: 'Mathematics Practice Worksheet.pdf', size: '840 KB', date: 'Last week' },
                       ].map((doc, i) => (
                         <div key={i} className="p-3 rounded-xl bg-black/5 dark:bg-white/5 flex items-center justify-between gap-3">
                           <div className="flex items-center gap-2.5 min-w-0">
@@ -2585,7 +3373,7 @@ export default function GroupsPage() {
               <div className="grid grid-cols-2 gap-2 w-full mt-4 text-left">
                 <div className="p-2.5 rounded-xl bg-black/5 dark:bg-white/5">
                   <div className="text-[10px] text-zinc-400 uppercase font-semibold">Class & Roll</div>
-                  <div className="text-xs font-bold mt-0.5">{inspectedMember.className} {inspectedMember.rollNo ? `(#${inspectedMember.rollNo})` : ''}</div>
+                  <div className="text-xs font-bold mt-0.5">{inspectedMember.className} {inspectedMember.rollNo ? `(Roll #${inspectedMember.rollNo})` : ''}</div>
                 </div>
 
                 <div className="p-2.5 rounded-xl bg-black/5 dark:bg-white/5">
@@ -2624,15 +3412,26 @@ export default function GroupsPage() {
       )}
 
       {/* ==================================================================== */}
-      {/* MODAL: ADD CLASSMATE MODAL                                           */}
+      {/* MODAL: ADD CLASSMATE (STRICT CLASS & SECTION CANDIDATES ONLY)       */}
       {/* ==================================================================== */}
       {showAddMemberModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn">
           <div className="w-full max-w-md rounded-[28px] overflow-hidden shadow-2xl bg-white dark:bg-[#1C1C1E] border border-black/10 dark:border-white/15 flex flex-col animate-scale-in">
             <div className="p-4 border-b border-black/[0.08] dark:border-white/[0.08] flex items-center justify-between">
               <div>
-                <h3 className="text-sm font-bold">Add Classmate to Classroom</h3>
-                <p className="text-[11px] text-zinc-400">Search officially enrolled DPS students</p>
+                <h3 className="text-sm font-bold flex items-center gap-1.5">
+                  <span>Add Classmate to</span>
+                  <span className="text-[#007AFF]">{activeChannel.name}</span>
+                </h3>
+                <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium mt-0.5 flex items-center gap-1">
+                  <CheckCircle2 size={12} className="shrink-0" />
+                  <span>
+                    Strictly showing verified candidates from {activeChannel.grade}
+                    {activeChannel.section && activeChannel.section !== 'All' && activeChannel.section !== 'Club'
+                      ? `-${activeChannel.section}`
+                      : ''} (No cross-section leakage)
+                  </span>
+                </p>
               </div>
               <button
                 type="button"
@@ -2648,60 +3447,57 @@ export default function GroupsPage() {
                 <Search size={14} className="text-zinc-400 mr-2 shrink-0" />
                 <input
                   type="text"
-                  placeholder="Search student name or roll..."
+                  placeholder={`Search ${activeChannel.grade}${activeChannel.section && activeChannel.section !== 'All' ? `-${activeChannel.section}` : ''} students by name or roll...`}
                   value={addMemberSearch}
                   onChange={(e) => setAddMemberSearch(e.target.value)}
                   className="w-full text-xs bg-transparent focus:outline-none placeholder:text-zinc-400"
                 />
               </div>
 
-              <div className="max-h-60 overflow-y-auto space-y-1.5 divide-y divide-black/[0.04] dark:divide-white/[0.04]">
-                {[
-                  { name: 'S. Sahana', username: 'sahana_3009', class: 'Class 9-B' },
-                  { name: 'Shashwath Salla', username: 'shashwath71845', class: 'Class 8-G' },
-                  { name: 'Ishanvi', username: 'ishanvi', class: 'Class 8-A' },
-                  { name: 'Neelam Mokshith Ram', username: 'mokshith7b', class: 'Class 7-B' },
-                  { name: 'K. Ashwith', username: 'ashwith', class: 'Class 8-G' },
-                  { name: 'Rohan R', username: 'rohan728', class: 'Class 8-G' },
-                  { name: 'Chandan', username: 'chandan', class: 'Class 8-G' },
-                ]
-                  .filter((st) =>
-                    !addMemberSearch.trim() ||
-                    st.name.toLowerCase().includes(addMemberSearch.toLowerCase()) ||
-                    st.username.toLowerCase().includes(addMemberSearch.toLowerCase())
-                  )
-                  .map((candidate) => {
-                    const alreadyIn = classRoster.some((m) => m.username.toLowerCase() === candidate.username.toLowerCase());
-                    return (
-                      <div key={candidate.username} className="pt-1.5 flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <div
-                            className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-white text-xs shrink-0 shadow-xs"
-                            style={{ backgroundColor: getSenderColor(candidate.name) }}
-                          >
-                            {candidate.name.slice(0, 1)}
+              <div className="max-h-64 overflow-y-auto space-y-2 divide-y divide-black/[0.04] dark:divide-white/[0.04]">
+                {eligibleAddCandidates.length === 0 ? (
+                  <div className="p-6 text-center text-xs text-zinc-400 space-y-1">
+                    <p className="font-semibold text-zinc-600 dark:text-zinc-300">
+                      All verified candidates for {activeChannel.grade}
+                      {activeChannel.section && activeChannel.section !== 'All' ? `-${activeChannel.section}` : ''} are enrolled!
+                    </p>
+                    <p className="text-[11px] text-zinc-400">
+                      Zero students from other classes or sections are permitted in this room.
+                    </p>
+                  </div>
+                ) : (
+                  eligibleAddCandidates.map((candidate) => (
+                    <div key={candidate.username} className="pt-2 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div
+                          className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-white text-xs shrink-0 shadow-xs"
+                          style={{ backgroundColor: getSenderColor(candidate.name) }}
+                        >
+                          {candidate.name.slice(0, 1).toUpperCase()}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-semibold truncate">{candidate.name}</span>
+                            <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                              {candidate.class}
+                            </span>
                           </div>
-                          <div className="min-w-0">
-                            <div className="text-xs font-semibold truncate">{candidate.name}</div>
-                            <div className="text-[11px] text-zinc-400 truncate">@{candidate.username} • {candidate.class}</div>
+                          <div className="text-[11px] text-zinc-400 truncate mt-0.5">
+                            @{candidate.username} • Roll #{candidate.rollNo} • {candidate.house}
                           </div>
                         </div>
-
-                        <button
-                          type="button"
-                          disabled={alreadyIn}
-                          onClick={() => handleAddMemberToClass(candidate.username, candidate.name, candidate.class)}
-                          className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors shrink-0 cursor-pointer ${
-                            alreadyIn
-                              ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-400 cursor-not-allowed'
-                              : 'bg-[#007AFF] text-white hover:bg-[#0066d6]'
-                          }`}
-                        >
-                          {alreadyIn ? 'Enrolled' : 'Add'}
-                        </button>
                       </div>
-                    );
-                  })}
+
+                      <button
+                        type="button"
+                        onClick={() => handleAddMemberToClass(candidate.username, candidate.name, candidate.class, candidate.rollNo, candidate.house)}
+                        className="px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all shrink-0 cursor-pointer bg-[#007AFF] hover:bg-[#0066d6] text-white shadow-xs hover:shadow-sm"
+                      >
+                        Enroll
+                      </button>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </div>
