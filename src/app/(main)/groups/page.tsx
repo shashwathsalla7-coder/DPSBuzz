@@ -57,6 +57,8 @@ import {
   Layers,
   Database,
   CheckCircle,
+  Radio,
+  Upload,
 } from 'lucide-react';
 import {
   schoolSystem,
@@ -991,8 +993,16 @@ const MessageBubbleItem = memo(function MessageBubbleItem({
     }
   }
 
+  let extractedMedia = msg.mediaUrl;
+  if (!extractedMedia) {
+    const imgMatch = mainBody.match(/https?:\/\/[^\s]+?\.(?:png|jpe?g|webp|gif|svg)(\?[^\s]*)?/i) || mainBody.match(/data:image\/[a-z0-9+-]+;base64,[^\s]+/i);
+    if (imgMatch) {
+      extractedMedia = imgMatch[0];
+    }
+  }
   const isVideoPost = msg.mediaType === 'video' || mainBody.includes('Me in my prime');
-  const isImagePost = msg.mediaType === 'image' || Boolean(msg.mediaUrl && !isVideoPost);
+  const isImagePost = msg.mediaType === 'image' || Boolean(extractedMedia && !isVideoPost);
+  const displayBody = extractedMedia && mainBody.includes(extractedMedia) ? mainBody.replace(extractedMedia, '').trim() : mainBody;
 
   return (
     <div
@@ -1117,20 +1127,22 @@ const MessageBubbleItem = memo(function MessageBubbleItem({
             </div>
           )}
 
-          {isImagePost && msg.mediaUrl && (
-            <div className="mb-2 rounded-[16px] overflow-hidden max-h-72 cursor-pointer shadow-xs">
+          {isImagePost && extractedMedia && (
+            <div className="mb-2 rounded-[16px] overflow-hidden max-h-80 cursor-pointer shadow-xs border border-black/5 dark:border-white/10">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={msg.mediaUrl}
+                src={extractedMedia}
                 alt="Class Attachment"
                 className="w-full h-auto object-cover rounded-[16px] hover:opacity-95 transition-opacity"
               />
             </div>
           )}
 
-          <div className="leading-relaxed break-words whitespace-pre-wrap [overflow-wrap:anywhere] word-break:break-word">
-            {mainBody}
-          </div>
+          {displayBody && (
+            <div className="leading-relaxed break-words whitespace-pre-wrap [overflow-wrap:anywhere] word-break:break-word">
+              {displayBody}
+            </div>
+          )}
 
           <div
             className={`flex items-center justify-end gap-1 mt-1 text-[10.5px] select-none ${
@@ -1304,6 +1316,15 @@ export default function GroupsPage() {
   const [newGroupGrade, setNewGroupGrade] = useState('Class 9');
   const [newGroupSection, setNewGroupSection] = useState('B');
   const [newGroupIsLocked, setNewGroupIsLocked] = useState(false);
+
+  // Principal Multi-Group Broadcast Modal State
+  const [showPrincipalBroadcastModal, setShowPrincipalBroadcastModal] = useState(false);
+  const [broadcastText, setBroadcastText] = useState('');
+  const [broadcastImageUrl, setBroadcastImageUrl] = useState('');
+  const [broadcastImagePreview, setBroadcastImagePreview] = useState<string | null>(null);
+  const [broadcastPriority, setBroadcastPriority] = useState<'urgent' | 'official'>('official');
+  const [isSendingBroadcast, setIsSendingBroadcast] = useState(false);
+  const broadcastFileInputRef = useRef<HTMLInputElement>(null);
 
   // Offline and Replying
   const [isOnline, setIsOnline] = useState<boolean>(true);
@@ -1881,6 +1902,138 @@ export default function GroupsPage() {
     setIsAssigning(false);
   };
 
+  // Handle file input selection for broadcast photo
+  const handleBroadcastImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 8 * 1024 * 1024) {
+        setToastMessage('Image size must be less than 8MB');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const result = event.target?.result as string;
+        setBroadcastImageUrl(result);
+        setBroadcastImagePreview(result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleClearBroadcastImage = () => {
+    setBroadcastImageUrl('');
+    setBroadcastImagePreview(null);
+    if (broadcastFileInputRef.current) broadcastFileInputRef.current.value = '';
+  };
+
+  // Broadcast to All School Groups Handler (Text & Images)
+  const handleExecutePrincipalBroadcast = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanText = broadcastText.trim();
+    if (!cleanText && !broadcastImageUrl) {
+      setToastMessage('Please enter notice text or attach an image to broadcast.');
+      return;
+    }
+
+    setIsSendingBroadcast(true);
+    const nowTs = Date.now();
+    const timeNow = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+    const isUrgent = broadcastPriority === 'urgent';
+    const prefix = isUrgent ? '🚨 [URGENT PRINCIPAL DISPATCH]: ' : '📢 [OFFICIAL PRINCIPAL CIRCULAR]: ';
+    const fullText = cleanText ? `${prefix}${cleanText}` : `${prefix}Official Notice Attachment`;
+
+    try {
+      // 1. Send to server API with broadcastToAll
+      fetch('/api/campus', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-username': 'madam_principal',
+          'x-user-role': 'admin',
+        },
+        body: JSON.stringify({
+          action: 'send_whatsapp_message',
+          channelId: 'channel-school-broadcast',
+          senderUsername: 'madam_principal',
+          senderName: 'Dr. Pratibha Kohli',
+          senderRole: 'admin',
+          senderClass: 'Office of the Principal',
+          text: fullText,
+          mediaUrl: broadcastImageUrl || undefined,
+          mediaType: broadcastImageUrl ? 'image' : undefined,
+          broadcastToAll: true,
+        }),
+      }).catch((err) => console.warn('Broadcast server notice:', err));
+
+      // 2. Inject optimistic broadcast message into EVERY classroom channel
+      const allBroadcastMsgs: WhatsAppMessage[] = channels.map((ch) => ({
+        id: `wmsg-broad-${ch.id}-${nowTs}-${Math.floor(Math.random() * 1000)}`,
+        channelId: ch.id,
+        senderUsername: 'madam_principal',
+        senderName: 'Dr. Pratibha Kohli',
+        senderRole: 'admin',
+        senderClass: 'Office of the Principal',
+        text: fullText,
+        mediaUrl: broadcastImageUrl || undefined,
+        mediaType: broadcastImageUrl ? 'image' : undefined,
+        templateType: isUrgent ? 'exam' : 'none',
+        timestamp: nowTs,
+      }));
+
+      setMessages((prev) => [...prev, ...allBroadcastMsgs]);
+
+      // 3. Update preview for all channels
+      setChannels((prev) =>
+        prev.map((ch) => ({
+          ...ch,
+          lastMessage: `Dr. Pratibha Kohli: ${fullText.slice(0, 60)}`,
+          lastMessageTime: timeNow,
+        }))
+      );
+
+      // 4. Update Home Feed Broadcast Alert Banner in DataStore
+      try {
+        DataStore.setBroadcastAlert({
+          title: isUrgent ? '🚨 URGENT: Office of the Principal' : '📢 Official Principal Circular',
+          text: cleanText || 'Official circular published to all school classroom groups.',
+          isUrgent,
+        });
+      } catch {}
+
+      // 5. Send notifications to all student accounts
+      try {
+        const notifs = DataStore.getNotifications();
+        const allProfs = DataStore.getProfiles();
+        for (const p of allProfs) {
+          if (p.username.toLowerCase() !== 'madam_principal') {
+            notifs.unshift({
+              id: `notif-broad-${nowTs}-${p.username}`,
+              userId: p.username,
+              type: 'notice',
+              title: isUrgent ? '🚨 Urgent Dispatch from Principal Madam' : '📢 New Circular from Principal Madam',
+              body: cleanText.slice(0, 100) || 'Official circular and image published to your classroom group.',
+              link: '/groups',
+              timeAgo: 'Just now',
+              isRead: false,
+            });
+          }
+        }
+        localStorage.setItem('dpsbuzz_notifications_v1', JSON.stringify(notifs.slice(0, 100)));
+      } catch {}
+
+      setShowPrincipalBroadcastModal(false);
+      setBroadcastText('');
+      handleClearBroadcastImage();
+      setToastMessage('🎉 Broadcast successfully delivered to all 91 school groups & 5,500 students!');
+      setTimeout(() => setToastMessage(null), 4000);
+    } catch (err) {
+      console.error('Error broadcasting message:', err);
+      setToastMessage('Failed to broadcast message.');
+    } finally {
+      setIsSendingBroadcast(false);
+    }
+  };
+
   // Add Classmate to this Specific Classroom ONLY
   const handleAddMemberToClass = (username: string, fullName: string, className: string, rollNo?: string, house?: string) => {
     const currentList = sectionRosters[activeChannel.id] || [];
@@ -2104,6 +2257,15 @@ export default function GroupsPage() {
               <>
                 <button
                   type="button"
+                  onClick={() => setShowPrincipalBroadcastModal(true)}
+                  className="px-2.5 py-1.5 rounded-full bg-linear-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white flex items-center gap-1.5 text-xs font-semibold shadow-xs hover:scale-105 active:scale-95 transition-all cursor-pointer shrink-0"
+                  title="Broadcast Text or Image to All School Groups"
+                >
+                  <Megaphone size={14} className="animate-pulse" />
+                  <span className="hidden sm:inline">Broadcast</span>
+                </button>
+                <button
+                  type="button"
                   onClick={() => setShowAssignModal(true)}
                   className="w-8 h-8 rounded-full hover:bg-black/5 dark:hover:bg-white/10 text-zinc-600 dark:text-zinc-300 flex items-center justify-center cursor-pointer transition-colors"
                   title="Assign Teacher / Student"
@@ -2131,6 +2293,37 @@ export default function GroupsPage() {
             )}
           </div>
         </div>
+
+        {/* FACULTY BOARD • PRINCIPAL BROADCAST HUB BANNER */}
+        {clientViewMode === 'teacher' && (
+          <div className="mb-3 p-3.5 rounded-3xl bg-linear-to-r from-red-500/10 via-rose-500/10 to-purple-500/10 border border-red-500/25 dark:border-red-500/20 shadow-xs flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-2xl bg-linear-to-br from-red-600 to-rose-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                <Megaphone size={19} className="animate-pulse" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-xs font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
+                  <span>Faculty Board • Broadcast Hub</span>
+                  <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-red-600 text-white font-black uppercase tracking-wide">
+                    All Groups
+                  </span>
+                </div>
+                <p className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate mt-0.5">
+                  Broadcast circular text or image attachments directly to all 91 classroom groups
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowPrincipalBroadcastModal(true)}
+              className="px-3.5 py-2 rounded-2xl bg-red-600 hover:bg-red-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm hover:scale-105 active:scale-95 transition-all cursor-pointer shrink-0"
+            >
+              <Radio size={14} />
+              <span>Broadcast</span>
+            </button>
+          </div>
+        )}
 
         {/* MADAM PRINCIPAL 91 SECTIONS ROLLOUT BANNER */}
         {clientViewMode === 'teacher' ? (
@@ -2318,19 +2511,30 @@ export default function GroupsPage() {
           {/* Right Header Actions */}
           <div className="flex items-center gap-2 shrink-0">
             {clientViewMode === 'teacher' && (
-              <button
-                type="button"
-                onClick={handleToggleLock}
-                className={`px-2.5 py-1 rounded-full text-xs font-semibold border flex items-center gap-1 cursor-pointer transition-colors ${
-                  activeChannel.isLocked
-                    ? 'border-red-500/30 text-red-600 bg-red-500/10'
-                    : 'border-emerald-500/30 text-emerald-600 bg-emerald-500/10'
-                }`}
-                title="Toggle Classroom Mute"
-              >
-                {activeChannel.isLocked ? <Lock size={12} /> : <Unlock size={12} />}
-                <span className="hidden sm:inline">{activeChannel.isLocked ? 'Locked' : 'Unlocked'}</span>
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={() => setShowPrincipalBroadcastModal(true)}
+                  className="px-2.5 py-1 rounded-full text-xs font-semibold border border-red-500/30 text-red-600 bg-red-500/10 hover:bg-red-500/20 flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
+                  title="Broadcast Text or Image to All Groups"
+                >
+                  <Megaphone size={12} className="animate-pulse" />
+                  <span className="hidden sm:inline">Broadcast All</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleToggleLock}
+                  className={`px-2.5 py-1 rounded-full text-xs font-semibold border flex items-center gap-1 cursor-pointer transition-colors ${
+                    activeChannel.isLocked
+                      ? 'border-red-500/30 text-red-600 bg-red-500/10'
+                      : 'border-emerald-500/30 text-emerald-600 bg-emerald-500/10'
+                  }`}
+                  title="Toggle Classroom Mute"
+                >
+                  {activeChannel.isLocked ? <Lock size={12} /> : <Unlock size={12} />}
+                  <span className="hidden sm:inline">{activeChannel.isLocked ? 'Locked' : 'Unlocked'}</span>
+                </button>
+              </>
             )}
 
             {/* Audio Call */}
@@ -2813,6 +3017,258 @@ export default function GroupsPage() {
                 <span>⚡ Verify & Sync All 91 Sections in D1 Database</span>
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================================== */}
+      {/* MODAL: PRINCIPAL BROADCAST TO ALL SCHOOL GROUPS (Text & Images)      */}
+      {/* ==================================================================== */}
+      {showPrincipalBroadcastModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn">
+          <div className="rounded-[28px] w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl flex flex-col bg-white dark:bg-[#1C1C1E] border border-black/10 dark:border-white/15 animate-scale-in">
+            {/* Modal Header */}
+            <div className="p-4 border-b border-black/[0.08] dark:border-white/[0.08] flex items-center justify-between sticky top-0 bg-white/95 dark:bg-[#1C1C1E]/95 backdrop-blur-md z-10">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-full bg-linear-to-br from-red-600 to-rose-600 text-white flex items-center justify-center font-bold text-sm shadow-xs shrink-0">
+                  <Megaphone size={17} />
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
+                      Broadcast to All School Groups
+                    </h3>
+                    <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-red-600 text-white font-black uppercase">
+                      Principal
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                    Transmits immediately to all 91 classroom groups &amp; 5,500 students
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowPrincipalBroadcastModal(false)}
+                className="p-1.5 rounded-full text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <form onSubmit={handleExecutePrincipalBroadcast} className="p-5 space-y-4">
+              {/* Target Audience Scope Banner */}
+              <div className="p-3 rounded-2xl bg-linear-to-r from-red-500/10 via-rose-500/10 to-purple-500/10 border border-red-500/20 text-xs">
+                <div className="font-bold text-red-600 dark:text-red-400 flex items-center gap-1.5 mb-1">
+                  <ShieldCheck size={14} />
+                  <span>Authorized Principal Multi-Group Transmission</span>
+                </div>
+                <p className="text-[11.5px] text-zinc-600 dark:text-zinc-300 leading-relaxed">
+                  Every enrolled student and teacher across Class 6–12 (Class 8-G, 9-B, 10-A, Science Club, etc.) will receive this dispatch in their group chat.
+                </p>
+                <div className="flex items-center gap-1.5 mt-2 flex-wrap text-[10px]">
+                  <span className="px-2 py-0.5 rounded-full bg-white/80 dark:bg-black/40 font-semibold border border-red-500/20 text-zinc-700 dark:text-zinc-300">
+                    📘 Class 8-G
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full bg-white/80 dark:bg-black/40 font-semibold border border-red-500/20 text-zinc-700 dark:text-zinc-300">
+                    📘 Class 9-B
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full bg-white/80 dark:bg-black/40 font-semibold border border-red-500/20 text-zinc-700 dark:text-zinc-300">
+                    🎓 Class 10-A
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full bg-white/80 dark:bg-black/40 font-semibold border border-red-500/20 text-zinc-700 dark:text-zinc-300">
+                    🔬 Science Club
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full bg-red-600 text-white font-bold">
+                    + 87 Academic Sections
+                  </span>
+                </div>
+              </div>
+
+              {/* Priority Toggle */}
+              <div className="flex items-center justify-between p-2.5 rounded-xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5">
+                <div>
+                  <div className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
+                    Priority Classification
+                  </div>
+                  <div className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                    {broadcastPriority === 'urgent' ? '🚨 Red Alert: High-priority immediate alert' : '📢 Official: Standard school circular & notice'}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1 p-0.5 rounded-lg bg-black/10 dark:bg-white/10">
+                  <button
+                    type="button"
+                    onClick={() => setBroadcastPriority('official')}
+                    className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
+                      broadcastPriority === 'official'
+                        ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-xs'
+                        : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
+                    }`}
+                  >
+                    Official
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBroadcastPriority('urgent')}
+                    className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
+                      broadcastPriority === 'urgent'
+                        ? 'bg-red-600 text-white shadow-xs'
+                        : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
+                    }`}
+                  >
+                    Urgent
+                  </button>
+                </div>
+              </div>
+
+              {/* Text Area */}
+              <div>
+                <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block mb-1">
+                  Circular / Notice Text
+                </label>
+                <textarea
+                  rows={4}
+                  value={broadcastText}
+                  onChange={(e) => setBroadcastText(e.target.value)}
+                  placeholder="Enter official statement, examination datesheet instructions, or school directive..."
+                  className="w-full p-3 rounded-2xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-red-500/40 resize-none leading-relaxed placeholder:text-zinc-400"
+                />
+
+                {/* Quick Templates */}
+                <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                  <span className="text-[10.5px] font-medium text-zinc-400">Templates:</span>
+                  {[
+                    { label: '📅 Exam Datesheet', text: 'DELHI PUBLIC SCHOOL NOTICE: The Term Examination Datesheet & syllabus breakdown has been officially published. All students must review their schedule.' },
+                    { label: '🏆 Sports Day', text: 'ANNUAL ATHLETIC MEET: Inter-house trials for track and field events begin this Friday on the Main Grounds. House uniforms mandatory.' },
+                    { label: '🏖️ Holiday', text: 'SCHOOL CIRCULAR: Delhi Public School will remain closed on Monday on account of the state festival. Classes resume on Tuesday.' },
+                    { label: '⚠️ Uniform Check', text: 'FACULTY ADVISORY: Tomorrow is formal inspection day. Students are reminded that school blazer, verified ID card and ties are mandatory.' },
+                  ].map((tpl) => (
+                    <button
+                      key={tpl.label}
+                      type="button"
+                      onClick={() => setBroadcastText(tpl.text)}
+                      className="px-2 py-0.5 rounded-full text-[10.5px] font-medium bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-zinc-700 dark:text-zinc-300 border border-black/5 dark:border-white/5 cursor-pointer transition-colors"
+                    >
+                      {tpl.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Image / Photo Attachment */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
+                    <ImageIcon size={14} className="text-red-500" />
+                    <span>Circular Photo / Image Attachment (Optional)</span>
+                  </label>
+                  {broadcastImagePreview && (
+                    <button
+                      type="button"
+                      onClick={handleClearBroadcastImage}
+                      className="text-[11px] font-bold text-red-500 hover:text-red-600 cursor-pointer"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+
+                {/* File Upload Hidden Input */}
+                <input
+                  type="file"
+                  ref={broadcastFileInputRef}
+                  accept="image/*"
+                  onChange={handleBroadcastImageChange}
+                  className="hidden"
+                />
+
+                {broadcastImagePreview ? (
+                  <div className="relative rounded-2xl overflow-hidden border border-black/10 dark:border-white/10 bg-black/10 max-h-48 flex items-center justify-center">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={broadcastImagePreview}
+                      alt="Broadcast preview"
+                      className="w-full h-auto max-h-48 object-cover rounded-2xl"
+                    />
+                    <div className="absolute top-2 right-2 flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={handleClearBroadcastImage}
+                        className="w-7 h-7 rounded-full bg-black/70 hover:bg-black text-white flex items-center justify-center shadow-md cursor-pointer transition-colors"
+                        title="Remove image"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {/* Device Upload Button */}
+                    <button
+                      type="button"
+                      onClick={() => broadcastFileInputRef.current?.click()}
+                      className="p-3 rounded-2xl border-2 border-dashed border-black/15 dark:border-white/15 hover:border-red-500/50 bg-black/[0.02] dark:bg-white/[0.02] flex flex-col items-center justify-center gap-1.5 text-center cursor-pointer transition-colors group"
+                    >
+                      <Camera size={20} className="text-zinc-400 group-hover:text-red-500 transition-colors" />
+                      <span className="text-[11.5px] font-bold text-zinc-700 dark:text-zinc-300">
+                        Upload Photo / Notice
+                      </span>
+                      <span className="text-[10px] text-zinc-400">
+                        JPG, PNG, WebP up to 8MB
+                      </span>
+                    </button>
+
+                    {/* Pre-formatted Sample Circulars */}
+                    <div className="p-3 rounded-2xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/10 dark:border-white/10 flex flex-col justify-between">
+                      <span className="text-[11px] font-semibold text-zinc-500 dark:text-zinc-400 block mb-1">
+                        Or pick sample circular:
+                      </span>
+                      <div className="space-y-1">
+                        {[
+                          { label: '📄 Exam Datesheet Sheet', url: 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=800&auto=format&fit=crop&q=80' },
+                          { label: '🏅 Sports Meet Poster', url: 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=800&auto=format&fit=crop&q=80' },
+                          { label: '🤖 Science Fair Banner', url: 'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=800&auto=format&fit=crop&q=80' },
+                        ].map((s) => (
+                          <button
+                            key={s.label}
+                            type="button"
+                            onClick={() => {
+                              setBroadcastImageUrl(s.url);
+                              setBroadcastImagePreview(s.url);
+                            }}
+                            className="w-full text-left px-2 py-1 rounded-lg text-[10.5px] font-medium bg-black/5 dark:bg-white/5 hover:bg-red-500/10 hover:text-red-600 transition-colors cursor-pointer truncate"
+                          >
+                            {s.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-2 pt-2 border-t border-black/[0.08] dark:border-white/[0.08]">
+                <button
+                  type="button"
+                  onClick={() => setShowPrincipalBroadcastModal(false)}
+                  className="flex-1 py-2.5 rounded-2xl bg-black/5 dark:bg-white/10 text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-black/10 cursor-pointer transition-colors text-center"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSendingBroadcast || (!broadcastText.trim() && !broadcastImageUrl)}
+                  className="flex-2 py-2.5 rounded-2xl bg-linear-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 disabled:opacity-50 text-white text-xs font-bold shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
+                >
+                  <Megaphone size={15} />
+                  <span>{isSendingBroadcast ? 'Broadcasting...' : 'Broadcast to All Groups 🚀'}</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

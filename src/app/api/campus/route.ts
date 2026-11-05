@@ -1236,11 +1236,16 @@ export async function POST(req: NextRequest) {
     // 12. SEND WHATSAPP MESSAGE (Role & Channel Lock Protected)
     // ------------------------------------------------------------------------
     if (action === 'send_whatsapp_message') {
-      const { channelId, senderUsername, senderName, senderRole, senderClass, text, templateType } = body;
-      const cleanText = (text || '').trim();
-      if (!channelId || !cleanText) {
-        return NextResponse.json({ error: 'Channel ID and text are required' }, { status: 400 });
+      const { channelId, senderUsername, senderName, senderRole, senderClass, text, templateType, mediaUrl } = body;
+      const rawText = (text || '').trim();
+      const effectiveMediaUrl = (mediaUrl || body.imageUrl || '').trim();
+      const cleanText = rawText || (effectiveMediaUrl ? 'Official Circular Attachment' : '');
+      if (!channelId || (!cleanText && !effectiveMediaUrl)) {
+        return NextResponse.json({ error: 'Channel ID and message content (text or image) are required' }, { status: 400 });
       }
+      const combinedText = effectiveMediaUrl && !cleanText.includes(effectiveMediaUrl)
+        ? `${cleanText}\n${effectiveMediaUrl}`
+        : cleanText;
 
       // Check if channel is locked
       const chList = await d1Query<any>('SELECT * FROM campus_whatsapp_channels WHERE id = ? LIMIT 1;', [channelId]);
@@ -1305,7 +1310,7 @@ export async function POST(req: NextRequest) {
         effectiveName,
         effectiveRole,
         senderClass || 'Class 10',
-        cleanText,
+        combinedText,
         templateType || 'none',
         nowTs,
       ]);
@@ -1335,7 +1340,7 @@ export async function POST(req: NextRequest) {
                 (senderName || 'Principal Madam (Office)').trim(),
                 'admin',
                 'Office of Principal',
-                cleanText,
+                combinedText,
                 templateType || 'none',
                 nowTs,
               ]);
