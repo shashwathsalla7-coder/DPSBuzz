@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import {
   Search,
@@ -24,48 +24,48 @@ import {
   ChevronLeft,
   Minus,
   Square,
-  Maximize2,
-  Volume2,
   Phone,
   ArrowLeft,
   Circle,
-  Filter,
+  Star,
+  Trash2,
+  Volume2,
+  Lock,
+  Clock,
+  Sparkles,
 } from 'lucide-react';
 
-// ============================================================================
-// AUTHENTIC WHATSAPP DOODLE WALLPAPER (Tiled SVG Data URI)
-// ============================================================================
-const WHATSAPP_DOODLE_DARK = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='440' height='440' viewBox='0 0 440 440' fill='none' stroke='%23ffffff' stroke-opacity='0.055' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'><path d='M35 25 h38 a10 10 0 0 1 10 10 v18 a10 10 0 0 1 -10 10 h-22 l-14 10 v-10 h-2 a10 10 0 0 1 -10 -10 v-18 a10 10 0 0 1 10 -10 z'/><circle cx='54' cy='44' r='2' fill='%23ffffff' fill-opacity='0.055'/><circle cx='64' cy='44' r='2' fill='%23ffffff' fill-opacity='0.055'/><circle cx='74' cy='44' r='2' fill='%23ffffff' fill-opacity='0.055'/><path d='M150 32 h30 v26 a14 14 0 0 1 -14 14 h-2 a14 14 0 0 1 -14 -14 v-26 z'/><path d='M180 38 h8 a6 6 0 0 1 6 6 v6 a6 6 0 0 1 -6 6 h-8'/><path d='M158 24 c0 -5 4 -5 4 -10'/><path d='M168 24 c0 -5 4 -5 4 -10'/><rect x='260' y='28' width='52' height='32' rx='12'/><path d='M272 38 v12 M266 44 h12'/><circle cx='298' cy='40' r='2.5' fill='%23ffffff' fill-opacity='0.055'/><circle cx='304' cy='48' r='2.5' fill='%23ffffff' fill-opacity='0.055'/><path d='M370 50 a22 22 0 0 1 44 0 v14'/><rect x='365' y='56' width='9' height='16' rx='3'/><rect x='410' y='56' width='9' height='16' rx='3'/><circle cx='60' cy='155' r='18'/><polygon points='60,145 68,151 65,160 55,160 52,151'/><line x1='60' y1='145' x2='60' y2='137'/><line x1='68' y1='151' x2='76' y2='148'/><line x1='65' y1='160' x2='71' y2='168'/><line x1='55' y1='160' x2='49' y2='168'/><line x1='52' y1='151' x2='44' y2='148'/><path d='M155 135 l32 10 l-20 32 z'/><path d='M155 135 a36 36 0 0 1 32 10'/><circle cx='165' cy='150' r='2' fill='%23ffffff' fill-opacity='0.055'/><circle cx='170' cy='164' r='2' fill='%23ffffff' fill-opacity='0.055'/><rect x='260' y='140' width='42' height='30' rx='5'/><path d='M272 140 l3 -5 h12 l3 5'/><circle cx='281' cy='155' r='8'/><circle cx='294' cy='146' r='1.5' fill='%23ffffff' fill-opacity='0.055'/><circle cx='368' cy='160' r='12'/><circle cx='404' cy='160' r='12'/><path d='M368 160 l16 -18 h12 l7 18 M384 142 l-9 -14 h12 M396 142 l-12 18'/><path d='M42 250 l44 -18 l-22 40 l-7 -13 l-15 -9 z'/><path d='M86 232 l-29 27'/><path d='M150 260 a12 12 0 0 1 20 -8 a16 16 0 0 1 26 5 a10 10 0 0 1 4 18 h-48 a7 7 0 0 1 -2 -15 z'/><polygon points='172,274 166,283 173,283 169,291 180,281 173,281' fill='%23ffffff' fill-opacity='0.055'/><circle cx='272' cy='255' r='16'/><path d='M272 245 v10 l7 5'/><path d='M258 240 l-5 -5 M286 240 l5 -5'/><path d='M365 242 a16 16 0 0 1 26 16 c-3 4 -4 7 -4 12 h-18 c0 -5 -1 -8 -4 -12 a16 16 0 0 1 0 -16 z'/><line x1='374' y1='275' x2='382' y2='275'/><circle cx='50' cy='365' r='4' fill='%23ffffff' fill-opacity='0.055'/><circle cx='68' cy='358' r='4' fill='%23ffffff' fill-opacity='0.055'/><path d='M54 365 v-20 l18 -7 v20 M54 345 l18 -7'/><path d='M165 340 l3 9 l9 3 l-9 3 l-3 9 l-3 -9 l-9 -3 l9 -3 z' fill='%23ffffff' fill-opacity='0.055'/><circle cx='192' cy='348' r='1.5' fill='%23ffffff' fill-opacity='0.055'/><path d='M250 375 c0 -14 10 -24 19 -30 c9 5 19 16 19 30 h-38 z'/><circle cx='269' cy='360' r='3.5'/><path d='M250 375 l-8 7 v-10 l8 -7 M288 375 l8 7 v-10 l-8 -7'/><path d='M352 348 a6 6 0 0 0 -9 9 l9 9 l9 -9 a6 6 0 0 0 -9 -9 z'/><circle cx='388' cy='360' r='12'/><circle cx='384' cy='356' r='1.2' fill='%23ffffff' fill-opacity='0.055'/><circle cx='392' cy='356' r='1.2' fill='%23ffffff' fill-opacity='0.055'/><path d='M384 364 a5 5 0 0 0 8 0'/><polygon points='105,32 126,22 147,32 126,42'/><path d='M113 37 v8 c0 5 13 8 13 8 s13 -3 13 -8 v-8'/><path d='M205 95 h44 M205 95 a10 8 0 0 0 20 0 a10 8 0 0 0 -20 0 M227 95 a10 8 0 0 0 20 0 a10 8 0 0 0 -20 0'/><path d='M305 92 h20 v8 a10 10 0 0 1 -20 0 z M315 100 v10 M308 110 h14'/><path d='M98 195 l18 -18 l5 5 l-18 18 l-5 2 z'/><path d='M205 200 v17 M212 200 v17 M201 205 h17 M201 212 h17'/></svg>`;
+import {
+  MessageItem,
+  ChatRoom,
+  ContactItem,
+  StatusItem,
+  SidebarTab,
+  RightPanel,
+} from './components/types';
 
-interface MessageItem {
-  id: string;
-  senderName: string;
-  senderColor?: string;
-  subtitle?: string;
-  text: string;
-  time: string;
-  isMe?: boolean;
-  isVideo?: boolean;
-  videoDuration?: string;
-  videoCaption?: string;
-  reactions?: Array<{ emoji: string; count: number; users: string[] }>;
-  quotedAuthor?: string;
-  quotedText?: string;
-}
+import {
+  WHATSAPP_DOODLE_DARK,
+  DEMO_CONTACTS,
+  DEMO_STATUSES,
+} from './components/constants';
 
-interface ChatRoom {
-  id: string;
-  name: string;
-  subtitle: string;
-  avatarColor: string;
-  initials: string;
-  lastMessage: string;
-  lastTime: string;
-  unreadCount?: number;
-  isPinned?: boolean;
-}
+import { SidebarRail } from './components/SidebarRail';
+import { StatusView } from './components/StatusView';
+import { CallsView } from './components/CallsView';
+import { CommunitiesView } from './components/CommunitiesView';
+import { SettingsView } from './components/SettingsView';
+import { GroupInfoPanel } from './components/GroupInfoPanel';
+import { MediaGalleryPanel } from './components/MediaGalleryPanel';
+import { StarredMessagesPanel } from './components/StarredMessagesPanel';
+import { NewChatModal } from './components/NewChatModal';
+import { ActiveCallOverlay } from './components/ActiveCallOverlay';
+import { StatusViewerModal } from './components/StatusViewerModal';
 
 export default function WhatsAppDesktopPage() {
+  // Navigation & View State
+  const [activeTab, setActiveTab] = useState<SidebarTab>('chats');
+  const [rightPanel, setRightPanel] = useState<RightPanel>('none');
   const [activeChatId, setActiveChatId] = useState<string>('chat-together-forever');
   const [messageText, setMessageText] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -74,11 +74,21 @@ export default function WhatsAppDesktopPage() {
   const [showEmojiTray, setShowEmojiTray] = useState(false);
   const [activeFilter, setActiveFilter] = useState<'all' | 'unread' | 'groups'>('all');
   const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
+  const [doodleWallpaperEnabled, setDoodleWallpaperEnabled] = useState(true);
 
+  // Modals & Overlays
+  const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
+  const [activeCall, setActiveCall] = useState<{ contactName: string; type: 'voice' | 'video' } | null>(null);
+  const [viewingStatus, setViewingStatus] = useState<StatusItem | null>(null);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [userAbout, setUserAbout] = useState('Hey there! I am using DPS Buzz WhatsApp');
+  const [userName, setUserName] = useState('Shashwath');
+
+  // References
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Chat Rooms List (With user's reference group "Together Forever" at top)
+  // Chat Rooms List
   const [chatRooms, setChatRooms] = useState<ChatRoom[]>([
     {
       id: 'chat-together-forever',
@@ -89,7 +99,16 @@ export default function WhatsAppDesktopPage() {
       lastMessage: 'Rohan: i remembered',
       lastTime: '8:21 pm',
       isPinned: true,
+      isGroup: true,
       unreadCount: 0,
+      description: 'The official Together Forever squad for DPS 2026. Academic updates, cricket banter and campus laughs.',
+      createdBy: 'Himaksh',
+      createdAt: '2026-06-12',
+      mediaCount: 38,
+      members: DEMO_CONTACTS.slice(0, 7).map((c, i) => ({
+        ...c,
+        isAdmin: i === 0 || i === 2,
+      })),
     },
     {
       id: 'chat-class-8g',
@@ -99,7 +118,24 @@ export default function WhatsAppDesktopPage() {
       initials: '8G',
       lastMessage: 'Anita Madam: Homework reminder for English Chapter 4 is uploaded.',
       lastTime: '7:40 pm',
+      isGroup: true,
       unreadCount: 2,
+      description: 'Official academic noticeboard for DPS Class 8-G. Faculty announcements, fair-copy reminders & datesheets.',
+      createdBy: 'Anita Madam',
+      createdAt: '2026-04-01',
+      mediaCount: 64,
+      members: DEMO_CONTACTS,
+    },
+    {
+      id: 'chat-himaksh-direct',
+      name: 'Himaksh',
+      subtitle: 'online',
+      avatarColor: '#53bdeb',
+      initials: 'HM',
+      lastMessage: 'Are we doing robotics prep after school?',
+      lastTime: '6:45 pm',
+      isGroup: false,
+      unreadCount: 1,
     },
     {
       id: 'chat-science-club',
@@ -109,6 +145,11 @@ export default function WhatsAppDesktopPage() {
       initials: 'SC',
       lastMessage: 'Robotics workshop registrations open tomorrow.',
       lastTime: '4:15 pm',
+      isGroup: true,
+      description: 'Ramanujan innovation hub for robotics, AI and science fairs.',
+      createdBy: 'Vikas Sir',
+      createdAt: '2026-05-10',
+      mediaCount: 19,
     },
     {
       id: 'chat-school-broadcast',
@@ -118,10 +159,14 @@ export default function WhatsAppDesktopPage() {
       initials: '📢',
       lastMessage: 'Half-Yearly examination instructions published.',
       lastTime: 'Yesterday',
+      isGroup: true,
+      isLocked: true,
+      description: 'Campus-wide announcements from Principal Office. Read-only channel.',
+      mediaCount: 12,
     },
   ]);
 
-  // Messages in "Together Forever" (Pixel-accurate replication from user's screenshot)
+  // Messages Map per room
   const [messagesMap, setMessagesMap] = useState<Record<string, MessageItem[]>>({
     'chat-together-forever': [
       {
@@ -188,6 +233,7 @@ export default function WhatsAppDesktopPage() {
         subtitle: 'English Faculty',
         text: 'Dear Class 8-G, please complete reading Chapter 4 The Summit Within before tomorrow.',
         time: '7:30 pm',
+        isStarred: true,
       },
       {
         id: 'msg-8g-2',
@@ -206,6 +252,29 @@ export default function WhatsAppDesktopPage() {
         time: '7:40 pm',
       },
     ],
+    'chat-himaksh-direct': [
+      {
+        id: 'msg-hm-1',
+        senderName: 'Himaksh',
+        senderColor: '#53bdeb',
+        text: 'Bro did you check the Python code for the rover project?',
+        time: '6:30 pm',
+      },
+      {
+        id: 'msg-hm-2',
+        senderName: 'You',
+        text: 'Yes! Added the obstacle sensor logic. Works cleanly.',
+        time: '6:40 pm',
+        isMe: true,
+      },
+      {
+        id: 'msg-hm-3',
+        senderName: 'Himaksh',
+        senderColor: '#53bdeb',
+        text: 'Are we doing robotics prep after school?',
+        time: '6:45 pm',
+      },
+    ],
   });
 
   const activeMessages = messagesMap[activeChatId] || [];
@@ -215,7 +284,7 @@ export default function WhatsAppDesktopPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [activeMessages.length, activeChatId]);
 
-  // Send Message Dispatcher
+  // Dispatch message
   const handleSendMessage = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const cleanText = messageText.trim();
@@ -226,7 +295,7 @@ export default function WhatsAppDesktopPage() {
 
     const newMsg: MessageItem = {
       id: `msg-${Date.now()}`,
-      senderName: 'You',
+      senderName: userName,
       text: cleanText,
       time: timeStr,
       isMe: true,
@@ -294,11 +363,29 @@ export default function WhatsAppDesktopPage() {
     });
   }, [activeChatId]);
 
+  // Star message handler
+  const handleToggleStar = (msgId: string) => {
+    setMessagesMap((prev) => ({
+      ...prev,
+      [activeChatId]: (prev[activeChatId] || []).map((m) =>
+        m.id === msgId ? { ...m, isStarred: !m.isStarred } : m
+      ),
+    }));
+  };
+
+  // Delete message handler
+  const handleDeleteMessage = (msgId: string) => {
+    setMessagesMap((prev) => ({
+      ...prev,
+      [activeChatId]: (prev[activeChatId] || []).filter((m) => m.id !== msgId),
+    }));
+  };
+
   // Filtered Chats
   const filteredRooms = useMemo(() => {
     return chatRooms.filter((r) => {
       if (activeFilter === 'unread' && !(r.unreadCount && r.unreadCount > 0)) return false;
-      if (activeFilter === 'groups' && !r.name.toLowerCase().includes('class') && !r.name.includes('Together')) return false;
+      if (activeFilter === 'groups' && !r.isGroup) return false;
       if (!searchQuery.trim()) return true;
       return (
         r.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -306,6 +393,21 @@ export default function WhatsAppDesktopPage() {
       );
     });
   }, [chatRooms, searchQuery, activeFilter]);
+
+  // All Starred Messages across all chats
+  const allStarredMessages = useMemo(() => {
+    const list: Array<{ chatName: string; message: MessageItem }> = [];
+    Object.entries(messagesMap).forEach(([roomId, msgs]) => {
+      const room = chatRooms.find((r) => r.id === roomId);
+      const name = room ? room.name : 'Chat';
+      msgs.forEach((m) => {
+        if (m.isStarred) {
+          list.push({ chatName: name, message: m });
+        }
+      });
+    });
+    return list;
+  }, [messagesMap, chatRooms]);
 
   return (
     <div
@@ -358,136 +460,200 @@ export default function WhatsAppDesktopPage() {
       </div>
 
       {/* ==================================================================== */}
-      {/* DESKTOP TWO-COLUMN LAYOUT                                            */}
+      {/* MAIN CONTAINER: LEFT ICON RAIL + SIDEBAR PANEL + CHAT CANVAS + DRAWER */}
       {/* ==================================================================== */}
       <div className="flex flex-1 overflow-hidden">
         {/* ================================================================== */}
-        {/* LEFT PANEL: Chat List & Navigation (~380px)                        */}
+        {/* SLIM LEFT RAIL (WhatsApp Windows App Native Icon Bar)              */}
+        {/* ================================================================== */}
+        <SidebarRail
+          activeTab={activeTab}
+          onTabChange={(tab) => {
+            setActiveTab(tab);
+            if (rightPanel === 'settings') setRightPanel('none');
+          }}
+          onOpenSettings={() => setRightPanel('settings')}
+          onOpenStarred={() => setRightPanel('starred')}
+          onOpenProfile={() => setIsProfileModalOpen(true)}
+          unreadCount={2}
+          missedCallsCount={1}
+          hasUnreadStatus={true}
+        />
+
+        {/* ================================================================== */}
+        {/* SECONDARY SIDEBAR (Switched based on active rail tab)              */}
         {/* ================================================================== */}
         <aside
-          className={`w-full md:w-[380px] lg:w-[420px] flex flex-col border-r border-[#222d34] shrink-0 ${
+          className={`w-full md:w-[360px] lg:w-[400px] flex flex-col shrink-0 ${
             isMobileChatOpen ? 'hidden md:flex' : 'flex'
           }`}
-          style={{ backgroundColor: '#111b21' }}
         >
-          {/* Sidebar Top Header */}
-          <div
-            className="h-[60px] px-4 flex items-center justify-between shrink-0 border-b border-[#222d34]"
-            style={{ backgroundColor: '#202c33' }}
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-[#00a884] flex items-center justify-center font-bold text-white text-sm shadow-xs">
-                S
-              </div>
-              <span className="text-sm font-semibold text-[#e9edef]">Chats</span>
-            </div>
-
-            <div className="flex items-center gap-4 text-[#8696a0]">
-              <button className="hover:text-white transition-colors cursor-pointer" title="Communities">
-                <Users size={19} />
-              </button>
-              <button className="hover:text-white transition-colors cursor-pointer" title="Status">
-                <Circle size={18} />
-              </button>
-              <button className="hover:text-white transition-colors cursor-pointer" title="New Chat">
-                <MessageSquare size={19} />
-              </button>
-              <button className="hover:text-white transition-colors cursor-pointer" title="Menu">
-                <MoreVertical size={19} />
-              </button>
-            </div>
-          </div>
-
-          {/* Search Box & Filter Chips */}
-          <div className="p-2 border-b border-[#222d34] flex flex-col gap-2">
-            <div className="flex items-center px-3 py-1.5 rounded-[8px] bg-[#202c33]">
-              <Search size={15} className="text-[#8696a0] mr-3 shrink-0" />
-              <input
-                type="text"
-                placeholder="Search or start new chat"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full text-xs text-[#e9edef] bg-transparent focus:outline-none placeholder-[#8696a0]"
-              />
-              {searchQuery && (
-                <button onClick={() => setSearchQuery('')} className="text-xs text-[#8696a0] hover:text-white cursor-pointer">
-                  <X size={13} />
-                </button>
-              )}
-            </div>
-
-            {/* Filter Pills: All / Unread / Groups */}
-            <div className="flex items-center gap-1.5 px-1">
-              {(['all', 'unread', 'groups'] as const).map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveFilter(tab)}
-                  className={`px-3 py-1 rounded-full text-xs font-medium capitalize transition-all cursor-pointer ${
-                    activeFilter === tab
-                      ? 'bg-[#00a884] text-[#111b21] font-semibold'
-                      : 'bg-[#202c33] text-[#8696a0] hover:text-white'
-                  }`}
-                >
-                  {tab}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Chat List Items */}
-          <div className="flex-1 overflow-y-auto divide-y divide-[#222d34]/40">
-            {filteredRooms.map((room) => {
-              const isActive = room.id === activeChatId;
-              return (
-                <button
-                  key={room.id}
-                  onClick={() => {
-                    setActiveChatId(room.id);
-                    setIsMobileChatOpen(true);
-                  }}
-                  className={`w-full text-left px-3.5 py-3 flex items-center gap-3 transition-colors cursor-pointer ${
-                    isActive ? 'bg-[#2a3942]' : 'hover:bg-[#202c33]'
-                  }`}
-                >
-                  <div
-                    className="w-12 h-12 rounded-full flex items-center justify-center font-bold text-white shrink-0 text-sm shadow-xs"
-                    style={{ backgroundColor: room.avatarColor }}
+          {/* TAB 1: CHATS LIST */}
+          {activeTab === 'chats' && (
+            <div className="flex flex-col h-full bg-[#111b21] border-r border-[#222d34]">
+              {/* Sidebar Header */}
+              <div className="h-[60px] px-4 flex items-center justify-between bg-[#202c33] border-b border-[#222d34] shrink-0">
+                <h1 className="text-lg font-semibold text-[#e9edef]">Chats</h1>
+                <div className="flex items-center gap-3 text-[#8696a0]">
+                  <button
+                    onClick={() => setIsNewChatModalOpen(true)}
+                    className="p-1.5 rounded-full hover:bg-[#2a3942] hover:text-white transition-colors cursor-pointer"
+                    title="New Chat"
                   >
-                    {room.initials}
-                  </div>
+                    <MessageSquare size={19} />
+                  </button>
+                  <button
+                    onClick={() => setRightPanel('settings')}
+                    className="p-1.5 rounded-full hover:bg-[#2a3942] hover:text-white transition-colors cursor-pointer"
+                    title="Menu"
+                  >
+                    <MoreVertical size={19} />
+                  </button>
+                </div>
+              </div>
 
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-semibold truncate text-[#e9edef]">
-                        {room.name}
-                      </span>
-                      <span className="text-[11px] text-[#8696a0] shrink-0 ml-1">
-                        {room.lastTime}
-                      </span>
-                    </div>
+              {/* Search Box & Filter Chips */}
+              <div className="p-2 border-b border-[#222d34] flex flex-col gap-2 bg-[#111b21]">
+                <div className="flex items-center px-3 py-1.5 rounded-[8px] bg-[#202c33]">
+                  <Search size={15} className="text-[#8696a0] mr-3 shrink-0" />
+                  <input
+                    type="text"
+                    placeholder="Search or start new chat"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full text-xs text-[#e9edef] bg-transparent focus:outline-none placeholder-[#8696a0]"
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery('')}
+                      className="text-xs text-[#8696a0] hover:text-white cursor-pointer"
+                    >
+                      <X size={13} />
+                    </button>
+                  )}
+                </div>
 
-                    <div className="flex items-center justify-between mt-1">
-                      <p className="text-xs truncate max-w-[210px] text-[#8696a0]">
-                        {room.lastMessage}
-                      </p>
-                      <div className="flex items-center gap-1.5 shrink-0 ml-1">
-                        {room.isPinned && <Pin size={12} className="text-[#8696a0]" />}
-                        {room.unreadCount && room.unreadCount > 0 ? (
-                          <span className="w-4 h-4 rounded-full bg-[#00a884] text-[#111b21] font-bold text-[10px] flex items-center justify-center">
-                            {room.unreadCount}
-                          </span>
-                        ) : null}
+                {/* Filter Pills */}
+                <div className="flex items-center gap-1.5 px-1">
+                  {(['all', 'unread', 'groups'] as const).map((tab) => (
+                    <button
+                      key={tab}
+                      onClick={() => setActiveFilter(tab)}
+                      className={`px-3 py-1 rounded-full text-xs font-medium capitalize transition-all cursor-pointer ${
+                        activeFilter === tab
+                          ? 'bg-[#00a884] text-[#111b21] font-semibold'
+                          : 'bg-[#202c33] text-[#8696a0] hover:text-white'
+                      }`}
+                    >
+                      {tab}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Chat Rooms List Items */}
+              <div className="flex-1 overflow-y-auto divide-y divide-[#222d34]/40">
+                {filteredRooms.map((room) => {
+                  const isActive = room.id === activeChatId;
+                  return (
+                    <button
+                      key={room.id}
+                      onClick={() => {
+                        setActiveChatId(room.id);
+                        setIsMobileChatOpen(true);
+                      }}
+                      className={`w-full text-left px-3.5 py-3 flex items-center gap-3 transition-colors cursor-pointer ${
+                        isActive ? 'bg-[#2a3942]' : 'hover:bg-[#202c33]'
+                      }`}
+                    >
+                      <div
+                        className="w-12 h-12 rounded-full flex items-center justify-center font-bold text-white shrink-0 text-sm shadow-xs"
+                        style={{ backgroundColor: room.avatarColor }}
+                      >
+                        {room.initials}
                       </div>
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-semibold truncate text-[#e9edef]">
+                            {room.name}
+                          </span>
+                          <span className="text-[11px] text-[#8696a0] shrink-0 ml-1">
+                            {room.lastTime}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center justify-between mt-1">
+                          <p className="text-xs truncate max-w-[210px] text-[#8696a0]">
+                            {room.lastMessage}
+                          </p>
+                          <div className="flex items-center gap-1.5 shrink-0 ml-1">
+                            {room.isPinned && <Pin size={12} className="text-[#8696a0]" />}
+                            {room.unreadCount && room.unreadCount > 0 ? (
+                              <span className="w-4 h-4 rounded-full bg-[#00a884] text-[#111b21] font-bold text-[10px] flex items-center justify-center">
+                                {room.unreadCount}
+                              </span>
+                            ) : null}
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* TAB 2: STATUS */}
+          {activeTab === 'status' && (
+            <StatusView
+              onSelectStatus={(st) => setViewingStatus(st)}
+              onCreateStatus={(text, color) => {
+                // Status created
+              }}
+            />
+          )}
+
+          {/* TAB 3: CALLS */}
+          {activeTab === 'calls' && (
+            <CallsView
+              onStartCall={(contactName, type) => {
+                setActiveCall({ contactName, type });
+              }}
+            />
+          )}
+
+          {/* TAB 4: COMMUNITIES */}
+          {activeTab === 'communities' && (
+            <CommunitiesView
+              onSelectGroup={(grpName) => {
+                // If exists switch, else create room
+                const found = chatRooms.find((r) => r.name.includes(grpName));
+                if (found) {
+                  setActiveChatId(found.id);
+                  setActiveTab('chats');
+                } else {
+                  const newRoom: ChatRoom = {
+                    id: `chat-${Date.now()}`,
+                    name: grpName,
+                    subtitle: 'DPS Community Group',
+                    avatarColor: '#25d366',
+                    initials: grpName.slice(0, 2).toUpperCase(),
+                    lastMessage: 'Welcome to ' + grpName,
+                    lastTime: 'Now',
+                    isGroup: true,
+                  };
+                  setChatRooms([newRoom, ...chatRooms]);
+                  setActiveChatId(newRoom.id);
+                  setActiveTab('chats');
+                }
+              }}
+            />
+          )}
         </aside>
 
         {/* ================================================================== */}
-        {/* RIGHT PANEL: WhatsApp Chat Area                                    */}
+        {/* RIGHT MAIN PANEL: Active Chat Canvas                               */}
         {/* ================================================================== */}
         <main
           className={`flex-1 flex flex-col relative ${
@@ -495,15 +661,21 @@ export default function WhatsAppDesktopPage() {
           }`}
           style={{ backgroundColor: '#0b141a' }}
         >
-          {/* WhatsApp Header (Matching User's Reference Screenshot) */}
+          {/* WhatsApp Header */}
           <div
             className="h-[60px] px-4 flex items-center justify-between z-10 shrink-0 border-b border-[#222d34]"
             style={{ backgroundColor: '#202c33' }}
           >
             {/* Group Identity & Member Subtitle */}
-            <div className="flex items-center gap-3 min-w-0">
+            <div
+              onClick={() => setRightPanel(rightPanel === 'group-info' ? 'none' : 'group-info')}
+              className="flex items-center gap-3 min-w-0 cursor-pointer hover:opacity-90 transition-opacity"
+            >
               <button
-                onClick={() => setIsMobileChatOpen(false)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsMobileChatOpen(false);
+                }}
                 className="p-1 -ml-1 text-[#8696a0] hover:text-white md:hidden shrink-0 cursor-pointer"
               >
                 <ChevronLeft size={22} />
@@ -516,7 +688,7 @@ export default function WhatsAppDesktopPage() {
                 {activeRoom.initials}
               </div>
 
-              <div className="min-w-0 cursor-pointer">
+              <div className="min-w-0">
                 <h2 className="text-sm font-semibold truncate leading-tight text-[#e9edef]">
                   {activeRoom.name}
                 </h2>
@@ -526,18 +698,37 @@ export default function WhatsAppDesktopPage() {
               </div>
             </div>
 
-            {/* Right Action Icons (Video with dropdown, Search, Menu) */}
+            {/* Right Action Icons */}
             <div className="flex items-center gap-3 text-[#8696a0]">
-              <div className="flex items-center gap-0.5 cursor-pointer hover:text-white p-1 rounded transition-colors">
+              <button
+                onClick={() => setActiveCall({ contactName: activeRoom.name, type: 'video' })}
+                className="flex items-center gap-0.5 cursor-pointer hover:text-white p-1 rounded transition-colors"
+                title="Video Call"
+              >
                 <Video size={19} />
-                <ChevronDown size={13} />
-              </div>
+              </button>
 
-              <button className="p-1.5 rounded-full hover:text-white transition-colors cursor-pointer" title="Search in chat">
+              <button
+                onClick={() => setActiveCall({ contactName: activeRoom.name, type: 'voice' })}
+                className="p-1.5 rounded-full hover:text-white transition-colors cursor-pointer"
+                title="Voice Call"
+              >
+                <Phone size={18} />
+              </button>
+
+              <button
+                onClick={() => setRightPanel('media-gallery')}
+                className="p-1.5 rounded-full hover:text-white transition-colors cursor-pointer"
+                title="Media and Docs"
+              >
                 <Search size={19} />
               </button>
 
-              <button className="p-1.5 rounded-full hover:text-white transition-colors cursor-pointer" title="Menu">
+              <button
+                onClick={() => setRightPanel(rightPanel === 'group-info' ? 'none' : 'group-info')}
+                className="p-1.5 rounded-full hover:text-white transition-colors cursor-pointer"
+                title="Chat info"
+              >
                 <MoreVertical size={19} />
               </button>
             </div>
@@ -548,7 +739,7 @@ export default function WhatsAppDesktopPage() {
             className="flex-1 overflow-y-auto px-4 md:px-10 py-4 space-y-1 relative"
             style={{
               backgroundColor: '#0b141a',
-              backgroundImage: `url("${WHATSAPP_DOODLE_DARK}")`,
+              backgroundImage: doodleWallpaperEnabled ? `url("${WHATSAPP_DOODLE_DARK}")` : 'none',
               backgroundRepeat: 'repeat',
               backgroundSize: '440px 440px',
             }}
@@ -624,7 +815,7 @@ export default function WhatsAppDesktopPage() {
                         </div>
                       )}
 
-                      {/* Video Media Card (Matching Screenshot: 2:20 Play Overlay + Caption) */}
+                      {/* Video Media Card */}
                       {msg.isVideo && (
                         <div className="mb-2 relative rounded-[6px] overflow-hidden bg-black/50 border border-white/10 group/vid cursor-pointer">
                           <div className="h-44 sm:h-56 w-full bg-linear-to-b from-stone-800 to-stone-900 flex items-center justify-center relative">
@@ -640,7 +831,7 @@ export default function WhatsAppDesktopPage() {
                             {/* Forward Button */}
                             <button
                               type="button"
-                              className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/80 transition-colors"
+                              className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/80 transition-colors cursor-pointer"
                               title="Forward Video"
                             >
                               <Share2 size={13} />
@@ -654,16 +845,19 @@ export default function WhatsAppDesktopPage() {
                         {msg.text}
                       </div>
 
-                      {/* Timestamp & Double Blue Checks */}
+                      {/* Timestamp, Star & Blue Checks */}
                       <div className="flex items-center justify-end gap-1 mt-0.5 float-right ml-2 text-[11px] text-[#8696a0]">
+                        {msg.isStarred && (
+                          <Star size={11} className="text-[#8696a0] fill-[#8696a0]" />
+                        )}
                         <span>{msg.time}</span>
                         {isMe && <CheckCheck size={14} className="text-[#53bdeb] ml-0.5" />}
                       </div>
 
-                      {/* Hover Actions: Reply & React */}
+                      {/* Hover Actions Bar */}
                       <div
                         className={`absolute top-1 hidden group-hover:flex items-center gap-1 px-1.5 py-0.5 rounded-md shadow-md z-10 bg-[#202c33] border border-[#222d34] ${
-                          isMe ? '-left-16' : '-right-16'
+                          isMe ? '-left-28' : '-right-28'
                         }`}
                       >
                         <button
@@ -681,15 +875,29 @@ export default function WhatsAppDesktopPage() {
                           👍
                         </button>
                         <button
+                          onClick={() => handleToggleStar(msg.id)}
+                          className="p-1 hover:text-[#00a884] text-[#8696a0] cursor-pointer"
+                          title={msg.isStarred ? 'Unstar' : 'Star message'}
+                        >
+                          <Star size={12} className={msg.isStarred ? 'fill-[#00a884] text-[#00a884]' : ''} />
+                        </button>
+                        <button
                           onClick={() => setReplyingTo(msg)}
                           className="text-[11px] font-medium text-[#8696a0] hover:text-white px-1 cursor-pointer"
                         >
                           Reply
                         </button>
+                        <button
+                          onClick={() => handleDeleteMessage(msg.id)}
+                          className="p-1 hover:text-[#ea4335] text-[#8696a0] cursor-pointer"
+                          title="Delete message"
+                        >
+                          <Trash2 size={12} />
+                        </button>
                       </div>
                     </div>
 
-                    {/* Reaction Badges (Matching Screenshot: "😂 5") */}
+                    {/* Reaction Badges */}
                     {msg.reactions && msg.reactions.length > 0 && (
                       <div className={`flex items-center gap-1 mt-0.5 ${isMe ? 'justify-end' : 'justify-start'}`}>
                         {msg.reactions.map((r, rIdx) => (
@@ -839,7 +1047,7 @@ export default function WhatsAppDesktopPage() {
                 <button
                   type="button"
                   onClick={() => {
-                    setMessageText('👋 Hey from WhatsApp Desktop!');
+                    setMessageText('👋 Audio note recorded: [0:04]');
                     inputRef.current?.focus();
                   }}
                   className="p-2 rounded-full text-[#8696a0] hover:text-white transition-colors cursor-pointer shrink-0"
@@ -851,7 +1059,159 @@ export default function WhatsAppDesktopPage() {
             </form>
           </div>
         </main>
+
+        {/* ================================================================== */}
+        {/* RIGHT DRAWER: Group Info / Media / Starred / Settings               */}
+        {/* ================================================================== */}
+        {rightPanel === 'group-info' && (
+          <GroupInfoPanel
+            chat={activeRoom}
+            onClose={() => setRightPanel('none')}
+            onOpenMediaGallery={() => setRightPanel('media-gallery')}
+            onStartCall={(type) => setActiveCall({ contactName: activeRoom.name, type })}
+            onAddMember={() => setIsNewChatModalOpen(true)}
+          />
+        )}
+
+        {rightPanel === 'media-gallery' && (
+          <MediaGalleryPanel
+            chatName={activeRoom.name}
+            onClose={() => setRightPanel('none')}
+          />
+        )}
+
+        {rightPanel === 'starred' && (
+          <StarredMessagesPanel
+            starredMessages={allStarredMessages}
+            onClose={() => setRightPanel('none')}
+            onUnstar={(id) => handleToggleStar(id)}
+            onJumpToChat={(cName) => {
+              const r = chatRooms.find((cr) => cr.name === cName);
+              if (r) setActiveChatId(r.id);
+              setRightPanel('none');
+            }}
+          />
+        )}
+
+        {rightPanel === 'settings' && (
+          <div className="w-[360px] lg:w-[400px] h-full flex flex-col shrink-0 animate-slideLeft">
+            <SettingsView
+              onClose={() => setRightPanel('none')}
+              currentDoodleEnabled={doodleWallpaperEnabled}
+              onToggleDoodle={(en) => setDoodleWallpaperEnabled(en)}
+            />
+          </div>
+        )}
       </div>
+
+      {/* ==================================================================== */}
+      {/* MODALS & OVERLAYS                                                    */}
+      {/* ==================================================================== */}
+      {/* New Chat & New Group Modal */}
+      {isNewChatModalOpen && (
+        <NewChatModal
+          onClose={() => setIsNewChatModalOpen(false)}
+          onSelectContact={(c) => {
+            const existing = chatRooms.find((r) => r.name === c.name);
+            if (existing) {
+              setActiveChatId(existing.id);
+            } else {
+              const newRoom: ChatRoom = {
+                id: `chat-${Date.now()}`,
+                name: c.name,
+                subtitle: c.about || 'online',
+                avatarColor: c.avatarColor,
+                initials: c.initials,
+                lastMessage: 'Tap here to chat',
+                lastTime: 'Now',
+                isGroup: false,
+              };
+              setChatRooms([newRoom, ...chatRooms]);
+              setActiveChatId(newRoom.id);
+            }
+          }}
+          onCreateNewGroup={(gName, selected) => {
+            const newRoom: ChatRoom = {
+              id: `chat-${Date.now()}`,
+              name: gName,
+              subtitle: selected.map((s) => s.name).join(', '),
+              avatarColor: '#25d366',
+              initials: gName.slice(0, 2).toUpperCase(),
+              lastMessage: 'Group created',
+              lastTime: 'Now',
+              isGroup: true,
+              members: selected,
+            };
+            setChatRooms([newRoom, ...chatRooms]);
+            setActiveChatId(newRoom.id);
+          }}
+        />
+      )}
+
+      {/* Active Call Overlay */}
+      {activeCall && (
+        <ActiveCallOverlay
+          contactName={activeCall.contactName}
+          callType={activeCall.type}
+          onEndCall={() => setActiveCall(null)}
+        />
+      )}
+
+      {/* Full-screen Status Story Viewer */}
+      {viewingStatus && (
+        <StatusViewerModal
+          status={viewingStatus}
+          onClose={() => setViewingStatus(null)}
+          onReply={(reply) => {
+            // Send reply directly into active chat or new chat
+            setMessageText(`[Replying to ${viewingStatus.contactName}'s status]: ${reply}`);
+          }}
+        />
+      )}
+
+      {/* User Profile Editor Modal */}
+      {isProfileModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
+          <div className="w-full max-w-sm bg-[#111b21] rounded-2xl border border-[#222d34] p-6 shadow-2xl flex flex-col items-center text-center">
+            <div className="w-20 h-20 rounded-full bg-[#00a884] text-white font-bold text-3xl flex items-center justify-center shadow-lg mb-4 ring-4 ring-[#00a884]/20">
+              S
+            </div>
+
+            <div className="w-full text-left space-y-3">
+              <div>
+                <label className="text-[11px] uppercase font-semibold text-[#00a884]">
+                  Your Name
+                </label>
+                <input
+                  type="text"
+                  value={userName}
+                  onChange={(e) => setUserName(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg bg-[#202c33] text-sm text-[#e9edef] outline-none mt-1"
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] uppercase font-semibold text-[#00a884]">
+                  About
+                </label>
+                <input
+                  type="text"
+                  value={userAbout}
+                  onChange={(e) => setUserAbout(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg bg-[#202c33] text-sm text-[#e9edef] outline-none mt-1"
+                />
+              </div>
+            </div>
+
+            <button
+              onClick={() => setIsProfileModalOpen(false)}
+              className="mt-6 w-full py-2.5 rounded-xl font-semibold bg-[#00a884] text-[#111b21] hover:bg-[#008f6f] transition-colors cursor-pointer text-sm"
+            >
+              Save Profile
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
