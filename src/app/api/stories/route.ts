@@ -43,6 +43,11 @@ export async function GET() {
             if (s.caption && typeof s.caption === 'string' && s.caption.startsWith('{')) {
               try { extra = JSON.parse(s.caption); } catch {}
             }
+            const viewers = Array.isArray(extra.viewers) ? extra.viewers : [];
+            const likers = Array.isArray(extra.likers) ? extra.likers : [];
+            const viewsCount = typeof extra.viewsCount === 'number' ? extra.viewsCount : Math.max(viewers.length, 0);
+            const likesCount = typeof extra.likesCount === 'number' ? extra.likesCount : Math.max(likers.length, 0);
+
             storyMap.set(s.id, {
               id: s.id,
               userId: s.user_id,
@@ -60,6 +65,10 @@ export async function GET() {
               textStyle: extra.textStyle || undefined,
               template: extra.template || undefined,
               templateData: extra.templateData || undefined,
+              viewsCount,
+              viewers,
+              likesCount,
+              likers,
               expiresAt: s.expires_at,
               createdAt: s.created_at,
               hasStory: true,
@@ -107,6 +116,10 @@ export async function POST(req: NextRequest) {
           templateData: story.templateData,
           fullName: story.fullName,
           avatar: story.avatar,
+          viewsCount: typeof story.viewsCount === 'number' ? story.viewsCount : (Array.isArray(story.viewers) ? story.viewers.length : 0),
+          viewers: Array.isArray(story.viewers) ? story.viewers : [],
+          likesCount: typeof story.likesCount === 'number' ? story.likesCount : (Array.isArray(story.likers) ? story.likers.length : 0),
+          likers: Array.isArray(story.likers) ? story.likers : [],
         };
 
         await supabase.from('stories').upsert({

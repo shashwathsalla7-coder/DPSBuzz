@@ -642,6 +642,11 @@ export async function GET(req: NextRequest) {
         if (ds.caption && typeof ds.caption === 'string' && ds.caption.startsWith('{')) {
           try { extra = JSON.parse(ds.caption); } catch {}
         }
+        const viewers = Array.isArray(extra.viewers) ? extra.viewers : [];
+        const likers = Array.isArray(extra.likers) ? extra.likers : [];
+        const viewsCount = typeof extra.viewsCount === 'number' ? extra.viewsCount : Math.max(viewers.length, 0);
+        const likesCount = typeof extra.likesCount === 'number' ? extra.likesCount : Math.max(likers.length, 0);
+
         storyMap.set(ds.id, {
           id: ds.id,
           userId: ds.user_id,
@@ -659,6 +664,10 @@ export async function GET(req: NextRequest) {
           textStyle: extra.textStyle || undefined,
           template: extra.template || undefined,
           templateData: extra.templateData || undefined,
+          viewsCount,
+          viewers,
+          likesCount,
+          likers,
           expiresAt: ds.expires_at,
           createdAt: ds.created_at,
           hasStory: true,

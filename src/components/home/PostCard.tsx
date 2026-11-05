@@ -11,6 +11,7 @@ import {
   Repeat2,
   Music,
   Tag,
+  Eye,
 } from 'lucide-react';
 import { type Post, DataStore } from '@/lib/dataStore';
 import { PostImage } from './PostImage';
@@ -103,6 +104,7 @@ const PostCardComponent: React.FC<PostCardProps> = ({
   // Optimistic instantaneous like feedback (<16ms)
   const [localLiked, setLocalLiked] = React.useState(isLiked);
   const [localLikesCount, setLocalLikesCount] = React.useState(post.likes ?? 0);
+  const [localViewsCount, setLocalViewsCount] = React.useState<number>(post.views ?? 0);
   const isLikingRef = React.useRef(false);
 
   React.useEffect(() => {
@@ -112,6 +114,22 @@ const PostCardComponent: React.FC<PostCardProps> = ({
   React.useEffect(() => {
     setLocalLikesCount(post.likes ?? 0);
   }, [post.likes]);
+
+  // Auto-record post view when post renders
+  React.useEffect(() => {
+    if (post.id) {
+      const v = DataStore.incrementPostViews(post.id, currentUser?.username);
+      if (typeof v === 'number' && v > 0) {
+        setLocalViewsCount(v);
+      }
+    }
+  }, [post.id, currentUser?.username]);
+
+  React.useEffect(() => {
+    if (typeof post.views === 'number') {
+      setLocalViewsCount((prev) => Math.max(prev, post.views ?? 0));
+    }
+  }, [post.views]);
 
   const handleLikeClick = () => {
     if (isLikingRef.current) return;
@@ -336,23 +354,39 @@ const PostCardComponent: React.FC<PostCardProps> = ({
         </button>
       </div>
 
-      {/* 3. Likes Row */}
+      {/* 3. Likes & Views Row */}
       <div className="px-4 pt-0.5 space-y-1">
-        {likesCount > 0 ? (
-          <button
-            type="button"
-            onClick={() => setShowLikesModal(true)}
-            className="text-xs font-semibold text-[var(--text)] leading-tight hover:underline text-left cursor-pointer"
-            title="View who liked this post"
-          >
-            <span className="tabular-nums font-bold">{likesCount}</span>{' '}
-            {likesCount === 1 ? 'like' : 'likes'}
-          </button>
-        ) : (
-          <p className="text-xs text-[var(--text-muted)] leading-tight">
-            Be the first to like this
-          </p>
-        )}
+        <div className="flex items-center justify-between">
+          {likesCount > 0 ? (
+            <button
+              type="button"
+              onClick={() => setShowLikesModal(true)}
+              className="text-xs font-semibold text-[var(--text)] leading-tight hover:underline text-left cursor-pointer"
+              title="View who liked this post"
+            >
+              <span className="tabular-nums font-bold">{likesCount}</span>{' '}
+              {likesCount === 1 ? 'like' : 'likes'}
+            </button>
+          ) : (
+            <p className="text-xs text-[var(--text-muted)] leading-tight">
+              Be the first to like this
+            </p>
+          )}
+
+          {/* Views count with Eye icon */}
+          {(localViewsCount > 0 || (typeof post.views === 'number' && post.views > 0)) && (
+            <button
+              type="button"
+              onClick={() => setShowLikesModal(true)}
+              className="flex items-center gap-1 text-[11px] font-medium text-[var(--text-muted)] hover:text-[var(--text)] transition-colors cursor-pointer"
+              title="View views & insights"
+            >
+              <Eye className="w-3.5 h-3.5 opacity-70" />
+              <span className="tabular-nums font-semibold">{localViewsCount || post.views || 0}</span>
+              <span className="hidden sm:inline">views</span>
+            </button>
+          )}
+        </div>
 
         {/* Timestamp */}
         <p className="text-xs text-[var(--text-muted)] font-medium">
