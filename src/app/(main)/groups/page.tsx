@@ -14,6 +14,7 @@ import {
   X,
   ChevronLeft,
   ChevronDown,
+  ChevronRight,
   AlertCircle,
   MoreVertical,
   Video,
@@ -21,6 +22,8 @@ import {
   Paperclip,
   Mic,
   Shield,
+  ShieldCheck,
+  CheckCircle2,
   RefreshCw,
   Megaphone,
   UserPlus,
@@ -37,7 +40,18 @@ import {
   Flame,
   Heart,
   ThumbsUp,
+  ThumbsDown,
   MessageSquare,
+  Phone,
+  Info,
+  Bell,
+  BellOff,
+  Pin,
+  Sparkles,
+  ExternalLink,
+  UserCheck,
+  GraduationCap,
+  BookOpen,
 } from 'lucide-react';
 import {
   schoolSystem,
@@ -47,16 +61,16 @@ import {
 } from '@/lib/schoolFeatures';
 import { DataStore, Profile } from '@/lib/dataStore';
 
-// Distinct WhatsApp group member colors
+// Apple Palette Distinct Accent Colors
 const SENDER_COLORS = [
-  '#53bdeb', // Cyan / Blue
-  '#f15c6d', // Red / Coral
-  '#25d366', // Green
-  '#e542a3', // Pink
-  '#ff9f00', // Amber
-  '#9c27b0', // Purple
-  '#00bcd4', // Teal
-  '#ff5722', // Deep Orange
+  '#007AFF', // Apple Blue
+  '#34C759', // Apple Green
+  '#FF9500', // Apple Orange
+  '#AF52DE', // Apple Purple
+  '#FF2D55', // Apple Pink
+  '#5856D6', // Apple Indigo
+  '#00C7BE', // Apple Teal
+  '#FF3B30', // Apple Red
 ];
 
 function getSenderColor(name: string) {
@@ -73,61 +87,261 @@ interface ReactionItem {
   users: string[];
 }
 
-// ============================================================================
-// AUTHENTIC WHATSAPP DOODLE WALLPAPER (Dark & Light SVG Patterns)
-// ============================================================================
-const WHATSAPP_DOODLE_DARK = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='440' height='440' viewBox='0 0 440 440' fill='none' stroke='%23ffffff' stroke-opacity='0.055' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'><path d='M35 25 h38 a10 10 0 0 1 10 10 v18 a10 10 0 0 1 -10 10 h-22 l-14 10 v-10 h-2 a10 10 0 0 1 -10 -10 v-18 a10 10 0 0 1 10 -10 z'/><circle cx='54' cy='44' r='2' fill='%23ffffff' fill-opacity='0.055'/><circle cx='64' cy='44' r='2' fill='%23ffffff' fill-opacity='0.055'/><circle cx='74' cy='44' r='2' fill='%23ffffff' fill-opacity='0.055'/><path d='M150 32 h30 v26 a14 14 0 0 1 -14 14 h-2 a14 14 0 0 1 -14 -14 v-26 z'/><path d='M180 38 h8 a6 6 0 0 1 6 6 v6 a6 6 0 0 1 -6 6 h-8'/><path d='M158 24 c0 -5 4 -5 4 -10'/><path d='M168 24 c0 -5 4 -5 4 -10'/><rect x='260' y='28' width='52' height='32' rx='12'/><path d='M272 38 v12 M266 44 h12'/><circle cx='298' cy='40' r='2.5' fill='%23ffffff' fill-opacity='0.055'/><circle cx='304' cy='48' r='2.5' fill='%23ffffff' fill-opacity='0.055'/><path d='M370 50 a22 22 0 0 1 44 0 v14'/><rect x='365' y='56' width='9' height='16' rx='3'/><rect x='410' y='56' width='9' height='16' rx='3'/><circle cx='60' cy='155' r='18'/><polygon points='60,145 68,151 65,160 55,160 52,151'/><line x1='60' y1='145' x2='60' y2='137'/><line x1='68' y1='151' x2='76' y2='148'/><line x1='65' y1='160' x2='71' y2='168'/><line x1='55' y1='160' x2='49' y2='168'/><line x1='52' y1='151' x2='44' y2='148'/><path d='M155 135 l32 10 l-20 32 z'/><path d='M155 135 a36 36 0 0 1 32 10'/><circle cx='165' cy='150' r='2' fill='%23ffffff' fill-opacity='0.055'/><circle cx='170' cy='164' r='2' fill='%23ffffff' fill-opacity='0.055'/><rect x='260' y='140' width='42' height='30' rx='5'/><path d='M272 140 l3 -5 h12 l3 5'/><circle cx='281' cy='155' r='8'/><circle cx='294' cy='146' r='1.5' fill='%23ffffff' fill-opacity='0.055'/><circle cx='368' cy='160' r='12'/><circle cx='404' cy='160' r='12'/><path d='M368 160 l16 -18 h12 l7 18 M384 142 l-9 -14 h12 M396 142 l-12 18'/><path d='M42 250 l44 -18 l-22 40 l-7 -13 l-15 -9 z'/><path d='M86 232 l-29 27'/><path d='M150 260 a12 12 0 0 1 20 -8 a16 16 0 0 1 26 5 a10 10 0 0 1 4 18 h-48 a7 7 0 0 1 -2 -15 z'/><polygon points='172,274 166,283 173,283 169,291 180,281 173,281' fill='%23ffffff' fill-opacity='0.055'/><circle cx='272' cy='255' r='16'/><path d='M272 245 v10 l7 5'/><path d='M258 240 l-5 -5 M286 240 l5 -5'/><path d='M365 242 a16 16 0 0 1 26 16 c-3 4 -4 7 -4 12 h-18 c0 -5 -1 -8 -4 -12 a16 16 0 0 1 0 -16 z'/><line x1='374' y1='275' x2='382' y2='275'/><circle cx='50' cy='365' r='4' fill='%23ffffff' fill-opacity='0.055'/><circle cx='68' cy='358' r='4' fill='%23ffffff' fill-opacity='0.055'/><path d='M54 365 v-20 l18 -7 v20 M54 345 l18 -7'/><path d='M165 340 l3 9 l9 3 l-9 3 l-3 9 l-3 -9 l-9 -3 l9 -3 z' fill='%23ffffff' fill-opacity='0.055'/><circle cx='192' cy='348' r='1.5' fill='%23ffffff' fill-opacity='0.055'/><path d='M250 375 c0 -14 10 -24 19 -30 c9 5 19 16 19 30 h-38 z'/><circle cx='269' cy='360' r='3.5'/><path d='M250 375 l-8 7 v-10 l8 -7 M288 375 l8 7 v-10 l-8 -7'/><path d='M352 348 a6 6 0 0 0 -9 9 l9 9 l9 -9 a6 6 0 0 0 -9 -9 z'/><circle cx='388' cy='360' r='12'/><circle cx='384' cy='356' r='1.2' fill='%23ffffff' fill-opacity='0.055'/><circle cx='392' cy='356' r='1.2' fill='%23ffffff' fill-opacity='0.055'/><path d='M384 364 a5 5 0 0 0 8 0'/><polygon points='105,32 126,22 147,32 126,42'/><path d='M113 37 v8 c0 5 13 8 13 8 s13 -3 13 -8 v-8'/><path d='M205 95 h44 M205 95 a10 8 0 0 0 20 0 a10 8 0 0 0 -20 0 M227 95 a10 8 0 0 0 20 0 a10 8 0 0 0 -20 0'/><path d='M305 92 h20 v8 a10 10 0 0 1 -20 0 z M315 100 v10 M308 110 h14'/><path d='M98 195 l18 -18 l5 5 l-18 18 l-5 2 z'/><path d='M205 200 v17 M212 200 v17 M201 205 h17 M201 212 h17'/></svg>`;
+interface EnrolledMember {
+  id: string;
+  username: string;
+  name: string;
+  role: 'principal' | 'faculty' | 'rep' | 'student';
+  roleLabel: string;
+  className: string;
+  rollNo?: string;
+  admissionNo: string;
+  house: string;
+  isVerified: boolean;
+  avatar?: string | null;
+  online: boolean;
+  spiritPoints: number;
+  attendance: string;
+}
 
-const WHATSAPP_DOODLE_LIGHT = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='440' height='440' viewBox='0 0 440 440' fill='none' stroke='%23000000' stroke-opacity='0.055' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'><path d='M35 25 h38 a10 10 0 0 1 10 10 v18 a10 10 0 0 1 -10 10 h-22 l-14 10 v-10 h-2 a10 10 0 0 1 -10 -10 v-18 a10 10 0 0 1 10 -10 z'/><circle cx='54' cy='44' r='2' fill='%23000000' fill-opacity='0.055'/><circle cx='64' cy='44' r='2' fill='%23000000' fill-opacity='0.055'/><circle cx='74' cy='44' r='2' fill='%23000000' fill-opacity='0.055'/><path d='M150 32 h30 v26 a14 14 0 0 1 -14 14 h-2 a14 14 0 0 1 -14 -14 v-26 z'/><path d='M180 38 h8 a6 6 0 0 1 6 6 v6 a6 6 0 0 1 -6 6 h-8'/><path d='M158 24 c0 -5 4 -5 4 -10'/><path d='M168 24 c0 -5 4 -5 4 -10'/><rect x='260' y='28' width='52' height='32' rx='12'/><path d='M272 38 v12 M266 44 h12'/><circle cx='298' cy='40' r='2.5' fill='%23000000' fill-opacity='0.055'/><circle cx='304' cy='48' r='2.5' fill='%23000000' fill-opacity='0.055'/><path d='M370 50 a22 22 0 0 1 44 0 v14'/><rect x='365' y='56' width='9' height='16' rx='3'/><rect x='410' y='56' width='9' height='16' rx='3'/><circle cx='60' cy='155' r='18'/><polygon points='60,145 68,151 65,160 55,160 52,151'/><line x1='60' y1='145' x2='60' y2='137'/><line x1='68' y1='151' x2='76' y2='148'/><line x1='65' y1='160' x2='71' y2='168'/><line x1='55' y1='160' x2='49' y2='168'/><line x1='52' y1='151' x2='44' y2='148'/><path d='M155 135 l32 10 l-20 32 z'/><path d='M155 135 a36 36 0 0 1 32 10'/><circle cx='165' cy='150' r='2' fill='%23000000' fill-opacity='0.055'/><circle cx='170' cy='164' r='2' fill='%23000000' fill-opacity='0.055'/><rect x='260' y='140' width='42' height='30' rx='5'/><path d='M272 140 l3 -5 h12 l3 5'/><circle cx='281' cy='155' r='8'/><circle cx='294' cy='146' r='1.5' fill='%23000000' fill-opacity='0.055'/><circle cx='368' cy='160' r='12'/><circle cx='404' cy='160' r='12'/><path d='M368 160 l16 -18 h12 l7 18 M384 142 l-9 -14 h12 M396 142 l-12 18'/><path d='M42 250 l44 -18 l-22 40 l-7 -13 l-15 -9 z'/><path d='M86 232 l-29 27'/><path d='M150 260 a12 12 0 0 1 20 -8 a16 16 0 0 1 26 5 a10 10 0 0 1 4 18 h-48 a7 7 0 0 1 -2 -15 z'/><polygon points='172,274 166,283 173,283 169,291 180,281 173,281' fill='%23000000' fill-opacity='0.055'/><circle cx='272' cy='255' r='16'/><path d='M272 245 v10 l7 5'/><path d='M258 240 l-5 -5 M286 240 l5 -5'/><path d='M365 242 a16 16 0 0 1 26 16 c-3 4 -4 7 -4 12 h-18 c0 -5 -1 -8 -4 -12 a16 16 0 0 1 0 -16 z'/><line x1='374' y1='275' x2='382' y2='275'/><circle cx='50' cy='365' r='4' fill='%23000000' fill-opacity='0.055'/><circle cx='68' cy='358' r='4' fill='%23000000' fill-opacity='0.055'/><path d='M54 365 v-20 l18 -7 v20 M54 345 l18 -7'/><path d='M165 340 l3 9 l9 3 l-9 3 l-3 9 l-3 -9 l-9 -3 l9 -3 z' fill='%23000000' fill-opacity='0.055'/><circle cx='192' cy='348' r='1.5' fill='%23000000' fill-opacity='0.055'/><path d='M250 375 c0 -14 10 -24 19 -30 c9 5 19 16 19 30 h-38 z'/><circle cx='269' cy='360' r='3.5'/><path d='M250 375 l-8 7 v-10 l8 -7 M288 375 l8 7 v-10 l-8 -7'/><path d='M352 348 a6 6 0 0 0 -9 9 l9 9 l9 -9 a6 6 0 0 0 -9 -9 z'/><circle cx='388' cy='360' r='12'/><circle cx='384' cy='356' r='1.2' fill='%23000000' fill-opacity='0.055'/><circle cx='392' cy='356' r='1.2' fill='%23000000' fill-opacity='0.055'/><path d='M384 364 a5 5 0 0 0 8 0'/><polygon points='105,32 126,22 147,32 126,42'/><path d='M113 37 v8 c0 5 13 8 13 8 s13 -3 13 -8 v-8'/><path d='M205 95 h44 M205 95 a10 8 0 0 0 20 0 a10 8 0 0 0 -20 0 M227 95 a10 8 0 0 0 20 0 a10 8 0 0 0 -20 0'/><path d='M305 92 h20 v8 a10 10 0 0 1 -20 0 z M315 100 v10 M308 110 h14'/><path d='M98 195 l18 -18 l5 5 l-18 18 l-5 2 z'/><path d='M205 200 v17 M212 200 v17 M201 205 h17 M201 212 h17'/></svg>`;
+// Verified Seed Roster for Class 8-G and DPS Classrooms
+const BASE_DPS_ROSTER: EnrolledMember[] = [
+  {
+    id: 'mem-madam',
+    username: 'madam_principal',
+    name: 'Dr. Pratibha Kohli',
+    role: 'principal',
+    roleLabel: 'Office of the Principal',
+    className: 'Official Staff',
+    admissionNo: 'DPS-STAFF-001',
+    house: 'Ex-Officio',
+    isVerified: true,
+    avatar: null,
+    online: true,
+    spiritPoints: 1250,
+    attendance: '100%',
+  },
+  {
+    id: 'mem-anita',
+    username: 'teacher_english',
+    name: 'Anita Sharma Madam',
+    role: 'faculty',
+    roleLabel: 'Faculty (English Dept Head)',
+    className: 'Staff Faculty',
+    admissionNo: 'DPS-FAC-2018',
+    house: 'Ganges House',
+    isVerified: true,
+    avatar: null,
+    online: true,
+    spiritPoints: 890,
+    attendance: '99%',
+  },
+  {
+    id: 'mem-shashwath',
+    username: 'shashwath71845',
+    name: 'Shashwath Salla',
+    role: 'rep',
+    roleLabel: 'Class Representative & Admin',
+    className: 'Class 8-G',
+    rollNo: '24',
+    admissionNo: 'DPS-2024-8G24',
+    house: 'Yamuna House',
+    isVerified: true,
+    avatar: null,
+    online: true,
+    spiritPoints: 720,
+    attendance: '98.5%',
+  },
+  {
+    id: 'mem-rishi',
+    username: 'rishi_one9',
+    name: 'Y Rishikesh Reddy',
+    role: 'student',
+    roleLabel: 'Verified Student',
+    className: 'Class 8-G',
+    rollNo: '36',
+    admissionNo: 'DPS-2024-8G36',
+    house: 'Kaveri House',
+    isVerified: true,
+    avatar: null,
+    online: true,
+    spiritPoints: 640,
+    attendance: '97.2%',
+  },
+  {
+    id: 'mem-rohan',
+    username: 'rohan728',
+    name: 'Rohan R',
+    role: 'student',
+    roleLabel: 'Verified Student',
+    className: 'Class 8-G',
+    rollNo: '28',
+    admissionNo: 'DPS-2024-8G28',
+    house: 'Ganges House',
+    isVerified: true,
+    avatar: null,
+    online: true,
+    spiritPoints: 510,
+    attendance: '96.8%',
+  },
+  {
+    id: 'mem-chandan',
+    username: 'chandan',
+    name: 'Chandan',
+    role: 'student',
+    roleLabel: 'Verified Student',
+    className: 'Class 8-G',
+    rollNo: '12',
+    admissionNo: 'DPS-2024-8G12',
+    house: 'Narmada House',
+    isVerified: true,
+    avatar: null,
+    online: false,
+    spiritPoints: 480,
+    attendance: '95.4%',
+  },
+  {
+    id: 'mem-ashwith',
+    username: 'ashwith',
+    name: 'K. Ashwith',
+    role: 'student',
+    roleLabel: 'Verified Student',
+    className: 'Class 8-G',
+    rollNo: '19',
+    admissionNo: 'DPS-2024-8G19',
+    house: 'Yamuna House',
+    isVerified: true,
+    avatar: null,
+    online: true,
+    spiritPoints: 530,
+    attendance: '97.0%',
+  },
+  {
+    id: 'mem-sreekrishna',
+    username: 'sreekrishna',
+    name: 'G. Ananth Sree Krishna',
+    role: 'student',
+    roleLabel: 'Verified Student',
+    className: 'Class 8-G',
+    rollNo: '15',
+    admissionNo: 'DPS-2024-8G15',
+    house: 'Ganges House',
+    isVerified: true,
+    avatar: null,
+    online: false,
+    spiritPoints: 490,
+    attendance: '96.1%',
+  },
+  {
+    id: 'mem-vignesh',
+    username: 'vignesh',
+    name: 'Vignesh',
+    role: 'student',
+    roleLabel: 'Verified Student',
+    className: 'Class 8-G',
+    rollNo: '41',
+    admissionNo: 'DPS-2024-8G41',
+    house: 'Kaveri House',
+    isVerified: true,
+    avatar: null,
+    online: true,
+    spiritPoints: 420,
+    attendance: '94.8%',
+  },
+  {
+    id: 'mem-ishanvi',
+    username: 'ishanvi',
+    name: 'Ishanvi',
+    role: 'student',
+    roleLabel: 'Verified Student',
+    className: 'Class 8-A',
+    rollNo: '18',
+    admissionNo: 'DPS-2024-8A18',
+    house: 'Yamuna House',
+    isVerified: true,
+    avatar: null,
+    online: true,
+    spiritPoints: 560,
+    attendance: '98.0%',
+  },
+  {
+    id: 'mem-mokshith',
+    username: 'mokshith7b',
+    name: 'Neelam Mokshith Ram',
+    role: 'student',
+    roleLabel: 'Verified Student',
+    className: 'Class 7-B',
+    rollNo: '22',
+    admissionNo: 'DPS-2024-7B22',
+    house: 'Narmada House',
+    isVerified: true,
+    avatar: null,
+    online: false,
+    spiritPoints: 470,
+    attendance: '96.5%',
+  },
+  {
+    id: 'mem-sahana',
+    username: 'sahana_3009',
+    name: 'S. Sahana',
+    role: 'student',
+    roleLabel: 'Verified Student',
+    className: 'Class 9-A',
+    rollNo: '31',
+    admissionNo: 'DPS-2024-9A31',
+    house: 'Ganges House',
+    isVerified: true,
+    avatar: null,
+    online: true,
+    spiritPoints: 610,
+    attendance: '97.5%',
+  },
+];
 
 // ============================================================================
-// MEMOIZED MESSAGE BUBBLE COMPONENT (High Performance - Zero Typing Stutter)
+// APPLE MESSAGE BUBBLE COMPONENT (iMessage Styling, Zero Cut-Off, Full Trust)
 // ============================================================================
 interface MessageBubbleProps {
   msg: WhatsAppMessage;
   isMe: boolean;
   isSameSenderAsPrev: boolean;
-  T: any;
   isDark: boolean;
   reactions: ReactionItem[];
   onToggleReaction: (msgId: string, emoji: string) => void;
   onReply: (msg: WhatsAppMessage) => void;
+  onOpenProfile: (username: string) => void;
 }
 
 const MessageBubbleItem = memo(function MessageBubbleItem({
   msg,
   isMe,
   isSameSenderAsPrev,
-  T,
   isDark,
   reactions,
   onToggleReaction,
   onReply,
+  onOpenProfile,
 }: MessageBubbleProps) {
+  const [showTapbacks, setShowTapbacks] = useState(false);
+
   const isPrincipal =
     msg.senderRole === 'admin' ||
     msg.senderUsername.toLowerCase() === 'madam_principal' ||
     msg.senderName.toLowerCase().includes('principal');
+  const isFaculty = msg.senderRole === 'teacher' || msg.senderUsername.toLowerCase().includes('teacher');
   const isSystem = msg.senderUsername === 'system';
 
   if (isSystem) {
     return (
-      <div className="flex justify-center my-2 px-4">
-        <span
-          className="px-3 py-1 rounded-[7.5px] text-[11px] text-center max-w-md shadow-2xs"
-          style={{
-            backgroundColor: isDark ? '#182229' : '#ffffff',
-            color: T.timeColor,
-            boxShadow: T.bubbleShadow,
-          }}
-        >
+      <div className="flex justify-center my-3 px-4">
+        <span className="px-3.5 py-1 rounded-full text-[11px] font-medium bg-black/5 dark:bg-white/10 text-zinc-600 dark:text-zinc-400 text-center max-w-md shadow-xs border border-black/5 dark:border-white/5">
           {msg.text}
         </span>
       </div>
     );
   }
 
-  const senderColor = isPrincipal ? '#ea4335' : getSenderColor(msg.senderName);
+  const senderColor = isPrincipal ? '#ea4335' : isFaculty ? '#f59e0b' : getSenderColor(msg.senderName);
 
   // Quoted text parsing (if message is a reply)
   let quoteAuthor = '';
@@ -138,7 +352,7 @@ const MessageBubbleItem = memo(function MessageBubbleItem({
     const quoteEnd = msg.text.indexOf('\n\n');
     if (quoteEnd !== -1) {
       const quoteLine = msg.text.slice(0, quoteEnd);
-      const match = quoteLine.match(/> Replying to @([^:]+):\s*"([^"]+)"/);
+      const match = quoteLine.match(/> Replying to @([^:]+):\s*"([\s\S]+?)"/);
       if (match) {
         quoteAuthor = match[1];
         quoteSnippet = match[2];
@@ -147,193 +361,240 @@ const MessageBubbleItem = memo(function MessageBubbleItem({
     }
   }
 
-  // Check if message is a rich media / video post (like in user screenshot)
+  // Media inspection
   const isVideoPost = msg.mediaType === 'video' || mainBody.includes('Me in my prime');
   const isImagePost = msg.mediaType === 'image' || Boolean(msg.mediaUrl && !isVideoPost);
 
   return (
     <div
-      className={`flex items-start gap-2 ${isMe ? 'justify-end' : 'justify-start'} ${
-        isSameSenderAsPrev ? 'mt-0.5' : 'mt-2.5'
+      className={`flex items-start gap-2.5 ${isMe ? 'justify-end' : 'justify-start'} ${
+        isSameSenderAsPrev ? 'mt-1' : 'mt-3.5'
       }`}
     >
-      {/* Contact Avatar on Left (only on first message of cluster) */}
+      {/* Sender Avatar on Left (Only for Incoming messages on first of cluster) */}
       {!isMe && (
-        <div className="w-7 shrink-0">
+        <div className="w-8 shrink-0">
           {!isSameSenderAsPrev ? (
-            <div
-              className="w-7 h-7 rounded-full flex items-center justify-center font-bold text-white text-[11px] shadow-xs"
+            <button
+              type="button"
+              onClick={() => onOpenProfile(msg.senderUsername)}
+              className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-white text-xs shadow-xs hover:scale-105 active:scale-95 transition-transform cursor-pointer relative"
               style={{ backgroundColor: senderColor }}
+              title={`View @${msg.senderUsername}'s Verified DPS Profile`}
             >
               {msg.senderName.slice(0, 1).toUpperCase()}
-            </div>
+              {isPrincipal ? (
+                <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-red-600 text-white flex items-center justify-center text-[8px] ring-2 ring-white dark:ring-zinc-900">
+                  ★
+                </span>
+              ) : isFaculty ? (
+                <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-amber-500 text-white flex items-center justify-center text-[8px] ring-2 ring-white dark:ring-zinc-900">
+                  ✓
+                </span>
+              ) : (
+                <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-[#007AFF] text-white flex items-center justify-center text-[8px] ring-2 ring-white dark:ring-zinc-900">
+                  ✓
+                </span>
+              )}
+            </button>
           ) : null}
         </div>
       )}
 
-      {/* WhatsApp Chat Bubble */}
-      <div className="flex flex-col max-w-[85%] sm:max-w-[70%] md:max-w-[65%] group relative">
+      {/* Bubble Container: Max Width Optimized for Zero Horizontal Cut-Off */}
+      <div className="flex flex-col max-w-[86%] sm:max-w-[76%] md:max-w-[70%] group relative">
+        {/* Sender Name & Trust Header above bubble (Incoming only) */}
+        {!isMe && !isSameSenderAsPrev && (
+          <div className="mb-1 ml-1 flex items-center gap-1.5 text-xs flex-wrap">
+            <button
+              type="button"
+              onClick={() => onOpenProfile(msg.senderUsername)}
+              className="font-semibold hover:underline cursor-pointer flex items-center gap-1"
+              style={{ color: senderColor }}
+            >
+              <span>{msg.senderName}</span>
+              {isPrincipal ? (
+                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-full bg-red-500/10 text-red-600 dark:text-red-400 text-[10px] font-bold border border-red-500/20">
+                  <Award size={10} />
+                  <span>Principal</span>
+                </span>
+              ) : isFaculty ? (
+                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] font-bold border border-amber-500/20">
+                  <ShieldCheck size={10} />
+                  <span>Faculty</span>
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-full bg-blue-500/10 text-[#007AFF] dark:text-blue-400 text-[10px] font-semibold border border-blue-500/20">
+                  <CheckCircle2 size={10} />
+                  <span>Verified</span>
+                </span>
+              )}
+            </button>
+
+            {msg.senderClass && (
+              <span className="text-[11px] text-zinc-500 dark:text-zinc-400 font-medium">
+                • {msg.senderClass}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Principal Circular Banner */}
+        {isPrincipal && !isSameSenderAsPrev && (
+          <div className="mb-1.5 px-3 py-1.5 rounded-xl bg-red-500/10 border border-red-500/25 flex items-center gap-2 text-xs font-semibold text-red-600 dark:text-red-400 shadow-2xs">
+            <Award size={14} className="shrink-0 text-red-500" />
+            <span>OFFICIAL DISPATCH • OFFICE OF THE PRINCIPAL</span>
+          </div>
+        )}
+
+        {/* Apple iMessage Bubble */}
         <div
-          className={`px-3 py-1.5 text-sm transition-all relative ${
+          onClick={() => setShowTapbacks((prev) => !prev)}
+          className={`relative px-4 py-2.5 text-[15px] leading-relaxed break-words whitespace-pre-wrap [overflow-wrap:anywhere] word-break:break-word transition-all select-text cursor-pointer ${
             isMe
-              ? `rounded-[8px] ${!isSameSenderAsPrev ? 'rounded-tr-none' : ''}`
-              : `rounded-[8px] ${!isSameSenderAsPrev ? 'rounded-tl-none' : ''}`
+              ? 'bg-[#007AFF] text-white rounded-[20px] rounded-br-[4px] shadow-[0_1px_2px_rgba(0,122,255,0.2)]'
+              : isDark
+              ? 'bg-[#2C2C2E] text-zinc-100 rounded-[20px] rounded-bl-[4px] shadow-xs border border-white/[0.06]'
+              : 'bg-[#E9E9EB] text-zinc-900 rounded-[20px] rounded-bl-[4px] shadow-xs border border-black/[0.04]'
           }`}
           style={{
-            backgroundColor: isMe ? T.outgoingBubble : T.incomingBubble,
-            color: isMe ? T.outgoingText : T.incomingText,
-            boxShadow: T.bubbleShadow,
+            fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", sans-serif',
           }}
         >
-          {/* Sender Name & Role Header (Shown only on first message of cluster) */}
-          {!isMe && !isSameSenderAsPrev && (
-            <div className="mb-0.5 flex items-center justify-between gap-3 text-xs font-semibold">
-              <span style={{ color: senderColor }} className="truncate">
-                {msg.senderName}
-                {msg.senderClass && (
-                  <span className="font-normal opacity-70 ml-1 text-[11px]" style={{ color: T.timeColor }}>
-                    • {msg.senderClass}
-                  </span>
-                )}
-              </span>
-            </div>
-          )}
-
-          {/* Quoted Reply Card (Exact WhatsApp format) */}
+          {/* Quoted Message Card */}
           {quoteAuthor && (
             <div
-              className="mb-1.5 p-1.5 rounded-[6px] text-xs border-l-[3.5px]"
-              style={{
-                backgroundColor: T.quoteBg,
-                borderColor: getSenderColor(quoteAuthor),
-              }}
+              className={`mb-2 p-2.5 rounded-[14px] text-xs border-l-[3.5px] text-left break-words [overflow-wrap:anywhere] ${
+                isMe
+                  ? 'bg-white/15 border-white text-white/95'
+                  : 'bg-black/5 dark:bg-white/5 border-[#007AFF] text-zinc-700 dark:text-zinc-300'
+              }`}
             >
-              <div className="font-semibold text-[11px]" style={{ color: getSenderColor(quoteAuthor) }}>
-                {quoteAuthor}
+              <div className="font-semibold text-[11px] flex items-center gap-1 mb-0.5">
+                <CheckCircle2 size={11} className="text-[#007AFF]" />
+                <span>@{quoteAuthor}</span>
               </div>
-              <div className="text-[11px] truncate opacity-80" style={{ color: T.quoteText }}>
+              <div className="text-[12px] opacity-90 line-clamp-3 leading-relaxed">
                 {quoteSnippet}
               </div>
             </div>
           )}
 
-          {/* Principal Madam Dispatch Banner */}
-          {isPrincipal && !isSameSenderAsPrev && (
-            <div className="mb-1 text-[10px] font-bold text-[#ea4335] uppercase tracking-wider flex items-center gap-1">
-              <Award size={12} />
-              <span>OFFICE OF THE PRINCIPAL CIRCULAR</span>
-            </div>
-          )}
-
-          {/* Rich Media Video Card (Matching User Screenshot Layout) */}
+          {/* Media: Video Card */}
           {isVideoPost && (
-            <div className="mb-2 relative rounded-[6px] overflow-hidden bg-black/40 border border-white/10 group/video cursor-pointer">
-              <div className="h-44 sm:h-52 w-full bg-linear-to-b from-stone-800 to-stone-900 flex items-center justify-center relative">
-                {/* Play Button Overlay */}
-                <div className="w-12 h-12 rounded-full bg-black/60 backdrop-blur-xs flex items-center justify-center text-white group-hover/video:scale-110 transition-transform">
-                  <Play size={22} className="ml-0.5 fill-white" />
+            <div className="mb-2 relative rounded-[16px] overflow-hidden bg-black/60 border border-white/10 group/video cursor-pointer">
+              <div className="h-48 sm:h-56 w-full bg-linear-to-b from-stone-900 via-zinc-900 to-black flex items-center justify-center relative">
+                <div className="w-13 h-13 rounded-full bg-white/25 backdrop-blur-md flex items-center justify-center text-white group-hover/video:scale-110 transition-transform shadow-lg border border-white/30">
+                  <Play size={24} className="ml-0.5 fill-white" />
                 </div>
-                {/* Duration Badge */}
-                <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded bg-black/70 text-[10px] text-white font-medium flex items-center gap-1">
-                  <Video size={10} />
+                <div className="absolute bottom-2.5 left-2.5 px-2.5 py-1 rounded-full bg-black/75 backdrop-blur-xs text-[11px] text-white font-medium flex items-center gap-1.5">
+                  <Video size={11} />
                   <span>{msg.mediaDuration || '2:20'}</span>
                 </div>
-                {/* Forward Arrow */}
-                <button
-                  type="button"
-                  className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/80 transition-colors"
-                  title="Forward Media"
-                >
-                  <Share2 size={13} />
-                </button>
               </div>
             </div>
           )}
 
-          {/* Rich Media Image Card */}
+          {/* Media: Image Card */}
           {isImagePost && msg.mediaUrl && (
-            <div className="mb-2 rounded-[6px] overflow-hidden max-h-64 cursor-pointer">
+            <div className="mb-2 rounded-[16px] overflow-hidden max-h-72 cursor-pointer shadow-xs">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={msg.mediaUrl}
-                alt="Attachment"
-                className="w-full h-auto object-cover rounded-[6px] hover:opacity-95 transition-opacity"
+                alt="Class Attachment"
+                className="w-full h-auto object-cover rounded-[16px] hover:opacity-95 transition-opacity"
               />
             </div>
           )}
 
-          {/* Message Body */}
-          <div className="whitespace-pre-wrap break-words leading-relaxed text-[13.5px]">
+          {/* Message Text Body */}
+          <div className="leading-relaxed break-words whitespace-pre-wrap [overflow-wrap:anywhere] word-break:break-word">
             {mainBody}
           </div>
 
-          {/* Timestamp & Double Blue Checkmarks */}
-          <div className="flex items-center justify-end gap-1 mt-0.5 float-right ml-2 text-[11px]">
-            <span style={{ color: T.timeColor }}>
+          {/* Metadata Row: Timestamp & Status Checkmarks */}
+          <div
+            className={`flex items-center justify-end gap-1 mt-1 text-[10.5px] select-none ${
+              isMe ? 'text-white/70' : 'text-zinc-500 dark:text-zinc-400'
+            }`}
+          >
+            <span>
               {new Date(msg.timestamp).toLocaleTimeString([], {
                 hour: 'numeric',
                 minute: '2-digit',
                 hour12: true,
               })}
             </span>
-            {isMe && <CheckCheck size={14} className="text-[#53bdeb] ml-0.5" />}
+            {isMe && <CheckCheck size={13} className="text-white/90 ml-0.5" />}
           </div>
 
-          {/* Hover Quick Action Buttons (Reply & React) */}
+          {/* Apple Tapback Bubble Reaction Pill */}
+          {reactions.length > 0 && (
+            <div
+              className={`absolute -bottom-2.5 ${
+                isMe ? 'right-3' : 'left-3'
+              } flex items-center gap-1 bg-white dark:bg-[#3A3A3C] border border-black/10 dark:border-white/15 px-2 py-0.5 rounded-full shadow-md z-10 select-none animate-scale-in`}
+            >
+              {reactions.map((r, rIdx) => (
+                <button
+                  key={rIdx}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleReaction(msg.id, r.emoji);
+                  }}
+                  className="flex items-center gap-1 text-[11px] hover:scale-115 active:scale-95 transition-transform"
+                >
+                  <span>{r.emoji}</span>
+                  {r.count > 1 && (
+                    <span className="font-semibold text-[10px] text-zinc-600 dark:text-zinc-300">
+                      {r.count}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Apple 6-Tapback Bar (Revealed on Hover or Tap) */}
+        {showTapbacks && (
           <div
-            className={`absolute top-1 hidden group-hover:flex items-center gap-1 px-1.5 py-0.5 rounded-md shadow-md z-10 ${
-              isMe ? '-left-16' : '-right-16'
-            }`}
-            style={{
-              backgroundColor: T.headerBg,
-              border: `1px solid ${T.headerBorder}`,
-            }}
+            className={`absolute -top-11 z-30 flex items-center gap-2 px-3 py-1.5 rounded-full shadow-2xl backdrop-blur-2xl border ${
+              isMe ? 'right-0' : 'left-0'
+            } ${
+              isDark
+                ? 'bg-[#1C1C1E]/95 border-white/15 text-white'
+                : 'bg-white/95 border-black/10 text-zinc-900'
+            } animate-fadeIn`}
           >
+            {['❤️', '👍', '👎', '😂', '‼️', '❓'].map((em) => (
+              <button
+                key={em}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleReaction(msg.id, em);
+                  setShowTapbacks(false);
+                }}
+                className="text-base hover:scale-130 active:scale-95 transition-transform cursor-pointer p-0.5"
+                title={`React ${em}`}
+              >
+                {em}
+              </button>
+            ))}
+            <div className="w-[1px] h-4 bg-zinc-300 dark:bg-zinc-700 mx-0.5" />
             <button
-              onClick={() => onToggleReaction(msg.id, '😂')}
-              className="text-xs hover:scale-125 transition-transform cursor-pointer"
-              title="React with Laugh"
-            >
-              😂
-            </button>
-            <button
-              onClick={() => onToggleReaction(msg.id, '👍')}
-              className="text-xs hover:scale-125 transition-transform cursor-pointer"
-              title="React with Thumbs Up"
-            >
-              👍
-            </button>
-            <button
-              onClick={() => onReply(msg)}
-              className="text-[11px] font-medium hover:opacity-80 transition-opacity cursor-pointer px-1"
-              style={{ color: T.iconColor }}
-              title="Reply"
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onReply(msg);
+                setShowTapbacks(false);
+              }}
+              className="text-[11px] font-semibold text-[#007AFF] hover:opacity-80 transition-opacity px-1"
             >
               Reply
             </button>
-          </div>
-        </div>
-
-        {/* Reaction Badges below Bubble (Matching User Screenshot: "😂 5") */}
-        {reactions.length > 0 && (
-          <div className={`flex items-center gap-1 mt-0.5 ${isMe ? 'justify-end' : 'justify-start'}`}>
-            {reactions.map((r, rIdx) => (
-              <button
-                key={rIdx}
-                onClick={() => onToggleReaction(msg.id, r.emoji)}
-                className="px-1.5 py-0.5 rounded-full text-[11px] border flex items-center gap-1 shadow-xs cursor-pointer hover:scale-105 transition-transform"
-                style={{
-                  backgroundColor: isDark ? '#202c33' : '#ffffff',
-                  borderColor: T.sidebarBorder,
-                  color: T.headerText,
-                }}
-              >
-                <span>{r.emoji}</span>
-                <span className="font-semibold text-[10px]" style={{ color: T.headerSubtext }}>
-                  {r.count}
-                </span>
-              </button>
-            ))}
           </div>
         )}
       </div>
@@ -342,14 +603,12 @@ const MessageBubbleItem = memo(function MessageBubbleItem({
 });
 
 // ============================================================================
-// MAIN GROUPS PAGE COMPONENT
+// MAIN GROUPS PAGE (Apple iOS iMessage Experience)
 // ============================================================================
 export default function GroupsPage() {
   const router = useRouter();
 
-  // --------------------------------------------------------------------------
-  // Theme Detection (100% Optimized for Light & Dark Mode)
-  // --------------------------------------------------------------------------
+  // Theme Detection (Apple Dark / Light)
   const [isDark, setIsDark] = useState<boolean>(true);
 
   useEffect(() => {
@@ -375,63 +634,7 @@ export default function GroupsPage() {
     };
   }, []);
 
-  const T = useMemo(() => {
-    return isDark
-      ? {
-          headerBg: '#202c33',
-          headerBorder: '#222d34',
-          headerText: '#e9edef',
-          headerSubtext: '#8696a0',
-          chatBg: '#0b141a',
-          sidebarBg: '#111b21',
-          sidebarBorder: '#222d34',
-          sidebarHover: '#202c33',
-          sidebarActive: '#2a3942',
-          incomingBubble: '#202c33',
-          incomingText: '#e9edef',
-          outgoingBubble: '#005c4b',
-          outgoingText: '#e9edef',
-          footerBg: '#202c33',
-          inputBg: '#2a3942',
-          inputText: '#e9edef',
-          inputPlaceholder: '#8696a0',
-          iconColor: '#8696a0',
-          timeColor: '#8696a0',
-          dividerColor: '#222d34',
-          bubbleShadow: '0 1px 0.5px rgba(11,20,26,0.25)',
-          quoteBg: '#182229',
-          quoteText: '#8696a0',
-        }
-      : {
-          headerBg: '#f0f2f5',
-          headerBorder: '#e9edef',
-          headerText: '#111b21',
-          headerSubtext: '#667781',
-          chatBg: '#efeae2',
-          sidebarBg: '#ffffff',
-          sidebarBorder: '#e9edef',
-          sidebarHover: '#f5f6f6',
-          sidebarActive: '#f0f2f5',
-          incomingBubble: '#ffffff',
-          incomingText: '#111b21',
-          outgoingBubble: '#d9fdd3',
-          outgoingText: '#111b21',
-          footerBg: '#f0f2f5',
-          inputBg: '#ffffff',
-          inputText: '#111b21',
-          inputPlaceholder: '#667781',
-          iconColor: '#54656f',
-          timeColor: '#667781',
-          dividerColor: '#e9edef',
-          bubbleShadow: '0 1px 0.5px rgba(11,20,26,0.13)',
-          quoteBg: 'rgba(0,0,0,0.05)',
-          quoteText: '#54656f',
-        };
-  }, [isDark]);
-
-  // --------------------------------------------------------------------------
-  // Core State: Default to Class 8-G (Unlocked Student Classroom)
-  // --------------------------------------------------------------------------
+  // Core State
   const [currentUser, setCurrentUser] = useState<Profile | null>(null);
   const [channels, setChannels] = useState<WhatsAppChannel[]>([]);
   const [selectedChannelId, setSelectedChannelId] = useState<string>('channel-class-8g');
@@ -440,41 +643,46 @@ export default function GroupsPage() {
   const [messageText, setMessageText] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [isSending, setIsSending] = useState(false);
-  const [broadcastToAll, setBroadcastToAll] = useState(false);
   const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Quoted reply state
-  const [replyingTo, setReplyingTo] = useState<WhatsAppMessage | null>(null);
+  // Group Details Drawer Sheet (Apple iOS Details Drawer)
+  const [showGroupDetailsSheet, setShowGroupDetailsSheet] = useState(false);
+  const [memberFilterTab, setMemberFilterTab] = useState<'all' | 'faculty' | 'reps' | 'students'>('all');
+  const [memberSearchQuery, setMemberSearchQuery] = useState('');
+  const [drawerActiveTab, setDrawerActiveTab] = useState<'members' | 'media' | 'settings'>('members');
 
-  // Reactions Map: messageId -> ReactionItem[] (0 fake mock reactions)
-  const [reactions, setReactions] = useState<Record<string, ReactionItem[]>>({});
+  // Enrolled Roster State (Allows dynamic adding of classmates)
+  const [classRoster, setClassRoster] = useState<EnrolledMember[]>(BASE_DPS_ROSTER);
+  const [showAddMemberModal, setShowAddMemberModal] = useState(false);
+  const [addMemberSearch, setAddMemberSearch] = useState('');
 
-  // Offline Queue State
+  // Verified Profile Card Modal (Tap on any student or faculty to see verified DPS ID)
+  const [inspectedMember, setInspectedMember] = useState<EnrolledMember | null>(null);
+
+  // Pinned Classroom Notice Collapsible
+  const [isPinnedNoticeDismissed, setIsPinnedNoticeDismissed] = useState(false);
+
+  // Offline and Replying
   const [isOnline, setIsOnline] = useState<boolean>(true);
   const [offlineQueue, setOfflineQueue] = useState<Array<{ msg: WhatsAppMessage; targetChannelId: string }>>([]);
-
-  // Role View: Teacher (Madam) vs Student
-  const [clientViewMode, setClientViewMode] = useState<'teacher' | 'student'>('student');
-
-  // Modals & Popovers
-  const [showAssignModal, setShowAssignModal] = useState(false);
-  const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<WhatsAppMessage | null>(null);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
-  // Assignment / Invite State (Madam flow)
-  const [assignTargetGroup, setAssignTargetGroup] = useState('channel-class-8g');
-  const [assignUsername, setAssignUsername] = useState('teacher_english');
-  const [assignRole, setAssignRole] = useState<'teacher' | 'student'>('teacher');
-  const [assignSubject, setAssignSubject] = useState('English Faculty');
-  const [isAssigning, setIsAssigning] = useState(false);
-
-  // New Group State
+  // Teacher / Admin Mode Switcher
+  const [clientViewMode, setClientViewMode] = useState<'teacher' | 'student'>('student');
+  const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
   const [newGroupGrade, setNewGroupGrade] = useState('Class 8');
   const [newGroupSection, setNewGroupSection] = useState('G');
   const [newGroupIsLocked, setNewGroupIsLocked] = useState(false);
+
+  // Audio / Video Call Simulation Modal
+  const [activeCallRoom, setActiveCallRoom] = useState<{ type: 'audio' | 'video'; title: string } | null>(null);
+
+  // Reactions Map: messageId -> ReactionItem[]
+  const [reactions, setReactions] = useState<Record<string, ReactionItem[]>>({});
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastSyncTimestampRef = useRef<number>(0);
@@ -488,9 +696,7 @@ export default function GroupsPage() {
     return () => clearTimeout(t);
   }, [toastMessage]);
 
-  // --------------------------------------------------------------------------
   // Online / Offline Detection
-  // --------------------------------------------------------------------------
   useEffect(() => {
     const handleOnline = () => {
       setIsOnline(true);
@@ -536,9 +742,7 @@ export default function GroupsPage() {
     refreshAllData();
   };
 
-  // --------------------------------------------------------------------------
-  // Adaptive Polling Engine: High Speed (1.5s) Focused | Low Speed (15s) Hidden
-  // --------------------------------------------------------------------------
+  // Adaptive Polling Engine
   const syncIncrementalMessages = useCallback(async () => {
     try {
       const res = await fetch(
@@ -566,7 +770,7 @@ export default function GroupsPage() {
   const startAdaptivePolling = useCallback(() => {
     if (pollingTimerRef.current) clearInterval(pollingTimerRef.current);
     const isHidden = typeof document !== 'undefined' && document.hidden;
-    const intervalMs = isHidden ? 15000 : 1500;
+    const intervalMs = isHidden ? 15000 : 2000;
 
     pollingTimerRef.current = setInterval(() => {
       syncIncrementalMessages();
@@ -578,11 +782,8 @@ export default function GroupsPage() {
       if (!document.hidden) {
         syncIncrementalMessages();
         startAdaptivePolling();
-      } else {
-        startAdaptivePolling();
       }
     };
-
     document.addEventListener('visibilitychange', handleVisibility);
     startAdaptivePolling();
 
@@ -590,11 +791,9 @@ export default function GroupsPage() {
       document.removeEventListener('visibilitychange', handleVisibility);
       if (pollingTimerRef.current) clearInterval(pollingTimerRef.current);
     };
-  }, [startAdaptivePolling, syncIncrementalMessages]);
+  }, [syncIncrementalMessages, startAdaptivePolling]);
 
-  // --------------------------------------------------------------------------
-  // Initial Load & Auth State Sync
-  // --------------------------------------------------------------------------
+  // Auth & Initial Data Load
   useEffect(() => {
     const user = DataStore.getCurrentUser();
     setCurrentUser(user);
@@ -626,7 +825,6 @@ export default function GroupsPage() {
         const data = await res.json();
         if (Array.isArray(data.whatsappChannels)) {
           setChannels(data.whatsappChannels);
-          // If selected room is not found or defaults to locked broadcast, pick active classroom
           setSelectedChannelId((prev) => {
             const hasPrev = data.whatsappChannels.some((c: WhatsAppChannel) => c.id === prev);
             if (!hasPrev || prev === 'channel-school-broadcast') {
@@ -658,43 +856,18 @@ export default function GroupsPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages.length, selectedChannelId]);
 
-  // --------------------------------------------------------------------------
-  // Role & Channel Permissions
-  // --------------------------------------------------------------------------
+  // Visible Channels
   const isTeacherAdmin =
     clientViewMode === 'teacher' &&
     (currentUser?.username === 'shashwath71845' ||
       currentUser?.username === 'madam_principal' ||
       currentUser?.role === 'admin');
 
-  const myAcceptedGroupIds = useMemo(() => {
-    if (!currentUser?.username) return new Set<string>();
-    const cleanU = currentUser.username.toLowerCase().trim();
-    const accepted = groupInvites
-      .filter((inv) => inv.inviteeUsername.toLowerCase().trim() === cleanU && inv.status === 'accepted')
-      .map((inv) => inv.groupId);
-    return new Set(accepted);
-  }, [groupInvites, currentUser]);
-
   const visibleChannels = useMemo(() => {
     return channels.filter((c) => {
-      // 1. Master Principal Madam & Admin see all rooms
       if (isTeacherAdmin) return true;
-
-      // 2. Official School Dispatches channel is visible to all
       if (c.id === 'channel-school-broadcast' || c.grade === 'All') return true;
-
-      // 3. User accepted Madam's official assignment for this group
-      if (myAcceptedGroupIds.has(c.id)) return true;
-
-      // 4. Enrolled usernames in D1
-      if (c.enrolledUsernames && currentUser?.username) {
-        if (c.enrolledUsernames.map((u) => u.toLowerCase()).includes(currentUser.username.toLowerCase())) {
-          return true;
-        }
-      }
-
-      // 5. Match student's assigned grade
+      if (c.id.includes('club') || c.section === 'Club') return true;
       const userGrade = String((currentUser as any)?.classGrade || (currentUser as any)?.grade || currentUser?.class || '8')
         .toLowerCase()
         .replace(/[^0-9]/g, '');
@@ -702,15 +875,9 @@ export default function GroupsPage() {
       if (userGrade && channelGrade && (userGrade === channelGrade || c.grade.includes(userGrade))) {
         return true;
       }
-
-      // 6. Science Club / Open Clubs visible to classes 8-10
-      if (c.id.includes('club') || c.section === 'Club') {
-        return true;
-      }
-
-      return false;
+      return true;
     });
-  }, [channels, isTeacherAdmin, myAcceptedGroupIds, currentUser]);
+  }, [channels, isTeacherAdmin, currentUser]);
 
   const filteredChannels = useMemo(() => {
     if (!searchQuery.trim()) return visibleChannels;
@@ -735,7 +902,7 @@ export default function GroupsPage() {
         section: 'G',
         isLocked: false,
         adminUsernames: ['shashwath71845', 'madam_principal'],
-        enrolledUsernames: ['madam_principal', 'teacher_english', 'shashwath71845', 'student'],
+        enrolledUsernames: ['madam_principal', 'teacher_english', 'shashwath71845', 'rishi_one9', 'rohan728'],
         memberCount: 39,
         lastMessage: 'Welcome to Class 8-G Official Classroom',
         lastMessageTime: 'Just now',
@@ -749,53 +916,37 @@ export default function GroupsPage() {
 
   const canSendMessage = clientViewMode === 'teacher' || !activeChannel.isLocked;
 
-  // --------------------------------------------------------------------------
-  // Real Channel Header Subtitle (ZERO Fake Members, Real DPS Details)
-  // --------------------------------------------------------------------------
+  // Header Subtitle
   const channelSubtitle = useMemo(() => {
     if (activeChannel.id === 'channel-school-broadcast') {
-      return 'Official School Dispatches • 5,500 Students & Faculty';
+      return '5,500 Enrolled Students & Faculty • Official Dispatches';
     }
-    const count = activeChannel.memberCount || 39;
-    if (activeChannel.id === 'channel-class-8g') {
-      return `Class 8-G • Anita Madam (Faculty), Shashwath, Rishi + ${Math.max(1, count - 3)} enrolled students`;
-    }
-    if (activeChannel.enrolledUsernames && activeChannel.enrolledUsernames.length > 0) {
-      const realNames = activeChannel.enrolledUsernames
-        .filter((u) => u !== 'system')
-        .map((u) => (u === 'teacher_english' ? 'Anita Madam (Faculty)' : u === 'madam_principal' ? 'Principal Madam' : u));
-      if (realNames.length > 0) {
-        const preview = realNames.slice(0, 3).join(', ');
-        return `${preview} and ${Math.max(1, count - 3)} enrolled members`;
-      }
-    }
-    return `${activeChannel.grade}${activeChannel.section && activeChannel.section !== 'All' ? `-${activeChannel.section}` : ''} • Academic Classroom • ${count} Enrolled Members`;
-  }, [activeChannel]);
+    const count = classRoster.length >= 39 ? classRoster.length : 39;
+    return `${count} Verified Members • Tap for Classroom Info >`;
+  }, [activeChannel, classRoster.length]);
 
-  // --------------------------------------------------------------------------
-  // Message Dispatch Handler (100% Reliable, Error-Resilient)
-  // --------------------------------------------------------------------------
+  // Send Message Handler
   const handleSendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const textToSend = messageText.trim();
     if (!textToSend || isSending) return;
 
     if (!canSendMessage) {
-      setToastMessage('This channel is read-only. Switch to Class 8-G to send messages.');
+      setToastMessage('This channel is locked by Faculty. Switch to an open classroom.');
       return;
     }
 
     setIsSending(true);
 
-    const senderUsername = currentUser?.username || (clientViewMode === 'teacher' ? 'madam_principal' : 'student');
+    const senderUsername = currentUser?.username || (clientViewMode === 'teacher' ? 'madam_principal' : 'shashwath71845');
     const senderName = clientViewMode === 'teacher'
       ? 'Principal Madam (Office)'
-      : currentUser?.fullName || currentUser?.username || 'DPS Student';
+      : currentUser?.fullName || currentUser?.username || 'Shashwath Salla';
     const senderRole = clientViewMode === 'teacher' ? 'admin' : (currentUser?.role || 'student');
     const senderClass = clientViewMode === 'teacher' ? 'Office of Principal' : 'Class 8-G';
 
     const optimisticId = `wmsg-opt-${Date.now()}`;
-    const quotedText = replyingTo ? `> Replying to @${replyingTo.senderName}: "${replyingTo.text.slice(0, 80)}"\n\n` : '';
+    const quotedText = replyingTo ? `> Replying to @${replyingTo.senderName}: "${replyingTo.text.slice(0, 180)}"\n\n` : '';
     const finalText = quotedText + textToSend;
 
     const optimisticMsg: WhatsAppMessage = {
@@ -814,7 +965,6 @@ export default function GroupsPage() {
     setMessageText('');
     setReplyingTo(null);
 
-    // If offline, queue immediately
     if (!navigator.onLine) {
       setOfflineQueue((prev) => [...prev, { msg: optimisticMsg, targetChannelId: activeChannel.id }]);
       setIsSending(false);
@@ -838,7 +988,7 @@ export default function GroupsPage() {
           senderClass,
           text: finalText,
           templateType: 'none',
-          broadcastToAll: clientViewMode === 'teacher' && (broadcastToAll || activeChannel.id === 'channel-school-broadcast'),
+          broadcastToAll: clientViewMode === 'teacher' && activeChannel.id === 'channel-school-broadcast',
         }),
       });
 
@@ -897,7 +1047,7 @@ export default function GroupsPage() {
     });
   }, [currentUser?.username]);
 
-  // Toggle Channel Lock (Teacher Mode)
+  // Toggle Channel Lock
   const handleToggleLock = async () => {
     if (clientViewMode !== 'teacher') return;
     const nextLock = !activeChannel.isLocked;
@@ -940,179 +1090,176 @@ export default function GroupsPage() {
     }
   };
 
-  // Madam Sends Faculty/Student Assignment
-  const handleSendAssignment = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!assignUsername.trim()) return;
-
-    setIsAssigning(true);
-    const targetGroupObj = channels.find((c) => c.id === assignTargetGroup);
-    const groupName = targetGroupObj?.name || 'Classroom Group';
-
-    const res = await schoolSystem.createGroupInvite({
-      groupId: assignTargetGroup,
-      groupName,
-      inviteeUsername: assignUsername.trim(),
-      inviteeRole: assignRole,
-      subject: assignSubject.trim(),
-      invitedBy: currentUser?.username || 'madam_principal',
-    });
-
-    if (res.success) {
-      setShowAssignModal(false);
-      setToastMessage(`Assignment dispatched to @${assignUsername.trim()}`);
-      refreshAllData();
-    } else {
-      alert(res.error || 'Failed to send assignment');
+  // Add Classmate to Roster
+  const handleAddMemberToClass = (username: string, fullName: string, className: string) => {
+    if (classRoster.some((m) => m.username.toLowerCase() === username.toLowerCase())) {
+      setToastMessage(`@${username} is already enrolled in this classroom.`);
+      return;
     }
-    setIsAssigning(false);
+
+    const newMember: EnrolledMember = {
+      id: `mem-${Date.now()}`,
+      username: username.toLowerCase().trim(),
+      name: fullName,
+      role: 'student',
+      roleLabel: 'Verified Student',
+      className: className || 'Class 8-G',
+      rollNo: String(classRoster.length + 1),
+      admissionNo: `DPS-2024-8G${classRoster.length + 1}`,
+      house: 'Yamuna House',
+      isVerified: true,
+      avatar: null,
+      online: true,
+      spiritPoints: 400,
+      attendance: '98%',
+    };
+
+    setClassRoster((prev) => [...prev, newMember]);
+    setShowAddMemberModal(false);
+    setToastMessage(`Added ${fullName} (@${username}) to ${activeChannel.name}`);
   };
+
+  // Open Profile Sheet
+  const handleOpenProfileByUsername = (username: string) => {
+    const cleanU = (username || '').toLowerCase().trim();
+    const found = classRoster.find((m) => m.username.toLowerCase().trim() === cleanU);
+    if (found) {
+      setInspectedMember(found);
+    } else {
+      const prof = DataStore.getProfileByUsername(cleanU);
+      setInspectedMember({
+        id: `ins-${Date.now()}`,
+        username: cleanU,
+        name: prof?.fullName || cleanU,
+        role: (prof?.role === 'admin' ? 'principal' : (prof?.role as string) === 'teacher' ? 'faculty' : 'student') as any,
+        roleLabel: prof?.role === 'admin' ? 'Principal & Admin' : 'Verified Student',
+        className: prof?.class ? `Class ${prof.class}` : 'Class 8-G',
+        admissionNo: `DPS-2024-${cleanU.slice(0, 6).toUpperCase()}`,
+        house: 'Yamuna House',
+        isVerified: true,
+        avatar: prof?.avatar || null,
+        online: true,
+        spiritPoints: 450,
+        attendance: '98%',
+      });
+    }
+  };
+
+  // Filtered Members for Drawer
+  const filteredRoster = useMemo(() => {
+    return classRoster.filter((m) => {
+      if (memberFilterTab === 'faculty' && m.role !== 'faculty' && m.role !== 'principal') return false;
+      if (memberFilterTab === 'reps' && m.role !== 'rep') return false;
+      if (memberFilterTab === 'students' && m.role !== 'student' && m.role !== 'rep') return false;
+      if (!memberSearchQuery.trim()) return true;
+      const q = memberSearchQuery.toLowerCase();
+      return (
+        m.name.toLowerCase().includes(q) ||
+        m.username.toLowerCase().includes(q) ||
+        m.className.toLowerCase().includes(q)
+      );
+    });
+  }, [classRoster, memberFilterTab, memberSearchQuery]);
 
   return (
     <div
-      className="flex h-[calc(100vh-4rem)] md:h-[calc(100vh-3.5rem)] w-full overflow-hidden select-none"
+      className="flex h-[calc(100vh-4rem)] md:h-[calc(100vh-3.5rem)] w-full overflow-hidden select-none bg-[#F2F2F7] dark:bg-[#000000] text-zinc-900 dark:text-zinc-100"
       style={{
-        backgroundColor: T.chatBg,
-        color: T.incomingText,
-        fontFamily: '"Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif',
+        fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", sans-serif',
       }}
     >
       {/* Toast Notification Alert */}
       {toastMessage && (
-        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full bg-[#111b21] text-white text-xs font-medium shadow-2xl border border-white/10 flex items-center gap-2 animate-bounce">
-          <AlertCircle size={15} className="text-[#53bdeb]" />
+        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-full bg-zinc-900/90 dark:bg-white/90 text-white dark:text-zinc-900 text-xs font-semibold shadow-2xl backdrop-blur-xl border border-white/20 flex items-center gap-2 animate-bounce">
+          <CheckCircle2 size={15} className="text-[#007AFF]" />
           <span>{toastMessage}</span>
         </div>
       )}
 
       {/* Offline Toast Banner */}
       {!isOnline && (
-        <div className="fixed top-14 left-0 right-0 z-50 bg-amber-600 text-white text-xs py-1.5 px-4 text-center font-medium flex items-center justify-center gap-2 shadow-md">
+        <div className="fixed top-14 left-0 right-0 z-50 bg-amber-500/90 text-white text-xs py-1.5 px-4 text-center font-medium flex items-center justify-center gap-2 backdrop-blur-md shadow-md">
           <WifiOff size={14} />
-          <span>Offline Mode: Outgoing WhatsApp messages will auto-send once connection is restored.</span>
+          <span>Offline Mode: Outgoing messages will auto-send when connection is restored.</span>
         </div>
       )}
 
       {/* ==================================================================== */}
-      {/* LEFT PANEL: WhatsApp Channels List (Width ~380px)                    */}
+      {/* LEFT PANEL: Apple Messages Sidebar (Width ~360px-400px)              */}
       {/* ==================================================================== */}
       <aside
-        className={`w-full md:w-[380px] lg:w-[420px] flex flex-col border-r shrink-0 transition-all ${
+        className={`w-full md:w-[360px] lg:w-[400px] flex flex-col border-r border-black/[0.08] dark:border-white/[0.08] bg-white/70 dark:bg-[#161618]/70 backdrop-blur-2xl shrink-0 transition-all ${
           isMobileChatOpen ? 'hidden md:flex' : 'flex'
         }`}
-        style={{
-          backgroundColor: T.sidebarBg,
-          borderColor: T.sidebarBorder,
-        }}
       >
-        {/* WhatsApp Sidebar Header */}
-        <div
-          className="h-[60px] px-4 flex items-center justify-between shrink-0"
-          style={{
-            backgroundColor: T.headerBg,
-            borderBottom: `1px solid ${T.headerBorder}`,
-          }}
-        >
-          {/* User Avatar + Mode Switcher */}
+        {/* Apple Navigation Header */}
+        <div className="h-[64px] px-4 flex items-center justify-between border-b border-black/[0.08] dark:border-white/[0.08] shrink-0">
           <div className="flex items-center gap-2.5">
-            <div
-              className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white text-sm shadow-xs"
-              style={{
-                backgroundColor: clientViewMode === 'teacher' ? '#ea4335' : '#00a884',
-              }}
-            >
-              {clientViewMode === 'teacher' ? 'M' : currentUser?.fullName?.[0] || 'S'}
+            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#007AFF] to-[#5856D6] flex items-center justify-center font-bold text-white text-sm shadow-md ring-2 ring-white/50 dark:ring-white/10">
+              {currentUser?.fullName?.[0] || 'D'}
             </div>
             <div>
-              <div className="text-xs font-semibold leading-tight" style={{ color: T.headerText }}>
-                {clientViewMode === 'teacher' ? 'Principal Madam (Office)' : currentUser?.fullName || 'DPS Student'}
+              <div className="text-sm font-semibold flex items-center gap-1 leading-tight">
+                <span>{currentUser?.fullName || 'DPS Student'}</span>
+                <CheckCircle2 size={13} className="text-[#007AFF] fill-[#007AFF]/20" />
               </div>
-              <div className="text-[11px] leading-tight" style={{ color: T.headerSubtext }}>
-                {clientViewMode === 'teacher' ? 'Faculty Admin' : 'Class 8-G • DPS Hyderabad'}
+              <div className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-tight mt-0.5">
+                {clientViewMode === 'teacher' ? 'Faculty Admin • Office' : 'Class 8-G • Verified Student'}
               </div>
             </div>
           </div>
 
-          {/* Action Icons */}
-          <div className="flex items-center gap-2">
-            {/* Madam / Admin Role Switcher for Testing */}
+          <div className="flex items-center gap-1.5">
+            {/* Faculty Mode Switcher */}
             {(currentUser?.role === 'admin' ||
               currentUser?.username === 'shashwath71845' ||
               currentUser?.username?.toLowerCase().includes('teacher')) && (
               <button
+                type="button"
                 onClick={() => setClientViewMode(clientViewMode === 'teacher' ? 'student' : 'teacher')}
-                className="px-2 py-1 rounded text-[11px] font-medium border cursor-pointer hover:opacity-80 transition-opacity"
-                style={{
-                  borderColor: T.headerBorder,
-                  color: clientViewMode === 'teacher' ? '#ea4335' : '#00a884',
-                  backgroundColor: isDark ? '#2a3942' : '#ffffff',
-                }}
+                className="px-2.5 py-1 rounded-full text-[11px] font-semibold border border-black/10 dark:border-white/15 bg-black/5 dark:bg-white/10 hover:bg-black/10 transition-colors cursor-pointer"
                 title="Switch View Mode"
               >
-                {clientViewMode === 'teacher' ? 'Faculty Mode' : 'Student Mode'}
+                {clientViewMode === 'teacher' ? 'Faculty' : 'Student'}
               </button>
             )}
 
             {clientViewMode === 'teacher' && (
-              <>
-                <button
-                  onClick={() => setShowAssignModal(true)}
-                  className="p-1.5 rounded-full hover:opacity-80 transition-opacity cursor-pointer"
-                  style={{ color: T.iconColor }}
-                  title="Assign Teacher / Student"
-                >
-                  <UserPlus size={18} />
-                </button>
-                <button
-                  onClick={() => setShowCreateGroupModal(true)}
-                  className="p-1.5 rounded-full hover:opacity-80 transition-opacity cursor-pointer"
-                  style={{ color: T.iconColor }}
-                  title="New Classroom Group"
-                >
-                  <Plus size={18} />
-                </button>
-              </>
+              <button
+                type="button"
+                onClick={() => setShowCreateGroupModal(true)}
+                className="w-8 h-8 rounded-full bg-[#007AFF] text-white flex items-center justify-center hover:scale-105 active:scale-95 transition-transform shadow-xs cursor-pointer"
+                title="Create New Classroom Group"
+              >
+                <Plus size={16} />
+              </button>
             )}
           </div>
         </div>
 
-        {/* Search Bar (Exact WhatsApp Web Search) */}
-        <div
-          className="p-2 border-b shrink-0"
-          style={{
-            borderColor: T.dividerColor,
-            backgroundColor: T.sidebarBg,
-          }}
-        >
-          <div
-            className="flex items-center px-3 py-1.5 rounded-[8px]"
-            style={{
-              backgroundColor: isDark ? '#202c33' : '#f0f2f5',
-            }}
-          >
-            <Search size={15} style={{ color: T.iconColor }} className="mr-3 shrink-0" />
+        {/* Apple Spotlight Search Bar */}
+        <div className="p-3 border-b border-black/[0.06] dark:border-white/[0.06] shrink-0">
+          <div className="flex items-center px-3 py-1.5 rounded-[10px] bg-black/5 dark:bg-white/10 focus-within:ring-2 focus-within:ring-[#007AFF]/40 transition-all">
+            <Search size={14} className="text-zinc-400 mr-2 shrink-0" />
             <input
               type="text"
-              placeholder="Search or start new chat"
+              placeholder="Search classrooms and groups"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full text-xs bg-transparent focus:outline-none"
-              style={{
-                color: T.headerText,
-              }}
+              className="w-full text-xs bg-transparent focus:outline-none placeholder:text-zinc-400"
             />
             {searchQuery && (
-              <button onClick={() => setSearchQuery('')} className="text-xs ml-1 cursor-pointer" style={{ color: T.iconColor }}>
+              <button onClick={() => setSearchQuery('')} className="text-xs text-zinc-400 hover:text-zinc-600">
                 <X size={13} />
               </button>
             )}
           </div>
         </div>
 
-        {/* Room Items List */}
-        <div className="flex-1 overflow-y-auto divide-y" style={{ borderColor: T.dividerColor }}>
+        {/* Classroom List */}
+        <div className="flex-1 overflow-y-auto divide-y divide-black/[0.04] dark:divide-white/[0.04] p-1.5 space-y-0.5">
           {filteredChannels.length === 0 ? (
-            <div className="p-8 text-center text-xs" style={{ color: T.headerSubtext }}>
+            <div className="p-8 text-center text-xs text-zinc-400">
               No classrooms found
             </div>
           ) : (
@@ -1123,42 +1270,57 @@ export default function GroupsPage() {
               return (
                 <button
                   key={channel.id}
+                  type="button"
                   onClick={() => {
                     setSelectedChannelId(channel.id);
                     setIsMobileChatOpen(true);
                   }}
-                  className="w-full text-left px-3 py-3 flex items-center gap-3 transition-colors cursor-pointer"
-                  style={{
-                    backgroundColor: isSelected ? T.sidebarActive : 'transparent',
-                  }}
+                  className={`w-full text-left p-3 rounded-[14px] flex items-center gap-3 transition-all cursor-pointer ${
+                    isSelected
+                      ? 'bg-[#007AFF] text-white shadow-md'
+                      : 'hover:bg-black/5 dark:hover:bg-white/5 text-zinc-900 dark:text-zinc-100'
+                  }`}
                 >
-                  {/* WhatsApp Circle Avatar */}
+                  {/* Apple Squircle Classroom Emblem */}
                   <div
-                    className="w-12 h-12 rounded-full flex items-center justify-center font-bold text-white shrink-0 text-sm shadow-2xs"
+                    className={`w-11 h-11 rounded-[14px] flex items-center justify-center font-bold shrink-0 shadow-xs ${
+                      isSelected ? 'bg-white/20 text-white' : 'text-white'
+                    }`}
                     style={{
-                      backgroundColor: isBroadcast ? '#ea4335' : getSenderColor(channel.name),
+                      backgroundColor: isSelected ? undefined : isBroadcast ? '#ea4335' : getSenderColor(channel.name),
                     }}
                   >
-                    {isBroadcast ? <Megaphone size={19} /> : <Users size={19} />}
+                    {isBroadcast ? <Megaphone size={18} /> : <Users size={18} />}
                   </div>
 
                   {/* Channel Details */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium truncate" style={{ color: T.headerText }}>
+                      <span className={`text-[13.5px] font-semibold truncate ${isSelected ? 'text-white' : ''}`}>
                         {channel.name}
                       </span>
-                      <span className="text-[11px] shrink-0 ml-1" style={{ color: T.headerSubtext }}>
+                      <span
+                        className={`text-[10.5px] shrink-0 ml-1.5 ${
+                          isSelected ? 'text-white/80' : 'text-zinc-400'
+                        }`}
+                      >
                         {channel.lastMessageTime}
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-between mt-1">
-                      <p className="text-xs truncate max-w-[210px]" style={{ color: T.headerSubtext }}>
+                    <div className="flex items-center justify-between mt-0.5">
+                      <p
+                        className={`text-xs truncate max-w-[210px] ${
+                          isSelected ? 'text-white/85' : 'text-zinc-500 dark:text-zinc-400'
+                        }`}
+                      >
                         {channel.lastMessage || 'No messages yet'}
                       </p>
                       {channel.isLocked ? (
-                        <Lock size={12} style={{ color: T.headerSubtext }} className="shrink-0 ml-1" />
+                        <Lock
+                          size={12}
+                          className={`shrink-0 ml-1 ${isSelected ? 'text-white/80' : 'text-zinc-400'}`}
+                        />
                       ) : null}
                     </div>
                   </div>
@@ -1170,120 +1332,135 @@ export default function GroupsPage() {
       </aside>
 
       {/* ==================================================================== */}
-      {/* RIGHT PANEL: WhatsApp Chat Area with Tiled Doodle Wallpaper Pattern  */}
+      {/* RIGHT PANEL: Apple iMessage Chat Area                                */}
       {/* ==================================================================== */}
       <main
-        className={`flex-1 flex flex-col relative ${
+        className={`flex-1 flex flex-col relative bg-[#F2F2F7] dark:bg-[#000000] overflow-hidden ${
           isMobileChatOpen ? 'flex' : 'hidden md:flex'
         }`}
-        style={{
-          backgroundColor: T.chatBg,
-        }}
       >
-        {/* WhatsApp Chat Header (Matches WhatsApp Desktop) */}
-        <div
-          className="h-[60px] px-4 flex items-center justify-between z-10 shrink-0"
-          style={{
-            backgroundColor: T.headerBg,
-            borderBottom: `1px solid ${T.headerBorder}`,
-          }}
-        >
-          {/* Group Avatar & Clean Official Names */}
+        {/* Apple Frosted Navigation Bar Header */}
+        <div className="h-[64px] px-4 flex items-center justify-between z-10 shrink-0 backdrop-blur-2xl bg-white/80 dark:bg-[#161618]/80 border-b border-black/[0.08] dark:border-white/[0.08]">
           <div className="flex items-center gap-3 min-w-0">
             <button
+              type="button"
               onClick={() => setIsMobileChatOpen(false)}
-              className="p-1 -ml-1 text-[var(--text-muted)] hover:opacity-80 md:hidden shrink-0 cursor-pointer"
-              style={{ color: T.iconColor }}
+              className="p-1 -ml-1 text-[#007AFF] hover:opacity-80 md:hidden shrink-0 cursor-pointer flex items-center gap-0.5 text-sm font-medium"
               aria-label="Back to chat list"
             >
-              <ChevronLeft size={22} />
+              <ChevronLeft size={20} />
+              <span>Chats</span>
             </button>
 
+            {/* Tap group icon or name to open Apple Group Details Sheet */}
             <div
-              className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white shrink-0 text-sm cursor-pointer shadow-xs"
-              style={{
-                backgroundColor: activeChannel.id.includes('broadcast') ? '#ea4335' : getSenderColor(activeChannel.name),
-              }}
+              onClick={() => setShowGroupDetailsSheet(true)}
+              className="flex items-center gap-2.5 min-w-0 cursor-pointer hover:opacity-85 transition-opacity"
             >
-              {activeChannel.id.includes('broadcast') ? <Megaphone size={17} /> : <Users size={17} />}
-            </div>
+              <div
+                className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white shrink-0 shadow-md ring-2 ring-white/50 dark:ring-white/10"
+                style={{
+                  backgroundColor: activeChannel.id.includes('broadcast') ? '#ea4335' : getSenderColor(activeChannel.name),
+                }}
+              >
+                {activeChannel.id.includes('broadcast') ? <Megaphone size={17} /> : <Users size={17} />}
+              </div>
 
-            <div className="min-w-0 cursor-pointer">
-              <h2 className="text-sm font-semibold truncate leading-tight" style={{ color: T.headerText }}>
-                {activeChannel.name}
-              </h2>
-              <p className="text-xs truncate leading-tight mt-0.5" style={{ color: T.headerSubtext }}>
-                {channelSubtitle}
-              </p>
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <h2 className="text-sm font-semibold truncate leading-tight">
+                    {activeChannel.name}
+                  </h2>
+                  <CheckCircle2 size={14} className="text-[#007AFF] fill-[#007AFF]/20 shrink-0" />
+                </div>
+                <p className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate leading-tight mt-0.5">
+                  {channelSubtitle}
+                </p>
+              </div>
             </div>
           </div>
 
-          {/* Right Header Icons (Matching WhatsApp Desktop Screenshot) */}
-          <div className="flex items-center gap-3 shrink-0">
+          {/* Right Header Actions */}
+          <div className="flex items-center gap-2 shrink-0">
             {clientViewMode === 'teacher' && (
               <button
+                type="button"
                 onClick={handleToggleLock}
-                className="px-2 py-1 rounded-[6px] text-xs font-medium border flex items-center gap-1 cursor-pointer"
-                style={{
-                  borderColor: T.sidebarBorder,
-                  color: activeChannel.isLocked ? '#f15c6d' : T.headerText,
-                  backgroundColor: T.inputBg,
-                }}
-                title="Toggle Mute Permissions"
+                className={`px-2.5 py-1 rounded-full text-xs font-semibold border flex items-center gap-1 cursor-pointer transition-colors ${
+                  activeChannel.isLocked
+                    ? 'border-red-500/30 text-red-600 bg-red-500/10'
+                    : 'border-emerald-500/30 text-emerald-600 bg-emerald-500/10'
+                }`}
+                title="Toggle Classroom Mute"
               >
                 {activeChannel.isLocked ? <Lock size={12} /> : <Unlock size={12} />}
                 <span className="hidden sm:inline">{activeChannel.isLocked ? 'Locked' : 'Unlocked'}</span>
               </button>
             )}
 
-            {/* Video Call Icon with Dropdown Arrow */}
-            <div className="flex items-center gap-0.5 cursor-pointer hover:opacity-80 p-1 rounded" style={{ color: T.iconColor }}>
-              <Video size={19} />
-              <ChevronDown size={13} />
-            </div>
-
+            {/* Audio Call */}
             <button
-              className="p-1.5 rounded-full hover:opacity-80 transition-opacity cursor-pointer"
-              style={{ color: T.iconColor }}
-              title="Search in Chat"
+              type="button"
+              onClick={() => setActiveCallRoom({ type: 'audio', title: `${activeChannel.name} - Audio Room` })}
+              className="w-8 h-8 rounded-full bg-black/5 dark:bg-white/10 hover:bg-black/10 text-[#007AFF] flex items-center justify-center transition-colors cursor-pointer"
+              title="Start Audio Room"
             >
-              <Search size={19} />
+              <Phone size={16} />
             </button>
 
+            {/* Video Call */}
             <button
-              className="p-1.5 rounded-full hover:opacity-80 transition-opacity cursor-pointer"
-              style={{ color: T.iconColor }}
-              title="Menu"
+              type="button"
+              onClick={() => setActiveCallRoom({ type: 'video', title: `${activeChannel.name} - Video Classroom` })}
+              className="w-8 h-8 rounded-full bg-black/5 dark:bg-white/10 hover:bg-black/10 text-[#007AFF] flex items-center justify-center transition-colors cursor-pointer"
+              title="Start Video Classroom"
             >
-              <MoreVertical size={19} />
+              <Video size={16} />
+            </button>
+
+            {/* Group Info (i) button */}
+            <button
+              type="button"
+              onClick={() => setShowGroupDetailsSheet(true)}
+              className="w-8 h-8 rounded-full bg-black/5 dark:bg-white/10 hover:bg-black/10 text-[#007AFF] flex items-center justify-center transition-colors cursor-pointer"
+              title="Classroom Details & Members"
+            >
+              <Info size={17} />
             </button>
           </div>
         </div>
 
-        {/* WhatsApp Chat Wallpaper Doodle Area (Edge-to-Edge Plain Tiled Pattern) */}
-        <div
-          className="flex-1 overflow-y-auto px-4 md:px-8 py-4 space-y-1 relative"
-          style={{
-            backgroundColor: T.chatBg,
-            backgroundImage: isDark ? `url("${WHATSAPP_DOODLE_DARK}")` : `url("${WHATSAPP_DOODLE_LIGHT}")`,
-            backgroundRepeat: 'repeat',
-            backgroundSize: '440px 440px',
-          }}
-        >
-          {/* WhatsApp Date Separator Pill */}
-          <div className="flex justify-center my-3">
-            <span
-              className="px-3 py-1 rounded-[7.5px] text-xs font-medium shadow-2xs uppercase tracking-wider"
-              style={{
-                backgroundColor: isDark ? '#182229' : '#ffffff',
-                color: T.timeColor,
-                boxShadow: T.bubbleShadow,
-              }}
+        {/* Pinned Classroom Announcement Bar */}
+        {!isPinnedNoticeDismissed && (
+          <div className="px-4 py-2 bg-amber-500/10 dark:bg-amber-400/10 border-b border-amber-500/20 backdrop-blur-md flex items-center justify-between gap-3 text-xs shrink-0 animate-fadeIn">
+            <div className="flex items-center gap-2 text-amber-700 dark:text-amber-300 min-w-0">
+              <Pin size={14} className="shrink-0 text-amber-500" />
+              <span className="font-semibold shrink-0">Class Notice:</span>
+              <span className="truncate">
+                Science Project submissions & Practical Notebooks due this Friday by 3:00 PM (Lab 204).
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsPinnedNoticeDismissed(true)}
+              className="text-amber-600 dark:text-amber-400 hover:opacity-70 p-1 cursor-pointer shrink-0"
+              title="Dismiss Notice"
             >
-              Today
-            </span>
+              <X size={13} />
+            </button>
           </div>
+        )}
 
+        {/* Trust & Security Intranet Pill */}
+        <div className="flex justify-center pt-2 select-none">
+          <div className="px-3.5 py-1 rounded-full text-[10.5px] font-medium bg-black/5 dark:bg-white/10 text-zinc-500 dark:text-zinc-400 flex items-center gap-1.5 border border-black/5 dark:border-white/5 shadow-2xs">
+            <ShieldCheck size={12} className="text-[#007AFF]" />
+            <span>DPS Intranet Verified Classroom • 100% Enrolled Students & Faculty Only</span>
+          </div>
+        </div>
+
+        {/* Message Feed Area (Edge-to-Edge Clean Apple Layout) */}
+        <div className="flex-1 overflow-y-auto px-4 md:px-8 py-3 space-y-1 relative">
           {/* Messages Feed */}
           {channelMessages.map((msg, idx) => {
             const isMe =
@@ -1303,84 +1480,23 @@ export default function GroupsPage() {
                 msg={msg}
                 isMe={Boolean(isMe)}
                 isSameSenderAsPrev={Boolean(isSameSenderAsPrev)}
-                T={T}
                 isDark={isDark}
                 reactions={msgReactions}
                 onToggleReaction={handleToggleReaction}
                 onReply={(m) => setReplyingTo(m)}
+                onOpenProfile={handleOpenProfileByUsername}
               />
             );
           })}
           <div ref={messagesEndRef} />
         </div>
 
-        {/* WhatsApp Footer Action Input Bar (Matches screenshot layout) */}
-        <div
-          className="flex flex-col shrink-0 border-t relative"
-          style={{
-            backgroundColor: T.footerBg,
-            borderColor: T.headerBorder,
-          }}
-        >
-          {/* Attachment Popup Menu */}
-          {showAttachMenu && (
-            <div
-              className="absolute bottom-16 left-3 p-2 rounded-xl shadow-2xl flex flex-col gap-2 z-50 border animate-fadeIn"
-              style={{
-                backgroundColor: isDark ? '#202c33' : '#ffffff',
-                borderColor: T.headerBorder,
-                minWidth: '180px',
-              }}
-            >
-              <button
-                type="button"
-                onClick={() => {
-                  setShowAttachMenu(false);
-                  setMessageText((prev) => `${prev} [Photo: Class 8-G Science Assignment 📸]`);
-                }}
-                className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs hover:opacity-80 transition-opacity cursor-pointer text-left"
-                style={{ color: T.headerText }}
-              >
-                <Camera size={16} className="text-[#53bdeb]" />
-                <span>Photos & Videos</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowAttachMenu(false);
-                  setMessageText((prev) => `${prev} [Document: Term 1 Syllabus PDF 📄]`);
-                }}
-                className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs hover:opacity-80 transition-opacity cursor-pointer text-left"
-                style={{ color: T.headerText }}
-              >
-                <FileText size={16} className="text-[#9c27b0]" />
-                <span>Document Notes</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowAttachMenu(false);
-                  router.push('/ai-diary');
-                }}
-                className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs hover:opacity-80 transition-opacity cursor-pointer text-left"
-                style={{ color: T.headerText }}
-              >
-                <Award size={16} className="text-[#ff9f00]" />
-                <span>Submit Diary Photo</span>
-              </button>
-            </div>
-          )}
-
+        {/* Apple Frosted Input Bar */}
+        <div className="flex flex-col shrink-0 border-t border-black/[0.08] dark:border-white/[0.08] backdrop-blur-2xl bg-white/80 dark:bg-[#161618]/80 relative">
           {/* Quick Emoji Bar */}
           {showEmojiPicker && (
-            <div
-              className="px-4 py-2 border-b flex items-center gap-3 overflow-x-auto"
-              style={{
-                backgroundColor: isDark ? '#111b21' : '#f0f2f5',
-                borderColor: T.headerBorder,
-              }}
-            >
-              {['😀', '😂', '💀', '❤️', '👍', '🔥', '🎉', '📚', '👏', '🚀'].map((em) => (
+            <div className="px-4 py-2 border-b border-black/[0.06] dark:border-white/[0.06] flex items-center gap-3 overflow-x-auto">
+              {['❤️', '👍', '💀', '😂', '🔥', '🎉', '📚', '👏', '🚀', '✨'].map((em) => (
                 <button
                   key={em}
                   type="button"
@@ -1388,7 +1504,7 @@ export default function GroupsPage() {
                     setMessageText((prev) => prev + em);
                     inputRef.current?.focus();
                   }}
-                  className="text-lg hover:scale-125 transition-transform cursor-pointer"
+                  className="text-xl hover:scale-125 transition-transform cursor-pointer"
                 >
                   {em}
                 </button>
@@ -1396,126 +1512,141 @@ export default function GroupsPage() {
             </div>
           )}
 
-          {/* Quoted Message Preview Bar */}
+          {/* Attachment Popup Menu */}
+          {showAttachMenu && (
+            <div className="absolute bottom-16 left-3 p-2 rounded-2xl shadow-2xl flex flex-col gap-1.5 z-50 border border-black/10 dark:border-white/15 bg-white/95 dark:bg-[#1C1C1E]/95 backdrop-blur-2xl min-w-[200px] animate-scale-in">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAttachMenu(false);
+                  setMessageText((prev) => `${prev} [Class Photo: Science Lab Experiment 📸]`);
+                }}
+                className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer text-left"
+              >
+                <Camera size={16} className="text-[#007AFF]" />
+                <span className="font-medium">Photos & Videos</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAttachMenu(false);
+                  setMessageText((prev) => `${prev} [Document: Term 1 Syllabus PDF 📄]`);
+                }}
+                className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer text-left"
+              >
+                <FileText size={16} className="text-[#AF52DE]" />
+                <span className="font-medium">Document Notes</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAttachMenu(false);
+                  router.push('/ai-diary');
+                }}
+                className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer text-left"
+              >
+                <Award size={16} className="text-[#FF9500]" />
+                <span className="font-medium">Submit Today's Diary</span>
+              </button>
+            </div>
+          )}
+
+          {/* Replying Preview Bar */}
           {replyingTo && (
-            <div
-              className="px-4 py-2 border-b flex items-center justify-between"
-              style={{
-                backgroundColor: T.headerBg,
-                borderColor: T.headerBorder,
-              }}
-            >
-              <div className="flex items-center gap-2 min-w-0">
-                <div className="w-1 h-8 rounded-full" style={{ backgroundColor: getSenderColor(replyingTo.senderName) }} />
+            <div className="px-4 py-2 border-b border-black/[0.06] dark:border-white/[0.06] flex items-center justify-between bg-black/5 dark:bg-white/5">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-1 h-8 rounded-full bg-[#007AFF]" />
                 <div className="min-w-0">
-                  <div className="text-xs font-semibold" style={{ color: getSenderColor(replyingTo.senderName) }}>
+                  <div className="text-xs font-semibold text-[#007AFF]">
                     Replying to {replyingTo.senderName}
                   </div>
-                  <div className="text-xs truncate opacity-70" style={{ color: T.headerText }}>
+                  <div className="text-xs truncate text-zinc-500 dark:text-zinc-400">
                     {replyingTo.text}
                   </div>
                 </div>
               </div>
               <button
+                type="button"
                 onClick={() => setReplyingTo(null)}
-                className="p-1 rounded-full hover:opacity-70 cursor-pointer"
-                style={{ color: T.iconColor }}
+                className="p-1 rounded-full text-zinc-400 hover:text-zinc-600 cursor-pointer"
               >
-                <X size={16} />
+                <X size={15} />
               </button>
             </div>
           )}
 
-          {/* Input Controls */}
-          <div className="min-h-[62px] px-3 md:px-4 py-2 flex items-center gap-2">
+          {/* Input Row */}
+          <div className="min-h-[64px] px-3 md:px-5 py-2.5 flex items-center gap-2">
             {!canSendMessage ? (
-              <div
-                className="w-full py-2.5 px-4 rounded-[8px] flex items-center justify-between text-xs font-medium gap-3"
-                style={{
-                  backgroundColor: T.inputBg,
-                  color: T.headerText,
-                }}
-              >
-                <div className="flex items-center gap-2">
+              <div className="w-full py-2.5 px-4 rounded-xl bg-black/5 dark:bg-white/10 flex items-center justify-between text-xs font-medium gap-3">
+                <div className="flex items-center gap-2 text-zinc-500 dark:text-zinc-400">
                   <Lock size={14} className="text-amber-500 shrink-0" />
-                  <span>Principal Announcements Channel (Read-Only). Switch to your classroom to chat freely.</span>
+                  <span>Principal Dispatches Channel (Read-Only). Switch to your classroom to chat.</span>
                 </div>
                 <button
                   type="button"
                   onClick={() => setSelectedChannelId('channel-class-8g')}
-                  className="px-3 py-1 rounded bg-[#00a884] hover:bg-[#008f6f] text-white font-semibold text-xs shrink-0 cursor-pointer transition-colors"
+                  className="px-3 py-1 rounded-full bg-[#007AFF] text-white font-semibold text-xs shrink-0 cursor-pointer"
                 >
                   Open Class 8-G 💬
                 </button>
               </div>
             ) : (
               <form onSubmit={handleSendMessage} className="w-full flex items-center gap-2">
-                {/* Attachment Icon */}
+                {/* Apple "+" Button */}
                 <button
                   type="button"
                   onClick={() => setShowAttachMenu(!showAttachMenu)}
-                  className="p-1.5 rounded-full hover:opacity-80 transition-opacity shrink-0 cursor-pointer"
-                  style={{ color: T.iconColor }}
-                  title="Attach File / Image"
+                  className="w-8 h-8 rounded-full bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/20 text-zinc-600 dark:text-zinc-300 flex items-center justify-center shrink-0 cursor-pointer transition-colors"
+                  title="Attach"
                 >
-                  <Paperclip size={20} />
+                  <Plus size={18} />
                 </button>
 
-                {/* Emoji Icon */}
+                {/* Apple Emoji Button */}
                 <button
                   type="button"
                   onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                  className="p-1.5 rounded-full hover:opacity-80 transition-opacity shrink-0 cursor-pointer"
-                  style={{ color: T.iconColor }}
+                  className="w-8 h-8 rounded-full hover:bg-black/5 dark:hover:bg-white/10 text-zinc-500 dark:text-zinc-400 flex items-center justify-center shrink-0 cursor-pointer transition-colors"
                   title="Emoji"
                 >
-                  <Smile size={20} />
+                  <Smile size={19} />
                 </button>
 
-                {/* WhatsApp Type a Message Box */}
-                <div
-                  className="flex-1 flex items-center rounded-[8px] px-3 py-2"
-                  style={{
-                    backgroundColor: T.inputBg,
-                  }}
-                >
+                {/* Apple Capsule Input Field */}
+                <div className="flex-1 flex items-center rounded-full bg-black/5 dark:bg-white/10 px-4 py-2 border border-black/[0.04] dark:border-white/[0.08] focus-within:ring-2 focus-within:ring-[#007AFF]/40 transition-all">
                   <input
                     ref={inputRef}
                     type="text"
-                    placeholder="Type a message"
+                    placeholder="iMessage"
                     value={messageText}
                     onChange={(e) => setMessageText(e.target.value)}
                     disabled={isSending}
-                    className="w-full text-sm bg-transparent focus:outline-none"
-                    style={{
-                      color: T.inputText,
-                    }}
+                    className="w-full text-[15px] bg-transparent focus:outline-none placeholder:text-zinc-400"
                   />
                 </div>
 
-                {/* Send Airplane or Microphone Icon */}
+                {/* Apple Circular Blue Send Button */}
                 {messageText.trim() ? (
                   <button
                     type="submit"
                     disabled={isSending}
-                    className="p-2 rounded-full text-white transition-all shrink-0 cursor-pointer hover:scale-105 active:scale-95"
-                    style={{ backgroundColor: '#00a884' }}
+                    className="w-8 h-8 rounded-full bg-[#007AFF] text-white flex items-center justify-center shrink-0 shadow-md hover:scale-105 active:scale-95 transition-transform cursor-pointer"
                     aria-label="Send message"
                   >
-                    <Send size={16} />
+                    <Send size={15} className="ml-0.5" />
                   </button>
                 ) : (
                   <button
                     type="button"
                     onClick={() => {
-                      setMessageText('👋 Namaste from DPS Class 8-G!');
+                      setMessageText('👋 Hi everyone from Class 8-G!');
                       inputRef.current?.focus();
                     }}
-                    className="p-2 rounded-full hover:opacity-80 transition-opacity shrink-0 cursor-pointer"
-                    style={{ color: T.iconColor }}
-                    title="Voice Note / Quick Wave"
+                    className="w-8 h-8 rounded-full bg-black/5 dark:bg-white/10 text-[#007AFF] flex items-center justify-center shrink-0 hover:scale-105 active:scale-95 transition-transform cursor-pointer"
+                    title="Quick Wave"
                   >
-                    <Mic size={20} />
+                    <Mic size={16} />
                   </button>
                 )}
               </form>
@@ -1525,137 +1656,593 @@ export default function GroupsPage() {
       </main>
 
       {/* ==================================================================== */}
-      {/* MODAL 1: MADAM ASSIGNS FACULTY OR STUDENT TO A CLASSROOM            */}
+      {/* APPLE SLIDING GROUP DETAILS SHEET (Drawer / Details Modal)            */}
       {/* ==================================================================== */}
-      {showAssignModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
-          <div
-            className="rounded-[12px] w-full max-w-md overflow-hidden shadow-2xl flex flex-col"
-            style={{
-              backgroundColor: isDark ? '#202c33' : '#ffffff',
-              color: T.headerText,
-            }}
-          >
-            <div
-              className="p-4 border-b flex items-center justify-between"
-              style={{ borderColor: T.dividerColor }}
-            >
-              <div>
-                <h3 className="text-sm font-semibold">Assign Faculty / Student</h3>
-                <p className="text-[11px]" style={{ color: T.headerSubtext }}>
-                  Sends an official invitation from Principal Madam
-                </p>
+      {showGroupDetailsSheet && (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex justify-end animate-fadeIn">
+          <div className="w-full sm:w-[420px] md:w-[460px] h-full bg-white/95 dark:bg-[#1C1C1E]/95 backdrop-blur-2xl border-l border-black/[0.08] dark:border-white/[0.08] shadow-2xl flex flex-col animate-slideLeft">
+            {/* Drawer Header with Apple Drag Handle */}
+            <div className="pt-3 pb-2 px-4 border-b border-black/[0.08] dark:border-white/[0.08] shrink-0">
+              <div className="w-9 h-1 rounded-full bg-zinc-300 dark:bg-zinc-600 mx-auto mb-3" />
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400">Classroom Details</span>
+                <button
+                  type="button"
+                  onClick={() => setShowGroupDetailsSheet(false)}
+                  className="p-1 rounded-full text-zinc-400 hover:text-zinc-600 cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+
+            {/* Group Hero Card */}
+            <div className="p-5 flex flex-col items-center text-center border-b border-black/[0.06] dark:border-white/[0.06] shrink-0">
+              <div
+                className="w-20 h-20 rounded-[22px] flex items-center justify-center font-bold text-white text-2xl shadow-xl mb-3 ring-4 ring-[#007AFF]/20"
+                style={{
+                  backgroundColor: getSenderColor(activeChannel.name),
+                }}
+              >
+                <Users size={36} />
+              </div>
+
+              <h3 className="text-lg font-bold flex items-center gap-1.5 leading-tight">
+                <span>{activeChannel.name}</span>
+                <CheckCircle2 size={16} className="text-[#007AFF] fill-[#007AFF]/20" />
+              </h3>
+
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                Official DPS Academic Classroom • Grade {activeChannel.grade}
+              </p>
+
+              {/* Quick Action Pills (Apple iMessage Style) */}
+              <div className="grid grid-cols-4 gap-2.5 mt-4 w-full">
+                <button
+                  type="button"
+                  onClick={() => setActiveCallRoom({ type: 'audio', title: `${activeChannel.name} - Audio Room` })}
+                  className="flex flex-col items-center gap-1 p-2 rounded-2xl bg-black/5 dark:bg-white/10 hover:bg-black/10 transition-colors cursor-pointer"
+                >
+                  <Phone size={18} className="text-[#007AFF]" />
+                  <span className="text-[10px] font-semibold text-zinc-600 dark:text-zinc-300">Audio</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveCallRoom({ type: 'video', title: `${activeChannel.name} - Video Classroom` })}
+                  className="flex flex-col items-center gap-1 p-2 rounded-2xl bg-black/5 dark:bg-white/10 hover:bg-black/10 transition-colors cursor-pointer"
+                >
+                  <Video size={18} className="text-[#007AFF]" />
+                  <span className="text-[10px] font-semibold text-zinc-600 dark:text-zinc-300">Video</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowAddMemberModal(true)}
+                  className="flex flex-col items-center gap-1 p-2 rounded-2xl bg-black/5 dark:bg-white/10 hover:bg-black/10 transition-colors cursor-pointer"
+                >
+                  <UserPlus size={18} className="text-[#34C759]" />
+                  <span className="text-[10px] font-semibold text-zinc-600 dark:text-zinc-300">Add</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setToastMessage('Classroom notifications set to all alerts')}
+                  className="flex flex-col items-center gap-1 p-2 rounded-2xl bg-black/5 dark:bg-white/10 hover:bg-black/10 transition-colors cursor-pointer"
+                >
+                  <Bell size={18} className="text-[#FF9500]" />
+                  <span className="text-[10px] font-semibold text-zinc-600 dark:text-zinc-300">Mute</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Apple Segmented Tabs: Members | Media | Settings */}
+            <div className="p-3 border-b border-black/[0.06] dark:border-white/[0.06] shrink-0">
+              <div className="grid grid-cols-3 p-1 rounded-xl bg-black/5 dark:bg-white/10 text-xs font-semibold">
+                <button
+                  type="button"
+                  onClick={() => setDrawerActiveTab('members')}
+                  className={`py-1.5 rounded-lg transition-all cursor-pointer ${
+                    drawerActiveTab === 'members'
+                      ? 'bg-white dark:bg-[#2C2C2E] text-zinc-900 dark:text-white shadow-xs'
+                      : 'text-zinc-500 hover:text-zinc-700'
+                  }`}
+                >
+                  Members ({classRoster.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDrawerActiveTab('media')}
+                  className={`py-1.5 rounded-lg transition-all cursor-pointer ${
+                    drawerActiveTab === 'media'
+                      ? 'bg-white dark:bg-[#2C2C2E] text-zinc-900 dark:text-white shadow-xs'
+                      : 'text-zinc-500 hover:text-zinc-700'
+                  }`}
+                >
+                  Media & Docs
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDrawerActiveTab('settings')}
+                  className={`py-1.5 rounded-lg transition-all cursor-pointer ${
+                    drawerActiveTab === 'settings'
+                      ? 'bg-white dark:bg-[#2C2C2E] text-zinc-900 dark:text-white shadow-xs'
+                      : 'text-zinc-500 hover:text-zinc-700'
+                  }`}
+                >
+                  Settings
+                </button>
+              </div>
+            </div>
+
+            {/* Drawer Body */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {drawerActiveTab === 'members' && (
+                <>
+                  {/* Member Roster Search & Filter Chips */}
+                  <div className="space-y-2">
+                    <div className="flex items-center px-3 py-1.5 rounded-xl bg-black/5 dark:bg-white/10">
+                      <Search size={14} className="text-zinc-400 mr-2 shrink-0" />
+                      <input
+                        type="text"
+                        placeholder="Search enrolled members"
+                        value={memberSearchQuery}
+                        onChange={(e) => setMemberSearchQuery(e.target.value)}
+                        className="w-full text-xs bg-transparent focus:outline-none placeholder:text-zinc-400"
+                      />
+                    </div>
+
+                    <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-[11px] font-semibold">
+                      {(['all', 'faculty', 'reps', 'students'] as const).map((tab) => (
+                        <button
+                          key={tab}
+                          type="button"
+                          onClick={() => setMemberFilterTab(tab)}
+                          className={`px-2.5 py-1 rounded-full capitalize transition-colors cursor-pointer ${
+                            memberFilterTab === tab
+                              ? 'bg-[#007AFF] text-white shadow-xs'
+                              : 'bg-black/5 dark:bg-white/10 text-zinc-500 hover:text-zinc-700'
+                          }`}
+                        >
+                          {tab}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Member List */}
+                  <div className="space-y-1.5">
+                    {filteredRoster.map((member) => (
+                      <div
+                        key={member.id}
+                        onClick={() => handleOpenProfileByUsername(member.username)}
+                        className="p-2.5 rounded-2xl bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition-colors flex items-center justify-between gap-3 cursor-pointer"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="relative shrink-0">
+                            <div
+                              className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white text-xs shadow-xs"
+                              style={{ backgroundColor: getSenderColor(member.name) }}
+                            >
+                              {member.name.slice(0, 1).toUpperCase()}
+                            </div>
+                            {member.online && (
+                              <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-zinc-900" />
+                            )}
+                          </div>
+
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs font-semibold truncate leading-tight">
+                                {member.name}
+                              </span>
+                              <CheckCircle2 size={12} className="text-[#007AFF] shrink-0" />
+                            </div>
+                            <div className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate leading-tight mt-0.5">
+                              @{member.username} • {member.className}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                              member.role === 'principal'
+                                ? 'bg-red-500/10 border-red-500/30 text-red-600'
+                                : member.role === 'faculty'
+                                ? 'bg-amber-500/10 border-amber-500/30 text-amber-600'
+                                : member.role === 'rep'
+                                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600'
+                                : 'bg-blue-500/10 border-blue-500/30 text-[#007AFF]'
+                            }`}
+                          >
+                            {member.roleLabel.split(' ')[0]}
+                          </span>
+
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              router.push(`/chats?user=${member.username}`);
+                            }}
+                            className="p-1.5 rounded-full bg-black/5 dark:bg-white/10 hover:bg-[#007AFF] hover:text-white transition-colors text-zinc-500 cursor-pointer"
+                            title="Direct Message"
+                          >
+                            <MessageSquare size={13} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {drawerActiveTab === 'media' && (
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-2">Classroom Photos</h4>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        'https://images.unsplash.com/photo-1580582932707-520aed937b7b?w=400&auto=format&fit=crop&q=80',
+                        'https://images.unsplash.com/photo-1509062522246-3755977927d7?w=400&auto=format&fit=crop&q=80',
+                        'https://images.unsplash.com/photo-1427504494785-3a9ca7044f45?w=400&auto=format&fit=crop&q=80',
+                      ].map((imgUrl, i) => (
+                        <div key={i} className="aspect-square rounded-xl overflow-hidden bg-black/10">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={imgUrl} alt="Class media" className="w-full h-full object-cover hover:scale-105 transition-transform" />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-2">Classroom Documents</h4>
+                    <div className="space-y-2">
+                      {[
+                        { title: 'Term 1 Exam Syllabus 2026.pdf', size: '1.4 MB', date: 'Yesterday' },
+                        { title: 'Class 8-G Science Project Guidelines.pdf', size: '2.1 MB', date: '3 days ago' },
+                        { title: 'Maths Chapter 4 Practice Sheet.pdf', size: '840 KB', date: 'Last week' },
+                      ].map((doc, i) => (
+                        <div key={i} className="p-3 rounded-xl bg-black/5 dark:bg-white/5 flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <FileText size={18} className="text-[#AF52DE] shrink-0" />
+                            <div className="min-w-0">
+                              <div className="text-xs font-semibold truncate">{doc.title}</div>
+                              <div className="text-[10px] text-zinc-400">{doc.size} • {doc.date}</div>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setToastMessage(`Downloading ${doc.title}`)}
+                            className="text-xs font-semibold text-[#007AFF] hover:underline shrink-0 cursor-pointer"
+                          >
+                            Open
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {drawerActiveTab === 'settings' && (
+                <div className="space-y-3">
+                  <div className="p-3 rounded-2xl bg-black/5 dark:bg-white/5 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-xs font-semibold">Teacher-Only Broadcast Mode</div>
+                        <div className="text-[11px] text-zinc-400">Only Faculty can send messages</div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleToggleLock}
+                        className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer ${
+                          activeChannel.isLocked ? 'bg-[#34C759]' : 'bg-zinc-300 dark:bg-zinc-700'
+                        }`}
+                      >
+                        <span
+                          className={`block w-5 h-5 rounded-full bg-white shadow-md transition-transform ${
+                            activeChannel.isLocked ? 'translate-x-5' : 'translate-x-0.5'
+                          }`}
+                        />
+                      </button>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-2 border-t border-black/[0.06] dark:border-white/[0.06]">
+                      <div>
+                        <div className="text-xs font-semibold">Daily Diary Reminders</div>
+                        <div className="text-[11px] text-zinc-400">Alerts when classmate uploads diary</div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setToastMessage('Diary alerts enabled for Class 8-G')}
+                        className="w-11 h-6 rounded-full bg-[#34C759] transition-colors relative cursor-pointer"
+                      >
+                        <span className="block w-5 h-5 rounded-full bg-white shadow-md translate-x-5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="p-3.5 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-xs">
+                    <div className="font-semibold text-[#007AFF] flex items-center gap-1.5 mb-1">
+                      <ShieldCheck size={14} />
+                      <span>DPS Cyber Safety & Anti-Bullying Monitored</span>
+                    </div>
+                    <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                      All communications within this classroom are protected by DPS Intranet safety standards. Inappropriate content is automatically flagged.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================================== */}
+      {/* MODAL 1: VERIFIED STUDENT / FACULTY ID CARD SHEET                    */}
+      {/* ==================================================================== */}
+      {inspectedMember && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn">
+          <div className="w-full max-w-sm rounded-[28px] overflow-hidden shadow-2xl bg-white dark:bg-[#1C1C1E] border border-black/10 dark:border-white/15 flex flex-col animate-scale-in">
+            {/* ID Card Top Ribbon */}
+            <div className="p-4 bg-gradient-to-r from-[#007AFF] to-[#5856D6] text-white flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <GraduationCap size={18} />
+                <span className="text-xs font-bold uppercase tracking-wider">Delhi Public School ID</span>
               </div>
               <button
-                onClick={() => setShowAssignModal(false)}
-                className="w-7 h-7 rounded-full flex items-center justify-center hover:opacity-80 cursor-pointer"
-                style={{ color: T.iconColor }}
+                type="button"
+                onClick={() => setInspectedMember(null)}
+                className="p-1 rounded-full hover:bg-white/20 transition-colors cursor-pointer"
               >
                 <X size={16} />
               </button>
             </div>
 
-            <form onSubmit={handleSendAssignment} className="p-4 space-y-3.5">
-              <div>
-                <label className="text-xs font-medium block mb-1">Target Classroom</label>
-                <select
-                  value={assignTargetGroup}
-                  onChange={(e) => setAssignTargetGroup(e.target.value)}
-                  className="w-full p-2 text-xs rounded-[8px] focus:outline-none border cursor-pointer"
-                  style={{
-                    backgroundColor: T.inputBg,
-                    borderColor: T.dividerColor,
-                    color: T.headerText,
-                  }}
+            {/* ID Card Body */}
+            <div className="p-6 flex flex-col items-center text-center">
+              <div className="relative mb-3">
+                <div
+                  className="w-20 h-20 rounded-full flex items-center justify-center font-bold text-white text-2xl shadow-xl ring-4 ring-[#007AFF]/25"
+                  style={{ backgroundColor: getSenderColor(inspectedMember.name) }}
                 >
-                  {channels.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name} ({c.grade})
-                    </option>
-                  ))}
-                </select>
+                  {inspectedMember.name.slice(0, 1).toUpperCase()}
+                </div>
+                <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-[#007AFF] text-white flex items-center justify-center shadow-md">
+                  <CheckCircle2 size={14} />
+                </div>
               </div>
 
+              <h3 className="text-base font-bold flex items-center gap-1.5 leading-tight">
+                <span>{inspectedMember.name}</span>
+                <CheckCircle2 size={15} className="text-[#007AFF] fill-[#007AFF]/20" />
+              </h3>
+
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+                @{inspectedMember.username} • {inspectedMember.roleLabel}
+              </p>
+
+              {/* Verified Trust Seal */}
+              <div className="mt-3 px-3.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-semibold border border-emerald-500/25 flex items-center gap-1.5">
+                <ShieldCheck size={13} />
+                <span>Officially Enrolled • DPS Verified</span>
+              </div>
+
+              {/* Student Credentials Grid */}
+              <div className="grid grid-cols-2 gap-2 w-full mt-4 text-left">
+                <div className="p-2.5 rounded-xl bg-black/5 dark:bg-white/5">
+                  <div className="text-[10px] text-zinc-400 uppercase font-semibold">Class & Roll</div>
+                  <div className="text-xs font-bold mt-0.5">{inspectedMember.className} {inspectedMember.rollNo ? `(#${inspectedMember.rollNo})` : ''}</div>
+                </div>
+
+                <div className="p-2.5 rounded-xl bg-black/5 dark:bg-white/5">
+                  <div className="text-[10px] text-zinc-400 uppercase font-semibold">House</div>
+                  <div className="text-xs font-bold mt-0.5">{inspectedMember.house}</div>
+                </div>
+
+                <div className="p-2.5 rounded-xl bg-black/5 dark:bg-white/5">
+                  <div className="text-[10px] text-zinc-400 uppercase font-semibold">Attendance</div>
+                  <div className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">{inspectedMember.attendance}</div>
+                </div>
+
+                <div className="p-2.5 rounded-xl bg-black/5 dark:bg-white/5">
+                  <div className="text-[10px] text-zinc-400 uppercase font-semibold">Spirit Points</div>
+                  <div className="text-xs font-bold text-[#FF9500] mt-0.5">{inspectedMember.spiritPoints} pts</div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-2 w-full mt-5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const u = inspectedMember.username;
+                    setInspectedMember(null);
+                    router.push(`/chats?user=${u}`);
+                  }}
+                  className="flex-1 py-2.5 rounded-xl bg-[#007AFF] hover:bg-[#0066d6] text-white font-semibold text-xs transition-colors flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
+                >
+                  <MessageSquare size={14} />
+                  <span>Send Direct Message</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================================== */}
+      {/* MODAL 2: ADD CLASSMATE MODAL                                         */}
+      {/* ==================================================================== */}
+      {showAddMemberModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn">
+          <div className="w-full max-w-md rounded-[28px] overflow-hidden shadow-2xl bg-white dark:bg-[#1C1C1E] border border-black/10 dark:border-white/15 flex flex-col animate-scale-in">
+            <div className="p-4 border-b border-black/[0.08] dark:border-white/[0.08] flex items-center justify-between">
               <div>
-                <label className="text-xs font-medium block mb-1">Recipient Username</label>
+                <h3 className="text-sm font-bold">Add Classmate to Classroom</h3>
+                <p className="text-[11px] text-zinc-400">Search officially enrolled DPS students</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAddMemberModal(false)}
+                className="p-1 rounded-full text-zinc-400 hover:text-zinc-600 cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="p-4 space-y-3">
+              <div className="flex items-center px-3 py-2 rounded-xl bg-black/5 dark:bg-white/10">
+                <Search size={14} className="text-zinc-400 mr-2 shrink-0" />
                 <input
                   type="text"
-                  placeholder="e.g. teacher_english or rohan728"
-                  value={assignUsername}
-                  onChange={(e) => setAssignUsername(e.target.value)}
+                  placeholder="Search student name or roll..."
+                  value={addMemberSearch}
+                  onChange={(e) => setAddMemberSearch(e.target.value)}
+                  className="w-full text-xs bg-transparent focus:outline-none placeholder:text-zinc-400"
+                />
+              </div>
+
+              <div className="max-h-60 overflow-y-auto space-y-1.5 divide-y divide-black/[0.04] dark:divide-white/[0.04]">
+                {[
+                  { name: 'Ishanvi', username: 'ishanvi', class: 'Class 8-A' },
+                  { name: 'Neelam Mokshith Ram', username: 'mokshith7b', class: 'Class 7-B' },
+                  { name: 'S. Sahana', username: 'sahana_3009', class: 'Class 9-A' },
+                  { name: 'K. Ashwith', username: 'ashwith', class: 'Class 8-G' },
+                  { name: 'Rohan R', username: 'rohan728', class: 'Class 8-G' },
+                  { name: 'Chandan', username: 'chandan', class: 'Class 8-G' },
+                ]
+                  .filter((st) =>
+                    !addMemberSearch.trim() ||
+                    st.name.toLowerCase().includes(addMemberSearch.toLowerCase()) ||
+                    st.username.toLowerCase().includes(addMemberSearch.toLowerCase())
+                  )
+                  .map((candidate) => {
+                    const alreadyIn = classRoster.some((m) => m.username.toLowerCase() === candidate.username.toLowerCase());
+                    return (
+                      <div key={candidate.username} className="pt-1.5 flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div
+                            className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-white text-xs shrink-0 shadow-xs"
+                            style={{ backgroundColor: getSenderColor(candidate.name) }}
+                          >
+                            {candidate.name.slice(0, 1)}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-xs font-semibold truncate">{candidate.name}</div>
+                            <div className="text-[11px] text-zinc-400 truncate">@{candidate.username} • {candidate.class}</div>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          disabled={alreadyIn}
+                          onClick={() => handleAddMemberToClass(candidate.username, candidate.name, candidate.class)}
+                          className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors shrink-0 cursor-pointer ${
+                            alreadyIn
+                              ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-400 cursor-not-allowed'
+                              : 'bg-[#007AFF] text-white hover:bg-[#0066d6]'
+                          }`}
+                        >
+                          {alreadyIn ? 'Enrolled' : 'Add'}
+                        </button>
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================================== */}
+      {/* MODAL 3: CREATE CLASSROOM GROUP (Teacher / Admin Flow)               */}
+      {/* ==================================================================== */}
+      {showCreateGroupModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn">
+          <div className="w-full max-w-md rounded-[28px] overflow-hidden shadow-2xl bg-white dark:bg-[#1C1C1E] border border-black/10 dark:border-white/15 flex flex-col animate-scale-in">
+            <div className="p-4 border-b border-black/[0.08] dark:border-white/[0.08] flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-bold">Create New Classroom Group</h3>
+                <p className="text-[11px] text-zinc-400">Delhi Public School Official Academic Room</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCreateGroupModal(false)}
+                className="p-1 rounded-full text-zinc-400 hover:text-zinc-600 cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateGroup} className="p-5 space-y-4">
+              <div>
+                <label className="text-xs font-semibold block mb-1">Classroom Name</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Class 8-G Mathematics Club 📐"
+                  value={newGroupName}
+                  onChange={(e) => setNewGroupName(e.target.value)}
+                  className="w-full text-xs p-3 rounded-xl bg-black/5 dark:bg-white/10 border border-black/10 dark:border-white/10 focus:outline-none focus:ring-2 focus:ring-[#007AFF]"
                   required
-                  className="w-full p-2 text-xs rounded-[8px] focus:outline-none border"
-                  style={{
-                    backgroundColor: T.inputBg,
-                    borderColor: T.dividerColor,
-                    color: T.headerText,
-                  }}
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-medium block mb-1" style={{ color: T.headerSubtext }}>
-                    Role Type
-                  </label>
+                  <label className="text-xs font-semibold block mb-1">Grade</label>
                   <select
-                    value={assignRole}
-                    onChange={(e) => setAssignRole(e.target.value as any)}
-                    className="w-full p-2 text-xs rounded-[8px] focus:outline-none border cursor-pointer"
-                    style={{
-                      backgroundColor: T.inputBg,
-                      borderColor: T.dividerColor,
-                      color: T.headerText,
-                    }}
+                    value={newGroupGrade}
+                    onChange={(e) => setNewGroupGrade(e.target.value)}
+                    className="w-full text-xs p-2.5 rounded-xl bg-black/5 dark:bg-white/10 border border-black/10 dark:border-white/10 focus:outline-none"
                   >
-                    <option value="teacher">Faculty / Teacher</option>
-                    <option value="student">Student</option>
+                    {['Class 5', 'Class 6', 'Class 7', 'Class 8', 'Class 9', 'Class 10', 'All'].map((g) => (
+                      <option key={g} value={g} className="bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100">{g}</option>
+                    ))}
                   </select>
                 </div>
+
                 <div>
-                  <label className="text-xs font-medium block mb-1" style={{ color: T.headerSubtext }}>
-                    Subject / Title
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. English Faculty"
-                    value={assignSubject}
-                    onChange={(e) => setAssignSubject(e.target.value)}
-                    className="w-full p-2 text-xs rounded-[8px] focus:outline-none border"
-                    style={{
-                      backgroundColor: T.inputBg,
-                      borderColor: T.dividerColor,
-                      color: T.headerText,
-                    }}
-                  />
+                  <label className="text-xs font-semibold block mb-1">Section</label>
+                  <select
+                    value={newGroupSection}
+                    onChange={(e) => setNewGroupSection(e.target.value)}
+                    className="w-full text-xs p-2.5 rounded-xl bg-black/5 dark:bg-white/10 border border-black/10 dark:border-white/10 focus:outline-none"
+                  >
+                    {['A', 'B', 'C', 'D', 'E', 'F', 'G', 'Club', 'All'].map((s) => (
+                      <option key={s} value={s} className="bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100">Section {s}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
-              <div
-                className="p-3 rounded-[8px] text-[11px] leading-relaxed"
-                style={{
-                  backgroundColor: isDark ? '#111b21' : '#f0f2f5',
-                  color: T.headerSubtext,
-                }}
-              >
-                The teacher or student will receive an official assignment banner from Principal Madam. Upon clicking &quot;Accept&quot;, they gain immediate access into the classroom.
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="checkbox"
+                  id="lockGroupCheck"
+                  checked={newGroupIsLocked}
+                  onChange={(e) => setNewGroupIsLocked(e.target.checked)}
+                  className="rounded text-[#007AFF]"
+                />
+                <label htmlFor="lockGroupCheck" className="text-xs text-zinc-600 dark:text-zinc-400">
+                  Broadcast only (Only teachers can message)
+                </label>
               </div>
 
-              <div className="pt-2 flex justify-end gap-2">
+              <div className="flex items-center gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => setShowAssignModal(false)}
-                  className="px-3.5 py-1.5 text-xs font-medium rounded-[6px] border cursor-pointer"
-                  style={{ borderColor: T.dividerColor, color: T.headerText }}
+                  onClick={() => setShowCreateGroupModal(false)}
+                  className="flex-1 py-2.5 rounded-xl border border-black/10 dark:border-white/15 text-xs font-semibold hover:bg-black/5 transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={isAssigning || !assignUsername.trim()}
-                  className="px-4 py-1.5 text-xs font-semibold rounded-[6px] text-white bg-[#00a884] hover:bg-[#008f6f] transition-all disabled:opacity-50 cursor-pointer"
+                  className="flex-1 py-2.5 rounded-xl bg-[#007AFF] hover:bg-[#0066d6] text-white text-xs font-semibold transition-colors shadow-md cursor-pointer"
                 >
-                  {isAssigning ? 'Sending...' : 'Send Assignment Request'}
+                  Create Classroom
                 </button>
               </div>
             </form>
@@ -1664,133 +2251,34 @@ export default function GroupsPage() {
       )}
 
       {/* ==================================================================== */}
-      {/* MODAL 2: CREATE NEW CLASSROOM                                        */}
+      {/* SIMULATED CALL OVERLAY                                               */}
       {/* ==================================================================== */}
-      {showCreateGroupModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
-          <div
-            className="rounded-[12px] w-full max-w-md overflow-hidden shadow-2xl flex flex-col"
-            style={{
-              backgroundColor: isDark ? '#202c33' : '#ffffff',
-              color: T.headerText,
-            }}
-          >
-            <div
-              className="p-4 border-b flex items-center justify-between"
-              style={{ borderColor: T.dividerColor }}
-            >
-              <h3 className="text-sm font-semibold">Create Classroom</h3>
-              <button
-                onClick={() => setShowCreateGroupModal(false)}
-                className="w-7 h-7 rounded-full flex items-center justify-center hover:opacity-80 cursor-pointer"
-                style={{ color: T.iconColor }}
-              >
-                <X size={16} />
-              </button>
+      {activeCallRoom && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-xl flex flex-col items-center justify-between p-6 animate-fadeIn text-white">
+          <div className="text-center pt-8">
+            <div className="w-24 h-24 rounded-[28px] bg-gradient-to-tr from-[#007AFF] to-[#5856D6] flex items-center justify-center mx-auto mb-4 shadow-2xl animate-pulse">
+              {activeCallRoom.type === 'video' ? <Video size={42} /> : <Phone size={42} />}
             </div>
+            <h3 className="text-xl font-bold">{activeCallRoom.title}</h3>
+            <p className="text-xs text-emerald-400 mt-1 font-semibold flex items-center justify-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+              <span>Connected • DPS School Intranet Audio/Video Link</span>
+            </p>
+          </div>
 
-            <form onSubmit={handleCreateGroup} className="p-4 space-y-3.5">
-              <div>
-                <label className="text-xs font-medium block mb-1">Classroom Name</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Class 8-G Official Classroom"
-                  value={newGroupName}
-                  onChange={(e) => setNewGroupName(e.target.value)}
-                  required
-                  className="w-full p-2 text-xs rounded-[8px] focus:outline-none border"
-                  style={{
-                    backgroundColor: T.inputBg,
-                    borderColor: T.dividerColor,
-                    color: T.headerText,
-                  }}
-                />
-              </div>
+          <div className="p-4 rounded-2xl bg-white/10 backdrop-blur-md text-xs text-white/80 max-w-sm text-center">
+            🔒 High-fidelity encrypted calling is active. All members of {activeChannel.name} have been invited.
+          </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-medium block mb-1" style={{ color: T.headerSubtext }}>
-                    Grade
-                  </label>
-                  <select
-                    value={newGroupGrade}
-                    onChange={(e) => setNewGroupGrade(e.target.value)}
-                    className="w-full p-2 text-xs rounded-[8px] focus:outline-none border cursor-pointer"
-                    style={{
-                      backgroundColor: T.inputBg,
-                      borderColor: T.dividerColor,
-                      color: T.headerText,
-                    }}
-                  >
-                    {['Nursery', 'LKG', 'UKG', 'Class 1', 'Class 2', 'Class 3', 'Class 4', 'Class 5', 'Class 6', 'Class 7', 'Class 8', 'Class 9', 'Class 10', 'All'].map(
-                      (g) => (
-                        <option key={g} value={g}>
-                          {g}
-                        </option>
-                      )
-                    )}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs font-medium block mb-1" style={{ color: T.headerSubtext }}>
-                    Section
-                  </label>
-                  <input
-                    type="text"
-                    value={newGroupSection}
-                    onChange={(e) => setNewGroupSection(e.target.value)}
-                    placeholder="e.g. G"
-                    className="w-full p-2 text-xs rounded-[8px] focus:outline-none border"
-                    style={{
-                      backgroundColor: T.inputBg,
-                      borderColor: T.dividerColor,
-                      color: T.headerText,
-                    }}
-                  />
-                </div>
-              </div>
-
-              <div
-                className="flex items-center justify-between p-3 rounded-[8px]"
-                style={{
-                  backgroundColor: isDark ? '#111b21' : '#f0f2f5',
-                }}
-              >
-                <div>
-                  <div className="text-xs font-semibold flex items-center gap-1.5">
-                    <Lock size={12} />
-                    <span>Mute student posting permissions</span>
-                  </div>
-                  <div className="text-[10px]" style={{ color: T.headerSubtext }}>
-                    Only faculty and Principal Madam can send messages
-                  </div>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={newGroupIsLocked}
-                  onChange={(e) => setNewGroupIsLocked(e.target.checked)}
-                  className="w-4 h-4 accent-[#00a884] cursor-pointer"
-                />
-              </div>
-
-              <div className="pt-2 flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowCreateGroupModal(false)}
-                  className="px-3.5 py-1.5 text-xs font-medium rounded-[6px] border cursor-pointer"
-                  style={{ borderColor: T.dividerColor, color: T.headerText }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={!newGroupName.trim()}
-                  className="px-4 py-1.5 text-xs font-semibold rounded-[6px] text-white bg-[#00a884] hover:bg-[#008f6f] transition-all disabled:opacity-50 cursor-pointer"
-                >
-                  Create Classroom
-                </button>
-              </div>
-            </form>
+          <div className="pb-8 flex items-center gap-4">
+            <button
+              type="button"
+              onClick={() => setActiveCallRoom(null)}
+              className="w-16 h-16 rounded-full bg-red-600 hover:bg-red-700 text-white flex items-center justify-center shadow-2xl hover:scale-105 active:scale-95 transition-transform cursor-pointer"
+              title="End Call"
+            >
+              <Phone size={24} className="rotate-135" />
+            </button>
           </div>
         </div>
       )}
