@@ -28,6 +28,8 @@ import {
   Filter,
   Eye,
   Plus,
+  Lock,
+  ShieldCheck,
 } from 'lucide-react';
 import { SchoolFeatures, type DailyStudySchedule, type StudyScheduleItem, type ClassDiaryEntry } from '@/lib/schoolFeatures';
 import { DataStore } from '@/lib/dataStore';
@@ -125,7 +127,8 @@ export default function AiDiaryPage() {
 
   // Diary Wall State
   const [diaryEntries, setDiaryEntries] = useState<ClassDiaryEntry[]>(() => SchoolFeatures.getDiaryEntries());
-  const [selectedDiaryClass, setSelectedDiaryClass] = useState<string>('all');
+  const [selectedDiaryClass, setSelectedDiaryClass] = useState<string>('8');
+  const [selectedDiarySection, setSelectedDiarySection] = useState<string>('G');
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [selectedClass, setSelectedClass] = useState('8');
   const [selectedSection, setSelectedSection] = useState('G');
@@ -476,14 +479,32 @@ export default function AiDiaryPage() {
     ]);
   };
 
-  const filteredDiaryEntries = useMemo(() => {
-    if (selectedDiaryClass === 'all') return diaryEntries;
-    return diaryEntries.filter((d) => d.classGrade.replace(/[^0-9]/g, '') === selectedDiaryClass);
-  }, [diaryEntries, selectedDiaryClass]);
+  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  const filteredDiaryEntries = useMemo(() => {
+    return diaryEntries.filter((d) => {
+      const entryGrade = d.classGrade.replace(/[^0-9]/g, '');
+      const matchGrade = selectedDiaryClass === 'all' ? true : entryGrade === selectedDiaryClass;
+      if (!matchGrade) return false;
+      if (selectedDiarySection && selectedDiarySection !== 'all' && selectedDiarySection !== 'All' && d.section) {
+        return d.section.toLowerCase() === selectedDiarySection.toLowerCase() || d.section.toLowerCase() === 'all';
+      }
+      return true;
+    });
+  }, [diaryEntries, selectedDiaryClass, selectedDiarySection]);
+
+  const todayDiaryEntry = useMemo(() => {
+    return filteredDiaryEntries.find((d) => d.dateStr === todayStr) || null;
+  }, [filteredDiaryEntries, todayStr]);
+
+  const previousDiaryEntries = useMemo(() => {
+    return filteredDiaryEntries.filter((d) => d.id !== todayDiaryEntry?.id);
+  }, [filteredDiaryEntries, todayDiaryEntry]);
+
   const hasUserClassUploadedToday = useMemo(() => {
-    return diaryEntries.some((d) => d.classGrade.replace(/[^0-9]/g, '') === userClass && d.dateStr === todayStr);
+    return diaryEntries.some(
+      (d) => d.classGrade.replace(/[^0-9]/g, '') === userClass && d.dateStr === todayStr
+    );
   }, [diaryEntries, userClass, todayStr]);
 
   return (
@@ -867,193 +888,324 @@ export default function AiDiaryPage() {
       {/* ==================================================================== */}
       {activeTab === 'diary_wall' && (
         <div className="flex-1 flex flex-col overflow-y-auto p-4 space-y-4 animate-fade-in">
-          {/* Banner: Speed Diary Contest */}
+          {/* Security & Class Isolation Banner */}
           <div
-            className="p-4 rounded-2xl border bg-gradient-to-br from-amber-500/10 via-[var(--surface)] to-yellow-500/5 shadow-xs space-y-2.5"
+            className="p-4 rounded-2xl border bg-gradient-to-br from-amber-500/10 via-[var(--surface)] to-emerald-500/5 shadow-xs space-y-3"
             style={{ borderColor: 'var(--line)' }}
           >
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-xl bg-amber-500 text-black flex items-center justify-center font-black shadow-xs">
+                <div className="w-10 h-10 rounded-xl bg-amber-500 text-black flex items-center justify-center font-black shadow-xs shrink-0">
                   <Camera size={20} />
                 </div>
                 <div>
-                  <h2 className="text-xs font-bold text-[var(--text)] flex items-center gap-1.5">
-                    <span>Campus Physical Diary Wall</span>
-                    <span className="text-[10px] font-extrabold px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400">
-                      Nursery to 10
+                  <h2 className="text-xs font-bold text-[var(--text)] flex items-center gap-1.5 flex-wrap">
+                    <span>Class Physical Diary Hub</span>
+                    <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+                      <Lock size={10} />
+                      Class Isolated • No Leaks
                     </span>
                   </h2>
-                  <p className="text-[11px] text-[var(--text-muted)] mt-0.5">
-                    Snap & upload today&apos;s blackboard diary notes. Visible across all classes!
+                  <p className="text-[11px] text-[var(--text-muted)] mt-0.5 leading-snug">
+                    Each class section has its own private diary record. Only enrolled classmates view and upload.
                   </p>
                 </div>
               </div>
 
               <button
                 type="button"
-                onClick={() => setIsUploadOpen(true)}
-                className="px-3.5 py-2 rounded-full bg-amber-500 hover:bg-amber-600 text-black text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer transition-all shrink-0"
+                onClick={() => {
+                  setSelectedClass(selectedDiaryClass !== 'all' ? selectedDiaryClass : userClass);
+                  setSelectedSection(selectedDiarySection !== 'all' ? selectedDiarySection : 'G');
+                  setIsUploadOpen(true);
+                }}
+                className="px-3.5 py-2 rounded-full bg-amber-500 hover:bg-amber-600 text-black text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer transition-all shrink-0 active:scale-95"
               >
                 <Plus size={14} strokeWidth={3} />
                 <span>Upload Diary</span>
               </button>
             </div>
 
-            {/* Today's Class Incentive Pill */}
-            <div
-              className={`p-2.5 rounded-xl border flex items-center justify-between text-xs font-medium ${
-                hasUserClassUploadedToday
-                  ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-700 dark:text-emerald-300'
-                  : 'bg-amber-500/10 border-amber-500/20 text-amber-700 dark:text-amber-300'
-              }`}
-            >
+            {/* Enrolled Class Lock Notice */}
+            <div className="p-2.5 rounded-xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-800 dark:text-emerald-200 text-xs flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-2">
-                <Flame size={14} className={hasUserClassUploadedToday ? 'text-emerald-500' : 'text-amber-500 fill-amber-500'} />
-                <span>
-                  {hasUserClassUploadedToday
-                    ? `Class ${userClass} diary photo has already been logged for today!`
-                    : `Be the FIRST in Class ${userClass} to upload today's diary to win +50 Spirit Points!`}
+                <Lock size={13} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <span className="font-medium">
+                  Viewing Class <strong>{selectedDiaryClass}</strong> {selectedDiarySection !== 'all' && `(Section ${selectedDiarySection})`} • Protected against homework leakage
                 </span>
               </div>
-              {!hasUserClassUploadedToday && (
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-600 text-white font-bold">
+                Your Class: {userClass}-G
+              </span>
+            </div>
+          </div>
+
+          {/* Class & Section Filter Selectors */}
+          <div className="space-y-2">
+            {/* Grade Selector */}
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1">
+              <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase mr-1 flex items-center gap-1 shrink-0">
+                <Filter size={11} />
+                <span>Class:</span>
+              </span>
+              {['8', '6', '7', '9', '10', '5', 'all'].map((cls) => (
+                <button
+                  key={cls}
+                  type="button"
+                  onClick={() => setSelectedDiaryClass(cls)}
+                  className={`px-3 py-1 rounded-full text-xs font-bold border transition-all cursor-pointer whitespace-nowrap active:scale-95 ${
+                    selectedDiaryClass === cls
+                      ? 'bg-[var(--primary)] text-white border-[var(--primary)] shadow-2xs'
+                      : 'bg-[var(--surface-sunken)] text-[var(--text)] border-[var(--line)] hover:border-[var(--primary)]'
+                  }`}
+                >
+                  {cls === 'all' ? 'All Grades' : `Class ${cls}`}
+                </button>
+              ))}
+            </div>
+
+            {/* Section Selector */}
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 pl-6">
+              <span className="text-[10px] font-semibold text-[var(--text-muted)] uppercase mr-1 shrink-0">
+                Section:
+              </span>
+              {['G', 'A', 'B', 'F', 'all'].map((sec) => (
+                <button
+                  key={sec}
+                  type="button"
+                  onClick={() => setSelectedDiarySection(sec)}
+                  className={`px-2.5 py-0.5 rounded-md text-[11px] font-medium border transition-all cursor-pointer whitespace-nowrap active:scale-95 ${
+                    selectedDiarySection === sec
+                      ? 'bg-amber-500 text-black border-amber-500 font-bold'
+                      : 'bg-[var(--surface-sunken)] text-[var(--text-muted)] border-[var(--line)] hover:text-[var(--text)]'
+                  }`}
+                >
+                  {sec === 'all' ? 'All Sections' : `Section ${sec}`}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* ================================================================ */}
+          {/* 1. TODAY'S ACTIVE DIARY SPOTLIGHT                                 */}
+          {/* ================================================================ */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-amber-500 flex items-center gap-1.5">
+                <Sparkles size={13} />
+                Today&apos;s Verified Diary
+              </span>
+              <span className="text-[11px] text-[var(--text-muted)]">{todayStr}</span>
+            </div>
+
+            {todayDiaryEntry ? (
+              <div
+                className="rounded-2xl border-2 border-emerald-500/40 overflow-hidden shadow-sm p-4 space-y-3.5 bg-gradient-to-br from-emerald-500/5 via-[var(--surface)] to-transparent"
+                style={{ backgroundColor: 'var(--surface)' }}
+              >
+                {/* Uploader Attribution Header */}
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-[#00a884] text-white font-bold text-sm flex items-center justify-center shadow-xs ring-2 ring-emerald-500/30">
+                      {todayDiaryEntry.uploadedByName.slice(0, 2).toUpperCase()}
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-[var(--text)] flex items-center gap-1.5">
+                        <span>{todayDiaryEntry.uploadedByName}</span>
+                        <span className="text-[11px] font-normal text-[var(--text-muted)]">
+                          (@{todayDiaryEntry.uploadedByUsername})
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-[var(--text-muted)] flex items-center gap-1 mt-0.5">
+                        <Clock size={11} className="text-emerald-500" />
+                        <span>Uploaded today for Class {todayDiaryEntry.classGrade}-{todayDiaryEntry.section}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {todayDiaryEntry.isFirstSubmission && (
+                    <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 flex items-center gap-1.5 shadow-2xs shrink-0">
+                      <Trophy size={13} className="text-amber-500" />
+                      <span>First Submitter (+{todayDiaryEntry.pointsAwarded} pts)</span>
+                    </span>
+                  )}
+                </div>
+
+                {/* Clickable Image with Zoom */}
+                <div
+                  onClick={() => setLightboxImageUrl(todayDiaryEntry.imageUrl)}
+                  className="relative rounded-xl overflow-hidden border border-[var(--line)] cursor-pointer group bg-black/10"
+                >
+                  <img
+                    src={todayDiaryEntry.imageUrl}
+                    alt={`Class ${todayDiaryEntry.classGrade} Diary Snapshot`}
+                    className="w-full max-h-72 object-cover object-top group-hover:scale-101 transition-transform duration-200"
+                  />
+                  <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold gap-2 backdrop-blur-2xs">
+                    <Eye size={18} />
+                    <span>Click to View Full Resolution Photo</span>
+                  </div>
+                </div>
+
+                {/* Extracted Homework Tasks */}
+                {todayDiaryEntry.homeworkSummary && (
+                  <div
+                    className="p-3 rounded-xl border text-xs leading-relaxed text-[var(--text)] whitespace-pre-line"
+                    style={{
+                      backgroundColor: 'var(--surface-sunken)',
+                      borderColor: 'var(--line)',
+                    }}
+                  >
+                    <strong className="text-emerald-600 dark:text-emerald-400 block mb-1 flex items-center gap-1.5">
+                      <CheckCircle2 size={13} />
+                      Verified Homework Tasks Logged:
+                    </strong>
+                    {todayDiaryEntry.homeworkSummary}
+                  </div>
+                )}
+
+                {/* Alternative Upload Button */}
+                <div className="flex items-center justify-between pt-1 border-t border-[var(--line)]">
+                  <span className="text-[11px] text-[var(--text-muted)]">
+                    Notice a missing subject or want to upload another angle?
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedClass(todayDiaryEntry.classGrade);
+                      setSelectedSection(todayDiaryEntry.section);
+                      setIsUploadOpen(true);
+                    }}
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 transition-colors cursor-pointer flex items-center gap-1.5"
+                  >
+                    <Camera size={13} />
+                    <span>Upload Clearer Photo</span>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              /* EMPTY STATE FOR TODAY */
+              <div
+                className="p-6 rounded-2xl border-2 border-dashed border-amber-500/40 text-center space-y-3 bg-amber-500/5"
+                style={{ borderColor: 'var(--line)' }}
+              >
+                <div className="w-12 h-12 rounded-full mx-auto bg-amber-500/20 text-amber-600 flex items-center justify-center animate-pulse">
+                  <Camera size={24} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-[var(--text)]">
+                    No Diary Uploaded for Class {selectedDiaryClass} {selectedDiarySection !== 'all' && `(${selectedDiarySection})`} Today!
+                  </h3>
+                  <p className="text-xs text-[var(--text-muted)] max-w-md mx-auto mt-1 leading-relaxed">
+                    Be the first student in your section to upload today&apos;s blackboard homework notes. You will claim <strong>+50 Spirit Points</strong> for your house profile!
+                  </p>
+                </div>
                 <button
                   type="button"
                   onClick={() => {
-                    setSelectedClass(userClass);
+                    setSelectedClass(selectedDiaryClass !== 'all' ? selectedDiaryClass : userClass);
+                    setSelectedSection(selectedDiarySection !== 'all' ? selectedDiarySection : 'G');
                     setIsUploadOpen(true);
                   }}
-                  className="text-[11px] font-bold underline cursor-pointer shrink-0"
+                  className="px-4 py-2 rounded-full bg-amber-500 hover:bg-amber-600 text-black font-bold text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-md active:scale-95 transition-transform"
                 >
-                  Upload Now
+                  <Plus size={15} strokeWidth={3} />
+                  <span>Upload Today&apos;s Diary (+50 Pts)</span>
                 </button>
-              )}
-            </div>
-          </div>
-
-          {/* Class Filter Selector */}
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1">
-            <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase mr-1 flex items-center gap-1">
-              <Filter size={11} />
-              <span>Class:</span>
-            </span>
-            {['all', '10', '9', '8', '7', '6', '5'].map((cls) => (
-              <button
-                key={cls}
-                type="button"
-                onClick={() => setSelectedDiaryClass(cls)}
-                className={`px-3 py-1 rounded-full text-xs font-bold border transition-all cursor-pointer whitespace-nowrap ${
-                  selectedDiaryClass === cls
-                    ? 'bg-[var(--primary)] text-white border-[var(--primary)] shadow-2xs'
-                    : 'bg-[var(--surface-sunken)] text-[var(--text)] border-[var(--line)] hover:border-[var(--primary)]'
-                }`}
-              >
-                {cls === 'all' ? 'All Classes' : `Class ${cls}`}
-              </button>
-            ))}
-          </div>
-
-          {/* Diary Entries Grid / List */}
-          {filteredDiaryEntries.length === 0 ? (
-            <div
-              className="p-8 rounded-2xl border text-center space-y-3"
-              style={{
-                backgroundColor: 'var(--surface)',
-                borderColor: 'var(--line)',
-              }}
-            >
-              <div className="w-12 h-12 rounded-full mx-auto bg-amber-500/10 text-amber-500 flex items-center justify-center">
-                <Camera size={24} />
               </div>
-              <h3 className="text-sm font-bold text-[var(--text)]">No Diary Uploaded for This Class</h3>
-              <p className="text-xs text-[var(--text-muted)] max-w-sm mx-auto">
-                No student has uploaded the physical diary snapshot for this class yet. Be the first to snap the blackboard homework notes!
-              </p>
-              <button
-                type="button"
-                onClick={() => {
-                  if (selectedDiaryClass !== 'all') setSelectedClass(selectedDiaryClass);
-                  setIsUploadOpen(true);
-                }}
-                className="px-4 py-2 rounded-full bg-amber-500 hover:bg-amber-600 text-black font-bold text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-xs"
-              >
-                <Plus size={14} />
-                <span>Upload Diary (+50 Pts)</span>
-              </button>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {filteredDiaryEntries.map((entry) => (
-                <div
-                  key={entry.id}
-                  className="rounded-2xl border overflow-hidden shadow-xs space-y-3 p-3.5 transition-all hover:border-[var(--primary)]"
-                  style={{
-                    backgroundColor: 'var(--surface)',
-                    borderColor: 'var(--line)',
-                  }}
-                >
-                  {/* Top Meta Bar */}
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-[var(--primary)]/10 text-[var(--primary)] border border-[var(--primary)]/20">
-                        Class {entry.classGrade}-{entry.section || 'A'}
-                      </span>
-                      <span className="text-[11px] font-semibold text-[var(--text-muted)]">
-                        {entry.dateStr}
-                      </span>
-                    </div>
+            )}
+          </div>
 
-                    {entry.isFirstSubmission && (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 flex items-center gap-1 shadow-2xs">
-                        <Trophy size={11} />
-                        <span>First Submission (+{entry.pointsAwarded} pts)</span>
-                      </span>
-                    )}
-                  </div>
+          {/* ================================================================ */}
+          {/* 2. PREVIOUS SUBMISSIONS & HISTORY TIMELINE                        */}
+          {/* ================================================================ */}
+          <div className="space-y-2 pt-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-1.5">
+              <Calendar size={13} />
+              Previous Uploads &amp; History (Who Uploaded Before)
+            </span>
 
-                  {/* Physical Diary Photo Thumbnail with Zoom Trigger */}
+            {previousDiaryEntries.length === 0 ? (
+              <div className="p-4 rounded-xl border border-[var(--line)] text-center text-xs text-[var(--text-muted)]">
+                No previous history recorded yet for Class {selectedDiaryClass}.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                {previousDiaryEntries.map((entry) => (
                   <div
-                    onClick={() => setLightboxImageUrl(entry.imageUrl)}
-                    className="relative rounded-xl overflow-hidden border border-[var(--line)] cursor-pointer group bg-black/5"
+                    key={entry.id}
+                    className="rounded-2xl border overflow-hidden shadow-2xs space-y-2.5 p-3.5 transition-all hover:border-[var(--primary)]"
+                    style={{
+                      backgroundColor: 'var(--surface)',
+                      borderColor: 'var(--line)',
+                    }}
                   >
-                    <img
-                      src={entry.imageUrl}
-                      alt={`Class ${entry.classGrade} Diary`}
-                      className="w-full h-48 object-cover object-top group-hover:scale-102 transition-transform duration-200"
-                    />
-                    <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold gap-1.5 backdrop-blur-2xs">
-                      <Eye size={16} />
-                      <span>Click to View Full Size</span>
-                    </div>
-                  </div>
+                    {/* Previous Header */}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[var(--primary)]/10 text-[var(--primary)] border border-[var(--primary)]/20">
+                          Class {entry.classGrade}-{entry.section || 'A'}
+                        </span>
+                        <span className="text-[11px] font-semibold text-[var(--text-muted)]">
+                          {entry.dateStr}
+                        </span>
+                      </div>
 
-                  {/* Extracted Homework Tasks */}
-                  {entry.homeworkSummary && (
+                      {entry.isFirstSubmission && (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20 flex items-center gap-1">
+                          <Trophy size={10} />
+                          <span>+{entry.pointsAwarded} pts</span>
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Thumbnail Image */}
                     <div
-                      className="p-2.5 rounded-xl border text-[11px] leading-relaxed text-[var(--text)] whitespace-pre-line"
-                      style={{
-                        backgroundColor: 'var(--surface-sunken)',
-                        borderColor: 'var(--line)',
-                      }}
+                      onClick={() => setLightboxImageUrl(entry.imageUrl)}
+                      className="relative rounded-xl overflow-hidden border border-[var(--line)] cursor-pointer group bg-black/5"
                     >
-                      <strong className="text-[var(--text)] block mb-0.5">Homework Notes:</strong>
-                      {entry.homeworkSummary}
+                      <img
+                        src={entry.imageUrl}
+                        alt={`Class ${entry.classGrade} Diary`}
+                        className="w-full h-40 object-cover object-top group-hover:scale-102 transition-transform duration-200"
+                      />
+                      <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold gap-1.5 backdrop-blur-2xs">
+                        <Eye size={15} />
+                        <span>View Full Size</span>
+                      </div>
                     </div>
-                  )}
 
-                  {/* Footer Attribution */}
-                  <div className="flex items-center justify-between text-[11px] pt-1 text-[var(--text-muted)] border-t border-[var(--line)]">
-                    <span>
-                      Uploaded by <strong>{entry.uploadedByName}</strong> (@{entry.uploadedByUsername})
-                    </span>
-                    <span className="text-[10px] font-semibold text-emerald-500">
-                      Verified Cloud D1 Log
-                    </span>
+                    {/* Extracted Notes */}
+                    {entry.homeworkSummary && (
+                      <div
+                        className="p-2.5 rounded-xl border text-[11px] leading-relaxed text-[var(--text)] whitespace-pre-line line-clamp-4"
+                        style={{
+                          backgroundColor: 'var(--surface-sunken)',
+                          borderColor: 'var(--line)',
+                        }}
+                      >
+                        <strong className="text-[var(--text)] block mb-0.5">Homework Notes:</strong>
+                        {entry.homeworkSummary}
+                      </div>
+                    )}
+
+                    {/* Attribution Line: Exactly WHO uploaded it */}
+                    <div className="flex items-center justify-between text-[11px] pt-1 text-[var(--text-muted)] border-t border-[var(--line)]">
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-5 h-5 rounded-full bg-[#00a884] text-white font-bold text-[9px] flex items-center justify-center">
+                          {entry.uploadedByName.slice(0, 1).toUpperCase()}
+                        </div>
+                        <span>
+                          Uploaded by <strong>{entry.uploadedByName}</strong>
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-emerald-500 font-medium">Verified D1</span>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
