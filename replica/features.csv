@@ -1,0 +1,18 @@
+feature,area,priority,original,clone,notes
+desktop_split_layout,shell,must,yes,yes,Left sidebar + right chat area matching Windows WhatsApp Desktop
+doodle_wallpaper,chat,must,yes,yes,Authentic repeating SVG WhatsApp doodle wallpaper on dark (#0b141a) and light (#efeae2)
+chat_list_search,sidebar,must,yes,yes,Instant filter search across chats and messages
+group_chat_header,header,must,yes,yes,Avatar circle with group name and member subtitle
+video_media_card,messages,must,yes,yes,Inline video card with duration badge (2:20) and play overlay matching reference screenshot
+consecutive_message_clustering,messages,must,yes,yes,Omits avatar on consecutive messages within 5 minutes
+sender_color_coding,messages,must,yes,yes,Distinct sender names in WhatsApp colors (cyan, red, green, amber, purple)
+message_bubble_styling,messages,must,yes,yes,Dark incoming (#202c33) and outgoing emerald green (#005c4b) with tails
+double_blue_checks,messages,must,yes,yes,Double checkmark indicators for sent and read messages
+quoted_message_replies,messages,must,yes,yes,Quoted card preview with colored vertical accent bar
+emoji_reactions,messages,must,yes,yes,Bottom reaction badges with counts (e.g. 😂 5, 👍 3)
+quick_emoji_picker,input,should,yes,yes,Top emoji tray for 1-click reaction insertion
+attachment_drawer,input,should,yes,yes,Paperclip menu with Photos/Videos, Documents, and Camera options
+voice_note_interaction,input,should,yes,yes,Dynamic toggle between microphone and green send arrow
+read_only_channel_banner,chat,should,yes,yes,Clear indicator for locked announcement channels
+contact_details_drawer,details,could,yes,no,Sliding right side panel showing full participant details
+voip_video_calling,calls,skip,yes,no,Proprietary WhatsApp VoIP servers skipped
