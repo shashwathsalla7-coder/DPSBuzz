@@ -33,6 +33,10 @@ import {
   Lock,
   Clock,
   Sparkles,
+  Edit2,
+  MessageSquarePlus,
+  PhoneCall,
+  Menu,
 } from 'lucide-react';
 
 import {
@@ -51,6 +55,7 @@ import {
 } from './components/constants';
 
 import { SidebarRail } from './components/SidebarRail';
+import { MobileBottomNav } from './components/MobileBottomNav';
 import { StatusView } from './components/StatusView';
 import { CallsView } from './components/CallsView';
 import { CommunitiesView } from './components/CommunitiesView';
@@ -61,6 +66,7 @@ import { StarredMessagesPanel } from './components/StarredMessagesPanel';
 import { NewChatModal } from './components/NewChatModal';
 import { ActiveCallOverlay } from './components/ActiveCallOverlay';
 import { StatusViewerModal } from './components/StatusViewerModal';
+import { VideoPlayerModal } from './components/VideoPlayerModal';
 
 export default function WhatsAppDesktopPage() {
   // Navigation & View State
@@ -75,12 +81,15 @@ export default function WhatsAppDesktopPage() {
   const [activeFilter, setActiveFilter] = useState<'all' | 'unread' | 'groups'>('all');
   const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
   const [doodleWallpaperEnabled, setDoodleWallpaperEnabled] = useState(true);
+  const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
+  const [showMobileOverflowMenu, setShowMobileOverflowMenu] = useState(false);
 
   // Modals & Overlays
   const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
   const [activeCall, setActiveCall] = useState<{ contactName: string; type: 'voice' | 'video' } | null>(null);
   const [viewingStatus, setViewingStatus] = useState<StatusItem | null>(null);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [selectedVideoModal, setSelectedVideoModal] = useState<{ title: string; duration: string } | null>(null);
   const [userAbout, setUserAbout] = useState('Hey there! I am using DPS Buzz WhatsApp');
   const [userName, setUserName] = useState('Shashwath');
 
@@ -321,6 +330,35 @@ export default function WhatsAppDesktopPage() {
     inputRef.current?.focus();
   };
 
+  // Dispatch Voice Note
+  const handleSendVoiceNote = () => {
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase();
+
+    const newMsg: MessageItem = {
+      id: `msg-${Date.now()}`,
+      senderName: userName,
+      text: '🎤 Voice message (0:08)',
+      time: timeStr,
+      isMe: true,
+      isVoiceNote: true,
+      voiceDuration: '0:08',
+    };
+
+    setMessagesMap((prev) => ({
+      ...prev,
+      [activeChatId]: [...(prev[activeChatId] || []), newMsg],
+    }));
+
+    setChatRooms((prev) =>
+      prev.map((r) =>
+        r.id === activeChatId
+          ? { ...r, lastMessage: `You: 🎤 Voice message (0:08)`, lastTime: timeStr }
+          : r
+      )
+    );
+  };
+
   // Toggle Reaction Handler
   const handleToggleReaction = useCallback((msgId: string, emoji: string) => {
     setMessagesMap((prev) => {
@@ -379,6 +417,7 @@ export default function WhatsAppDesktopPage() {
       ...prev,
       [activeChatId]: (prev[activeChatId] || []).filter((m) => m.id !== msgId),
     }));
+    setSelectedMessageId(null);
   };
 
   // Filtered Chats
@@ -419,10 +458,11 @@ export default function WhatsAppDesktopPage() {
       }}
     >
       {/* ==================================================================== */}
-      {/* WINDOW TITLE BAR (Windows WhatsApp Desktop App Aesthetic)            */}
+      {/* 1. TOP BAR: RESPONSIVE (DESKTOP WINDOWS TITLEBAR / MOBILE TOP APP BAR) */}
       {/* ==================================================================== */}
+      {/* Desktop Windows Titlebar */}
       <div
-        className="h-8 w-full flex items-center justify-between px-3 shrink-0 border-b border-[#222d34]"
+        className="hidden md:flex h-8 w-full items-center justify-between px-3 shrink-0 border-b border-[#222d34]"
         style={{ backgroundColor: '#111b21' }}
       >
         <div className="flex items-center gap-2">
@@ -459,13 +499,97 @@ export default function WhatsAppDesktopPage() {
         </div>
       </div>
 
+      {/* Mobile Top App Bar (Only when chat is not open) */}
+      {!isMobileChatOpen && (
+        <header
+          className="md:hidden h-14 px-4 flex items-center justify-between border-b border-[#222d34] shrink-0 z-30"
+          style={{ backgroundColor: '#111b21' }}
+        >
+          <div className="flex items-center gap-2">
+            <Link
+              href="/home"
+              className="p-1 -ml-1 text-[#8696a0] hover:text-white"
+              title="Back to DPS Buzz"
+            >
+              <ArrowLeft size={20} />
+            </Link>
+            <span className="text-lg font-bold tracking-tight text-[#e9edef]">WhatsApp</span>
+          </div>
+
+          <div className="flex items-center gap-1 text-[#8696a0] relative">
+            <button
+              onClick={() => setIsNewChatModalOpen(true)}
+              className="p-2.5 rounded-full hover:text-white cursor-pointer active:scale-95"
+              title="Camera / Photo"
+            >
+              <Camera size={20} />
+            </button>
+            <button
+              onClick={() => {
+                const searchEl = document.getElementById('chat-search-input');
+                searchEl?.focus();
+              }}
+              className="p-2.5 rounded-full hover:text-white cursor-pointer active:scale-95"
+              title="Search"
+            >
+              <Search size={20} />
+            </button>
+            <button
+              onClick={() => setShowMobileOverflowMenu(!showMobileOverflowMenu)}
+              className="p-2.5 rounded-full hover:text-white cursor-pointer active:scale-95"
+              title="Menu"
+            >
+              <MoreVertical size={20} />
+            </button>
+
+            {/* Mobile 3-Dot Overflow Menu Dropdown */}
+            {showMobileOverflowMenu && (
+              <div
+                className="absolute right-0 top-12 w-48 py-2 rounded-xl bg-[#202c33] border border-[#222d34] shadow-2xl z-50 animate-fadeIn"
+                onClick={() => setShowMobileOverflowMenu(false)}
+              >
+                <button
+                  onClick={() => setIsNewChatModalOpen(true)}
+                  className="w-full px-4 py-2.5 text-left text-xs text-[#e9edef] hover:bg-[#2a3942] cursor-pointer"
+                >
+                  New group
+                </button>
+                <button
+                  onClick={() => setRightPanel('starred')}
+                  className="w-full px-4 py-2.5 text-left text-xs text-[#e9edef] hover:bg-[#2a3942] cursor-pointer"
+                >
+                  Starred messages
+                </button>
+                <button
+                  onClick={() => setRightPanel('settings')}
+                  className="w-full px-4 py-2.5 text-left text-xs text-[#e9edef] hover:bg-[#2a3942] cursor-pointer"
+                >
+                  Settings
+                </button>
+                <button
+                  onClick={() => setIsProfileModalOpen(true)}
+                  className="w-full px-4 py-2.5 text-left text-xs text-[#e9edef] hover:bg-[#2a3942] cursor-pointer"
+                >
+                  Profile
+                </button>
+                <div className="h-px bg-[#222d34] my-1" />
+                <Link
+                  href="/home"
+                  className="block w-full px-4 py-2.5 text-left text-xs text-[#00a884] hover:bg-[#2a3942]"
+                >
+                  Exit to DPS Buzz Home
+                </Link>
+              </div>
+            )}
+          </div>
+        </header>
+      )}
+
       {/* ==================================================================== */}
-      {/* MAIN CONTAINER: LEFT ICON RAIL + SIDEBAR PANEL + CHAT CANVAS + DRAWER */}
+      {/* 2. MAIN CONTAINER                                                    */}
       {/* ==================================================================== */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* ================================================================== */}
-        {/* SLIM LEFT RAIL (WhatsApp Windows App Native Icon Bar)              */}
-        {/* ================================================================== */}
+      <div className="flex flex-1 overflow-hidden relative">
+        {/* SLIM LEFT RAIL (Desktop Only) */}
         <SidebarRail
           activeTab={activeTab}
           onTabChange={(tab) => {
@@ -480,19 +604,17 @@ export default function WhatsAppDesktopPage() {
           hasUnreadStatus={true}
         />
 
-        {/* ================================================================== */}
-        {/* SECONDARY SIDEBAR (Switched based on active rail tab)              */}
-        {/* ================================================================== */}
+        {/* SECONDARY SIDEBAR / MAIN TAB VIEW */}
         <aside
-          className={`w-full md:w-[360px] lg:w-[400px] flex flex-col shrink-0 ${
+          className={`w-full md:w-[360px] lg:w-[400px] flex flex-col shrink-0 relative ${
             isMobileChatOpen ? 'hidden md:flex' : 'flex'
           }`}
         >
           {/* TAB 1: CHATS LIST */}
           {activeTab === 'chats' && (
             <div className="flex flex-col h-full bg-[#111b21] border-r border-[#222d34]">
-              {/* Sidebar Header */}
-              <div className="h-[60px] px-4 flex items-center justify-between bg-[#202c33] border-b border-[#222d34] shrink-0">
+              {/* Desktop Header */}
+              <div className="hidden md:flex h-[60px] px-4 items-center justify-between bg-[#202c33] border-b border-[#222d34] shrink-0">
                 <h1 className="text-lg font-semibold text-[#e9edef]">Chats</h1>
                 <div className="flex items-center gap-3 text-[#8696a0]">
                   <button
@@ -514,9 +636,10 @@ export default function WhatsAppDesktopPage() {
 
               {/* Search Box & Filter Chips */}
               <div className="p-2 border-b border-[#222d34] flex flex-col gap-2 bg-[#111b21]">
-                <div className="flex items-center px-3 py-1.5 rounded-[8px] bg-[#202c33]">
-                  <Search size={15} className="text-[#8696a0] mr-3 shrink-0" />
+                <div className="flex items-center px-3 py-2 rounded-xl bg-[#202c33]">
+                  <Search size={16} className="text-[#8696a0] mr-3 shrink-0" />
                   <input
+                    id="chat-search-input"
                     type="text"
                     placeholder="Search or start new chat"
                     value={searchQuery}
@@ -526,22 +649,22 @@ export default function WhatsAppDesktopPage() {
                   {searchQuery && (
                     <button
                       onClick={() => setSearchQuery('')}
-                      className="text-xs text-[#8696a0] hover:text-white cursor-pointer"
+                      className="text-xs text-[#8696a0] hover:text-white cursor-pointer p-1"
                     >
-                      <X size={13} />
+                      <X size={14} />
                     </button>
                   )}
                 </div>
 
-                {/* Filter Pills */}
-                <div className="flex items-center gap-1.5 px-1">
+                {/* Filter Pills with 40px touch targets */}
+                <div className="flex items-center gap-2 px-1 py-0.5 overflow-x-auto">
                   {(['all', 'unread', 'groups'] as const).map((tab) => (
                     <button
                       key={tab}
                       onClick={() => setActiveFilter(tab)}
-                      className={`px-3 py-1 rounded-full text-xs font-medium capitalize transition-all cursor-pointer ${
+                      className={`px-3.5 py-1.5 rounded-full text-xs font-medium capitalize transition-all cursor-pointer shrink-0 active:scale-95 ${
                         activeFilter === tab
-                          ? 'bg-[#00a884] text-[#111b21] font-semibold'
+                          ? 'bg-[#00a884] text-[#111b21] font-semibold shadow-xs'
                           : 'bg-[#202c33] text-[#8696a0] hover:text-white'
                       }`}
                     >
@@ -561,13 +684,14 @@ export default function WhatsAppDesktopPage() {
                       onClick={() => {
                         setActiveChatId(room.id);
                         setIsMobileChatOpen(true);
+                        setSelectedMessageId(null);
                       }}
-                      className={`w-full text-left px-3.5 py-3 flex items-center gap-3 transition-colors cursor-pointer ${
-                        isActive ? 'bg-[#2a3942]' : 'hover:bg-[#202c33]'
+                      className={`w-full text-left px-4 py-3.5 flex items-center gap-3.5 transition-colors cursor-pointer active:bg-[#202c33] ${
+                        isActive ? 'md:bg-[#2a3942] bg-[#202c33]' : 'hover:bg-[#202c33]'
                       }`}
                     >
                       <div
-                        className="w-12 h-12 rounded-full flex items-center justify-center font-bold text-white shrink-0 text-sm shadow-xs"
+                        className="w-12 h-12 rounded-full flex items-center justify-center font-bold text-white shrink-0 text-sm shadow-xs ring-1 ring-white/10"
                         style={{ backgroundColor: room.avatarColor }}
                       >
                         {room.initials}
@@ -601,37 +725,76 @@ export default function WhatsAppDesktopPage() {
                   );
                 })}
               </div>
+
+              {/* Mobile Floating Action Button (FAB) for New Chat */}
+              <button
+                onClick={() => setIsNewChatModalOpen(true)}
+                className="md:hidden absolute bottom-5 right-5 w-14 h-14 rounded-full bg-[#00a884] text-[#111b21] shadow-2xl flex items-center justify-center cursor-pointer active:scale-90 transition-transform z-30"
+                title="New Chat"
+              >
+                <MessageSquarePlus size={24} />
+              </button>
             </div>
           )}
 
-          {/* TAB 2: STATUS */}
+          {/* TAB 2: STATUS / UPDATES */}
           {activeTab === 'status' && (
-            <StatusView
-              onSelectStatus={(st) => setViewingStatus(st)}
-              onCreateStatus={(text, color) => {
-                // Status created
-              }}
-            />
+            <div className="relative h-full flex flex-col">
+              <StatusView
+                onSelectStatus={(st) => setViewingStatus(st)}
+                onCreateStatus={() => {}}
+              />
+              {/* Mobile FAB for Status */}
+              <div className="md:hidden absolute bottom-5 right-5 flex flex-col gap-3 z-30">
+                <button
+                  onClick={() => {
+                    const mySt = DEMO_STATUSES[0];
+                    setViewingStatus(mySt);
+                  }}
+                  className="w-10 h-10 rounded-full bg-[#202c33] text-white shadow-lg flex items-center justify-center cursor-pointer active:scale-90 transition-transform mx-auto"
+                  title="Pencil / Text Status"
+                >
+                  <Edit2 size={16} />
+                </button>
+                <button
+                  onClick={() => setIsNewChatModalOpen(true)}
+                  className="w-14 h-14 rounded-full bg-[#00a884] text-[#111b21] shadow-2xl flex items-center justify-center cursor-pointer active:scale-90 transition-transform"
+                  title="Camera"
+                >
+                  <Camera size={24} />
+                </button>
+              </div>
+            </div>
           )}
 
           {/* TAB 3: CALLS */}
           {activeTab === 'calls' && (
-            <CallsView
-              onStartCall={(contactName, type) => {
-                setActiveCall({ contactName, type });
-              }}
-            />
+            <div className="relative h-full flex flex-col">
+              <CallsView
+                onStartCall={(contactName, type) => {
+                  setActiveCall({ contactName, type });
+                }}
+              />
+              {/* Mobile FAB for Call */}
+              <button
+                onClick={() => setActiveCall({ contactName: 'Himaksh', type: 'voice' })}
+                className="md:hidden absolute bottom-5 right-5 w-14 h-14 rounded-full bg-[#00a884] text-[#111b21] shadow-2xl flex items-center justify-center cursor-pointer active:scale-90 transition-transform z-30"
+                title="New Call"
+              >
+                <PhoneCall size={24} />
+              </button>
+            </div>
           )}
 
           {/* TAB 4: COMMUNITIES */}
           {activeTab === 'communities' && (
             <CommunitiesView
               onSelectGroup={(grpName) => {
-                // If exists switch, else create room
                 const found = chatRooms.find((r) => r.name.includes(grpName));
                 if (found) {
                   setActiveChatId(found.id);
                   setActiveTab('chats');
+                  setIsMobileChatOpen(true);
                 } else {
                   const newRoom: ChatRoom = {
                     id: `chat-${Date.now()}`,
@@ -646,39 +809,53 @@ export default function WhatsAppDesktopPage() {
                   setChatRooms([newRoom, ...chatRooms]);
                   setActiveChatId(newRoom.id);
                   setActiveTab('chats');
+                  setIsMobileChatOpen(true);
                 }
               }}
             />
           )}
+
+          {/* Mobile Bottom Navigation (Visible when Chat is Closed) */}
+          <MobileBottomNav
+            activeTab={activeTab}
+            onTabChange={(tab) => {
+              setActiveTab(tab);
+              if (rightPanel === 'settings') setRightPanel('none');
+            }}
+            unreadCount={2}
+            missedCallsCount={1}
+            hasUnreadStatus={true}
+          />
         </aside>
 
         {/* ================================================================== */}
         {/* RIGHT MAIN PANEL: Active Chat Canvas                               */}
         {/* ================================================================== */}
         <main
-          className={`flex-1 flex flex-col relative ${
+          className={`flex-1 flex flex-col relative w-full h-full ${
             isMobileChatOpen ? 'flex' : 'hidden md:flex'
           }`}
           style={{ backgroundColor: '#0b141a' }}
         >
-          {/* WhatsApp Header */}
+          {/* WhatsApp Header (Touch Optimized) */}
           <div
-            className="h-[60px] px-4 flex items-center justify-between z-10 shrink-0 border-b border-[#222d34]"
+            className="h-[60px] px-2 sm:px-4 flex items-center justify-between z-10 shrink-0 border-b border-[#222d34]"
             style={{ backgroundColor: '#202c33' }}
           >
             {/* Group Identity & Member Subtitle */}
             <div
               onClick={() => setRightPanel(rightPanel === 'group-info' ? 'none' : 'group-info')}
-              className="flex items-center gap-3 min-w-0 cursor-pointer hover:opacity-90 transition-opacity"
+              className="flex items-center gap-2 sm:gap-3 min-w-0 cursor-pointer hover:opacity-90 transition-opacity flex-1"
             >
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   setIsMobileChatOpen(false);
                 }}
-                className="p-1 -ml-1 text-[#8696a0] hover:text-white md:hidden shrink-0 cursor-pointer"
+                className="p-2 -ml-1 text-[#8696a0] hover:text-white md:hidden shrink-0 cursor-pointer active:scale-95 min-w-[40px] min-h-[40px] flex items-center justify-center"
+                title="Back to Chats"
               >
-                <ChevronLeft size={22} />
+                <ChevronLeft size={24} />
               </button>
 
               <div
@@ -688,7 +865,7 @@ export default function WhatsAppDesktopPage() {
                 {activeRoom.initials}
               </div>
 
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <h2 className="text-sm font-semibold truncate leading-tight text-[#e9edef]">
                   {activeRoom.name}
                 </h2>
@@ -698,11 +875,11 @@ export default function WhatsAppDesktopPage() {
               </div>
             </div>
 
-            {/* Right Action Icons */}
-            <div className="flex items-center gap-3 text-[#8696a0]">
+            {/* Right Action Icons (Touch Friendly 40px Hit Areas) */}
+            <div className="flex items-center gap-1 sm:gap-2 text-[#8696a0] shrink-0">
               <button
                 onClick={() => setActiveCall({ contactName: activeRoom.name, type: 'video' })}
-                className="flex items-center gap-0.5 cursor-pointer hover:text-white p-1 rounded transition-colors"
+                className="w-10 h-10 flex items-center justify-center rounded-full hover:text-white hover:bg-[#2a3942] transition-colors cursor-pointer active:scale-90"
                 title="Video Call"
               >
                 <Video size={19} />
@@ -710,7 +887,7 @@ export default function WhatsAppDesktopPage() {
 
               <button
                 onClick={() => setActiveCall({ contactName: activeRoom.name, type: 'voice' })}
-                className="p-1.5 rounded-full hover:text-white transition-colors cursor-pointer"
+                className="w-10 h-10 flex items-center justify-center rounded-full hover:text-white hover:bg-[#2a3942] transition-colors cursor-pointer active:scale-90"
                 title="Voice Call"
               >
                 <Phone size={18} />
@@ -718,7 +895,7 @@ export default function WhatsAppDesktopPage() {
 
               <button
                 onClick={() => setRightPanel('media-gallery')}
-                className="p-1.5 rounded-full hover:text-white transition-colors cursor-pointer"
+                className="w-10 h-10 flex items-center justify-center rounded-full hover:text-white hover:bg-[#2a3942] transition-colors cursor-pointer active:scale-90"
                 title="Media and Docs"
               >
                 <Search size={19} />
@@ -726,7 +903,7 @@ export default function WhatsAppDesktopPage() {
 
               <button
                 onClick={() => setRightPanel(rightPanel === 'group-info' ? 'none' : 'group-info')}
-                className="p-1.5 rounded-full hover:text-white transition-colors cursor-pointer"
+                className="w-10 h-10 flex items-center justify-center rounded-full hover:text-white hover:bg-[#2a3942] transition-colors cursor-pointer active:scale-90"
                 title="Chat info"
               >
                 <MoreVertical size={19} />
@@ -736,7 +913,8 @@ export default function WhatsAppDesktopPage() {
 
           {/* Tiled WhatsApp Doodle Wallpaper Area */}
           <div
-            className="flex-1 overflow-y-auto px-4 md:px-10 py-4 space-y-1 relative"
+            onClick={() => setSelectedMessageId(null)}
+            className="flex-1 overflow-y-auto px-3 sm:px-6 md:px-10 py-4 space-y-1 relative"
             style={{
               backgroundColor: '#0b141a',
               backgroundImage: doodleWallpaperEnabled ? `url("${WHATSAPP_DOODLE_DARK}")` : 'none',
@@ -756,6 +934,7 @@ export default function WhatsAppDesktopPage() {
               const prev = activeMessages[idx - 1];
               const isSameAsPrev = prev && prev.senderName === msg.senderName;
               const isMe = msg.isMe;
+              const isSelected = selectedMessageId === msg.id;
 
               return (
                 <div
@@ -778,12 +957,18 @@ export default function WhatsAppDesktopPage() {
                     </div>
                   )}
 
-                  {/* Message Bubble */}
-                  <div className="flex flex-col max-w-[85%] sm:max-w-[70%] md:max-w-[62%] group relative">
+                  {/* Message Bubble Container */}
+                  <div className="flex flex-col max-w-[88%] sm:max-w-[70%] md:max-w-[62%] group relative">
                     <div
-                      className={`px-3 py-1.5 text-sm transition-all relative rounded-[8px] ${
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedMessageId(isSelected ? null : msg.id);
+                      }}
+                      className={`px-3 py-1.5 text-sm transition-all relative rounded-[8px] cursor-pointer ${
                         isMe ? 'bg-[#005c4b] text-[#e9edef]' : 'bg-[#202c33] text-[#e9edef]'
-                      } ${!isSameAsPrev && (isMe ? 'rounded-tr-none' : 'rounded-tl-none')}`}
+                      } ${!isSameAsPrev && (isMe ? 'rounded-tr-none' : 'rounded-tl-none')} ${
+                        isSelected ? 'ring-2 ring-[#00a884]' : ''
+                      }`}
                       style={{ boxShadow: '0 1px 0.5px rgba(11,20,26,0.25)' }}
                     >
                       {/* Sender Name & Subtitle Header */}
@@ -815,9 +1000,18 @@ export default function WhatsAppDesktopPage() {
                         </div>
                       )}
 
-                      {/* Video Media Card */}
+                      {/* Video Media Card (Interactive Playback) */}
                       {msg.isVideo && (
-                        <div className="mb-2 relative rounded-[6px] overflow-hidden bg-black/50 border border-white/10 group/vid cursor-pointer">
+                        <div
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedVideoModal({
+                              title: msg.videoCaption || 'Prime Campus Highlight',
+                              duration: msg.videoDuration || '2:20',
+                            });
+                          }}
+                          className="mb-2 relative rounded-[6px] overflow-hidden bg-black/50 border border-white/10 group/vid cursor-pointer active:scale-98 transition-transform"
+                        >
                           <div className="h-44 sm:h-56 w-full bg-linear-to-b from-stone-800 to-stone-900 flex items-center justify-center relative">
                             {/* Play Overlay */}
                             <div className="w-12 h-12 rounded-full bg-black/60 backdrop-blur-xs flex items-center justify-center text-white group-hover/vid:scale-110 transition-transform">
@@ -831,11 +1025,36 @@ export default function WhatsAppDesktopPage() {
                             {/* Forward Button */}
                             <button
                               type="button"
-                              className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/80 transition-colors cursor-pointer"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setIsNewChatModalOpen(true);
+                              }}
+                              className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/80 transition-colors cursor-pointer active:scale-90"
                               title="Forward Video"
                             >
-                              <Share2 size={13} />
+                              <Share2 size={14} />
                             </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Voice Note Waveform Preview */}
+                      {msg.isVoiceNote && (
+                        <div className="flex items-center gap-2.5 py-1 text-xs">
+                          <button
+                            type="button"
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-8 h-8 rounded-full bg-[#00a884] text-white flex items-center justify-center shrink-0"
+                          >
+                            <Play size={13} className="ml-0.5 fill-white" />
+                          </button>
+                          <div className="flex-1 flex items-center gap-1">
+                            <div className="h-1 flex-1 bg-white/30 rounded-full overflow-hidden">
+                              <div className="h-full bg-[#53bdeb] w-1/3" />
+                            </div>
+                            <span className="text-[10px] font-mono text-[#8696a0]">
+                              {msg.voiceDuration || '0:08'}
+                            </span>
                           </div>
                         </div>
                       )}
@@ -854,23 +1073,26 @@ export default function WhatsAppDesktopPage() {
                         {isMe && <CheckCheck size={14} className="text-[#53bdeb] ml-0.5" />}
                       </div>
 
-                      {/* Hover Actions Bar */}
+                      {/* Touch & Hover Action Bar (Visible on Hover OR on Tap/Touch) */}
                       <div
-                        className={`absolute top-1 hidden group-hover:flex items-center gap-1 px-1.5 py-0.5 rounded-md shadow-md z-10 bg-[#202c33] border border-[#222d34] ${
-                          isMe ? '-left-28' : '-right-28'
-                        }`}
+                        className={`absolute top-1 ${
+                          isSelected ? 'flex' : 'hidden group-hover:flex'
+                        } items-center gap-1 px-2 py-1 rounded-lg shadow-xl z-20 bg-[#202c33] border border-[#222d34] ${
+                          isMe ? '-left-28 sm:-left-32' : '-right-28 sm:-right-32'
+                        } animate-fadeIn`}
+                        onClick={(e) => e.stopPropagation()}
                       >
                         <button
                           onClick={() => handleToggleReaction(msg.id, '😂')}
-                          className="text-xs hover:scale-125 transition-transform cursor-pointer"
-                          title="React with Laugh"
+                          className="text-sm hover:scale-125 transition-transform cursor-pointer p-0.5"
+                          title="React 😂"
                         >
                           😂
                         </button>
                         <button
                           onClick={() => handleToggleReaction(msg.id, '👍')}
-                          className="text-xs hover:scale-125 transition-transform cursor-pointer"
-                          title="React with Thumbs Up"
+                          className="text-sm hover:scale-125 transition-transform cursor-pointer p-0.5"
+                          title="React 👍"
                         >
                           👍
                         </button>
@@ -879,10 +1101,14 @@ export default function WhatsAppDesktopPage() {
                           className="p-1 hover:text-[#00a884] text-[#8696a0] cursor-pointer"
                           title={msg.isStarred ? 'Unstar' : 'Star message'}
                         >
-                          <Star size={12} className={msg.isStarred ? 'fill-[#00a884] text-[#00a884]' : ''} />
+                          <Star size={13} className={msg.isStarred ? 'fill-[#00a884] text-[#00a884]' : ''} />
                         </button>
                         <button
-                          onClick={() => setReplyingTo(msg)}
+                          onClick={() => {
+                            setReplyingTo(msg);
+                            setSelectedMessageId(null);
+                            inputRef.current?.focus();
+                          }}
                           className="text-[11px] font-medium text-[#8696a0] hover:text-white px-1 cursor-pointer"
                         >
                           Reply
@@ -892,7 +1118,7 @@ export default function WhatsAppDesktopPage() {
                           className="p-1 hover:text-[#ea4335] text-[#8696a0] cursor-pointer"
                           title="Delete message"
                         >
-                          <Trash2 size={12} />
+                          <Trash2 size={13} />
                         </button>
                       </div>
                     </div>
@@ -903,8 +1129,11 @@ export default function WhatsAppDesktopPage() {
                         {msg.reactions.map((r, rIdx) => (
                           <button
                             key={rIdx}
-                            onClick={() => handleToggleReaction(msg.id, r.emoji)}
-                            className="px-1.5 py-0.5 rounded-full text-[11px] border border-[#222d34] bg-[#202c33] text-[#e9edef] flex items-center gap-1 shadow-xs cursor-pointer hover:scale-105 transition-transform"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleToggleReaction(msg.id, r.emoji);
+                            }}
+                            className="px-2 py-0.5 rounded-full text-[11px] border border-[#222d34] bg-[#202c33] text-[#e9edef] flex items-center gap-1 shadow-xs cursor-pointer hover:scale-105 active:scale-95 transition-transform"
                           >
                             <span>{r.emoji}</span>
                             <span className="font-semibold text-[10px] text-[#8696a0]">
@@ -921,20 +1150,20 @@ export default function WhatsAppDesktopPage() {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Footer Input Bar */}
+          {/* Footer Input Bar (Touch-Optimized) */}
           <div className="flex flex-col shrink-0 border-t border-[#222d34] bg-[#202c33] relative">
             {/* Attachment Drawer Popover */}
             {showAttachMenu && (
-              <div className="absolute bottom-16 left-3 p-2 rounded-xl shadow-2xl flex flex-col gap-1.5 z-50 border border-[#222d34] bg-[#202c33] min-w-[190px] animate-fadeIn">
+              <div className="absolute bottom-16 left-3 p-2 rounded-xl shadow-2xl flex flex-col gap-1 z-50 border border-[#222d34] bg-[#202c33] min-w-[210px] animate-fadeIn">
                 <button
                   type="button"
                   onClick={() => {
                     setShowAttachMenu(false);
                     setMessageText((prev) => `${prev} [Video: Campus Prime 2026 🎬]`);
                   }}
-                  className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs hover:bg-[#2a3942] transition-colors cursor-pointer text-left text-[#e9edef]"
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs hover:bg-[#2a3942] transition-colors cursor-pointer text-left text-[#e9edef] active:scale-95"
                 >
-                  <Camera size={16} className="text-[#53bdeb]" />
+                  <Camera size={18} className="text-[#53bdeb]" />
                   <span>Photos & Videos</span>
                 </button>
                 <button
@@ -943,9 +1172,9 @@ export default function WhatsAppDesktopPage() {
                     setShowAttachMenu(false);
                     setMessageText((prev) => `${prev} [Document: Class Homework PDF 📄]`);
                   }}
-                  className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs hover:bg-[#2a3942] transition-colors cursor-pointer text-left text-[#e9edef]"
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs hover:bg-[#2a3942] transition-colors cursor-pointer text-left text-[#e9edef] active:scale-95"
                 >
-                  <FileText size={16} className="text-[#9c27b0]" />
+                  <FileText size={18} className="text-[#9c27b0]" />
                   <span>Document</span>
                 </button>
                 <button
@@ -954,18 +1183,18 @@ export default function WhatsAppDesktopPage() {
                     setShowAttachMenu(false);
                     setMessageText((prev) => `${prev} [Diary Submission 📸]`);
                   }}
-                  className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs hover:bg-[#2a3942] transition-colors cursor-pointer text-left text-[#e9edef]"
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs hover:bg-[#2a3942] transition-colors cursor-pointer text-left text-[#e9edef] active:scale-95"
                 >
-                  <Award size={16} className="text-[#ff9f00]" />
+                  <Award size={18} className="text-[#ff9f00]" />
                   <span>Class Diary Photo</span>
                 </button>
               </div>
             )}
 
-            {/* Quick Emoji Tray */}
+            {/* Quick Emoji Tray with 40px touch targets */}
             {showEmojiTray && (
-              <div className="px-4 py-2 border-b border-[#222d34] flex items-center gap-3 bg-[#111b21] overflow-x-auto">
-                {['😀', '😂', '💀', '❤️', '👍', '🔥', '🎉', '📚', '👏', '🚀'].map((em) => (
+              <div className="px-3 py-2 border-b border-[#222d34] flex items-center gap-3 bg-[#111b21] overflow-x-auto">
+                {['😀', '😂', '💀', '❤️', '👍', '🔥', '🎉', '📚', '👏', '🚀', '🙏', '💯'].map((em) => (
                   <button
                     key={em}
                     type="button"
@@ -973,7 +1202,7 @@ export default function WhatsAppDesktopPage() {
                       setMessageText((prev) => prev + em);
                       inputRef.current?.focus();
                     }}
-                    className="text-lg hover:scale-125 transition-transform cursor-pointer"
+                    className="w-9 h-9 flex items-center justify-center text-xl hover:scale-125 active:scale-95 transition-transform cursor-pointer shrink-0"
                   >
                     {em}
                   </button>
@@ -997,19 +1226,19 @@ export default function WhatsAppDesktopPage() {
                 </div>
                 <button
                   onClick={() => setReplyingTo(null)}
-                  className="p-1 rounded-full text-[#8696a0] hover:text-white cursor-pointer"
+                  className="p-1.5 rounded-full text-[#8696a0] hover:text-white cursor-pointer"
                 >
                   <X size={16} />
                 </button>
               </div>
             )}
 
-            {/* Input Form */}
-            <form onSubmit={handleSendMessage} className="h-[62px] px-3 md:px-4 flex items-center gap-2">
+            {/* Input Form with 44px minimum touch buttons */}
+            <form onSubmit={handleSendMessage} className="h-[62px] px-2 sm:px-4 flex items-center gap-1.5 sm:gap-2">
               <button
                 type="button"
                 onClick={() => setShowAttachMenu(!showAttachMenu)}
-                className="p-1.5 rounded-full text-[#8696a0] hover:text-white transition-colors cursor-pointer shrink-0"
+                className="w-10 h-10 flex items-center justify-center rounded-full text-[#8696a0] hover:text-white transition-colors cursor-pointer shrink-0 active:scale-95"
                 title="Attach"
               >
                 <Paperclip size={20} />
@@ -1018,13 +1247,13 @@ export default function WhatsAppDesktopPage() {
               <button
                 type="button"
                 onClick={() => setShowEmojiTray(!showEmojiTray)}
-                className="p-1.5 rounded-full text-[#8696a0] hover:text-white transition-colors cursor-pointer shrink-0"
+                className="w-10 h-10 flex items-center justify-center rounded-full text-[#8696a0] hover:text-white transition-colors cursor-pointer shrink-0 active:scale-95"
                 title="Emoji"
               >
                 <Smile size={20} />
               </button>
 
-              <div className="flex-1 flex items-center rounded-[8px] px-3 py-2 bg-[#2a3942]">
+              <div className="flex-1 flex items-center rounded-2xl px-3 py-2 bg-[#2a3942]">
                 <input
                   ref={inputRef}
                   type="text"
@@ -1038,20 +1267,17 @@ export default function WhatsAppDesktopPage() {
               {messageText.trim() ? (
                 <button
                   type="submit"
-                  className="p-2 rounded-full text-white bg-[#00a884] hover:bg-[#008f6f] transition-all cursor-pointer hover:scale-105 active:scale-95 shrink-0"
+                  className="w-11 h-11 rounded-full text-white bg-[#00a884] hover:bg-[#008f6f] transition-all cursor-pointer hover:scale-105 active:scale-95 shrink-0 flex items-center justify-center shadow-md"
                   aria-label="Send message"
                 >
-                  <Send size={16} />
+                  <Send size={18} />
                 </button>
               ) : (
                 <button
                   type="button"
-                  onClick={() => {
-                    setMessageText('👋 Audio note recorded: [0:04]');
-                    inputRef.current?.focus();
-                  }}
-                  className="p-2 rounded-full text-[#8696a0] hover:text-white transition-colors cursor-pointer shrink-0"
-                  title="Voice Note"
+                  onClick={handleSendVoiceNote}
+                  className="w-11 h-11 rounded-full text-[#8696a0] hover:text-white hover:bg-[#2a3942] transition-colors cursor-pointer shrink-0 flex items-center justify-center active:scale-95"
+                  title="Record & Send Voice Note"
                 >
                   <Mic size={20} />
                 </button>
@@ -1061,7 +1287,7 @@ export default function WhatsAppDesktopPage() {
         </main>
 
         {/* ================================================================== */}
-        {/* RIGHT DRAWER: Group Info / Media / Starred / Settings               */}
+        {/* RIGHT DRAWER: FULL-SCREEN RESPONSIVE SHEETS                        */}
         {/* ================================================================== */}
         {rightPanel === 'group-info' && (
           <GroupInfoPanel
@@ -1087,14 +1313,17 @@ export default function WhatsAppDesktopPage() {
             onUnstar={(id) => handleToggleStar(id)}
             onJumpToChat={(cName) => {
               const r = chatRooms.find((cr) => cr.name === cName);
-              if (r) setActiveChatId(r.id);
+              if (r) {
+                setActiveChatId(r.id);
+                setIsMobileChatOpen(true);
+              }
               setRightPanel('none');
             }}
           />
         )}
 
         {rightPanel === 'settings' && (
-          <div className="w-[360px] lg:w-[400px] h-full flex flex-col shrink-0 animate-slideLeft">
+          <div className="fixed inset-0 z-40 md:relative md:inset-auto w-full md:w-[360px] lg:w-[400px] h-full flex flex-col shrink-0 animate-slideLeft">
             <SettingsView
               onClose={() => setRightPanel('none')}
               currentDoodleEnabled={doodleWallpaperEnabled}
@@ -1115,6 +1344,7 @@ export default function WhatsAppDesktopPage() {
             const existing = chatRooms.find((r) => r.name === c.name);
             if (existing) {
               setActiveChatId(existing.id);
+              setIsMobileChatOpen(true);
             } else {
               const newRoom: ChatRoom = {
                 id: `chat-${Date.now()}`,
@@ -1128,6 +1358,7 @@ export default function WhatsAppDesktopPage() {
               };
               setChatRooms([newRoom, ...chatRooms]);
               setActiveChatId(newRoom.id);
+              setIsMobileChatOpen(true);
             }
           }}
           onCreateNewGroup={(gName, selected) => {
@@ -1144,6 +1375,7 @@ export default function WhatsAppDesktopPage() {
             };
             setChatRooms([newRoom, ...chatRooms]);
             setActiveChatId(newRoom.id);
+            setIsMobileChatOpen(true);
           }}
         />
       )}
@@ -1163,15 +1395,24 @@ export default function WhatsAppDesktopPage() {
           status={viewingStatus}
           onClose={() => setViewingStatus(null)}
           onReply={(reply) => {
-            // Send reply directly into active chat or new chat
             setMessageText(`[Replying to ${viewingStatus.contactName}'s status]: ${reply}`);
+            setIsMobileChatOpen(true);
           }}
+        />
+      )}
+
+      {/* Video Player Modal */}
+      {selectedVideoModal && (
+        <VideoPlayerModal
+          title={selectedVideoModal.title}
+          duration={selectedVideoModal.duration}
+          onClose={() => setSelectedVideoModal(null)}
         />
       )}
 
       {/* User Profile Editor Modal */}
       {isProfileModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
           <div className="w-full max-w-sm bg-[#111b21] rounded-2xl border border-[#222d34] p-6 shadow-2xl flex flex-col items-center text-center">
             <div className="w-20 h-20 rounded-full bg-[#00a884] text-white font-bold text-3xl flex items-center justify-center shadow-lg mb-4 ring-4 ring-[#00a884]/20">
               S
@@ -1205,7 +1446,7 @@ export default function WhatsAppDesktopPage() {
 
             <button
               onClick={() => setIsProfileModalOpen(false)}
-              className="mt-6 w-full py-2.5 rounded-xl font-semibold bg-[#00a884] text-[#111b21] hover:bg-[#008f6f] transition-colors cursor-pointer text-sm"
+              className="mt-6 w-full py-2.5 rounded-xl font-semibold bg-[#00a884] text-[#111b21] hover:bg-[#008f6f] transition-colors cursor-pointer text-sm active:scale-95"
             >
               Save Profile
             </button>

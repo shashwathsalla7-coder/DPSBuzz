@@ -37,7 +37,7 @@ export const MediaGalleryPanel: React.FC<MediaGalleryPanelProps> = ({
   ];
 
   return (
-    <div className="w-[360px] lg:w-[400px] h-full flex flex-col bg-[#111b21] border-l border-[#222d34] shrink-0 select-none overflow-hidden animate-slideLeft">
+    <div className="fixed inset-0 z-40 md:relative md:inset-auto w-full md:w-[360px] lg:w-[400px] h-full flex flex-col bg-[#111b21] border-l border-[#222d34] shrink-0 select-none overflow-hidden animate-slideLeft">
       {/* Header */}
       <div className="h-[60px] px-4 flex items-center justify-between bg-[#202c33] border-b border-[#222d34] shrink-0">
         <div className="flex items-center gap-3">
