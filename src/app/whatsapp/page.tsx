@@ -37,6 +37,14 @@ import {
   MessageSquarePlus,
   PhoneCall,
   Menu,
+  ShieldCheck,
+  Megaphone,
+  CheckCircle2,
+  AlertCircle,
+  Bookmark,
+  Compass,
+  Image as ImageIcon,
+  Headphones,
 } from 'lucide-react';
 
 import {
@@ -52,6 +60,8 @@ import {
   WHATSAPP_DOODLE_DARK,
   DEMO_CONTACTS,
   DEMO_STATUSES,
+  DEMO_CALLS,
+  DEMO_COMMUNITIES,
 } from './components/constants';
 
 import { SidebarRail } from './components/SidebarRail';
@@ -67,302 +77,839 @@ import { NewChatModal } from './components/NewChatModal';
 import { ActiveCallOverlay } from './components/ActiveCallOverlay';
 import { StatusViewerModal } from './components/StatusViewerModal';
 import { VideoPlayerModal } from './components/VideoPlayerModal';
+import { VoiceAudioPlayer } from './components/VoiceAudioPlayer';
+import { VoiceRecorderBar } from './components/VoiceRecorderBar';
+import { PhotoAttachmentModal } from './components/PhotoAttachmentModal';
+import { TeacherNoticeModal } from './components/TeacherNoticeModal';
+import { PinnedNoticeBanner } from './components/PinnedNoticeBanner';
+
+import { DataStore, Profile } from '@/lib/dataStore';
+import { SchoolFeatures, WhatsAppChannel, WhatsAppMessage } from '@/lib/schoolFeatures';
+
+// Default Baseline Class Rooms
+const BASELINE_CHAT_ROOMS: ChatRoom[] = [
+  {
+    id: 'channel-class-8g',
+    name: 'Class 8-G Official Classroom',
+    subtitle: 'Anita Sharma (Faculty) • 39 enrolled students',
+    grade: 'Class 8',
+    section: 'G',
+    avatarColor: '#25d366',
+    initials: '8G',
+    lastMessage: 'Anita Sharma: English Homework uploaded for Chapter 4.',
+    lastTime: '7:40 pm',
+    isGroup: true,
+    isLocked: true,
+    unreadCount: 2,
+    isPinned: true,
+    description: 'Official academic classroom for DPS Class 8-G. Faculty announcements, fair-copy reminders & datesheets.',
+    createdBy: 'Anita Sharma',
+    createdAt: '2026-04-01',
+    mediaCount: 64,
+    members: DEMO_CONTACTS,
+    pinnedMessage: {
+      id: 'msg-8g-1',
+      senderName: 'Anita Sharma (Faculty)',
+      text: 'Dear Class 8-G, please complete reading Chapter 4 The Summit Within before tomorrow.',
+    },
+  },
+  {
+    id: 'channel-school-broadcast',
+    name: 'DPS Official Principal Dispatches',
+    subtitle: 'Office of the Principal • 5,500 Students & Faculty',
+    avatarColor: '#ea4335',
+    initials: 'DP',
+    lastMessage: 'Half-Yearly examination instructions & datesheet published.',
+    lastTime: '10:00 am',
+    isGroup: true,
+    isLocked: true,
+    isSchoolBroadcast: true,
+    unreadCount: 1,
+    isPinned: true,
+    description: 'Campus-wide announcements from Principal Office. Read-only channel for all 91 classes.',
+    mediaCount: 18,
+    members: DEMO_CONTACTS.slice(0, 5),
+    pinnedMessage: {
+      id: 'wmsg-1001',
+      senderName: 'Principal Madam (Office)',
+      text: 'OFFICIAL CIRCULAR: Half-Yearly practical examinations commence next Monday.',
+    },
+  },
+  {
+    id: 'chat-together-forever',
+    name: 'Together Forever 🎓',
+    subtitle: 'Himaksh, Rishikesh, Rohan, Sri, Shashwath...',
+    avatarColor: '#53bdeb',
+    initials: 'TF',
+    lastMessage: 'Rohan: i remembered',
+    lastTime: '8:21 pm',
+    isPinned: false,
+    isGroup: true,
+    unreadCount: 0,
+    description: 'The official Together Forever student squad for DPS 2026. Academic updates, cricket banter and campus laughs.',
+    createdBy: 'Himaksh',
+    createdAt: '2026-06-12',
+    mediaCount: 38,
+    members: DEMO_CONTACTS.slice(0, 7),
+  },
+  {
+    id: 'channel-class-10a',
+    name: 'Class 10-A Titans',
+    subtitle: 'Mr. Sharma (Math Faculty) • 44 enrolled students',
+    grade: 'Class 10',
+    section: 'A',
+    avatarColor: '#7c5ce0',
+    initials: '10A',
+    lastMessage: 'Mr. Sharma: Quadratic equations practice exercises assigned.',
+    lastTime: '10:00 am',
+    isGroup: true,
+    isLocked: false,
+    unreadCount: 0,
+    description: 'Class 10-A Board Examination Preparation & Daily Homework Circle.',
+    members: DEMO_CONTACTS,
+  },
+  {
+    id: 'channel-nursery-a',
+    name: 'Nursery-A Little Blossoms',
+    subtitle: 'Sunita Madam • Junior Parent-Teacher Circle',
+    grade: 'Nursery',
+    section: 'A',
+    avatarColor: '#ff9f00',
+    initials: 'NA',
+    lastMessage: 'Sunita Madam: Clay modeling activity photo uploaded.',
+    lastTime: '11:15 am',
+    isGroup: true,
+    isLocked: true,
+    targetAudience: 'parents',
+    description: 'Private parent-teacher circle for Nursery-A. Daily activities, craft photos, and teacher notes.',
+    members: DEMO_CONTACTS.slice(0, 4),
+  },
+  {
+    id: 'chat-himaksh-direct',
+    name: 'Himaksh',
+    subtitle: 'online',
+    avatarColor: '#53bdeb',
+    initials: 'HM',
+    lastMessage: 'Are we doing robotics prep after school?',
+    lastTime: '6:45 pm',
+    isGroup: false,
+    unreadCount: 1,
+  },
+  {
+    id: 'channel-science-club',
+    name: 'DPS Ramanujan Science Club',
+    subtitle: 'Faculty & Class 8-10 Members (68 Members)',
+    avatarColor: '#00bcd4',
+    initials: 'SC',
+    lastMessage: 'Robotics workshop registrations open tomorrow.',
+    lastTime: '4:15 pm',
+    isGroup: true,
+    description: 'Ramanujan innovation hub for robotics, AI and science fairs.',
+    createdBy: 'Vikas Sir',
+    createdAt: '2026-05-10',
+    mediaCount: 19,
+    members: DEMO_CONTACTS,
+  },
+];
+
+// Baseline Messages per Room
+const BASELINE_MESSAGES_MAP: Record<string, MessageItem[]> = {
+  'channel-class-8g': [
+    {
+      id: 'msg-8g-1',
+      senderName: 'Anita Sharma (Faculty)',
+      senderRole: 'teacher',
+      senderColor: '#e542a3',
+      subtitle: 'English Faculty • Verified',
+      text: 'Dear Class 8-G, please complete reading Chapter 4 The Summit Within before tomorrow.',
+      time: '7:30 pm',
+      isStarred: true,
+      isPinned: true,
+    },
+    {
+      id: 'msg-8g-2',
+      senderName: 'Shashwath',
+      senderRole: 'student',
+      senderColor: '#53bdeb',
+      text: 'Madam, should we also write the word meanings in our fair copy?',
+      time: '7:38 pm',
+      isMe: true,
+    },
+    {
+      id: 'msg-8g-3',
+      senderName: 'Anita Sharma (Faculty)',
+      senderRole: 'teacher',
+      senderColor: '#e542a3',
+      subtitle: 'English Faculty • Verified',
+      text: 'Yes Shashwath, only the 6 vocabulary highlights from page 58.',
+      time: '7:40 pm',
+    },
+    {
+      id: 'msg-8g-4',
+      senderName: 'System',
+      senderRole: 'admin',
+      text: '🔒 Channel locked by faculty. Only teachers and admins can post announcements.',
+      time: '7:45 pm',
+      templateType: 'system',
+    },
+  ],
+  'channel-school-broadcast': [
+    {
+      id: 'wmsg-1001',
+      senderName: 'Principal Madam (Office)',
+      senderRole: 'admin',
+      senderColor: '#ea4335',
+      subtitle: 'Head of School • Official',
+      text: '📢 OFFICIAL CIRCULAR: Half-Yearly practical examinations commence next Monday. Students must report in formal school uniform with verified admit cards.',
+      time: '9:00 am',
+      isStarred: true,
+      isPinned: true,
+      templateType: 'exam',
+    },
+    {
+      id: 'wmsg-1002',
+      senderName: 'Principal Madam (Office)',
+      senderRole: 'admin',
+      senderColor: '#ea4335',
+      subtitle: 'Head of School • Official',
+      text: '🚌 TRANSPORT ADVISORY: School buses will depart 15 minutes after dispersal on Friday due to Annual Sports Day rehearsal.',
+      time: '10:00 am',
+      templateType: 'none',
+    },
+  ],
+  'chat-together-forever': [
+    {
+      id: 'msg-video-1',
+      senderName: 'Himaksh',
+      senderColor: '#53bdeb',
+      text: 'Me in my prime',
+      time: '7:04 pm',
+      isVideo: true,
+      videoDuration: '2:20',
+      videoCaption: 'Me in my prime',
+    },
+    {
+      id: 'msg-rohan-1',
+      senderName: 'Rohan',
+      senderColor: '#53bdeb',
+      subtitle: 'Jaddu bhai forever',
+      text: 'I will submit the assignment by tomorrow morning.',
+      time: '7:09 pm',
+    },
+    {
+      id: 'msg-ak-1',
+      senderName: 'Ak 47',
+      senderColor: '#ffffff',
+      text: 'Cricket team practice starts at 4:30 PM.',
+      time: '7:12 pm',
+    },
+    {
+      id: 'msg-rishi-1',
+      senderName: 'Rishikesh',
+      senderColor: '#f15c6d',
+      text: "Rohan, Himaksh, Shashwath, Krishna don't forget to bring chocolates!",
+      time: '7:53 pm',
+    },
+    {
+      id: 'msg-rohan-2',
+      senderName: 'Rohan',
+      senderColor: '#53bdeb',
+      text: 'i remembered',
+      time: '8:21 pm',
+    },
+  ],
+  'chat-himaksh-direct': [
+    {
+      id: 'msg-hm-1',
+      senderName: 'Himaksh',
+      senderColor: '#53bdeb',
+      text: 'Bro did you check the Python code for the rover project?',
+      time: '6:30 pm',
+    },
+    {
+      id: 'msg-hm-2',
+      senderName: 'You',
+      text: 'Yes! Added the obstacle sensor logic. Works cleanly.',
+      time: '6:40 pm',
+      isMe: true,
+    },
+    {
+      id: 'msg-hm-3',
+      senderName: 'Himaksh',
+      senderColor: '#53bdeb',
+      text: 'Are we doing robotics prep after school?',
+      time: '6:45 pm',
+    },
+  ],
+};
 
 export default function WhatsAppDesktopPage() {
-  // Navigation & View State
+  // --------------------------------------------------------------------------
+  // 1. User & Authentication State
+  // --------------------------------------------------------------------------
+  const [currentUser, setCurrentUser] = useState<Profile | null>(null);
+  const [userName, setUserName] = useState('Shashwath');
+  const [userRole, setUserRole] = useState<'student' | 'teacher' | 'admin' | 'parent'>('student');
+
+  // Role helper flags
+  const isAdmin = useMemo(() => {
+    const un = (currentUser?.username || userName).toLowerCase().trim();
+    return un === 'shashwath71845' || un === 'madam_principal' || currentUser?.role === 'admin';
+  }, [currentUser, userName]);
+
+  const isTeacher = useMemo(() => {
+    const un = (currentUser?.username || userName).toLowerCase().trim();
+    return isAdmin || un.startsWith('teacher_') || un.includes('madam') || un.includes('sir') || currentUser?.role === 'teacher';
+  }, [currentUser, userName, isAdmin]);
+
+  const isParent = useMemo(() => {
+    const un = (currentUser?.username || userName).toLowerCase().trim();
+    return un.startsWith('parent_') || (currentUser?.role as string) === 'parent';
+  }, [currentUser, userName]);
+
+  // --------------------------------------------------------------------------
+  // 2. Navigation & View State
+  // --------------------------------------------------------------------------
   const [activeTab, setActiveTab] = useState<SidebarTab>('chats');
   const [rightPanel, setRightPanel] = useState<RightPanel>('none');
-  const [activeChatId, setActiveChatId] = useState<string>('chat-together-forever');
+  const [activeChatId, setActiveChatId] = useState<string>('channel-class-8g');
   const [messageText, setMessageText] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [replyingTo, setReplyingTo] = useState<MessageItem | null>(null);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [showEmojiTray, setShowEmojiTray] = useState(false);
-  const [activeFilter, setActiveFilter] = useState<'all' | 'unread' | 'groups'>('all');
+  const [activeFilter, setActiveFilter] = useState<'all' | 'unread' | 'classrooms' | 'groups' | 'parents'>('all');
   const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
   const [doodleWallpaperEnabled, setDoodleWallpaperEnabled] = useState(true);
   const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
   const [showMobileOverflowMenu, setShowMobileOverflowMenu] = useState(false);
 
-  // Modals & Overlays
+  // Modals & Interactive Overlays
+  const [isRecordingVoice, setIsRecordingVoice] = useState(false);
+  const [selectedImageToPreview, setSelectedImageToPreview] = useState<string | null>(null);
+  const [isTeacherNoticeModalOpen, setIsTeacherNoticeModalOpen] = useState(false);
+  const [teacherNoticeDefaultType, setTeacherNoticeDefaultType] = useState<'homework' | 'attendance' | 'exam' | 'transport'>('homework');
   const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
   const [activeCall, setActiveCall] = useState<{ contactName: string; type: 'voice' | 'video' } | null>(null);
   const [viewingStatus, setViewingStatus] = useState<StatusItem | null>(null);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [selectedVideoModal, setSelectedVideoModal] = useState<{ title: string; duration: string } | null>(null);
-  const [userAbout, setUserAbout] = useState('Hey there! I am using DPS Buzz WhatsApp');
-  const [userName, setUserName] = useState('Shashwath');
+  const [selectedImageLightbox, setSelectedImageLightbox] = useState<string | null>(null);
+  const [userAbout, setUserAbout] = useState('DPS Buzz Student • Ready to excel 🎓');
 
-  // References
+  // DOM References
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Chat Rooms List
-  const [chatRooms, setChatRooms] = useState<ChatRoom[]>([
-    {
-      id: 'chat-together-forever',
-      name: 'Together Forever',
-      subtitle: 'Himaksh, Rishikesh, Rohan, Sri, +91 93476 06076, +91 63004 76366...',
-      avatarColor: '#53bdeb',
-      initials: 'TF',
-      lastMessage: 'Rohan: i remembered',
-      lastTime: '8:21 pm',
-      isPinned: true,
-      isGroup: true,
-      unreadCount: 0,
-      description: 'The official Together Forever squad for DPS 2026. Academic updates, cricket banter and campus laughs.',
-      createdBy: 'Himaksh',
-      createdAt: '2026-06-12',
-      mediaCount: 38,
-      members: DEMO_CONTACTS.slice(0, 7).map((c, i) => ({
-        ...c,
-        isAdmin: i === 0 || i === 2,
-      })),
-    },
-    {
-      id: 'chat-class-8g',
-      name: 'Class 8-G Official Classroom',
-      subtitle: 'Anita Madam (Faculty), Shashwath, Rishi + 36 enrolled students',
-      avatarColor: '#25d366',
-      initials: '8G',
-      lastMessage: 'Anita Madam: Homework reminder for English Chapter 4 is uploaded.',
-      lastTime: '7:40 pm',
-      isGroup: true,
-      unreadCount: 2,
-      description: 'Official academic noticeboard for DPS Class 8-G. Faculty announcements, fair-copy reminders & datesheets.',
-      createdBy: 'Anita Madam',
-      createdAt: '2026-04-01',
-      mediaCount: 64,
-      members: DEMO_CONTACTS,
-    },
-    {
-      id: 'chat-himaksh-direct',
-      name: 'Himaksh',
-      subtitle: 'online',
-      avatarColor: '#53bdeb',
-      initials: 'HM',
-      lastMessage: 'Are we doing robotics prep after school?',
-      lastTime: '6:45 pm',
-      isGroup: false,
-      unreadCount: 1,
-    },
-    {
-      id: 'chat-science-club',
-      name: 'DPS Ramanujan Science Club',
-      subtitle: 'Faculty & Class 8-10 Members (68 Members)',
-      avatarColor: '#ff9f00',
-      initials: 'SC',
-      lastMessage: 'Robotics workshop registrations open tomorrow.',
-      lastTime: '4:15 pm',
-      isGroup: true,
-      description: 'Ramanujan innovation hub for robotics, AI and science fairs.',
-      createdBy: 'Vikas Sir',
-      createdAt: '2026-05-10',
-      mediaCount: 19,
-    },
-    {
-      id: 'chat-school-broadcast',
-      name: 'DPS Official Principal Dispatches',
-      subtitle: 'Office of the Principal • 5,500 Students & Faculty',
-      avatarColor: '#ea4335',
-      initials: 'DP',
-      lastMessage: 'Half-Yearly examination instructions published.',
-      lastTime: 'Yesterday',
-      isGroup: true,
-      isLocked: true,
-      description: 'Campus-wide announcements from Principal Office. Read-only channel.',
-      mediaCount: 12,
-    },
-  ]);
+  // --------------------------------------------------------------------------
+  // 3. Chat Rooms & Messages Map State (Cloudflare D1 & Local Storage Synchronized)
+  // --------------------------------------------------------------------------
+  const [chatRooms, setChatRooms] = useState<ChatRoom[]>(BASELINE_CHAT_ROOMS);
+  const [messagesMap, setMessagesMap] = useState<Record<string, MessageItem[]>>(BASELINE_MESSAGES_MAP);
 
-  // Messages Map per room
-  const [messagesMap, setMessagesMap] = useState<Record<string, MessageItem[]>>({
-    'chat-together-forever': [
-      {
-        id: 'msg-video-1',
-        senderName: 'Himaksh',
-        senderColor: '#53bdeb',
-        text: 'Me in my prime',
-        time: '7:04 pm',
-        isVideo: true,
-        videoDuration: '2:20',
-        videoCaption: 'Me in my prime',
-      },
-      {
-        id: 'msg-rohan-1',
-        senderName: 'Rohan',
-        senderColor: '#53bdeb',
-        subtitle: 'Jaddu bhai forever',
-        text: 'I will submit the assignment by tomorrow morning.',
-        time: '7:09 pm',
-      },
-      {
-        id: 'msg-ak-1',
-        senderName: 'Ak 47',
-        senderColor: '#ffffff',
-        text: 'Cricket team practice starts at 4:30 PM.',
-        time: '7:12 pm',
-      },
-      {
-        id: 'msg-ak-2',
-        senderName: 'Ak 47',
-        senderColor: '#ffffff',
-        text: 'Bring your sports kit.',
-        time: '7:15 pm',
-      },
-      {
-        id: 'msg-rishi-1',
-        senderName: 'Rishikesh 6f Shashwath Friend',
-        senderColor: '#f15c6d',
-        text: "Rohan, Himaksh, Shashwath, Krishna don't forget to bring.",
-        time: '7:53 pm',
-      },
-      {
-        id: 'msg-rishi-2',
-        senderName: 'Rishikesh 6f Shashwath Friend',
-        senderColor: '#f15c6d',
-        text: 'Chocolates',
-        time: '7:53 pm',
-      },
-      {
-        id: 'msg-rohan-2',
-        senderName: 'Rohan',
-        senderColor: '#53bdeb',
-        subtitle: 'Jaddu bhai forever',
-        text: 'i remembered',
-        time: '8:21 pm',
-      },
-    ],
-    'chat-class-8g': [
-      {
-        id: 'msg-8g-1',
-        senderName: 'Anita Madam (Faculty)',
-        senderColor: '#e542a3',
-        subtitle: 'English Faculty',
-        text: 'Dear Class 8-G, please complete reading Chapter 4 The Summit Within before tomorrow.',
-        time: '7:30 pm',
-        isStarred: true,
-      },
-      {
-        id: 'msg-8g-2',
-        senderName: 'Shashwath',
-        senderColor: '#53bdeb',
-        text: 'Madam, should we also write the word meanings in our fair copy?',
-        time: '7:38 pm',
-        isMe: true,
-      },
-      {
-        id: 'msg-8g-3',
-        senderName: 'Anita Madam (Faculty)',
-        senderColor: '#e542a3',
-        subtitle: 'English Faculty',
-        text: 'Yes Shashwath, only the 6 vocabulary highlights from page 58.',
-        time: '7:40 pm',
-      },
-    ],
-    'chat-himaksh-direct': [
-      {
-        id: 'msg-hm-1',
-        senderName: 'Himaksh',
-        senderColor: '#53bdeb',
-        text: 'Bro did you check the Python code for the rover project?',
-        time: '6:30 pm',
-      },
-      {
-        id: 'msg-hm-2',
-        senderName: 'You',
-        text: 'Yes! Added the obstacle sensor logic. Works cleanly.',
-        time: '6:40 pm',
-        isMe: true,
-      },
-      {
-        id: 'msg-hm-3',
-        senderName: 'Himaksh',
-        senderColor: '#53bdeb',
-        text: 'Are we doing robotics prep after school?',
-        time: '6:45 pm',
-      },
-    ],
-  });
+  // Initialize User from DataStore & localStorage
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    try {
+      const u = DataStore.getCurrentUser();
+      if (u && u.username && u.username !== 'guest') {
+        setCurrentUser(u);
+        setUserName(u.fullName || u.username);
+        if (u.role === 'admin' || u.username === 'shashwath71845' || u.username === 'madam_principal') {
+          setUserRole('admin');
+        } else if (u.role === 'teacher' || u.username.startsWith('teacher_')) {
+          setUserRole('teacher');
+        } else if ((u.role as string) === 'parent' || u.username.startsWith('parent_')) {
+          setUserRole('parent');
+        } else {
+          setUserRole('student');
+        }
+      }
+    } catch {
+      // Fallback
+    }
+
+    // Load cached rooms and messages from localStorage
+    try {
+      const cachedRooms = localStorage.getItem('dpsbuzz_whatsapp_rooms');
+      if (cachedRooms) {
+        const parsed = JSON.parse(cachedRooms);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setChatRooms(parsed);
+        }
+      }
+      const cachedMsgs = localStorage.getItem('dpsbuzz_whatsapp_messages_map');
+      if (cachedMsgs) {
+        const parsed = JSON.parse(cachedMsgs);
+        if (parsed && typeof parsed === 'object') {
+          setMessagesMap(parsed);
+        }
+      }
+    } catch {
+      // Ignore parse error
+    }
+
+    // Fetch live channels & messages from Cloudflare D1 Backend
+    const fetchCloudflareData = async () => {
+      try {
+        const [channelsRes, messagesRes] = await Promise.all([
+          fetch('/api/campus?action=whatsapp_channels'),
+          fetch('/api/campus?action=whatsapp_messages'),
+        ]);
+
+        if (channelsRes.ok) {
+          const cData = await channelsRes.json();
+          if (Array.isArray(cData.channels) && cData.channels.length > 0) {
+            setChatRooms((prev) => {
+              const d1Channels: ChatRoom[] = cData.channels.map((ch: any) => ({
+                id: ch.id,
+                name: ch.name,
+                subtitle: `${ch.grade || 'Official'} ${ch.section ? `• Section ${ch.section}` : ''} • ${ch.memberCount || 40} members`,
+                grade: ch.grade,
+                section: ch.section,
+                avatarColor: ch.id.includes('8g') ? '#25d366' : ch.id.includes('nursery') ? '#ff9f00' : '#7c5ce0',
+                initials: ch.grade ? ch.grade.replace(/[^0-9]/g, '') || ch.name.slice(0, 2).toUpperCase() : 'DP',
+                lastMessage: ch.lastMessage || 'Channel created',
+                lastTime: ch.lastMessageTime || 'Just now',
+                isGroup: true,
+                isLocked: Boolean(ch.isLocked),
+                isPinned: ch.id === 'channel-class-8g' || ch.id === 'channel-school-broadcast',
+                members: DEMO_CONTACTS,
+              }));
+
+              // Merge keeping any custom non-channel groups like Together Forever
+              const merged = [...d1Channels];
+              prev.forEach((p) => {
+                if (!merged.some((m) => m.id === p.id)) {
+                  merged.push(p);
+                }
+              });
+              try {
+                localStorage.setItem('dpsbuzz_whatsapp_rooms', JSON.stringify(merged));
+              } catch {}
+              return merged;
+            });
+          }
+        }
+
+        if (messagesRes.ok) {
+          const mData = await messagesRes.json();
+          if (Array.isArray(mData.whatsappMessages) && mData.whatsappMessages.length > 0) {
+            setMessagesMap((prev) => {
+              const updated = { ...prev };
+              mData.whatsappMessages.forEach((raw: any) => {
+                const cId = raw.channelId || 'channel-class-8g';
+                const item: MessageItem = {
+                  id: raw.id,
+                  senderName: raw.senderName || raw.senderUsername || 'DPS Member',
+                  senderUsername: raw.senderUsername,
+                  senderRole: raw.senderRole,
+                  senderColor: raw.senderRole === 'teacher' ? '#e542a3' : raw.senderRole === 'admin' ? '#ea4335' : '#53bdeb',
+                  text: raw.text,
+                  time: raw.createdAt ? new Date(raw.createdAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true }) : 'Now',
+                  timestamp: raw.timestamp,
+                  templateType: raw.templateType || 'none',
+                };
+                if (!updated[cId]) {
+                  updated[cId] = [item];
+                } else if (!updated[cId].some((m) => m.id === item.id)) {
+                  updated[cId] = [...updated[cId], item];
+                }
+              });
+              try {
+                localStorage.setItem('dpsbuzz_whatsapp_messages_map', JSON.stringify(updated));
+              } catch {}
+              return updated;
+            });
+          }
+        }
+      } catch (err) {
+        console.warn('WhatsApp D1 initial fetch note:', err);
+      }
+    };
+
+    fetchCloudflareData();
+  }, []);
 
   const activeMessages = messagesMap[activeChatId] || [];
   const activeRoom = chatRooms.find((r) => r.id === activeChatId) || chatRooms[0];
 
+  // Auto-scroll to bottom of conversation
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [activeMessages.length, activeChatId]);
 
-  // Dispatch message
-  const handleSendMessage = (e?: React.FormEvent) => {
+  // --------------------------------------------------------------------------
+  // 4. Message Dispatch Handlers (Text, Voice, Photos, Reactions)
+  // --------------------------------------------------------------------------
+  const handleSendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const cleanText = messageText.trim();
     if (!cleanText) return;
+
+    // Check lock permission: if room is locked and user is neither teacher nor admin
+    if (activeRoom.isLocked && !isTeacher && !isAdmin) {
+      alert('This classroom channel is locked by faculty. Only teachers and school administration can send announcements.');
+      return;
+    }
 
     const now = new Date();
     const timeStr = now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase();
 
     const newMsg: MessageItem = {
-      id: `msg-${Date.now()}`,
+      id: `msg-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       senderName: userName,
+      senderUsername: currentUser?.username || 'student',
+      senderRole: userRole,
+      senderColor: isTeacher ? '#e542a3' : isAdmin ? '#ea4335' : '#53bdeb',
       text: cleanText,
       time: timeStr,
+      timestamp: Date.now(),
       isMe: true,
       quotedAuthor: replyingTo ? replyingTo.senderName : undefined,
       quotedText: replyingTo ? replyingTo.text : undefined,
     };
 
-    setMessagesMap((prev) => ({
-      ...prev,
-      [activeChatId]: [...(prev[activeChatId] || []), newMsg],
-    }));
+    // Optimistic UI Append
+    setMessagesMap((prev) => {
+      const updated = {
+        ...prev,
+        [activeChatId]: [...(prev[activeChatId] || []), newMsg],
+      };
+      try {
+        localStorage.setItem('dpsbuzz_whatsapp_messages_map', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
 
-    setChatRooms((prev) =>
-      prev.map((r) =>
+    setChatRooms((prev) => {
+      const updated = prev.map((r) =>
         r.id === activeChatId
           ? { ...r, lastMessage: `You: ${cleanText}`, lastTime: timeStr }
           : r
-      )
-    );
+      );
+      try {
+        localStorage.setItem('dpsbuzz_whatsapp_rooms', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
 
     setMessageText('');
     setReplyingTo(null);
     inputRef.current?.focus();
+
+    // Persist to Cloudflare D1 Backend
+    try {
+      await fetch('/api/campus', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'send_whatsapp_message',
+          channelId: activeChatId,
+          senderUsername: currentUser?.username || 'student',
+          senderName: userName,
+          senderRole: userRole,
+          senderClass: activeRoom.grade || 'Class 8-G',
+          text: cleanText,
+          templateType: 'none',
+        }),
+      });
+    } catch (err) {
+      console.warn('D1 backend sync note:', err);
+    }
   };
 
-  // Dispatch Voice Note
-  const handleSendVoiceNote = () => {
+  // Real Voice Note Dispatch
+  const handleSendVoiceNote = (audioUrl: string, durationStr: string) => {
     const now = new Date();
     const timeStr = now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase();
 
     const newMsg: MessageItem = {
-      id: `msg-${Date.now()}`,
+      id: `msg-voice-${Date.now()}`,
       senderName: userName,
-      text: '🎤 Voice message (0:08)',
+      senderUsername: currentUser?.username || 'student',
+      senderRole: userRole,
+      senderColor: isTeacher ? '#e542a3' : isAdmin ? '#ea4335' : '#53bdeb',
+      text: `🎤 Voice note (${durationStr})`,
       time: timeStr,
+      timestamp: Date.now(),
       isMe: true,
       isVoiceNote: true,
-      voiceDuration: '0:08',
+      voiceDuration: durationStr,
+      audioUrl: audioUrl || undefined,
     };
 
-    setMessagesMap((prev) => ({
-      ...prev,
-      [activeChatId]: [...(prev[activeChatId] || []), newMsg],
-    }));
+    setMessagesMap((prev) => {
+      const updated = {
+        ...prev,
+        [activeChatId]: [...(prev[activeChatId] || []), newMsg],
+      };
+      try {
+        localStorage.setItem('dpsbuzz_whatsapp_messages_map', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
 
-    setChatRooms((prev) =>
-      prev.map((r) =>
+    setChatRooms((prev) => {
+      const updated = prev.map((r) =>
         r.id === activeChatId
-          ? { ...r, lastMessage: `You: 🎤 Voice message (0:08)`, lastTime: timeStr }
+          ? { ...r, lastMessage: `You: 🎤 Voice note (${durationStr})`, lastTime: timeStr }
           : r
-      )
-    );
+      );
+      try {
+        localStorage.setItem('dpsbuzz_whatsapp_rooms', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+
+    setIsRecordingVoice(false);
   };
 
-  // Toggle Reaction Handler
+  // Photo File Selected Handler
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setSelectedImageToPreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+    setShowAttachMenu(false);
+  };
+
+  // Send Photo Attachment
+  const handleSendPhotoAttachment = (caption: string) => {
+    if (!selectedImageToPreview) return;
+
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase();
+
+    const newMsg: MessageItem = {
+      id: `msg-img-${Date.now()}`,
+      senderName: userName,
+      senderUsername: currentUser?.username || 'student',
+      senderRole: userRole,
+      senderColor: isTeacher ? '#e542a3' : isAdmin ? '#ea4335' : '#53bdeb',
+      text: caption || '📷 Photo Attachment',
+      time: timeStr,
+      timestamp: Date.now(),
+      isMe: true,
+      isImage: true,
+      imageUrl: selectedImageToPreview,
+    };
+
+    setMessagesMap((prev) => {
+      const updated = {
+        ...prev,
+        [activeChatId]: [...(prev[activeChatId] || []), newMsg],
+      };
+      try {
+        localStorage.setItem('dpsbuzz_whatsapp_messages_map', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+
+    setChatRooms((prev) => {
+      const updated = prev.map((r) =>
+        r.id === activeChatId
+          ? { ...r, lastMessage: `You: 📷 ${caption || 'Photo'}`, lastTime: timeStr }
+          : r
+      );
+      try {
+        localStorage.setItem('dpsbuzz_whatsapp_rooms', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+
+    setSelectedImageToPreview(null);
+  };
+
+  // Teacher Official Dispatch Publish
+  const handleTeacherDispatch = async (data: {
+    text: string;
+    templateType: 'homework' | 'attendance' | 'exam' | 'none';
+    broadcastToAll: boolean;
+  }) => {
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase();
+
+    const newMsg: MessageItem = {
+      id: `msg-dispatch-${Date.now()}`,
+      senderName: `${userName} (Faculty)`,
+      senderUsername: currentUser?.username || 'teacher_faculty',
+      senderRole: 'teacher',
+      senderColor: '#e542a3',
+      subtitle: 'Verified Faculty',
+      text: data.text,
+      time: timeStr,
+      timestamp: Date.now(),
+      isMe: true,
+      isStarred: true,
+      isPinned: true,
+      templateType: data.templateType,
+    };
+
+    // Update active chat pinned notice and message thread
+    setMessagesMap((prev) => {
+      const updated = {
+        ...prev,
+        [activeChatId]: [...(prev[activeChatId] || []), newMsg],
+      };
+      try {
+        localStorage.setItem('dpsbuzz_whatsapp_messages_map', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+
+    setChatRooms((prev) => {
+      const updated = prev.map((r) =>
+        r.id === activeChatId || (data.broadcastToAll && r.isGroup)
+          ? {
+              ...r,
+              lastMessage: `Faculty: ${data.text.slice(0, 70)}...`,
+              lastTime: timeStr,
+              pinnedMessage: {
+                id: newMsg.id,
+                senderName: newMsg.senderName,
+                text: data.text.slice(0, 90),
+              },
+            }
+          : r
+      );
+      try {
+        localStorage.setItem('dpsbuzz_whatsapp_rooms', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+
+    setIsTeacherNoticeModalOpen(false);
+
+    // Persist via Cloudflare D1
+    try {
+      await fetch('/api/campus', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'send_whatsapp_message',
+          channelId: activeChatId,
+          senderUsername: currentUser?.username || 'teacher',
+          senderName: userName,
+          senderRole: 'teacher',
+          senderClass: activeRoom.grade || 'Faculty',
+          text: data.text,
+          templateType: data.templateType,
+          broadcastToAll: data.broadcastToAll,
+        }),
+      });
+    } catch (err) {
+      console.warn('Notice sync note:', err);
+    }
+  };
+
+  // Toggle 1-Click Broadcast Lock
+  const handleToggleChannelLock = async (locked: boolean) => {
+    if (!isTeacher && !isAdmin) {
+      alert('Only teachers and school administrators can lock or unlock classroom channels.');
+      return;
+    }
+
+    // Optimistic UI update
+    setChatRooms((prev) => {
+      const updated = prev.map((r) =>
+        r.id === activeChatId ? { ...r, isLocked: locked } : r
+      );
+      try {
+        localStorage.setItem('dpsbuzz_whatsapp_rooms', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+
+    // Insert System Announcement into the Thread
+    const systemNotice: MessageItem = {
+      id: `sys-${Date.now()}`,
+      senderName: 'System Notice',
+      senderRole: 'admin',
+      text: locked
+        ? '🔒 Channel locked by faculty. Only teachers and admins can post announcements.'
+        : '🔓 Channel unlocked by faculty. All enrolled students can now send messages and ask questions.',
+      time: new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase(),
+      timestamp: Date.now(),
+      templateType: 'system',
+    };
+
+    setMessagesMap((prev) => {
+      const updated = {
+        ...prev,
+        [activeChatId]: [...(prev[activeChatId] || []), systemNotice],
+      };
+      try {
+        localStorage.setItem('dpsbuzz_whatsapp_messages_map', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+
+    // Call Cloudflare D1 Backend
+    try {
+      await fetch('/api/campus', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'toggle_channel_lock',
+          channelId: activeChatId,
+          isLocked: locked,
+          requesterUsername: currentUser?.username || 'shashwath71845',
+          requesterRole: userRole,
+        }),
+      });
+    } catch (err) {
+      console.warn('Lock sync error:', err);
+    }
+  };
+
+  // Pin / Unpin Announcement
+  const handlePinMessage = (msg: MessageItem) => {
+    setChatRooms((prev) => {
+      const updated = prev.map((r) =>
+        r.id === activeChatId
+          ? {
+              ...r,
+              pinnedMessage: {
+                id: msg.id,
+                senderName: msg.senderName,
+                text: msg.text.slice(0, 100),
+              },
+            }
+          : r
+      );
+      try {
+        localStorage.setItem('dpsbuzz_whatsapp_rooms', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+    setSelectedMessageId(null);
+  };
+
+  const handleUnpinMessage = () => {
+    setChatRooms((prev) => {
+      const updated = prev.map((r) =>
+        r.id === activeChatId ? { ...r, pinnedMessage: undefined } : r
+      );
+      try {
+        localStorage.setItem('dpsbuzz_whatsapp_rooms', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+  };
+
+  // Reaction Handler
   const handleToggleReaction = useCallback((msgId: string, emoji: string) => {
     setMessagesMap((prev) => {
       const roomMsgs = prev[activeChatId] || [];
-      return {
+      const updated = {
         ...prev,
         [activeChatId]: roomMsgs.map((m) => {
           if (m.id !== msgId) return m;
@@ -397,47 +944,71 @@ export default function WhatsAppDesktopPage() {
           }
         }),
       };
+      try {
+        localStorage.setItem('dpsbuzz_whatsapp_messages_map', JSON.stringify(updated));
+      } catch {}
+      return updated;
     });
   }, [activeChatId]);
 
   // Star message handler
   const handleToggleStar = (msgId: string) => {
-    setMessagesMap((prev) => ({
-      ...prev,
-      [activeChatId]: (prev[activeChatId] || []).map((m) =>
-        m.id === msgId ? { ...m, isStarred: !m.isStarred } : m
-      ),
-    }));
+    setMessagesMap((prev) => {
+      const updated = {
+        ...prev,
+        [activeChatId]: (prev[activeChatId] || []).map((m) =>
+          m.id === msgId ? { ...m, isStarred: !m.isStarred } : m
+        ),
+      };
+      try {
+        localStorage.setItem('dpsbuzz_whatsapp_messages_map', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
   };
 
   // Delete message handler
   const handleDeleteMessage = (msgId: string) => {
-    setMessagesMap((prev) => ({
-      ...prev,
-      [activeChatId]: (prev[activeChatId] || []).filter((m) => m.id !== msgId),
-    }));
+    setMessagesMap((prev) => {
+      const updated = {
+        ...prev,
+        [activeChatId]: (prev[activeChatId] || []).filter((m) => m.id !== msgId),
+      };
+      try {
+        localStorage.setItem('dpsbuzz_whatsapp_messages_map', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
     setSelectedMessageId(null);
   };
 
-  // Filtered Chats
+  // --------------------------------------------------------------------------
+  // 5. Filtered Rooms & Categorized Lists
+  // --------------------------------------------------------------------------
   const filteredRooms = useMemo(() => {
     return chatRooms.filter((r) => {
       if (activeFilter === 'unread' && !(r.unreadCount && r.unreadCount > 0)) return false;
-      if (activeFilter === 'groups' && !r.isGroup) return false;
+      if (activeFilter === 'classrooms' && !r.grade) return false;
+      if (activeFilter === 'groups' && (!r.isGroup || r.grade)) return false;
+      if (activeFilter === 'parents') {
+        const isParentTarget = r.targetAudience === 'parents' || r.id.includes('nursery') || r.isSchoolBroadcast;
+        if (!isParentTarget) return false;
+      }
       if (!searchQuery.trim()) return true;
       return (
         r.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        r.lastMessage.toLowerCase().includes(searchQuery.toLowerCase())
+        r.lastMessage.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (r.grade && r.grade.toLowerCase().includes(searchQuery.toLowerCase()))
       );
     });
   }, [chatRooms, searchQuery, activeFilter]);
 
-  // All Starred Messages across all chats
+  // Starred messages across all channels
   const allStarredMessages = useMemo(() => {
     const list: Array<{ chatName: string; message: MessageItem }> = [];
     Object.entries(messagesMap).forEach(([roomId, msgs]) => {
       const room = chatRooms.find((r) => r.id === roomId);
-      const name = room ? room.name : 'Chat';
+      const name = room ? room.name : 'Class Chat';
       msgs.forEach((m) => {
         if (m.isStarred) {
           list.push({ chatName: name, message: m });
@@ -449,26 +1020,31 @@ export default function WhatsAppDesktopPage() {
 
   return (
     <div
-      className="flex flex-col h-screen w-screen overflow-hidden select-none"
+      className="flex flex-col h-screen w-screen overflow-hidden select-none bg-[#0b141a] text-[#e9edef]"
       style={{
-        backgroundColor: '#0b141a',
-        color: '#e9edef',
-        fontFamily: '"Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif',
+        fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", "Helvetica Neue", Arial, sans-serif',
       }}
     >
+      {/* Hidden File Picker for Real Photo / Attachment Upload */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*,application/pdf"
+        capture="environment"
+        className="hidden"
+        onChange={handleFileChange}
+      />
+
       {/* ==================================================================== */}
-      {/* 1. TOP BAR: RESPONSIVE (DESKTOP WINDOWS TITLEBAR / MOBILE TOP APP BAR) */}
+      {/* 1. TOP BAR: RESPONSIVE (APPLE HIG TRANSLUCENT NAVIGATION)            */}
       {/* ==================================================================== */}
-      {/* Desktop Windows Titlebar */}
-      <div
-        className="hidden md:flex h-8 w-full items-center justify-between px-3 shrink-0 border-b border-[#222d34]"
-        style={{ backgroundColor: '#111b21' }}
-      >
+      {/* Desktop macOS / Windows Glass Topbar */}
+      <div className="hidden md:flex h-9 w-full items-center justify-between px-3 shrink-0 border-b border-[#222d34] bg-[#111b21]/95 backdrop-blur-xl">
         <div className="flex items-center gap-2">
           <Link
             href="/home"
             className="flex items-center gap-1.5 text-xs text-[#8696a0] hover:text-white transition-colors"
-            title="Return to DPS Buzz Main App"
+            title="Return to DPS Buzz Main Portal"
           >
             <ArrowLeft size={13} />
             <span className="font-medium text-[11px]">Back to DPS Buzz</span>
@@ -476,34 +1052,52 @@ export default function WhatsAppDesktopPage() {
           <span className="text-[#8696a0] text-xs">|</span>
           <span className="text-xs font-semibold text-[#e9edef] flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-[#00a884] animate-pulse" />
-            WhatsApp Desktop
+            DPS Buzz WhatsApp Core
+          </span>
+          <span className="text-[10px] px-1.5 py-0.2 rounded bg-white/10 text-[#8696a0]">
+            91 Classes Active
           </span>
         </div>
 
-        {/* Windows Window Control Buttons */}
-        <div className="flex items-center">
-          <button className="w-10 h-8 flex items-center justify-center text-[#8696a0] hover:bg-[#202c33] transition-colors cursor-pointer">
-            <Minus size={13} />
-          </button>
-          <button className="w-10 h-8 flex items-center justify-center text-[#8696a0] hover:bg-[#202c33] transition-colors cursor-pointer">
-            <Square size={11} />
-          </button>
-          <Link
-            href="/home"
-            className="w-11 h-8 flex items-center justify-center text-[#8696a0] hover:bg-[#e81123] hover:text-white transition-colors cursor-pointer"
-            title="Close"
-          >
-            <X size={14} />
-          </Link>
+        {/* Current User Role Pill */}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 text-xs text-[#8696a0]">
+            <span>Active as:</span>
+            <span className="font-semibold text-white flex items-center gap-1">
+              {userName}
+              {isAdmin ? (
+                <span className="text-[10px] px-1.5 rounded bg-[#ea4335]/20 text-[#ea4335] font-bold">Admin</span>
+              ) : isTeacher ? (
+                <span className="text-[10px] px-1.5 rounded bg-[#00a884]/20 text-[#00a884] font-bold">Faculty</span>
+              ) : isParent ? (
+                <span className="text-[10px] px-1.5 rounded bg-[#ff9f00]/20 text-[#ff9f00] font-bold">Parent</span>
+              ) : (
+                <span className="text-[10px] px-1.5 rounded bg-[#53bdeb]/20 text-[#53bdeb] font-bold">Student</span>
+              )}
+            </span>
+          </div>
+
+          <div className="flex items-center">
+            <button className="w-8 h-7 flex items-center justify-center text-[#8696a0] hover:bg-[#202c33] transition-colors cursor-pointer rounded">
+              <Minus size={12} />
+            </button>
+            <button className="w-8 h-7 flex items-center justify-center text-[#8696a0] hover:bg-[#202c33] transition-colors cursor-pointer rounded">
+              <Square size={10} />
+            </button>
+            <Link
+              href="/home"
+              className="w-8 h-7 flex items-center justify-center text-[#8696a0] hover:bg-[#ea4335] hover:text-white transition-colors cursor-pointer rounded"
+              title="Close"
+            >
+              <X size={13} />
+            </Link>
+          </div>
         </div>
       </div>
 
       {/* Mobile Top App Bar (Only when chat is not open) */}
       {!isMobileChatOpen && (
-        <header
-          className="md:hidden h-14 px-4 flex items-center justify-between border-b border-[#222d34] shrink-0 z-30"
-          style={{ backgroundColor: '#111b21' }}
-        >
+        <header className="md:hidden h-14 px-4 flex items-center justify-between border-b border-[#222d34] bg-[#111b21] shrink-0 z-30">
           <div className="flex items-center gap-2">
             <Link
               href="/home"
@@ -512,12 +1106,19 @@ export default function WhatsAppDesktopPage() {
             >
               <ArrowLeft size={20} />
             </Link>
-            <span className="text-lg font-bold tracking-tight text-[#e9edef]">WhatsApp</span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-lg font-bold tracking-tight text-[#e9edef]">WhatsApp</span>
+              {isTeacher ? (
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#00a884]/20 text-[#00a884] font-bold">Faculty</span>
+              ) : isParent ? (
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#ff9f00]/20 text-[#ff9f00] font-bold">Parent</span>
+              ) : null}
+            </div>
           </div>
 
           <div className="flex items-center gap-1 text-[#8696a0] relative">
             <button
-              onClick={() => setIsNewChatModalOpen(true)}
+              onClick={() => fileInputRef.current?.click()}
               className="p-2.5 rounded-full hover:text-white cursor-pointer active:scale-95"
               title="Camera / Photo"
             >
@@ -544,20 +1145,32 @@ export default function WhatsAppDesktopPage() {
             {/* Mobile 3-Dot Overflow Menu Dropdown */}
             {showMobileOverflowMenu && (
               <div
-                className="absolute right-0 top-12 w-48 py-2 rounded-xl bg-[#202c33] border border-[#222d34] shadow-2xl z-50 animate-fadeIn"
+                className="absolute right-0 top-12 w-52 py-2 rounded-xl bg-[#202c33] border border-[#222d34] shadow-2xl z-50 animate-fadeIn"
                 onClick={() => setShowMobileOverflowMenu(false)}
               >
+                {isTeacher && (
+                  <button
+                    onClick={() => {
+                      setTeacherNoticeDefaultType('homework');
+                      setIsTeacherNoticeModalOpen(true);
+                    }}
+                    className="w-full px-4 py-2.5 text-left text-xs font-semibold text-[#00a884] hover:bg-[#2a3942] cursor-pointer flex items-center gap-2"
+                  >
+                    <Megaphone size={14} />
+                    <span>Publish Faculty Notice</span>
+                  </button>
+                )}
                 <button
                   onClick={() => setIsNewChatModalOpen(true)}
                   className="w-full px-4 py-2.5 text-left text-xs text-[#e9edef] hover:bg-[#2a3942] cursor-pointer"
                 >
-                  New group
+                  New Classroom / Group
                 </button>
                 <button
                   onClick={() => setRightPanel('starred')}
                   className="w-full px-4 py-2.5 text-left text-xs text-[#e9edef] hover:bg-[#2a3942] cursor-pointer"
                 >
-                  Starred messages
+                  Starred circulars
                 </button>
                 <button
                   onClick={() => setRightPanel('settings')}
@@ -569,7 +1182,7 @@ export default function WhatsAppDesktopPage() {
                   onClick={() => setIsProfileModalOpen(true)}
                   className="w-full px-4 py-2.5 text-left text-xs text-[#e9edef] hover:bg-[#2a3942] cursor-pointer"
                 >
-                  Profile
+                  Profile & Status
                 </button>
                 <div className="h-px bg-[#222d34] my-1" />
                 <Link
@@ -598,14 +1211,14 @@ export default function WhatsAppDesktopPage() {
           onOpenSettings={() => setRightPanel('settings')}
           onOpenStarred={() => setRightPanel('starred')}
           onOpenProfile={() => setIsProfileModalOpen(true)}
-          unreadCount={2}
-          missedCallsCount={1}
+          unreadCount={3}
+          missedCallsCount={0}
           hasUnreadStatus={true}
         />
 
         {/* SECONDARY SIDEBAR / MAIN TAB VIEW */}
         <aside
-          className={`w-full md:w-[360px] lg:w-[400px] flex flex-col shrink-0 relative ${
+          className={`w-full md:w-[360px] lg:w-[410px] flex flex-col shrink-0 relative ${
             isMobileChatOpen ? 'hidden md:flex' : 'flex'
           }`}
         >
@@ -614,12 +1227,30 @@ export default function WhatsAppDesktopPage() {
             <div className="flex flex-col h-full bg-[#111b21] border-r border-[#222d34]">
               {/* Desktop Header */}
               <div className="hidden md:flex h-[60px] px-4 items-center justify-between bg-[#202c33] border-b border-[#222d34] shrink-0">
-                <h1 className="text-lg font-semibold text-[#e9edef]">Chats</h1>
-                <div className="flex items-center gap-3 text-[#8696a0]">
+                <div className="flex items-center gap-2">
+                  <h1 className="text-lg font-semibold text-[#e9edef]">Chats</h1>
+                  <span className="text-[11px] font-medium text-[#8696a0] bg-[#2a3942] px-2 py-0.5 rounded-full">
+                    {filteredRooms.length}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-[#8696a0]">
+                  {isTeacher && (
+                    <button
+                      onClick={() => {
+                        setTeacherNoticeDefaultType('homework');
+                        setIsTeacherNoticeModalOpen(true);
+                      }}
+                      className="px-2.5 py-1 rounded-lg bg-[#00a884]/20 hover:bg-[#00a884]/30 text-[#00a884] text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+                      title="Quick Faculty Notice"
+                    >
+                      <Megaphone size={13} />
+                      <span>Notice</span>
+                    </button>
+                  )}
                   <button
                     onClick={() => setIsNewChatModalOpen(true)}
                     className="p-1.5 rounded-full hover:bg-[#2a3942] hover:text-white transition-colors cursor-pointer"
-                    title="New Chat"
+                    title="New Chat / Group"
                   >
                     <MessageSquare size={19} />
                   </button>
@@ -633,14 +1264,14 @@ export default function WhatsAppDesktopPage() {
                 </div>
               </div>
 
-              {/* Search Box & Filter Chips */}
+              {/* Search Box & Apple HIG Segmented Controls */}
               <div className="p-2 border-b border-[#222d34] flex flex-col gap-2 bg-[#111b21]">
                 <div className="flex items-center px-3 py-2 rounded-xl bg-[#202c33]">
                   <Search size={16} className="text-[#8696a0] mr-3 shrink-0" />
                   <input
                     id="chat-search-input"
                     type="text"
-                    placeholder="Search or start new chat"
+                    placeholder="Search 91 classrooms, notices or peers"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="w-full text-xs text-[#e9edef] bg-transparent focus:outline-none placeholder-[#8696a0]"
@@ -655,23 +1286,51 @@ export default function WhatsAppDesktopPage() {
                   )}
                 </div>
 
-                {/* Filter Pills with 40px touch targets */}
-                <div className="flex items-center gap-2 px-1 py-0.5 overflow-x-auto">
-                  {(['all', 'unread', 'groups'] as const).map((tab) => (
+                {/* Filter Pills with Apple HIG Segmented Switch */}
+                <div className="flex items-center gap-1.5 px-1 py-0.5 overflow-x-auto no-scrollbar">
+                  {[
+                    { key: 'all', label: 'All' },
+                    { key: 'unread', label: 'Unread' },
+                    { key: 'classrooms', label: 'Classes (91)' },
+                    { key: 'groups', label: 'Study Groups' },
+                    { key: 'parents', label: 'Parents Feed' },
+                  ].map((tab) => (
                     <button
-                      key={tab}
-                      onClick={() => setActiveFilter(tab)}
-                      className={`px-3.5 py-1.5 rounded-full text-xs font-medium capitalize transition-all cursor-pointer shrink-0 active:scale-95 ${
-                        activeFilter === tab
-                          ? 'bg-[#00a884] text-[#111b21] font-semibold shadow-xs'
+                      key={tab.key}
+                      onClick={() => setActiveFilter(tab.key as any)}
+                      className={`px-3 py-1.2 rounded-full text-xs font-medium transition-all cursor-pointer shrink-0 active:scale-95 ${
+                        activeFilter === tab.key
+                          ? 'bg-[#00a884] text-[#111b21] font-bold shadow-xs'
                           : 'bg-[#202c33] text-[#8696a0] hover:text-white'
                       }`}
                     >
-                      {tab}
+                      {tab.label}
                     </button>
                   ))}
                 </div>
               </div>
+
+              {/* Parent Mode Callout Banner */}
+              {activeFilter === 'parents' && (
+                <div className="p-3 bg-[#182229] border-b border-[#222d34] flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck size={16} className="text-[#ff9f00]" />
+                    <span className="text-[#e9edef] font-medium">Official Parent Direct Line</span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      const anitaRoom = chatRooms.find((r) => r.id === 'channel-class-8g');
+                      if (anitaRoom) {
+                        setActiveChatId(anitaRoom.id);
+                        setIsMobileChatOpen(true);
+                      }
+                    }}
+                    className="text-[11px] font-semibold text-[#00a884] hover:underline cursor-pointer"
+                  >
+                    Contact Faculty
+                  </button>
+                </div>
+              )}
 
               {/* Chat Rooms List Items */}
               <div className="flex-1 overflow-y-auto divide-y divide-[#222d34]/40">
@@ -690,16 +1349,26 @@ export default function WhatsAppDesktopPage() {
                       }`}
                     >
                       <div
-                        className="w-12 h-12 rounded-full flex items-center justify-center font-bold text-white shrink-0 text-sm shadow-xs ring-1 ring-white/10"
+                        className="w-12 h-12 rounded-full flex items-center justify-center font-bold text-white shrink-0 text-sm shadow-xs ring-1 ring-white/10 relative"
                         style={{ backgroundColor: room.avatarColor }}
                       >
                         {room.initials}
+                        {room.isLocked && (
+                          <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-[#111b21] flex items-center justify-center text-[#00a884] border border-[#222d34]">
+                            <Lock size={9} />
+                          </span>
+                        )}
                       </div>
 
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
-                          <span className="text-sm font-semibold truncate text-[#e9edef]">
+                          <span className="text-sm font-semibold truncate text-[#e9edef] flex items-center gap-1.5">
                             {room.name}
+                            {room.isSchoolBroadcast && (
+                              <span className="text-[10px] px-1.5 py-0.2 rounded bg-[#ea4335]/20 text-[#ea4335] font-bold">
+                                Official
+                              </span>
+                            )}
                           </span>
                           <span className="text-[11px] text-[#8696a0] shrink-0 ml-1">
                             {room.lastTime}
@@ -713,7 +1382,7 @@ export default function WhatsAppDesktopPage() {
                           <div className="flex items-center gap-1.5 shrink-0 ml-1">
                             {room.isPinned && <Pin size={12} className="text-[#8696a0]" />}
                             {room.unreadCount && room.unreadCount > 0 ? (
-                              <span className="w-4 h-4 rounded-full bg-[#00a884] text-[#111b21] font-bold text-[10px] flex items-center justify-center">
+                              <span className="min-w-[16px] h-4 px-1 rounded-full bg-[#00a884] text-[#111b21] font-bold text-[10px] flex items-center justify-center">
                                 {room.unreadCount}
                               </span>
                             ) : null}
@@ -756,9 +1425,9 @@ export default function WhatsAppDesktopPage() {
                   <Edit2 size={16} />
                 </button>
                 <button
-                  onClick={() => setIsNewChatModalOpen(true)}
+                  onClick={() => fileInputRef.current?.click()}
                   className="w-14 h-14 rounded-full bg-[#00a884] text-[#111b21] shadow-2xl flex items-center justify-center cursor-pointer active:scale-90 transition-transform"
-                  title="Camera"
+                  title="Camera Status"
                 >
                   <Camera size={24} />
                 </button>
@@ -789,7 +1458,7 @@ export default function WhatsAppDesktopPage() {
           {activeTab === 'communities' && (
             <CommunitiesView
               onSelectGroup={(grpName) => {
-                const found = chatRooms.find((r) => r.name.includes(grpName));
+                const found = chatRooms.find((r) => r.name.toLowerCase().includes(grpName.toLowerCase()));
                 if (found) {
                   setActiveChatId(found.id);
                   setActiveTab('chats');
@@ -821,8 +1490,8 @@ export default function WhatsAppDesktopPage() {
               setActiveTab(tab);
               if (rightPanel === 'settings') setRightPanel('none');
             }}
-            unreadCount={2}
-            missedCallsCount={1}
+            unreadCount={3}
+            missedCallsCount={0}
             hasUnreadStatus={true}
           />
         </aside>
@@ -836,11 +1505,8 @@ export default function WhatsAppDesktopPage() {
           }`}
           style={{ backgroundColor: '#0b141a' }}
         >
-          {/* WhatsApp Header (Touch Optimized) */}
-          <div
-            className="h-[60px] px-2 sm:px-4 flex items-center justify-between z-10 shrink-0 border-b border-[#222d34]"
-            style={{ backgroundColor: '#202c33' }}
-          >
+          {/* WhatsApp Header (Apple HIG Frosted Bar) */}
+          <div className="h-[60px] px-2 sm:px-4 flex items-center justify-between z-10 shrink-0 border-b border-[#222d34] bg-[#202c33]/95 backdrop-blur-xl">
             {/* Group Identity & Member Subtitle */}
             <div
               onClick={() => setRightPanel(rightPanel === 'group-info' ? 'none' : 'group-info')}
@@ -858,15 +1524,25 @@ export default function WhatsAppDesktopPage() {
               </button>
 
               <div
-                className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white shrink-0 text-sm shadow-xs"
+                className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white shrink-0 text-sm shadow-xs relative"
                 style={{ backgroundColor: activeRoom.avatarColor }}
               >
                 {activeRoom.initials}
+                {activeRoom.isLocked && (
+                  <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-[#111b21] flex items-center justify-center text-[#00a884] border border-[#222d34]">
+                    <Lock size={8} />
+                  </span>
+                )}
               </div>
 
               <div className="min-w-0 flex-1">
-                <h2 className="text-sm font-semibold truncate leading-tight text-[#e9edef]">
+                <h2 className="text-sm font-semibold truncate leading-tight text-[#e9edef] flex items-center gap-1.5">
                   {activeRoom.name}
+                  {activeRoom.isLocked && (
+                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-[#00a884]/20 text-[#00a884] font-semibold">
+                      Broadcast Only
+                    </span>
+                  )}
                 </h2>
                 <p className="text-xs truncate leading-tight mt-0.5 text-[#8696a0]">
                   {activeRoom.subtitle}
@@ -874,41 +1550,89 @@ export default function WhatsAppDesktopPage() {
               </div>
             </div>
 
-            {/* Right Action Icons (Touch Friendly 40px Hit Areas) */}
+            {/* Right Action Icons (Teacher Lock Toggle & Calling) */}
             <div className="flex items-center gap-1 sm:gap-2 text-[#8696a0] shrink-0">
+              {/* Teacher 1-Click Lock Toggle Button in Header */}
+              {(isTeacher || isAdmin) && activeRoom.isGroup && (
+                <button
+                  type="button"
+                  onClick={() => handleToggleChannelLock(!activeRoom.isLocked)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
+                    activeRoom.isLocked
+                      ? 'bg-[#00a884]/20 text-[#00a884] hover:bg-[#00a884]/30'
+                      : 'bg-[#2a3942] text-[#8696a0] hover:text-white'
+                  }`}
+                  title={activeRoom.isLocked ? 'Unlock Channel (Allow Student Messages)' : 'Lock Channel (Broadcast Only)'}
+                >
+                  <Lock size={13} />
+                  <span className="hidden sm:inline">
+                    {activeRoom.isLocked ? 'Locked' : 'Open'}
+                  </span>
+                </button>
+              )}
+
+              {/* Faculty Notice Shortcut */}
+              {(isTeacher || isAdmin) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTeacherNoticeDefaultType('homework');
+                    setIsTeacherNoticeModalOpen(true);
+                  }}
+                  className="w-9 h-9 flex items-center justify-center rounded-full hover:text-white hover:bg-[#2a3942] transition-colors cursor-pointer active:scale-90"
+                  title="Publish Notice / Homework"
+                >
+                  <Megaphone size={18} className="text-[#00a884]" />
+                </button>
+              )}
+
               <button
                 onClick={() => setActiveCall({ contactName: activeRoom.name, type: 'video' })}
-                className="w-10 h-10 flex items-center justify-center rounded-full hover:text-white hover:bg-[#2a3942] transition-colors cursor-pointer active:scale-90"
+                className="w-9 h-9 flex items-center justify-center rounded-full hover:text-white hover:bg-[#2a3942] transition-colors cursor-pointer active:scale-90"
                 title="Video Call"
               >
-                <Video size={19} />
+                <Video size={18} />
               </button>
 
               <button
                 onClick={() => setActiveCall({ contactName: activeRoom.name, type: 'voice' })}
-                className="w-10 h-10 flex items-center justify-center rounded-full hover:text-white hover:bg-[#2a3942] transition-colors cursor-pointer active:scale-90"
+                className="w-9 h-9 flex items-center justify-center rounded-full hover:text-white hover:bg-[#2a3942] transition-colors cursor-pointer active:scale-90"
                 title="Voice Call"
               >
-                <Phone size={18} />
+                <Phone size={17} />
               </button>
 
               <button
                 onClick={() => setRightPanel('media-gallery')}
-                className="w-10 h-10 flex items-center justify-center rounded-full hover:text-white hover:bg-[#2a3942] transition-colors cursor-pointer active:scale-90"
+                className="w-9 h-9 flex items-center justify-center rounded-full hover:text-white hover:bg-[#2a3942] transition-colors cursor-pointer active:scale-90"
                 title="Media and Docs"
               >
-                <Search size={19} />
+                <Search size={18} />
               </button>
 
               <button
                 onClick={() => setRightPanel(rightPanel === 'group-info' ? 'none' : 'group-info')}
-                className="w-10 h-10 flex items-center justify-center rounded-full hover:text-white hover:bg-[#2a3942] transition-colors cursor-pointer active:scale-90"
+                className="w-9 h-9 flex items-center justify-center rounded-full hover:text-white hover:bg-[#2a3942] transition-colors cursor-pointer active:scale-90"
                 title="Chat info"
               >
-                <MoreVertical size={19} />
+                <MoreVertical size={18} />
               </button>
             </div>
           </div>
+
+          {/* Pinned Circular / Notice Banner */}
+          {activeRoom.pinnedMessage && (
+            <PinnedNoticeBanner
+              pinnedNotice={activeRoom.pinnedMessage}
+              canUnpin={isTeacher || isAdmin}
+              onJumpToMessage={(id) => {
+                const el = document.getElementById(id);
+                el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                setSelectedMessageId(id);
+              }}
+              onUnpin={handleUnpinMessage}
+            />
+          )}
 
           {/* Tiled WhatsApp Doodle Wallpaper Area */}
           <div
@@ -935,9 +1659,21 @@ export default function WhatsAppDesktopPage() {
               const isMe = msg.isMe;
               const isSelected = selectedMessageId === msg.id;
 
+              // System Announcement Pill
+              if (msg.templateType === 'system') {
+                return (
+                  <div key={msg.id} className="flex justify-center my-2">
+                    <div className="px-4 py-1.5 rounded-xl bg-[#182229]/90 border border-white/10 text-xs text-[#e9edef] max-w-md text-center shadow-xs">
+                      {msg.text}
+                    </div>
+                  </div>
+                );
+              }
+
               return (
                 <div
                   key={msg.id}
+                  id={msg.id}
                   className={`flex items-start gap-2 ${isMe ? 'justify-end' : 'justify-start'} ${
                     isSameAsPrev ? 'mt-0.5' : 'mt-2.5'
                   }`}
@@ -963,25 +1699,28 @@ export default function WhatsAppDesktopPage() {
                         e.stopPropagation();
                         setSelectedMessageId(isSelected ? null : msg.id);
                       }}
-                      className={`px-3 py-1.5 text-sm transition-all relative rounded-[8px] cursor-pointer ${
-                        isMe ? 'bg-[#005c4b] text-[#e9edef]' : 'bg-[#202c33] text-[#e9edef]'
-                      } ${!isSameAsPrev && (isMe ? 'rounded-tr-none' : 'rounded-tl-none')} ${
-                        isSelected ? 'ring-2 ring-[#00a884]' : ''
-                      }`}
+                      className={`px-3 py-1.5 text-sm transition-all relative rounded-2xl cursor-pointer ${
+                        isMe ? 'bg-[#005c4b] text-[#e9edef] rounded-tr-xs' : 'bg-[#202c33] text-[#e9edef] rounded-tl-xs border border-white/5'
+                      } ${isSelected ? 'ring-2 ring-[#00a884]' : ''}`}
                       style={{ boxShadow: '0 1px 0.5px rgba(11,20,26,0.25)' }}
                     >
-                      {/* Sender Name & Subtitle Header */}
+                      {/* Sender Name & Role Badges Header */}
                       {!isMe && !isSameAsPrev && (
-                        <div className="mb-0.5 flex flex-col leading-tight">
+                        <div className="mb-1 flex items-center gap-1.5 leading-tight">
                           <span
                             className="text-xs font-semibold"
                             style={{ color: msg.senderColor || '#53bdeb' }}
                           >
                             {msg.senderName}
                           </span>
-                          {msg.subtitle && (
-                            <span className="text-[11px] text-[#8696a0] font-normal">
-                              {msg.subtitle}
+                          {msg.senderRole === 'teacher' && (
+                            <span className="text-[9px] px-1.5 py-0.2 rounded bg-[#00a884]/20 text-[#00a884] font-bold">
+                              Faculty
+                            </span>
+                          )}
+                          {msg.senderRole === 'admin' && (
+                            <span className="text-[9px] px-1.5 py-0.2 rounded bg-[#ea4335]/20 text-[#ea4335] font-bold">
+                              Principal Office
                             </span>
                           )}
                         </div>
@@ -989,13 +1728,31 @@ export default function WhatsAppDesktopPage() {
 
                       {/* Quoted Message Preview */}
                       {msg.quotedAuthor && (
-                        <div className="mb-1.5 p-1.5 rounded-[6px] text-xs border-l-[3.5px] border-[#53bdeb] bg-[#182229]">
+                        <div className="mb-1.5 p-1.5 rounded-lg text-xs border-l-[3.5px] border-[#53bdeb] bg-[#182229]">
                           <div className="font-semibold text-[11px] text-[#53bdeb]">
                             {msg.quotedAuthor}
                           </div>
                           <div className="text-[11px] truncate text-[#8696a0]">
                             {msg.quotedText}
                           </div>
+                        </div>
+                      )}
+
+                      {/* Photo Image Card */}
+                      {msg.imageUrl && (
+                        <div
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedImageLightbox(msg.imageUrl || null);
+                          }}
+                          className="mb-2 relative rounded-xl overflow-hidden bg-black/40 border border-white/10 group/img cursor-pointer"
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={msg.imageUrl}
+                            alt="Attached file"
+                            className="max-h-64 w-full object-cover rounded-xl group-hover/img:scale-102 transition-transform duration-200"
+                          />
                         </div>
                       )}
 
@@ -1009,53 +1766,27 @@ export default function WhatsAppDesktopPage() {
                               duration: msg.videoDuration || '2:20',
                             });
                           }}
-                          className="mb-2 relative rounded-[6px] overflow-hidden bg-black/50 border border-white/10 group/vid cursor-pointer active:scale-98 transition-transform"
+                          className="mb-2 relative rounded-xl overflow-hidden bg-black/50 border border-white/10 group/vid cursor-pointer active:scale-98 transition-transform"
                         >
-                          <div className="h-44 sm:h-56 w-full bg-linear-to-b from-stone-800 to-stone-900 flex items-center justify-center relative">
-                            {/* Play Overlay */}
+                          <div className="h-44 sm:h-56 w-full bg-gradient-to-b from-stone-800 to-stone-900 flex items-center justify-center relative">
                             <div className="w-12 h-12 rounded-full bg-black/60 backdrop-blur-xs flex items-center justify-center text-white group-hover/vid:scale-110 transition-transform">
                               <Play size={22} className="ml-0.5 fill-white" />
                             </div>
-                            {/* Duration Badge */}
                             <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded bg-black/70 text-[10px] text-white font-medium flex items-center gap-1">
                               <Video size={10} />
                               <span>{msg.videoDuration || '2:20'}</span>
                             </div>
-                            {/* Forward Button */}
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setIsNewChatModalOpen(true);
-                              }}
-                              className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/80 transition-colors cursor-pointer active:scale-90"
-                              title="Forward Video"
-                            >
-                              <Share2 size={14} />
-                            </button>
                           </div>
                         </div>
                       )}
 
-                      {/* Voice Note Waveform Preview */}
+                      {/* Voice Note Audio Player */}
                       {msg.isVoiceNote && (
-                        <div className="flex items-center gap-2.5 py-1 text-xs">
-                          <button
-                            type="button"
-                            onClick={(e) => e.stopPropagation()}
-                            className="w-8 h-8 rounded-full bg-[#00a884] text-white flex items-center justify-center shrink-0"
-                          >
-                            <Play size={13} className="ml-0.5 fill-white" />
-                          </button>
-                          <div className="flex-1 flex items-center gap-1">
-                            <div className="h-1 flex-1 bg-white/30 rounded-full overflow-hidden">
-                              <div className="h-full bg-[#53bdeb] w-1/3" />
-                            </div>
-                            <span className="text-[10px] font-mono text-[#8696a0]">
-                              {msg.voiceDuration || '0:08'}
-                            </span>
-                          </div>
-                        </div>
+                        <VoiceAudioPlayer
+                          audioUrl={msg.audioUrl}
+                          duration={msg.voiceDuration || '0:08'}
+                          isMe={isMe}
+                        />
                       )}
 
                       {/* Message Text Body */}
@@ -1076,18 +1807,11 @@ export default function WhatsAppDesktopPage() {
                       <div
                         className={`absolute top-1 ${
                           isSelected ? 'flex' : 'hidden group-hover:flex'
-                        } items-center gap-1 px-2 py-1 rounded-lg shadow-xl z-20 bg-[#202c33] border border-[#222d34] ${
-                          isMe ? '-left-28 sm:-left-32' : '-right-28 sm:-right-32'
+                        } items-center gap-1 px-2 py-1 rounded-xl shadow-xl z-20 bg-[#202c33] border border-[#222d34] ${
+                          isMe ? '-left-32 sm:-left-36' : '-right-32 sm:-right-36'
                         } animate-fadeIn`}
                         onClick={(e) => e.stopPropagation()}
                       >
-                        <button
-                          onClick={() => handleToggleReaction(msg.id, '😂')}
-                          className="text-sm hover:scale-125 transition-transform cursor-pointer p-0.5"
-                          title="React 😂"
-                        >
-                          😂
-                        </button>
                         <button
                           onClick={() => handleToggleReaction(msg.id, '👍')}
                           className="text-sm hover:scale-125 transition-transform cursor-pointer p-0.5"
@@ -1096,12 +1820,28 @@ export default function WhatsAppDesktopPage() {
                           👍
                         </button>
                         <button
+                          onClick={() => handleToggleReaction(msg.id, '❤️')}
+                          className="text-sm hover:scale-125 transition-transform cursor-pointer p-0.5"
+                          title="React ❤️"
+                        >
+                          ❤️
+                        </button>
+                        <button
                           onClick={() => handleToggleStar(msg.id)}
                           className="p-1 hover:text-[#00a884] text-[#8696a0] cursor-pointer"
                           title={msg.isStarred ? 'Unstar' : 'Star message'}
                         >
                           <Star size={13} className={msg.isStarred ? 'fill-[#00a884] text-[#00a884]' : ''} />
                         </button>
+                        {(isTeacher || isAdmin) && (
+                          <button
+                            onClick={() => handlePinMessage(msg)}
+                            className="p-1 hover:text-[#00a884] text-[#8696a0] cursor-pointer"
+                            title="Pin as Circular"
+                          >
+                            <Pin size={13} />
+                          </button>
+                        )}
                         <button
                           onClick={() => {
                             setReplyingTo(msg);
@@ -1149,140 +1889,159 @@ export default function WhatsAppDesktopPage() {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Footer Input Bar (Touch-Optimized) */}
-          <div className="flex flex-col shrink-0 border-t border-[#222d34] bg-[#202c33] relative">
-            {/* Attachment Drawer Popover */}
-            {showAttachMenu && (
-              <div className="absolute bottom-16 left-3 p-2 rounded-xl shadow-2xl flex flex-col gap-1 z-50 border border-[#222d34] bg-[#202c33] min-w-[210px] animate-fadeIn">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowAttachMenu(false);
-                    setMessageText((prev) => `${prev} [Video: Campus Prime 2026]`);
-                  }}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs hover:bg-[#2a3942] transition-colors cursor-pointer text-left text-[#e9edef] active:scale-95"
-                >
-                  <Camera size={18} className="text-[#53bdeb]" />
-                  <span>Photos & Videos</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowAttachMenu(false);
-                    setMessageText((prev) => `${prev} [Document: Class Homework PDF]`);
-                  }}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs hover:bg-[#2a3942] transition-colors cursor-pointer text-left text-[#e9edef] active:scale-95"
-                >
-                  <FileText size={18} className="text-[#9c27b0]" />
-                  <span>Document</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowAttachMenu(false);
-                    setMessageText((prev) => `${prev} [Diary Submission]`);
-                  }}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs hover:bg-[#2a3942] transition-colors cursor-pointer text-left text-[#e9edef] active:scale-95"
-                >
-                  <Award size={18} className="text-[#ff9f00]" />
-                  <span>Class Diary Photo</span>
-                </button>
+          {/* ================================================================ */}
+          {/* FOOTER INPUT BAR / BROADCAST LOCK BANNER / VOICE RECORDER        */}
+          {/* ================================================================ */}
+          {isRecordingVoice ? (
+            <VoiceRecorderBar
+              onCancel={() => setIsRecordingVoice(false)}
+              onSendVoiceNote={handleSendVoiceNote}
+            />
+          ) : activeRoom.isLocked && !isTeacher && !isAdmin ? (
+            /* Student Lock Banner: Apple Frosted Pill */
+            <div className="h-[62px] px-4 flex items-center justify-center bg-[#182229] border-t border-[#222d34]">
+              <div className="flex items-center gap-2 text-xs text-[#8696a0] bg-[#202c33] px-4 py-2 rounded-2xl border border-white/5">
+                <Lock size={15} className="text-[#00a884] shrink-0" />
+                <span>Only teachers and school administration can send messages in this channel.</span>
               </div>
-            )}
-
-            {/* Quick Emoji Tray with 40px touch targets */}
-            {showEmojiTray && (
-              <div className="px-3 py-2 border-b border-[#222d34] flex items-center gap-3 bg-[#111b21] overflow-x-auto">
-                {['😀', '😂', '💀', '❤️', '👍', '🔥', '🎉', '📚', '👏', '🚀', '🙏', '💯'].map((em) => (
+            </div>
+          ) : (
+            /* Normal Input Bar */
+            <div className="flex flex-col shrink-0 border-t border-[#222d34] bg-[#202c33] relative">
+              {/* Attachment Drawer Popover */}
+              {showAttachMenu && (
+                <div className="absolute bottom-16 left-3 p-2 rounded-2xl shadow-2xl flex flex-col gap-1 z-50 border border-[#222d34] bg-[#202c33] min-w-[220px] animate-fadeIn">
                   <button
-                    key={em}
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs hover:bg-[#2a3942] transition-colors cursor-pointer text-left text-[#e9edef] active:scale-95"
+                  >
+                    <Camera size={18} className="text-[#53bdeb]" />
+                    <span>Photos & Camera</span>
+                  </button>
+                  <button
                     type="button"
                     onClick={() => {
-                      setMessageText((prev) => prev + em);
-                      inputRef.current?.focus();
+                      setShowAttachMenu(false);
+                      setMessageText((prev) => `${prev} [Document: Class Homework PDF]`);
                     }}
-                    className="w-9 h-9 flex items-center justify-center text-xl hover:scale-125 active:scale-95 transition-transform cursor-pointer shrink-0"
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs hover:bg-[#2a3942] transition-colors cursor-pointer text-left text-[#e9edef] active:scale-95"
                   >
-                    {em}
+                    <FileText size={18} className="text-[#9c27b0]" />
+                    <span>Document / Circular</span>
                   </button>
-                ))}
-              </div>
-            )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAttachMenu(false);
+                      setMessageText((prev) => `${prev} [Student Diary Submission]`);
+                    }}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs hover:bg-[#2a3942] transition-colors cursor-pointer text-left text-[#e9edef] active:scale-95"
+                  >
+                    <Award size={18} className="text-[#ff9f00]" />
+                    <span>Class Diary Photo</span>
+                  </button>
+                </div>
+              )}
 
-            {/* Quoted Message Preview Bar */}
-            {replyingTo && (
-              <div className="px-4 py-2 border-b border-[#222d34] flex items-center justify-between bg-[#182229]">
-                <div className="flex items-center gap-2 min-w-0">
-                  <div className="w-1 h-8 rounded-full bg-[#53bdeb]" />
-                  <div className="min-w-0">
-                    <div className="text-xs font-semibold text-[#53bdeb]">
-                      Replying to {replyingTo.senderName}
-                    </div>
-                    <div className="text-xs truncate text-[#8696a0]">
-                      {replyingTo.text}
+              {/* Quick Emoji Tray */}
+              {showEmojiTray && (
+                <div className="px-3 py-2 border-b border-[#222d34] flex items-center gap-3 bg-[#111b21] overflow-x-auto no-scrollbar">
+                  {['😀', '😂', '💀', '❤️', '👍', '🔥', '🎉', '📚', '👏', '🚀', '🙏', '💯'].map((em) => (
+                    <button
+                      key={em}
+                      type="button"
+                      onClick={() => {
+                        setMessageText((prev) => prev + em);
+                        inputRef.current?.focus();
+                      }}
+                      className="w-9 h-9 flex items-center justify-center text-xl hover:scale-125 active:scale-95 transition-transform cursor-pointer shrink-0"
+                    >
+                      {em}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Quoted Message Preview Bar */}
+              {replyingTo && (
+                <div className="px-4 py-2 border-b border-[#222d34] flex items-center justify-between bg-[#182229]">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="w-1 h-8 rounded-full bg-[#53bdeb]" />
+                    <div className="min-w-0">
+                      <div className="text-xs font-semibold text-[#53bdeb]">
+                        Replying to {replyingTo.senderName}
+                      </div>
+                      <div className="text-xs truncate text-[#8696a0]">
+                        {replyingTo.text}
+                      </div>
                     </div>
                   </div>
+                  <button
+                    onClick={() => setReplyingTo(null)}
+                    className="p-1.5 rounded-full text-[#8696a0] hover:text-white cursor-pointer"
+                  >
+                    <X size={16} />
+                  </button>
                 </div>
-                <button
-                  onClick={() => setReplyingTo(null)}
-                  className="p-1.5 rounded-full text-[#8696a0] hover:text-white cursor-pointer"
-                >
-                  <X size={16} />
-                </button>
-              </div>
-            )}
+              )}
 
-            {/* Input Form with 44px minimum touch buttons */}
-            <form onSubmit={handleSendMessage} className="h-[62px] px-2 sm:px-4 flex items-center gap-1.5 sm:gap-2">
-              <button
-                type="button"
-                onClick={() => setShowAttachMenu(!showAttachMenu)}
-                className="w-10 h-10 flex items-center justify-center rounded-full text-[#8696a0] hover:text-white transition-colors cursor-pointer shrink-0 active:scale-95"
-                title="Attach"
-              >
-                <Paperclip size={20} />
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setShowEmojiTray(!showEmojiTray)}
-                className="w-10 h-10 flex items-center justify-center rounded-full text-[#8696a0] hover:text-white transition-colors cursor-pointer shrink-0 active:scale-95"
-                title="Emoji"
-              >
-                <Smile size={20} />
-              </button>
-
-              <div className="flex-1 flex items-center rounded-2xl px-3 py-2 bg-[#2a3942]">
-                <input
-                  ref={inputRef}
-                  type="text"
-                  placeholder="Type a message"
-                  value={messageText}
-                  onChange={(e) => setMessageText(e.target.value)}
-                  className="w-full text-sm text-[#e9edef] bg-transparent focus:outline-none placeholder-[#8696a0]"
-                />
-              </div>
-
-              {messageText.trim() ? (
-                <button
-                  type="submit"
-                  className="w-11 h-11 rounded-full text-white bg-[#00a884] hover:bg-[#008f6f] transition-all cursor-pointer hover:scale-105 active:scale-95 shrink-0 flex items-center justify-center shadow-md"
-                  aria-label="Send message"
-                >
-                  <Send size={18} />
-                </button>
-              ) : (
+              {/* Input Form */}
+              <form onSubmit={handleSendMessage} className="h-[62px] px-2 sm:px-4 flex items-center gap-1.5 sm:gap-2">
                 <button
                   type="button"
-                  onClick={handleSendVoiceNote}
-                  className="w-11 h-11 rounded-full text-[#8696a0] hover:text-white hover:bg-[#2a3942] transition-colors cursor-pointer shrink-0 flex items-center justify-center active:scale-95"
-                  title="Record & Send Voice Note"
+                  onClick={() => setShowAttachMenu(!showAttachMenu)}
+                  className="w-10 h-10 flex items-center justify-center rounded-full text-[#8696a0] hover:text-white transition-colors cursor-pointer shrink-0 active:scale-95"
+                  title="Attach File or Photo"
                 >
-                  <Mic size={20} />
+                  <Paperclip size={20} />
                 </button>
-              )}
-            </form>
-          </div>
+
+                <button
+                  type="button"
+                  onClick={() => setShowEmojiTray(!showEmojiTray)}
+                  className="w-10 h-10 flex items-center justify-center rounded-full text-[#8696a0] hover:text-white transition-colors cursor-pointer shrink-0 active:scale-95"
+                  title="Emoji"
+                >
+                  <Smile size={20} />
+                </button>
+
+                <div className="flex-1 flex items-center rounded-2xl px-3 py-2 bg-[#2a3942]">
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    placeholder={
+                      activeRoom.isLocked && (isTeacher || isAdmin)
+                        ? 'Type announcement as verified faculty...'
+                        : 'Type a message'
+                    }
+                    value={messageText}
+                    onChange={(e) => setMessageText(e.target.value)}
+                    className="w-full text-sm text-[#e9edef] bg-transparent focus:outline-none placeholder-[#8696a0]"
+                  />
+                </div>
+
+                {messageText.trim() ? (
+                  <button
+                    type="submit"
+                    className="w-11 h-11 rounded-full text-white bg-[#00a884] hover:bg-[#008f6f] transition-all cursor-pointer hover:scale-105 active:scale-95 shrink-0 flex items-center justify-center shadow-md"
+                    aria-label="Send message"
+                  >
+                    <Send size={18} />
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setIsRecordingVoice(true)}
+                    className="w-11 h-11 rounded-full text-[#8696a0] hover:text-white hover:bg-[#2a3942] transition-colors cursor-pointer shrink-0 flex items-center justify-center active:scale-95"
+                    title="Record Voice Note"
+                  >
+                    <Mic size={20} />
+                  </button>
+                )}
+              </form>
+            </div>
+          )}
         </main>
 
         {/* ================================================================== */}
@@ -1291,10 +2050,17 @@ export default function WhatsAppDesktopPage() {
         {rightPanel === 'group-info' && (
           <GroupInfoPanel
             chat={activeRoom}
+            isTeacher={isTeacher}
+            isAdmin={isAdmin}
             onClose={() => setRightPanel('none')}
             onOpenMediaGallery={() => setRightPanel('media-gallery')}
             onStartCall={(type) => setActiveCall({ contactName: activeRoom.name, type })}
             onAddMember={() => setIsNewChatModalOpen(true)}
+            onToggleLock={handleToggleChannelLock}
+            onQuickDispatch={(type) => {
+              setTeacherNoticeDefaultType(type);
+              setIsTeacherNoticeModalOpen(true);
+            }}
           />
         )}
 
@@ -1335,6 +2101,46 @@ export default function WhatsAppDesktopPage() {
       {/* ==================================================================== */}
       {/* MODALS & OVERLAYS                                                    */}
       {/* ==================================================================== */}
+      {/* Photo Attachment Preview & Send Modal */}
+      {selectedImageToPreview && (
+        <PhotoAttachmentModal
+          imageSrc={selectedImageToPreview}
+          onClose={() => setSelectedImageToPreview(null)}
+          onSend={handleSendPhotoAttachment}
+        />
+      )}
+
+      {/* Teacher Official Notice Dispatch Modal */}
+      {isTeacherNoticeModalOpen && (
+        <TeacherNoticeModal
+          channelName={activeRoom.name}
+          defaultType={teacherNoticeDefaultType}
+          onClose={() => setIsTeacherNoticeModalOpen(false)}
+          onDispatch={handleTeacherDispatch}
+        />
+      )}
+
+      {/* Full-Screen Image Lightbox */}
+      {selectedImageLightbox && (
+        <div
+          className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-4 animate-fadeIn"
+          onClick={() => setSelectedImageLightbox(null)}
+        >
+          <button
+            onClick={() => setSelectedImageLightbox(null)}
+            className="absolute top-4 right-4 p-2 rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors cursor-pointer"
+          >
+            <X size={24} />
+          </button>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={selectedImageLightbox}
+            alt="Enlarged circular attachment"
+            className="max-h-[90vh] max-w-[90vw] object-contain rounded-2xl shadow-2xl"
+          />
+        </div>
+      )}
+
       {/* New Chat & New Group Modal */}
       {isNewChatModalOpen && (
         <NewChatModal
@@ -1348,10 +2154,10 @@ export default function WhatsAppDesktopPage() {
               const newRoom: ChatRoom = {
                 id: `chat-${Date.now()}`,
                 name: c.name,
-                subtitle: c.about || 'online',
+                subtitle: c.about || 'Available',
                 avatarColor: c.avatarColor,
                 initials: c.initials,
-                lastMessage: 'Tap here to chat',
+                lastMessage: 'Tap to start conversation',
                 lastTime: 'Now',
                 isGroup: false,
               };
@@ -1359,27 +2165,29 @@ export default function WhatsAppDesktopPage() {
               setActiveChatId(newRoom.id);
               setIsMobileChatOpen(true);
             }
+            setIsNewChatModalOpen(false);
           }}
-          onCreateNewGroup={(gName, selected) => {
-            const newRoom: ChatRoom = {
-              id: `chat-${Date.now()}`,
-              name: gName,
-              subtitle: selected.map((s) => s.name).join(', '),
+          onCreateNewGroup={(groupName: string, selectedMembers: ContactItem[]) => {
+            const newGroup: ChatRoom = {
+              id: `group-${Date.now()}`,
+              name: groupName,
+              subtitle: selectedMembers.map((m) => m.name).join(', '),
               avatarColor: '#25d366',
-              initials: gName.slice(0, 2).toUpperCase(),
+              initials: groupName.slice(0, 2).toUpperCase(),
               lastMessage: 'Group created',
               lastTime: 'Now',
               isGroup: true,
-              members: selected,
+              members: selectedMembers,
             };
-            setChatRooms([newRoom, ...chatRooms]);
-            setActiveChatId(newRoom.id);
+            setChatRooms([newGroup, ...chatRooms]);
+            setActiveChatId(newGroup.id);
             setIsMobileChatOpen(true);
+            setIsNewChatModalOpen(false);
           }}
         />
       )}
 
-      {/* Active Call Overlay */}
+      {/* Simulated Active Voice / Video Call Overlay */}
       {activeCall && (
         <ActiveCallOverlay
           contactName={activeCall.contactName}
@@ -1388,14 +2196,15 @@ export default function WhatsAppDesktopPage() {
         />
       )}
 
-      {/* Full-screen Status Story Viewer */}
+      {/* Story Viewer Modal */}
       {viewingStatus && (
         <StatusViewerModal
           status={viewingStatus}
           onClose={() => setViewingStatus(null)}
-          onReply={(reply) => {
-            setMessageText(`[Replying to ${viewingStatus.contactName}'s status]: ${reply}`);
-            setIsMobileChatOpen(true);
+          onReply={(replyText) => {
+            setMessageText(`Replying to story: ${replyText}`);
+            setViewingStatus(null);
+            inputRef.current?.focus();
           }}
         />
       )}
@@ -1411,44 +2220,65 @@ export default function WhatsAppDesktopPage() {
 
       {/* User Profile Editor Modal */}
       {isProfileModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
-          <div className="w-full max-w-sm bg-[#111b21] rounded-2xl border border-[#222d34] p-6 shadow-2xl flex flex-col items-center text-center">
-            <div className="w-20 h-20 rounded-full bg-[#00a884] text-white font-bold text-3xl flex items-center justify-center shadow-lg mb-4 ring-4 ring-[#00a884]/20">
-              S
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn select-none">
+          <div className="w-full max-w-sm bg-[#111b21] rounded-2xl border border-[#222d34] flex flex-col p-6 shadow-2xl">
+            <div className="flex items-center justify-between pb-4 border-b border-[#222d34]">
+              <h3 className="text-base font-semibold text-[#e9edef]">Profile & Status</h3>
+              <button
+                onClick={() => setIsProfileModalOpen(false)}
+                className="text-[#8696a0] hover:text-white cursor-pointer"
+              >
+                <X size={18} />
+              </button>
             </div>
 
-            <div className="w-full text-left space-y-3">
+            <div className="flex flex-col items-center my-6">
+              <div className="w-24 h-24 rounded-full bg-[#00a884] text-white font-bold text-3xl flex items-center justify-center shadow-lg relative ring-4 ring-[#00a884]/20">
+                {userName.slice(0, 2).toUpperCase()}
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-[#202c33] text-white flex items-center justify-center shadow-md cursor-pointer border border-[#222d34]"
+                  title="Change avatar"
+                >
+                  <Camera size={14} />
+                </button>
+              </div>
+              <span className="text-xs font-semibold text-[#00a884] mt-2 capitalize">
+                {userRole} Account
+              </span>
+            </div>
+
+            <div className="space-y-4">
               <div>
-                <label className="text-[11px] uppercase font-semibold text-[#00a884]">
-                  Your Name
-                </label>
+                <label className="text-xs text-[#8696a0] font-medium block mb-1">Your Name</label>
                 <input
                   type="text"
                   value={userName}
                   onChange={(e) => setUserName(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg bg-[#202c33] text-sm text-[#e9edef] outline-none mt-1"
+                  className="w-full px-3 py-2 rounded-xl bg-[#202c33] text-sm text-[#e9edef] border border-[#222d34] outline-none"
                 />
               </div>
 
               <div>
-                <label className="text-[11px] uppercase font-semibold text-[#00a884]">
-                  About
-                </label>
+                <label className="text-xs text-[#8696a0] font-medium block mb-1">About / Status</label>
                 <input
                   type="text"
                   value={userAbout}
                   onChange={(e) => setUserAbout(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg bg-[#202c33] text-sm text-[#e9edef] outline-none mt-1"
+                  className="w-full px-3 py-2 rounded-xl bg-[#202c33] text-sm text-[#e9edef] border border-[#222d34] outline-none"
                 />
               </div>
             </div>
 
-            <button
-              onClick={() => setIsProfileModalOpen(false)}
-              className="mt-6 w-full py-2.5 rounded-xl font-semibold bg-[#00a884] text-[#111b21] hover:bg-[#008f6f] transition-colors cursor-pointer text-sm active:scale-95"
-            >
-              Save Profile
-            </button>
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={() => setIsProfileModalOpen(false)}
+                className="px-5 py-2 rounded-xl bg-[#00a884] hover:bg-[#008f6f] text-white text-xs font-semibold transition-colors cursor-pointer"
+              >
+                Save
+              </button>
+            </div>
           </div>
         </div>
       )}

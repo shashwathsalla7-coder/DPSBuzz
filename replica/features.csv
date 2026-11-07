@@ -3,11 +3,11 @@ mobile_responsive_shell,shell,must,yes,done,Adaptive shell with bottom nav on mo
 mobile_bottom_nav,shell,must,yes,done,4-tab bottom navigation (Chats Updates Communities Calls) with badge counters
 mobile_fullscreen_chat,chats,must,yes,done,100vw chat view on mobile with back arrow returning to chat list
 mobile_floating_action_btn,chats,should,yes,done,Floating Action Button (FAB) for quick compose and call start
-chat_search_filter,chats,must,yes,done,Search bar and All Unread Groups filter chips
+chat_search_filter,chats,must,yes,done,Search bar and segmented filter chips (All Unread Classes Groups Parents)
 active_chat_header,chats,must,yes,done,Header with back button avatar name subtitle voice/video call and menu
 doodle_wallpaper_toggle,chat_ui,must,yes,done,Authentic tiled WhatsApp SVG doodle wallpaper with settings toggle
-message_bubbles_mobile,chat_ui,must,yes,done,Touch-friendly bubbles with incoming and outgoing tails
-media_video_card,media,must,yes,done,Video card with 2:20 duration badge play overlay and forward button
+message_bubbles_mobile,chat_ui,must,yes,done,Apple HIG styled bubbles with incoming and outgoing tails
+media_video_card,media,must,yes,done,Video card with duration badge play overlay and forward button
 quoted_replies,chat_ui,must,yes,done,Touch reply with accent colored quote preview bar
 message_reactions,chat_ui,must,yes,done,Reaction badges like 😂 5 with tap toggle and long-press/hover action drawer
 star_messages,chat_ui,should,yes,done,Star messages and inspect in Starred Messages drawer
@@ -20,7 +20,7 @@ status_story_viewer,status,must,yes,done,Full screen story viewer with segmented
 status_creator,status,should,yes,done,Text status creator with color background palette
 calls_history_tab,calls,must,yes,done,Call logs with incoming outgoing missed icons audio video types and duration
 active_call_overlay,calls,must,yes,done,Mobile call overlay with ringing connected timer mic and video toggles
-communities_hub,communities,must,yes,done,School-wide communities announcement dispatches and sub-groups
+communities_hub,communities,must,yes,done,DPS verified community organizing all 91 classes and clubs
 group_info_sheet,info,must,yes,done,Mobile sliding sheet with group details description and participant list
 media_gallery_sheet,info,should,yes,done,Tabs for Media grid Documents list and Links
 starred_messages_sheet,utility,should,yes,done,Inspect starred messages and jump directly to chat
@@ -29,3 +29,12 @@ privacy_controls,settings,must,yes,done,Last seen read receipts and disappearing
 new_chat_group_modal,chats,must,yes,done,Modal with contact picker search and multi-select new group creator
 profile_editor_modal,utility,should,yes,done,Modal to edit username and about status
 touch_button_hit_targets,ux,must,yes,done,Minimum 44px touch targets on all buttons to prevent missed taps
+teacher_broadcast_lock,school_security,must,yes,done,1-Click toggle locking chat for non-faculty with student lock banner
+faculty_notice_dispatcher,school_features,must,yes,done,Homework roll call and exam circular dispatch with 91-class broadcast
+real_voice_note_recorder,audio,must,yes,done,Browser MediaRecorder voice recorder with live waveform and timer
+real_voice_note_player,audio,must,yes,done,Interactive waveform audio player with play/pause and time scrubber
+real_photo_attachment_upload,media,must,yes,done,Photo picker with caption modal and full-screen lightbox viewer
+pinned_announcement_banner,school_features,must,yes,done,Anchored top banner for critical homework or circulars with 1-tap jump
+all_91_classrooms_hub,school_hierarchy,must,yes,done,Complete official class registry from Nursery to 12-I in Cloudflare D1
+parent_broadcast_feed,parent_portal,must,yes,done,Clean spam-free broadcast feed for parents with direct PTM inquiry line
+cloudflare_d1_sql_persistence,infrastructure,must,yes,done,Real-time synchronization with campus_whatsapp_channels and messages

@@ -1,133 +1,157 @@
-# Recon map: WhatsApp (Mobile Web & Responsive Native)
+# Recon map: WhatsApp (School Operating System for DPS Buzz)
 
-Scope: Complete WhatsApp Mobile Application — Chats, Stories/Status, Calls, Communities, Settings, Group & Contact Info sheets, Full-Screen Media & Document Viewers, Voice Calling simulation, and Mobile Touch Navigation  
-Platform: Mobile-First Responsive Web (Android & iOS UX patterns)  
-For: DPS Buzz Students & Faculty (Stand-Alone Attached Module at `/whatsapp`)  
-Date: 2026-11-05  
+Scope: Production WhatsApp School Messaging Architecture — 91 Class Channels (Nursery to 12-I), Student Study Circles, Ephemeral Status/Stories, Calling Simulation, 1-Click Faculty Broadcast Lock, Real Audio Voice Recorder & Player, Photo & Circular Attachments, Pinned Notices, and Parent Broadcast Feed  
+Platform: Mobile-First Responsive Web (Apple iOS Human Interface Design & Translucent Dark Mode)  
+For: Delhi Public School (DPS Buzz) — Students, Teachers, Parents & School Administration  
+Date: 2026-11-07  
 
-## Sources
+---
 
-| # | source | URL | notes |
+## 1. School Operational Roles & Persona Analysis
+
+### A. Students
+- **Daily Needs**: Clarify daily homework with classmates, discuss group projects, share fair-copy notebook photos, ask doubts with quick voice notes, participate in student interest groups (Robotics, Science Club, Sports), share 24-hr campus moments (Status).
+- **Control Rules**: When teachers lock a class channel, students are placed in Read-Only mode with a clean Apple lock banner: *"Only teachers and school administration can send messages"*. Students cannot spam during exam hours.
+
+### B. Teachers & Faculty
+- **Daily Needs**: Post homework reminders, roll call attendance alerts, examination syllabus circulars, datesheets, and student performance notices.
+- **Critical Powers**:
+  1. **1-Click Broadcast Lock**: Toggle channel lock instantly with 1 tap in the chat header or group info drawer.
+  2. **Faculty Notice Dispatcher**: Pre-configured modal templates (Homework, Attendance, Exam Circular, Bus Notice).
+  3. **Multi-Class Broadcast**: 1-click option to distribute circulars simultaneously across all 91 class channels!
+  4. **Pin Critical Notices**: Anchor urgent datesheets to the top pinned banner of the chatroom.
+  5. **Moderation**: Delete inappropriate student messages for everyone.
+
+### C. Parents
+- **Daily Needs**: Zero spam or noisy chat chatter. Parents need clean, verified dispatches directly from the Principal and Class Teachers (fee notices, holiday alerts, bus route changes, daily homework summaries).
+- **Dedicated Flow**: Special "Parents Feed" tab in the chatroom list and a 1-tap "Contact Faculty" button to message the Class Teacher directly during working hours.
+
+### D. School Management & Madam Principal
+- **Daily Needs**: Emergency school-wide broadcast dispatches, monitoring official class channels, assigning verified faculty badges.
+- **Community Architecture**: Delhi Public School Verified Community organizing all 91 official classroom sections under one umbrella.
+
+---
+
+## 2. Sources
+
+| # | source | URL / Path | notes |
 | --- | --- | --- | --- |
-| 1 | Reference Screenshot | `replica/screens/whatsapp_desktop_reference.png` | Group chat ("Together Forever"), message bubbles, doodle wallpaper, video card, sender color tags, reactions |
-| 2 | WhatsApp Android UI Specs | `https://whatsapp.com` / Material 3 Design | Top app bar with search & camera, 4-tab bottom navigation rail (Chats, Updates/Status, Communities, Calls), floating action buttons (FAB), full-screen chat activity |
-| 3 | WhatsApp iOS Human Interface | `https://whatsapp.com` | iOS bottom tab bar with badge counts, swipe-to-reply, action sheets, modal navigation |
-| 4 | WhatsApp Help Center & Settings | `https://faq.whatsapp.com` | Account, Privacy, Chats, Notifications, Storage, Help, End-to-end encryption specs |
+| 1 | Reference Specs | `replica/screens/` | WhatsApp iOS Dark Theme, bubble tail styling, wallpaper doodle, audio waveforms |
+| 2 | Apple HIG Specs | `https://developer.apple.com/design/human-interface-guidelines/` | Translucent frosted headers, SF Pro typography, segmented controls, haptic spring actions |
+| 3 | Cloudflare D1 SQL | `campus_whatsapp_channels`, `campus_whatsapp_messages` | Real-time persistence for all 91 classes and messages |
+| 4 | WhatsApp Help Center | `https://faq.whatsapp.com` | Channel administration, voice messaging, read receipts, disappearing timers |
 
-## Core loop
+---
 
-Lightning-fast, friction-free mobile messaging, story sharing, encrypted calls, and classroom community hub optimized for handheld touchscreens and desktop screens alike.
+## 3. Core Loop
 
-## Screens
+Frictionless, instant mobile-first classroom communication, audio voice queries, verified faculty dispatches, and emergency broadcast alerts with zero spam.
+
+---
+
+## 4. Screen Inventory
 
 | ID | screen | route / how to reach | purpose | key components | states seen |
 | --- | --- | --- | --- | --- | --- |
-| S01 | Mobile App Shell & Top Bar | `/whatsapp` | Top navigation & brand identity | Back to DPS Buzz button, title, camera quick action, search, overflow menu | default, search active, mobile (<768px), desktop |
-| S02 | Mobile Bottom Navigation Bar | Fixed bottom on `<md` | 1-touch navigation between tabs | 4 tabs with active indicator & badge pills (Chats, Updates, Communities, Calls) | default, badge counts (unread msgs, missed calls) |
-| S03 | Mobile Chats List Screen | Tab 1 (Chats) | Browse & open conversations | Search bar, filter chips (All, Unread, Groups), chat items with avatar, name, last msg, time, unread badge, pin icon | empty, filtered, active |
-| S04 | Mobile Floating Action Button (FAB) | Bottom right over S03/S07/S09 | Primary action per tab | Green circular FAB: New Chat icon in Chats, Camera/Pencil in Status, Dialpad in Calls | idle, pressed |
-| S05 | Mobile Full-Screen Chat View | Tap any chat in S03 | 100vw conversation screen | Header with back arrow, contact avatar, name, subtitle, voice & video call icons, menu | active, typing, offline |
-| S06 | Mobile Message Thread Feed | S05 body | Visual chat stream | Tiled SVG doodle wallpaper, date separator pill, incoming/outgoing bubbles, reactions badge, video media card | idle, scrolling, replying |
-| S07 | Mobile Updates & Status Screen | Tab 2 (Updates) | Ephemeral story updates | My Status with "+" avatar, Recent updates list with green rings, Viewed updates list, mute options | idle, has unread |
-| S08 | Mobile Full-Screen Status Viewer | Tap any story in S07 | Immersive story carousel | Segmented progress bars (5s auto-advance), touch-and-hold pause, contact info, reply input pill | playing, paused, replying |
-| S09 | Mobile Calls History Screen | Tab 3 (Calls) | Recent audio/video call logs | Filter chips (All / Missed), call item with direction icon (incoming green, outgoing green, missed red), timestamp, call button | empty, filtered |
-| S10 | Mobile Active Call Overlay | Tap Call icon in S05/S09 | Simulated VoIP calling | Full-screen encrypted badge, animated glowing avatar, duration timer, mute mic toggle, camera flip/toggle, end call button | Ringing (2.5s), Connected |
-| S11 | Mobile Communities Hub | Tab 4 (Communities) | School-wide clubs & classes | New Community banner, DPS School Community, Class 8 Batch, Science Club, sub-groups & announcement dispatches | expanded, collapsed |
-| S12 | Mobile Contact & Group Info Sheet | Tap header in S05 | Group details & participants | Full-screen/sheet view: big avatar, description, audio/video buttons, media shortcut, disappearing timer, participants with admin badges, exit button | viewing, search participants |
-| S13 | Mobile Media, Docs & Links Gallery | Tap Media in S12 | Shared file repository | 3 segmented tabs: Media grid with video duration, Documents with file size, Links with domain preview | media, docs, links |
-| S14 | Mobile Starred Messages Drawer | Menu -> Starred | Saved messages across chats | List of starred cards with chat name, sender, snippet, time, unstar action, jump to chat | empty, populated |
-| S15 | Mobile Settings Sheet | Menu -> Settings | Complete app configuration | Account, Privacy, Chats (doodle toggle, enter is send), Notifications, Storage, Help, Linked Devices | main menu, sub-panels |
-| S16 | Mobile New Chat & Group Creator | Tap FAB in S03 | Start direct or group chat | Search contacts, New Group mode with multi-select checkboxes, group subject creator | search, multi-select |
-| S17 | Mobile Input Bar & Drawers | Bottom of S05 | Composing messages on touch | Plus/Paperclip attach menu (Photos, Docs, Diary), Emoji drawer, expanding input, Mic / Send button switch | idle, typing, recording voice note |
-| S18 | Mobile User Profile Modal | Tap Profile in Settings/Menu | Personal identity editor | Big avatar with edit ring, display name input, About status input, Save button | view, edit |
+| S01 | Mobile App Shell & Top Bar | `/whatsapp` | Top navigation & identity | Return to DPS Buzz link, title, camera trigger, search, overflow menu | default, search active, desktop macOS bar |
+| S02 | Mobile Bottom Navigation Bar | Fixed bottom on `<md` | 1-touch tab navigation | 4 tabs with active indicator & badge pills (Chats, Updates, Communities, Calls) | default, badge counts (3 unread) |
+| S03 | Mobile Chats List Screen | Tab 1 (Chats) | Browse & filter conversations | Search bar, 5 segmented chips (All, Unread, Classes, Groups, Parents), chat cards | default, filtered, active |
+| S04 | Mobile Floating Action Button | Bottom right on S03 | Quick new chat compose | Green circular FAB triggering new chat / group creator | idle, pressed |
+| S05 | Mobile Full-Screen Chat View | Tap any chat in S03 | Conversation screen | Translucent header, contact avatar, role badges, voice & video icons, 1-click lock button | open, typing, broadcast-locked |
+| S06 | Mobile Message Thread Feed | S05 body | Visual chat stream | Tiled WhatsApp doodle SVG, date pills, emerald outgoing & slate incoming bubbles, blue double-checks | idle, scrolling, replying |
+| S07 | Mobile Updates & Status Screen | Tab 2 (Updates) | Ephemeral story updates | My Status with "+" avatar, Recent updates list with green rings, Viewed updates list | idle, has unread |
+| S08 | Mobile Full-Screen Status Viewer | Tap any story in S07 | Immersive story carousel | Segmented progress bars (5s auto-advance), touch-and-hold pause, contact info, reply pill | playing, paused, replying |
+| S09 | Mobile Calls History Screen | Tab 3 (Calls) | Recent audio/video call logs | Filter chips (All / Missed), call items with direction icon, timestamp, call button | empty, filtered |
+| S10 | Mobile Active Call Overlay | Tap Call icon in S05/S09 | Simulated VoIP calling | Full-screen encrypted badge, animated glowing avatar, duration timer, mute mic toggle, camera flip/toggle, end call | Ringing (2.5s), Connected timer |
+| S11 | Mobile Communities Hub | Tab 4 (Communities) | DPS 91-class hierarchy | DPS School Community, Kindergarten, Primary, Middle, Secondary Wings, clubs | expanded, collapsed |
+| S12 | Mobile Contact & Group Info Sheet | Tap header in S05 | Classroom administration | Avatar, description, faculty broadcast lock switch, quick notice shortcuts, participant list with role badges | viewing, admin mode |
+| S13 | Mobile Media, Docs & Links Gallery | Tap Media in S12 | Shared file repository | 3 segmented tabs: Media grid, Documents with file size, Links with domain preview | media, docs, links |
+| S14 | Mobile Starred Messages Drawer | Menu -> Starred | Saved circulars across chats | List of starred cards with chat name, sender, snippet, time, unstar action, jump to chat | empty, populated |
+| S15 | Mobile Settings Sheet | Menu -> Settings | App configuration | Account, Privacy, Chats (doodle toggle), Notifications, Storage, Help | main menu, sub-panels |
+| S16 | Mobile New Chat & Group Creator | Tap FAB in S03 | Start direct or group chat | Search contacts, New Group mode with multi-select checkboxes, subject creator | search, multi-select |
+| S17 | Mobile Input Bar & Drawers | Bottom of S05 | Composing messages | Attachment popover (Camera, Document, Diary), Emoji tray, input box, Mic / Send button switch | idle, typing, locked |
+| S18 | Mobile User Profile Modal | Tap Profile in Menu | Personal identity editor | Avatar with camera edit icon, display name input, About status input, Save button | view, edit |
+| S19 | Pinned Announcement Banner | Top of S06 | Anchored official notices | Pin icon, sender name, notice snippet, jump-to-message, unpin button | active, closed |
+| S20 | Teacher Notice Modal | Tap Notice in S05/S12 | Faculty circular dispatches | 4 template tabs (Homework, Roll Call, Exam, Bus), headline, details, broadcast to all classes toggle | composing, sent |
+| S21 | Photo Attachment Modal | Camera / Attachment in S17 | Image preview before send | Full image canvas, caption input field, send button, cancel button | previewing, sending |
+| S22 | Voice Recorder Bar | Tap Mic in S17 | Real voice audio capture | Blinking red dot, live timer, animated pulsing sound waves, cancel trash, send button | recording, cancelled |
+| S23 | Voice Audio Player | Rendered in S06 | Interactive voice playback | Play/pause button, 16-bar waveform visualizer, scrubber, duration counter | idle, playing |
 
-## Flows
+---
+
+## 5. Flows
 
 ```
-F01 Mobile Message Conversation (Happy Path)
-    S02 tap Chats -> S03 tap "Together Forever" -> S05 full-screen chat slides in -> S17 tap input -> type message -> tap Green Send button -> S06 message renders with double check -> tap Back arrow -> S03 returns to list
+F01 Student Homework Discussion & Audio Note (Happy Path)
+    S02 tap Chats -> S03 tap "Class 8-G" -> S05 chat opens -> S17 tap Mic -> S22 live recording runs 5s -> tap Send -> S06 voice note renders with S23 audio player -> classmate taps Play to listen
     happy path clicks: 4
-    edge: virtual keyboard viewport resize, network offline queuing, shift+enter vs enter-to-send
 
-F02 Mobile Story / Status Consumption
-    S02 tap Updates -> S07 tap contact with green ring -> S08 full-screen story opens -> progress bar runs 5s -> tap screen to pause -> type reply in bottom pill -> tap send -> S08 auto-advances to next update or closes to S07
+F02 Teacher 1-Click Broadcast Lock
+    S05 tap Lock button in header (or S12 drawer) -> channel state updates to locked -> S06 displays system notice "🔒 Channel locked by faculty" -> students now see S17 disabled lock banner
+    happy path clicks: 1
+
+F03 Teacher Notice Dispatch & 91-Class Broadcast
+    S05 tap Notice icon -> S20 modal opens -> select "Homework" -> type guidelines -> toggle "Broadcast to All 91 Classes" -> tap "Publish Notice" -> S19 pinned banner anchors at top -> dispatches to all classes
+    happy path clicks: 4
+
+F04 Parent View & Direct Faculty Inquiry
+    S03 tap "Parents Feed" filter -> only official circulars and bus alerts display -> tap "Contact Faculty" -> 1-on-1 direct chat with Anita Sharma opens -> send inquiry
     happy path clicks: 3
-    edge: user holds finger down to pause story, multiple story updates from same user
 
-F03 Mobile Voice / Video Call
+F05 Photo Attachment Submission
+    S17 tap Paperclip -> tap "Photos & Camera" -> pick photo -> S21 preview modal displays photo -> type caption "Math Homework Exercise 4.2" -> tap Send -> renders in S06 -> tap photo to view S21 lightbox
+    happy path clicks: 4
+
+F06 Voice / Video Calling Simulation
     S05 tap Voice/Video icon in header -> S10 full-screen calling overlay appears -> Ringing (2.5s) -> Connected (seconds timer increments) -> tap Mute or Video toggle -> tap Red Hang Up button -> returns to S05
     happy path clicks: 2
-    edge: call rejected, call timed out, audio permission toggle
-
-F04 Mobile Group Member Management & Inspection
-    S05 tap group header -> S12 group sheet opens -> scroll participants -> tap "Add participant" -> S16 modal opens -> select contact -> member added -> tap Back arrow -> S05
-    happy path clicks: 4
-    edge: non-admin trying to add members, searching non-existent participant
-
-F05 Mobile Customization & Doodle Toggle
-    S01 tap three-dot menu -> tap Settings -> S15 tap Chats -> toggle "Add WhatsApp Doodle to wallpaper" -> tap Back -> S05 background updates immediately
-    happy path clicks: 4
-    edge: low-contrast wallpaper mode, dark/light theme toggle
 ```
 
-## Components
+---
+
+## 6. Components
 
 | component | variants | states | used on |
 | --- | --- | --- | --- |
-| `MobileTopBar` | default, with back arrow, search active | default, scrolled | S01, S05 |
+| `MobileTopBar` | desktop glass, mobile native | default, search focused | S01, S05 |
 | `MobileBottomNav` | 4 tabs (Chats, Updates, Communities, Calls) | active tab, unread badge, missed calls badge | S02 |
 | `FloatingActionButton` | new chat, camera, dialpad | default, active, hover | S04 |
-| `MessageBubble` | incoming (`#202c33`), outgoing (`#005c4b`), media card | default, quoted, reacted, starred | S06 |
-| `TouchInputBar` | idle (shows mic), typing (shows send) | default, focused, recording | S17 |
+| `MessageBubble` | incoming (`#202c33`), outgoing (`#005c4b`), photo card, voice note | default, quoted, reacted, starred | S06 |
+| `VoiceAudioPlayer` | interactive audio waveform, play/pause | idle, playing, scrubbed | S06, S23 |
+| `VoiceRecorderBar` | browser MediaRecorder capture | recording, timer, waves | S17, S22 |
+| `PhotoAttachmentModal` | image preview, caption input | idle, typing | S21 |
+| `TeacherNoticeModal` | homework, attendance, exam, transport templates | idle, broadcasting | S20 |
+| `PinnedNoticeBanner` | pinned circular bar with 1-tap jump | active, unpin | S19 |
+| `TouchInputBar` | idle (mic), typing (send), locked (banner) | default, focused, locked | S17 |
 | `StatusCircleRing` | unviewed (`#00a884`), viewed (`#8696a0`) | default, pressed | S07 |
-| `SegmentedProgressBar` | multi-segment stories | unfilled (0%), filling (0-100%), filled (100%) | S08 |
-| `CallActionButtons` | mute, camera, speaker, end call | active, inactive, pressed | S10 |
+| `ActiveCallOverlay` | audio / video calling | ringing, connected | S10 |
 | `ModalSheet` | full-screen mobile sheet, desktop drawer | open, closing, closed | S12, S13, S14, S15, S16 |
 
-## Inferred data model
+---
+
+## 7. Data Model
 
 ```
-ChatRoom        id, name, type (group | direct), avatar_color, initials, subtitle, last_message, last_time,
-                unread_count, is_pinned, is_muted, is_archived, description, created_by, created_at,
-                media_count, members (ContactItem[])
-                evidence: S03 chat list, S05 header, S12 group sheet
-                confidence: high
+ChatRoom        id, name, grade, section, avatarColor, initials, lastMessage, lastMessageTime,
+                unreadCount, isPinned, isMuted, isArchived, isGroup, isLocked, isSchoolBroadcast,
+                targetAudience ('all' | 'students' | 'parents' | 'teachers'), pinnedMessage,
+                description, createdBy, createdAt, mediaCount, members (ContactItem[])
+                storage: Cloudflare D1 (campus_whatsapp_channels) + localStorage
 
-ChatMessage     id, channel_id, sender_name, sender_color, subtitle, text, time, is_me, is_video,
-                video_duration, video_caption, quoted_author, quoted_text, is_starred, reactions (array)
-                evidence: S06 message thread, reference screenshot
-                confidence: high
+MessageItem     id, channelId, senderUsername, senderName, senderRole ('admin' | 'teacher' | 'student' | 'parent'),
+                senderColor, text, time, timestamp, isMe, isVideo, isImage, imageUrl,
+                isVoiceNote, voiceDuration, audioUrl, quotedAuthor, quotedText, isStarred,
+                isPinned, reactions (array), templateType ('none' | 'homework' | 'attendance' | 'exam' | 'system')
+                storage: Cloudflare D1 (campus_whatsapp_messages) + localStorage
 
-StatusStory     id, contact_name, contact_color, contact_initials, time, viewed, updates (StatusUpdate[])
-                evidence: S07 updates tab, S08 story viewer
-                confidence: high
-
-CallLog         id, contact_name, contact_color, contact_initials, time, type (voice | video),
-                direction (incoming | outgoing | missed), duration
-                evidence: S09 calls tab, S10 active call modal
-                confidence: high
-
-Community       id, name, description, avatar_color, initials, member_count, groups (array)
-                evidence: S11 communities tab
-                confidence: high
+StatusItem      id, contactName, contactColor, contactInitials, time, viewed, updates (StatusUpdate[])
+CallLogItem     id, contactName, contactColor, contactInitials, time, type, direction, duration
+CommunityItem   id, name, description, avatarColor, initials, memberCount, groups (array)
 ```
 
-Relationships:
-- ChatRoom (1-n) ChatMessage
-- StatusStory (1-n) StatusUpdate
-- Community (1-n) ChatRoom (sub-groups)
-- ChatRoom (n-n) ContactItem (members)
+---
 
-## Feature matrix
+## 8. Out of Scope
 
-See `replica/features.csv`. Must: 22, should: 6, could: 2, skip: 0. All 30 features documented for both Mobile & Desktop parity.
-
-## Out of scope (cannot or should not be cloned)
-
-- WhatsApp closed cellular GSM telephony / SS7 network infrastructure.
-- Multi-gigabyte end-to-end signal binary keys (managed seamlessly via Next.js & Cloudflare D1 HTTPS architecture).
-
-## Size
-
-Screens: 18 mobile screens/sheets, Flows: 5 core mobile flows, Entities: 5. Hard parts: 100vw mobile responsive layout transitions, touch gesture handling on story progress, touch-friendly 44px hit-targets, synchronized active audio/video call simulation.  
-Size: **M** (Complete responsive mobile & desktop application).
+- Cellular GSM / PSTN telco trunks (seamlessly handled via in-app WebRTC and simulated VoIP).
+- External unmoderated spam (DPS Buzz is a verified, closed-campus environment).
