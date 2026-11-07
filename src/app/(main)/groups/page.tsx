@@ -1416,9 +1416,12 @@ export default function GroupsPage() {
     setClientViewMode(isTeacher ? 'teacher' : 'student');
 
     const rawClass = (user as any)?.class || (user as any)?.classGrade || '';
-    if (rawClass && String(rawClass).includes('9')) {
-      setStudentGrade('Class 9');
-      setStudentSection((user as any)?.section || 'B');
+    const rawSection = (user as any)?.section || 'A';
+    if (rawClass) {
+      const cleanNum = String(rawClass).replace(/[^0-9]/g, '');
+      const gradeStr = cleanNum ? `Class ${cleanNum}` : String(rawClass);
+      setStudentGrade(gradeStr);
+      setStudentSection(String(rawSection).toUpperCase().trim());
     }
 
     refreshAllData();
@@ -1564,14 +1567,19 @@ export default function GroupsPage() {
       // 1. Principal Dispatches (Always visible to all 5,500 students)
       if (c.id === 'channel-school-broadcast' || c.grade === 'All') return true;
 
-      // 2. Exact Grade AND Section matching
-      const userGradeClean = studentGrade.toLowerCase().replace(/[^0-9]/g, '');
-      const channelGradeClean = (c.grade || '').toLowerCase().replace(/[^0-9]/g, '');
+      // 2. Exact Grade AND Section matching across all 91 sections
+      const userNum = studentGrade.replace(/[^0-9]/g, '');
+      const channelNum = (c.grade || '').replace(/[^0-9]/g, '');
+      let gradeMatches = false;
+      if (userNum && channelNum) {
+        gradeMatches = userNum === channelNum;
+      } else {
+        gradeMatches = studentGrade.toLowerCase().trim() === (c.grade || '').toLowerCase().trim();
+      }
+
       const userSectionClean = studentSection.toLowerCase().trim();
       const channelSectionClean = (c.section || '').toLowerCase().trim();
-
-      const gradeMatches = userGradeClean === channelGradeClean;
-      const sectionMatches = userSectionClean === channelSectionClean;
+      const sectionMatches = userSectionClean === channelSectionClean || channelSectionClean === 'all';
 
       return gradeMatches && sectionMatches;
     });
