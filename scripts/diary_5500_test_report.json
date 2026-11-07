@@ -1,0 +1,38 @@
+{
+  "timestamp": "2026-11-07T15:55:45.561Z",
+  "testDate": "2026-11-07",
+  "scope": {
+    "totalStudentsTested": 5500,
+    "totalClassrooms": 150,
+    "studentsPerClassroom": "Up to 30 simultaneous submissions per section"
+  },
+  "results": {
+    "singleClass30StudentsTest": {
+      "totalAttempted": 30,
+      "successful": 30,
+      "firstSubmitterPoints": 50,
+      "subsequentSubmitterPoints": 10,
+      "durationMs": 14241,
+      "status": "PASSED"
+    },
+    "multiClassCrossSubmissionTest": {
+      "totalUploaded": 250,
+      "firstBonuses": 50,
+      "contributorBonuses": 200,
+      "durationMs": 52087,
+      "status": "PASSED"
+    },
+    "isolationVerification": {
+      "class9AEntriesCount": 30,
+      "class9AForeignLeaks": 0,
+      "class8GEntriesCount": 3,
+      "class8GForeignLeaks": 0,
+      "isolationSuccessRate": "100%",
+      "status": "PASSED"
+    },
+    "performanceMetrics": {}
+  },
+  "failures": [],
+  "status": "COMPLETED_SUCCESSFULLY",
+  "durationSeconds": "69.8"
+}

@@ -300,10 +300,10 @@ export async function GET(req: NextRequest) {
       d1Query<any>('SELECT * FROM campus_lost_found ORDER BY created_at DESC LIMIT 100;'),
       cleanClassGrade && sectionParam && cleanClassGrade !== 'All' && sectionParam !== 'All'
         ? d1Query<any>(
-            'SELECT * FROM campus_diary_entries WHERE (class_grade = ? OR class_grade = ? OR class_grade = \'All\') AND (section = ? OR section = \'All\') ORDER BY date_str DESC, created_at DESC LIMIT 50;',
+            'SELECT * FROM campus_diary_entries WHERE (class_grade = ? OR class_grade = ? OR class_grade = \'All\') AND (section = ? OR section = \'All\') ORDER BY date_str DESC, created_at DESC LIMIT 300;',
             [cleanClassGrade, `Class ${cleanClassGrade}`, sectionParam]
           )
-        : d1Query<any>('SELECT * FROM campus_diary_entries ORDER BY date_str DESC, created_at DESC LIMIT 150;'),
+        : d1Query<any>('SELECT * FROM campus_diary_entries ORDER BY date_str DESC, created_at DESC LIMIT 1500;'),
     ]);
 
     // 1. Broadcasts
@@ -531,14 +531,14 @@ export async function POST(req: NextRequest) {
     // 0. UPLOAD DIARY ENTRY (Physical Diary Photo with First Submission Bonus)
     // ------------------------------------------------------------------------
     if (action === 'upload_diary_entry') {
-      const id = `diary-${Date.now()}`;
+      const id = `diary-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
       const rawGrade = (body.classGrade || '8').toString();
       const classGrade = rawGrade.replace(/[^0-9]/g, '') || rawGrade;
       const section = (body.section || 'All').toString().trim();
       const imageUrl = (body.imageUrl || '').toString().trim();
       const homeworkSummary = (body.homeworkSummary || '').toString().trim();
-      const username = (body.username || 'student').toString().trim();
-      const fullName = (body.fullName || username).toString().trim();
+      const username = (body.username || body.uploadedByUsername || req.headers.get('x-username') || 'student').toString().trim();
+      const fullName = (body.fullName || body.uploadedByName || username).toString().trim();
       const dateStr = (body.dateStr || new Date().toISOString().split('T')[0]).toString().trim();
 
       if (!imageUrl) {
@@ -547,12 +547,13 @@ export async function POST(req: NextRequest) {
 
       // Check if ANY student in THIS (class_grade, section) has submitted a diary for this date
       const existing = await d1Query<any>(
-        'SELECT id, uploaded_by_username, uploaded_by_name FROM campus_diary_entries WHERE class_grade = ? AND (section = ? OR section = \'All\') AND date_str = ?;',
-        [classGrade, section, dateStr]
+        'SELECT id, uploaded_by_username, uploaded_by_name FROM campus_diary_entries WHERE (class_grade = ? OR class_grade = ?) AND (section = ? OR section = \'All\') AND date_str = ?;',
+        [classGrade, `Class ${classGrade}`, section, dateStr]
       );
 
       const isFirstSubmission = existing.length === 0;
-      const pointsAwarded = isFirstSubmission ? 50 : 0;
+      // First submitter in a section gets +50 Speed Bonus points; subsequent classmates who submit or verify get +10 Contributor points!
+      const pointsAwarded = isFirstSubmission ? 50 : 10;
 
       await d1Execute(
         `INSERT INTO campus_diary_entries (
@@ -574,8 +575,8 @@ export async function POST(req: NextRequest) {
         ]
       );
 
-      // If first submission, award points to the student in campus_quiz_progress table
-      if (isFirstSubmission && username) {
+      // Award points to the student in campus_quiz_progress table
+      if (pointsAwarded > 0 && username) {
         try {
           const userRows = await d1Query<any>('SELECT * FROM campus_quiz_progress WHERE username = ? LIMIT 1;', [username]);
           if (userRows.length > 0) {
@@ -615,7 +616,7 @@ export async function POST(req: NextRequest) {
           pointsAwarded,
           message: isFirstSubmission
             ? `🎉 Incredible speed! You are the FIRST in Class ${classGrade}${section && section !== 'All' ? `-${section}` : ''} to upload today's diary! +50 Points awarded to your profile!`
-            : `Diary photo recorded for Class ${classGrade}${section && section !== 'All' ? `-${section}` : ''}.`,
+            : `Diary photo recorded for Class ${classGrade}${section && section !== 'All' ? `-${section}` : ''}. +10 Contributor Points awarded to your profile!`,
         },
         { headers: NO_CACHE_HEADERS }
       );
