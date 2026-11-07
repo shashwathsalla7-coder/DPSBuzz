@@ -45,7 +45,7 @@ export const TopBar: FC<TopBarProps> = ({ notificationCount = 0 }) => {
   }
 
   const baseMenuItems = [
-    { title: 'Class Groups', href: '/groups', icon: Users, desc: 'Class WhatsApp, dispatches & homework' },
+    { title: 'School WhatsApp', href: '/school-whatsapp', icon: Users, desc: 'Class WhatsApp, dispatches & homework' },
     { title: 'AI Diary Assistant', href: '/ai-diary', icon: Bot, desc: 'Homework, timetable & rules' },
     { title: 'Study Corner', href: '/study-corner', icon: BookOpen, desc: 'Nursery to 10 notes & formulas' },
     { title: 'Question Box', href: '/question-box', icon: HelpCircle, desc: 'Daily quiz & +10 spirit points' },

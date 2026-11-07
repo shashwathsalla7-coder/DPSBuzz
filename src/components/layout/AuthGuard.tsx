@@ -14,27 +14,11 @@ function AuthGuardInner({ children }: { children: React.ReactNode }) {
     pathname.startsWith('/download') ||
     pathname.startsWith('/admin/login');
 
-  const [isAuthorized, setIsAuthorized] = useState<boolean>(() => {
-    // Never allow unauthorized SSR leaks for private app pages
-    if (typeof window === 'undefined') return false;
-    if (isPublicRoute) return true;
-
-    try {
-      const stored = localStorage.getItem('dpsbuzz_user');
-      if (stored) {
-        const u = JSON.parse(stored);
-        if (u && u.username && u.username.toLowerCase() !== 'guest') {
-          if (u.username.toLowerCase() === 'shashwath71845') {
-            return localStorage.getItem('dpsbuzz_shashwath_authenticated') === 'true';
-          }
-          return true;
-        }
-      }
-    } catch {}
-    return false;
-  });
+  const [isMounted, setIsMounted] = useState<boolean>(false);
+  const [isAuthorized, setIsAuthorized] = useState<boolean>(isPublicRoute);
 
   useEffect(() => {
+    setIsMounted(true);
     if (isPublicRoute) {
       setIsAuthorized(true);
       return;
@@ -133,7 +117,7 @@ function AuthGuardInner({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
 
-  if (!isAuthorized) {
+  if (!isMounted || !isAuthorized) {
     return (
       <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4 select-none">
         <div className="relative flex items-center justify-center">

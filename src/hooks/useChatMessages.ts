@@ -1,13 +1,9 @@
 "use client";
 import { useEffect, useState, useTransition, useCallback, useRef } from 'react';
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@/lib/supabase/client';
 import { v4 as uuidv4 } from 'uuid';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder';
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: { persistSession: false },
-});
+export const supabase = createClient();
 
 export interface Message {
   id: string;
@@ -198,7 +194,7 @@ export function useChatMessages(chatId: string, currentUserId: string) {
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'messages', filter: `chat_id=eq.${chatId}` },
-        (payload) => {
+        (payload: any) => {
           const freshMessage = payload.new as Message;
           // STRICT PRIVACY CHECK: Ensure the incoming event strictly belongs to this active conversation!
           if (freshMessage.chat_id && freshMessage.chat_id !== activeChatIdRef.current) {
@@ -240,7 +236,7 @@ export function useChatMessages(chatId: string, currentUserId: string) {
       .on(
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'messages', filter: `chat_id=eq.${chatId}` },
-        (payload) => {
+        (payload: any) => {
           const updated = payload.new as Message;
           if (!updated || (updated.chat_id && updated.chat_id !== activeChatIdRef.current)) return;
           setMessages((previousState) =>
@@ -262,7 +258,7 @@ export function useChatMessages(chatId: string, currentUserId: string) {
         }
       )
       // Real-time broadcast for Typing indicator (Zero DB writes!)
-      .on('broadcast', { event: 'typing' }, (payload) => {
+      .on('broadcast', { event: 'typing' }, (payload: any) => {
         const { username, name, isTyping } = payload.payload || {};
         const cleanUser = (username || '').toLowerCase().trim();
         const me = (currentUserId || '').toLowerCase().trim();
@@ -279,7 +275,7 @@ export function useChatMessages(chatId: string, currentUserId: string) {
         });
       })
       // Real-time broadcast for Message delivery & read receipts (WhatsApp ticks live update)
-      .on('broadcast', { event: 'receipt' }, (payload) => {
+      .on('broadcast', { event: 'receipt' }, (payload: any) => {
         const { type, messageIds } = payload.payload || {};
         if (!type) return;
 
@@ -299,7 +295,7 @@ export function useChatMessages(chatId: string, currentUserId: string) {
           })
         );
       })
-      .subscribe((status) => {
+      .subscribe((status: any) => {
         if (!isMounted) return;
         if (status === 'SUBSCRIBED') {
           setConnectionStatus('connected');
