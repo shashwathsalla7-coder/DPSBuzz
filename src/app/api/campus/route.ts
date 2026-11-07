@@ -176,7 +176,7 @@ export async function GET(req: NextRequest) {
     // FAST PATH: Incremental Campus Wire Messages Polling (Used by Class Groups)
     // Runs in <100ms instead of 5,500ms
     // ------------------------------------------------------------------------
-    if (action === 'wire_messages') {
+    if (action === 'wire_messages' || action === 'campus_wire_messages') {
       const after = Number(searchParams.get('after')) || 0;
       const channelId = searchParams.get('channelId');
 
@@ -224,6 +224,7 @@ export async function GET(req: NextRequest) {
           success: true,
           messages,
           wireMessages: messages,
+          campus_wireMessages: messages,
         },
         { headers: NO_CACHE_HEADERS }
       );
@@ -232,7 +233,7 @@ export async function GET(req: NextRequest) {
     // ------------------------------------------------------------------------
     // FAST PATH: Campus Wire Channels List Only (<80ms)
     // ------------------------------------------------------------------------
-    if (action === 'wire_channels') {
+    if (action === 'wire_channels' || action === 'campus_wire_channels') {
       let rawChannels: any[] = [];
       try {
         rawChannels = await d1Query<any>(
@@ -258,9 +259,61 @@ export async function GET(req: NextRequest) {
       }));
 
       return NextResponse.json(
-        { success: true, channels: wireChannels, wireChannels },
+        { success: true, channels: wireChannels, wireChannels, campus_wireChannels: wireChannels },
         { headers: NO_CACHE_HEADERS }
       );
+    }
+
+    // ------------------------------------------------------------------------
+    // FAST PATH: Get Invite Link Details (Public Metadata for Join Page)
+    // ------------------------------------------------------------------------
+    if (action === 'get_invite_link_details') {
+      const code = (searchParams.get('code') || '').trim();
+      if (!code) return NextResponse.json({ error: 'Invite code required' }, { status: 400 });
+      const links = await d1Query<any>('SELECT * FROM campus_wire_invite_links WHERE invite_code = ? AND is_revoked = 0 LIMIT 1;', [code]);
+      if (!links.length) return NextResponse.json({ error: 'Invite link not found or expired' }, { status: 404 });
+      const link = links[0];
+      const channels = await d1Query<any>('SELECT * FROM campus_wire_channels WHERE id = ? LIMIT 1;', [link.channel_id]);
+      const ch = channels[0] || {};
+      return NextResponse.json({
+        success: true,
+        invite: {
+          id: link.id,
+          channelId: link.channel_id,
+          channelName: link.channel_name,
+          grade: ch.grade || '',
+          section: ch.section || '',
+          memberCount: Number(ch.member_count) || 40,
+          roleGranted: link.role_granted || 'member',
+          hasPassword: Boolean(link.password && link.password.trim() !== ''),
+          requireApproval: Boolean(link.require_approval),
+          createdBy: link.created_by,
+          createdAt: link.created_at,
+        }
+      }, { headers: NO_CACHE_HEADERS });
+    }
+
+    // ------------------------------------------------------------------------
+    // FAST PATH: Get Pending Join Requests (Admins & Faculty)
+    // ------------------------------------------------------------------------
+    if (action === 'get_join_requests') {
+      const channelId = searchParams.get('channelId');
+      if (!channelId) return NextResponse.json({ error: 'channelId required' }, { status: 400 });
+      const requests = await d1Query<any>('SELECT * FROM campus_wire_join_requests WHERE channel_id = ? AND status = "pending" ORDER BY created_at DESC LIMIT 50;', [channelId]);
+      return NextResponse.json({ success: true, requests }, { headers: NO_CACHE_HEADERS });
+    }
+
+    // ------------------------------------------------------------------------
+    // FAST PATH: Get Active Invite Links for a Channel
+    // ------------------------------------------------------------------------
+    if (action === 'get_channel_invite_links') {
+      const channelId = searchParams.get('channelId');
+      if (!channelId) return NextResponse.json({ error: 'channelId required' }, { status: 400 });
+      const links = await d1Query<any>(
+        'SELECT id, channel_id, channel_name, invite_code, role_granted, require_approval, (CASE WHEN password != "" AND password IS NOT NULL THEN 1 ELSE 0 END) as has_password, uses_count, created_by, created_at FROM campus_wire_invite_links WHERE channel_id = ? AND is_revoked = 0 ORDER BY created_at DESC LIMIT 20;',
+        [channelId]
+      );
+      return NextResponse.json({ success: true, links }, { headers: NO_CACHE_HEADERS });
     }
 
     const now = Date.now();
@@ -1327,7 +1380,7 @@ export async function POST(req: NextRequest) {
     // ------------------------------------------------------------------------
     // 12. SEND CAMPUS WIRE MESSAGE (Role & Channel Lock Protected)
     // ------------------------------------------------------------------------
-    if (action === 'send_wire_message') {
+    if (action === 'send_wire_message' || action === 'send_campus_wire_message') {
       const { channelId, senderUsername, senderName, senderRole, senderClass, text, templateType, mediaUrl } = body;
       const rawText = (text || '').trim();
       const effectiveMediaUrl = (mediaUrl || body.imageUrl || '').trim();
@@ -1539,7 +1592,7 @@ export async function POST(req: NextRequest) {
     // ------------------------------------------------------------------------
     // 14. CREATE CAMPUS WIRE CHANNEL (Teacher & Madam)
     // ------------------------------------------------------------------------
-    if (action === 'create_wire_channel') {
+    if (action === 'create_wire_channel' || action === 'create_campus_wire_channel') {
       const { name, grade, section, isLocked } = body;
       const cleanName = (name || '').trim();
       if (!cleanName) {
@@ -1687,7 +1740,7 @@ export async function POST(req: NextRequest) {
     // ------------------------------------------------------------------------
     // 16. DISPATCH CAMPUS WIRE AUTOMATED TEMPLATE
     // ------------------------------------------------------------------------
-    if (action === 'dispatch_wire_template') {
+    if (action === 'dispatch_wire_template' || action === 'dispatch_campus_wire_template') {
       const { channelId, templateType, content, senderName } = body;
       if (!channelId || !templateType) {
         return NextResponse.json({ error: 'channelId and templateType are required' }, { status: 400 });
@@ -1742,6 +1795,188 @@ export async function POST(req: NextRequest) {
           timestamp: nowTs,
         }
       }, { headers: NO_CACHE_HEADERS });
+    }
+
+    // ------------------------------------------------------------------------
+    // 17. CREATE GROUP INVITE LINK (Admin or Member Role, Optional Password & Approval)
+    // ------------------------------------------------------------------------
+    if (action === 'create_invite_link') {
+      const { channelId, channelName, createdBy, roleGranted, password, requireApproval, maxUses } = body;
+      if (!channelId) return NextResponse.json({ error: 'channelId is required' }, { status: 400 });
+
+      const cleanRole = roleGranted === 'admin' ? 'admin' : 'member';
+      const cleanPass = (password || '').trim();
+      const reqApproval = requireApproval ? 1 : 0;
+      const linkId = `inv-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      const randomSuffix = Math.random().toString(36).substring(2, 7).toUpperCase();
+      const inviteCode = `DPS-${cleanRole === 'admin' ? 'ADM' : 'CLS'}-${randomSuffix}`;
+
+      await d1Execute(`
+        INSERT INTO campus_wire_invite_links (
+          id, channel_id, channel_name, invite_code, created_by, role_granted, password, require_approval, max_uses, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP);
+      `, [linkId, channelId, channelName || 'Classroom Channel', inviteCode, createdBy || 'admin', cleanRole, cleanPass, reqApproval, Number(maxUses) || 0]);
+
+      return NextResponse.json({
+        success: true,
+        invite: {
+          id: linkId,
+          inviteCode,
+          inviteUrl: `/campus-wire?invite=${inviteCode}`,
+          roleGranted: cleanRole,
+          hasPassword: Boolean(cleanPass),
+          requireApproval: Boolean(reqApproval),
+          channelId,
+          channelName,
+        }
+      }, { headers: NO_CACHE_HEADERS });
+    }
+
+    // ------------------------------------------------------------------------
+    // 18. JOIN VIA INVITE LINK (With Password Verification & Direct/Approval Routing)
+    // ------------------------------------------------------------------------
+    if (action === 'join_via_invite_link') {
+      const { inviteCode, username, fullName, password } = body;
+      const cleanUser = (username || '').toLowerCase().trim();
+      if (!inviteCode || !cleanUser) {
+        return NextResponse.json({ error: 'inviteCode and username are required' }, { status: 400 });
+      }
+
+      const links = await d1Query<any>('SELECT * FROM campus_wire_invite_links WHERE invite_code = ? AND is_revoked = 0 LIMIT 1;', [inviteCode]);
+      if (!links.length) {
+        return NextResponse.json({ error: 'Invalid or expired invite link' }, { status: 404 });
+      }
+      const link = links[0];
+
+      // Password verification
+      if (link.password && link.password.trim() !== '') {
+        const providedPass = (password || '').trim();
+        if (providedPass !== link.password.trim()) {
+          return NextResponse.json({ error: 'Incorrect group password. Please enter the correct password.' }, { status: 401 });
+        }
+      }
+
+      // Check if require approval
+      if (Boolean(link.require_approval)) {
+        const existingReq = await d1Query<any>('SELECT * FROM campus_wire_join_requests WHERE channel_id = ? AND requester_username = ? AND status = "pending" LIMIT 1;', [link.channel_id, cleanUser]);
+        if (existingReq.length) {
+          return NextResponse.json({ success: true, pendingApproval: true, status: 'pending', message: 'You already have a pending join request for this group. Group admins will review it soon.' });
+        }
+        const reqId = `jreq-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+        await d1Execute(`
+          INSERT INTO campus_wire_join_requests (
+            id, channel_id, channel_name, invite_code, requester_username, requester_name, requested_role, status, created_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', CURRENT_TIMESTAMP);
+        `, [reqId, link.channel_id, link.channel_name, inviteCode, cleanUser, fullName || cleanUser, link.role_granted || 'member']);
+
+        return NextResponse.json({
+          success: true,
+          pendingApproval: true,
+          status: 'pending',
+          message: 'Join request submitted! Group administrators will approve your request.',
+          channelName: link.channel_name,
+        }, { headers: NO_CACHE_HEADERS });
+      }
+
+      // Direct join
+      const chList = await d1Query<any>('SELECT * FROM campus_wire_channels WHERE id = ? LIMIT 1;', [link.channel_id]);
+      if (!chList.length) return NextResponse.json({ error: 'Target classroom not found' }, { status: 404 });
+      const ch = chList[0];
+
+      const enrolled: string[] = JSON.parse(ch.enrolled_usernames || '[]');
+      const admins: string[] = JSON.parse(ch.admin_usernames || '["shashwath71845", "madam_principal"]');
+
+      if (!enrolled.map(u => u.toLowerCase()).includes(cleanUser)) {
+        enrolled.push(cleanUser);
+      }
+      if (link.role_granted === 'admin' && !admins.map(u => u.toLowerCase()).includes(cleanUser)) {
+        admins.push(cleanUser);
+      }
+
+      await d1Execute(`
+        UPDATE campus_wire_channels 
+        SET enrolled_usernames = ?, admin_usernames = ?, member_count = member_count + 1 
+        WHERE id = ?;
+      `, [JSON.stringify(enrolled), JSON.stringify(admins), link.channel_id]);
+
+      await d1Execute('UPDATE campus_wire_invite_links SET uses_count = uses_count + 1 WHERE id = ?;', [link.id]);
+
+      // System welcome message
+      const sysMsgId = `wmsg-join-${Date.now()}`;
+      const roleLabel = link.role_granted === 'admin' ? 'Classroom Admin ⭐️' : 'Student Member';
+      const welcomeText = `👋 @${cleanUser} (${fullName || 'Student'}) joined via invite link as ${roleLabel}.`;
+      await d1Execute(`
+        INSERT INTO campus_wire_messages (
+          id, channel_id, sender_username, sender_name, sender_role, sender_class, text, template_type, timestamp
+        ) VALUES (?, ?, 'system', 'DPS Campus Wire', 'admin', 'System Desk', ?, 'none', ?);
+      `, [sysMsgId, link.channel_id, welcomeText, Date.now()]);
+
+      return NextResponse.json({
+        success: true,
+        joined: true,
+        status: 'enrolled',
+        channelId: link.channel_id,
+        channelName: link.channel_name,
+        roleGranted: link.role_granted,
+      }, { headers: NO_CACHE_HEADERS });
+    }
+
+    // ------------------------------------------------------------------------
+    // 19. RESPOND TO JOIN REQUEST (Approve or Reject by Admin)
+    // ------------------------------------------------------------------------
+    if (action === 'respond_to_join_request') {
+      const { requestId, decision, reviewerUsername } = body;
+      if (!requestId || !decision) {
+        return NextResponse.json({ error: 'requestId and decision are required' }, { status: 400 });
+      }
+
+      const reqRows = await d1Query<any>('SELECT * FROM campus_wire_join_requests WHERE id = ? LIMIT 1;', [requestId]);
+      if (!reqRows.length) return NextResponse.json({ error: 'Request not found' }, { status: 404 });
+      const reqItem = reqRows[0];
+
+      const nowIso = new Date().toISOString();
+      if (decision === 'approved') {
+        const chList = await d1Query<any>('SELECT * FROM campus_wire_channels WHERE id = ? LIMIT 1;', [reqItem.channel_id]);
+        if (chList.length) {
+          const ch = chList[0];
+          const enrolled: string[] = JSON.parse(ch.enrolled_usernames || '[]');
+          const admins: string[] = JSON.parse(ch.admin_usernames || '["shashwath71845", "madam_principal"]');
+          const cleanTarget = reqItem.requester_username.toLowerCase().trim();
+
+          if (!enrolled.includes(cleanTarget)) enrolled.push(cleanTarget);
+          if (reqItem.requested_role === 'admin' && !admins.includes(cleanTarget)) admins.push(cleanTarget);
+
+          await d1Execute(`
+            UPDATE campus_wire_channels 
+            SET enrolled_usernames = ?, admin_usernames = ?, member_count = member_count + 1 
+            WHERE id = ?;
+          `, [JSON.stringify(enrolled), JSON.stringify(admins), reqItem.channel_id]);
+
+          const sysMsgId = `wmsg-appr-${Date.now()}`;
+          const roleLabel = reqItem.requested_role === 'admin' ? 'Classroom Admin ⭐️' : 'Student Member';
+          const welcomeText = `✅ Join request approved by @${reviewerUsername || 'admin'}: @${cleanTarget} is now enrolled as ${roleLabel}.`;
+          await d1Execute(`
+            INSERT INTO campus_wire_messages (
+              id, channel_id, sender_username, sender_name, sender_role, sender_class, text, template_type, timestamp
+            ) VALUES (?, ?, 'system', 'DPS Campus Wire', 'admin', 'System Desk', ?, 'none', ?);
+          `, [sysMsgId, reqItem.channel_id, welcomeText, Date.now()]);
+        }
+
+        await d1Execute('UPDATE campus_wire_join_requests SET status = "approved", reviewed_by = ?, reviewed_at = ? WHERE id = ?;', [reviewerUsername || 'admin', nowIso, requestId]);
+      } else {
+        await d1Execute('UPDATE campus_wire_join_requests SET status = "rejected", reviewed_by = ?, reviewed_at = ? WHERE id = ?;', [reviewerUsername || 'admin', nowIso, requestId]);
+      }
+
+      return NextResponse.json({ success: true, decision, status: decision, requestId }, { headers: NO_CACHE_HEADERS });
+    }
+
+    // ------------------------------------------------------------------------
+    // 20. REVOKE INVITE LINK
+    // ------------------------------------------------------------------------
+    if (action === 'revoke_invite_link') {
+      const { linkId } = body;
+      await d1Execute('UPDATE campus_wire_invite_links SET is_revoked = 1 WHERE id = ?;', [linkId]);
+      return NextResponse.json({ success: true, revokedId: linkId }, { headers: NO_CACHE_HEADERS });
     }
 
     return NextResponse.json({ error: `Unknown action: ${action}` }, { status: 400 });

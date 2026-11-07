@@ -39,8 +39,13 @@ export function proxy(request: NextRequest) {
     }
   }
 
-  // 2. Read user session cookie
-  const userCookie = request.cookies.get('dpsbuzz_user')?.value;
+  // 2. Read user session cookie or auth header
+  const userCookie =
+    request.cookies.get('dpsbuzz_user')?.value ||
+    request.headers.get('x-dpsbuzz-user') ||
+    (request.headers.get('authorization')?.startsWith('Bearer ')
+      ? request.headers.get('authorization')?.slice(7)
+      : undefined);
   let hasValidUser = false;
 
   if (userCookie) {
@@ -51,7 +56,9 @@ export function proxy(request: NextRequest) {
         hasValidUser = true;
       }
     } catch {
-      hasValidUser = false;
+      if (typeof userCookie === 'string' && userCookie.trim().length > 0 && userCookie !== 'guest') {
+        hasValidUser = true;
+      }
     }
   }
 
@@ -66,7 +73,8 @@ export function proxy(request: NextRequest) {
     pathname === '/terms' ||
     pathname === '/contact' ||
     pathname === '/download' ||
-    pathname.startsWith('/download');
+    pathname.startsWith('/download') ||
+    pathname.startsWith('/join');
 
   if (pathname === '/') {
     // If student is already logged in on this device, smoothly take them to /home
@@ -139,7 +147,7 @@ export function proxy(request: NextRequest) {
     pathname === '/api/admin/login' ||
     pathname === '/api/media/sign-read' ||
     pathname.startsWith('/api/upload') ||
-    (pathname.startsWith('/api/campus') && request.method === 'GET');
+    (pathname.startsWith('/api/campus') && (request.method === 'GET' || request.nextUrl.searchParams.get('action')?.includes('invite') || request.nextUrl.searchParams.get('action')?.includes('join')));
 
   // 7. Strict Wall: ALL other routes in the app require a registered, logged-in student account!
   // Especially deep links (e.g. /u/[username], /reels, /chats, /leaderboard, /games, /notices, /post/new, /settings)

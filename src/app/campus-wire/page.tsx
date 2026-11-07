@@ -42,9 +42,11 @@ import {
   CheckCircle2,
   AlertCircle,
   Bookmark,
+  Link2,
   Compass,
   Image as ImageIcon,
   Headphones,
+  KeyRound,
 } from 'lucide-react';
 
 import {
@@ -82,6 +84,7 @@ import { VoiceRecorderBar } from './components/VoiceRecorderBar';
 import { PhotoAttachmentModal } from './components/PhotoAttachmentModal';
 import { TeacherNoticeModal } from './components/TeacherNoticeModal';
 import { PinnedNoticeBanner } from './components/PinnedNoticeBanner';
+import { GroupInviteLinkModal } from './components/GroupInviteLinkModal';
 
 import { DataStore, Profile } from '@/lib/dataStore';
 import { SchoolFeatures, CampusWireChannel, CampusWireMessage } from '@/lib/schoolFeatures';
@@ -395,6 +398,12 @@ export default function CampusWireDesktopPage() {
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [selectedVideoModal, setSelectedVideoModal] = useState<{ title: string; duration: string } | null>(null);
   const [selectedImageLightbox, setSelectedImageLightbox] = useState<string | null>(null);
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+  const [inviteCodeFromUrl, setInviteCodeFromUrl] = useState<string | null>(null);
+  const [inviteModalData, setInviteModalData] = useState<any | null>(null);
+  const [invitePasswordInput, setInvitePasswordInput] = useState('');
+  const [inviteJoiningLoading, setInviteJoiningLoading] = useState(false);
+  const [inviteError, setInviteError] = useState<string | null>(null);
   const [userAbout, setUserAbout] = useState('DPS Buzz Student • Ready to excel 🎓');
 
   // DOM References
@@ -496,11 +505,23 @@ export default function CampusWireDesktopPage() {
 
         if (messagesRes.ok) {
           const mData = await messagesRes.json();
-          if (Array.isArray(mData.campus_wireMessages) && mData.campus_wireMessages.length > 0) {
+          const rawMsgs = mData.wireMessages || mData.messages || mData.campus_wireMessages || [];
+          if (Array.isArray(rawMsgs) && rawMsgs.length > 0) {
             setMessagesMap((prev) => {
               const updated = { ...prev };
-              mData.campus_wireMessages.forEach((raw: any) => {
+              const curU = (currentUser?.username || userName || '').toLowerCase().trim();
+              const curN = (userName || currentUser?.fullName || '').toLowerCase().trim();
+
+              rawMsgs.forEach((raw: any) => {
                 const cId = raw.channelId || 'channel-class-8g';
+                const sUser = (raw.senderUsername || '').toLowerCase().trim();
+                const sName = (raw.senderName || '').toLowerCase().trim();
+                const isMine = Boolean(
+                  (curU !== '' && sUser === curU) ||
+                  (curU !== '' && sName === curU) ||
+                  (curN !== '' && sName === curN && sUser !== 'system' && sUser !== 'madam_principal')
+                );
+
                 const item: MessageItem = {
                   id: raw.id,
                   senderName: raw.senderName || raw.senderUsername || 'DPS Member',
@@ -511,6 +532,7 @@ export default function CampusWireDesktopPage() {
                   time: raw.createdAt ? new Date(raw.createdAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true }) : 'Now',
                   timestamp: raw.timestamp,
                   templateType: raw.templateType || 'none',
+                  isMe: isMine,
                 };
                 if (!updated[cId]) {
                   updated[cId] = [item];
@@ -531,7 +553,104 @@ export default function CampusWireDesktopPage() {
     };
 
     fetchCloudflareData();
+
+    // Check URL parameters for invite links and active room
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const inv = urlParams.get('invite');
+      if (inv) {
+        setInviteCodeFromUrl(inv);
+        fetch(`/api/campus?action=get_invite_link_details&code=${encodeURIComponent(inv)}`)
+          .then((r) => r.json())
+          .then((d) => {
+            if (d.success && d.invite) {
+              setInviteModalData(d.invite);
+            }
+          })
+          .catch(() => {});
+      }
+      const room = urlParams.get('activeRoom');
+      if (room) {
+        setActiveChatId(room);
+        setIsMobileChatOpen(true);
+      }
+    }
   }, []);
+
+  // --------------------------------------------------------------------------
+  // Real-Time Incremental Message Polling (Cloudflare D1 Synchronizer)
+  // --------------------------------------------------------------------------
+  useEffect(() => {
+    if (!activeChatId) return;
+
+    const pollInterval = setInterval(async () => {
+      try {
+        const curList = messagesMap[activeChatId] || [];
+        const highestTs = curList.length > 0 ? Math.max(...curList.map((m) => m.timestamp || 0)) : 0;
+
+        const res = await fetch(
+          `/api/campus?action=wire_messages&channelId=${encodeURIComponent(activeChatId)}&after=${highestTs}`
+        );
+        if (res.ok) {
+          const d = await res.json();
+          const incoming = d.wireMessages || d.messages || [];
+          if (incoming.length > 0) {
+            const curU = (currentUser?.username || userName || '').toLowerCase().trim();
+            const curN = (userName || currentUser?.fullName || '').toLowerCase().trim();
+
+            setMessagesMap((prev) => {
+              const existing = prev[activeChatId] || [];
+              const existingIds = new Set(existing.map((m) => m.id));
+              const newItems: MessageItem[] = [];
+
+              for (const raw of incoming) {
+                if (!existingIds.has(raw.id)) {
+                  const sUser = (raw.senderUsername || '').toLowerCase().trim();
+                  const sName = (raw.senderName || '').toLowerCase().trim();
+                  const isMine = Boolean(
+                    (curU !== '' && sUser === curU) ||
+                    (curU !== '' && sName === curU) ||
+                    (curN !== '' && sName === curN && sUser !== 'system' && sUser !== 'madam_principal')
+                  );
+
+                  newItems.push({
+                    id: raw.id,
+                    senderName: raw.senderName || raw.senderUsername || 'DPS Member',
+                    senderUsername: raw.senderUsername,
+                    senderRole: raw.senderRole,
+                    senderColor: raw.senderRole === 'teacher' ? '#e542a3' : raw.senderRole === 'admin' ? '#ea4335' : '#53bdeb',
+                    text: raw.text,
+                    time: raw.createdAt
+                      ? new Date(raw.createdAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true })
+                      : 'Now',
+                    timestamp: raw.timestamp,
+                    templateType: raw.templateType || 'none',
+                    isMe: isMine,
+                  });
+                }
+              }
+
+              if (newItems.length > 0) {
+                const updated = {
+                  ...prev,
+                  [activeChatId]: [...existing, ...newItems],
+                };
+                try {
+                  localStorage.setItem('dpsbuzz_campus_wire_messages_map', JSON.stringify(updated));
+                } catch {}
+                return updated;
+              }
+              return prev;
+            });
+          }
+        }
+      } catch {
+        // Polling notice
+      }
+    }, 2500);
+
+    return () => clearInterval(pollInterval);
+  }, [activeChatId, currentUser, userName, messagesMap]);
 
   const activeMessages = messagesMap[activeChatId] || [];
   const activeRoom = chatRooms.find((r) => r.id === activeChatId) || chatRooms[0];
@@ -558,10 +677,13 @@ export default function CampusWireDesktopPage() {
     const now = new Date();
     const timeStr = now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase();
 
+    const effectiveUsername = currentUser?.username || userName.toLowerCase().replace(/\s+/g, '_') || 'student';
+    const effectiveName = currentUser?.fullName || userName || 'DPS Student';
+
     const newMsg: MessageItem = {
       id: `msg-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-      senderName: userName,
-      senderUsername: currentUser?.username || 'student',
+      senderName: effectiveName,
+      senderUsername: effectiveUsername,
       senderRole: userRole,
       senderColor: isTeacher ? '#e542a3' : isAdmin ? '#ea4335' : '#53bdeb',
       text: cleanText,
@@ -606,10 +728,10 @@ export default function CampusWireDesktopPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          action: 'send_campus_wire_message',
+          action: 'send_wire_message',
           channelId: activeChatId,
-          senderUsername: currentUser?.username || 'student',
-          senderName: userName,
+          senderUsername: effectiveUsername,
+          senderName: effectiveName,
           senderRole: userRole,
           senderClass: activeRoom.grade || 'Class 8-G',
           text: cleanText,
@@ -625,14 +747,16 @@ export default function CampusWireDesktopPage() {
   const handleSendVoiceNote = (audioUrl: string, durationStr: string) => {
     const now = new Date();
     const timeStr = now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase();
+    const effectiveUsername = currentUser?.username || userName.toLowerCase().replace(/\s+/g, '_') || 'student';
+    const effectiveName = currentUser?.fullName || userName || 'DPS Student';
 
     const newMsg: MessageItem = {
       id: `msg-voice-${Date.now()}`,
-      senderName: userName,
-      senderUsername: currentUser?.username || 'student',
+      senderName: effectiveName,
+      senderUsername: effectiveUsername,
       senderRole: userRole,
       senderColor: isTeacher ? '#e542a3' : isAdmin ? '#ea4335' : '#53bdeb',
-      text: `🎤 Voice note (${durationStr})`,
+      text: `🎤 Academic Voice Note (${durationStr})`,
       time: timeStr,
       timestamp: Date.now(),
       isMe: true,
@@ -665,6 +789,22 @@ export default function CampusWireDesktopPage() {
     });
 
     setIsRecordingVoice(false);
+
+    try {
+      fetch('/api/campus', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'send_wire_message',
+          channelId: activeChatId,
+          senderUsername: effectiveUsername,
+          senderName: effectiveName,
+          senderRole: userRole,
+          senderClass: activeRoom.grade || 'Class 8-G',
+          text: `🎤 Academic Voice Note (${durationStr})`,
+        }),
+      });
+    } catch {}
   };
 
   // Photo File Selected Handler
@@ -687,11 +827,13 @@ export default function CampusWireDesktopPage() {
 
     const now = new Date();
     const timeStr = now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase();
+    const effectiveUsername = currentUser?.username || userName.toLowerCase().replace(/\s+/g, '_') || 'student';
+    const effectiveName = currentUser?.fullName || userName || 'DPS Student';
 
     const newMsg: MessageItem = {
       id: `msg-img-${Date.now()}`,
-      senderName: userName,
-      senderUsername: currentUser?.username || 'student',
+      senderName: effectiveName,
+      senderUsername: effectiveUsername,
       senderRole: userRole,
       senderColor: isTeacher ? '#e542a3' : isAdmin ? '#ea4335' : '#53bdeb',
       text: caption || '📷 Photo Attachment',
@@ -724,6 +866,23 @@ export default function CampusWireDesktopPage() {
       } catch {}
       return updated;
     });
+
+    try {
+      fetch('/api/campus', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'send_wire_message',
+          channelId: activeChatId,
+          senderUsername: effectiveUsername,
+          senderName: effectiveName,
+          senderRole: userRole,
+          senderClass: activeRoom.grade || 'Class 8-G',
+          text: caption || '📷 Official Circular Attachment',
+          imageUrl: selectedImageToPreview,
+        }),
+      });
+    } catch {}
 
     setSelectedImageToPreview(null);
   };
@@ -794,10 +953,10 @@ export default function CampusWireDesktopPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          action: 'send_campus_wire_message',
+          action: 'send_wire_message',
           channelId: activeChatId,
-          senderUsername: currentUser?.username || 'teacher',
-          senderName: userName,
+          senderUsername: currentUser?.username || 'teacher_faculty',
+          senderName: `${currentUser?.fullName || userName} (Faculty)`,
           senderRole: 'teacher',
           senderClass: activeRoom.grade || 'Faculty',
           text: data.text,
@@ -1587,6 +1746,14 @@ export default function CampusWireDesktopPage() {
               )}
 
               <button
+                onClick={() => setIsInviteModalOpen(true)}
+                className="w-9 h-9 flex items-center justify-center rounded-full hover:text-white hover:bg-[#2a3942] text-[#38bdf8] transition-colors cursor-pointer active:scale-90"
+                title="Group Invite Link (Generate, Password, Admin Rights)"
+              >
+                <Link2 size={18} />
+              </button>
+
+              <button
                 onClick={() => setActiveCall({ contactName: activeRoom.name, type: 'video' })}
                 className="w-9 h-9 flex items-center justify-center rounded-full hover:text-white hover:bg-[#2a3942] transition-colors cursor-pointer active:scale-90"
                 title="Video Call"
@@ -1655,8 +1822,18 @@ export default function CampusWireDesktopPage() {
             {/* Message Feed */}
             {activeMessages.map((msg, idx) => {
               const prev = activeMessages[idx - 1];
+              const myUsername = (currentUser?.username || userName || '').toLowerCase().trim();
+              const myName = (userName || currentUser?.fullName || '').toLowerCase().trim();
+              const msgUser = (msg.senderUsername || '').toLowerCase().trim();
+              const msgSenderName = (msg.senderName || '').toLowerCase().trim();
+
+              const isMe =
+                msg.isMe === true ||
+                (myUsername !== '' && msgUser === myUsername) ||
+                (myUsername !== '' && msgSenderName === myUsername) ||
+                (myName !== '' && msgSenderName === myName && msgUser !== 'system' && msgUser !== 'madam_principal');
+
               const isSameAsPrev = prev && prev.senderName === msg.senderName;
-              const isMe = msg.isMe;
               const isSelected = selectedMessageId === msg.id;
 
               // System Announcement Pill
@@ -2055,7 +2232,8 @@ export default function CampusWireDesktopPage() {
             onClose={() => setRightPanel('none')}
             onOpenMediaGallery={() => setRightPanel('media-gallery')}
             onStartCall={(type) => setActiveCall({ contactName: activeRoom.name, type })}
-            onAddMember={() => setIsNewChatModalOpen(true)}
+            onAddMember={() => setIsInviteModalOpen(true)}
+            onOpenInviteModal={() => setIsInviteModalOpen(true)}
             onToggleLock={handleToggleChannelLock}
             onQuickDispatch={(type) => {
               setTeacherNoticeDefaultType(type);
@@ -2118,6 +2296,116 @@ export default function CampusWireDesktopPage() {
           onClose={() => setIsTeacherNoticeModalOpen(false)}
           onDispatch={handleTeacherDispatch}
         />
+      )}
+
+      {/* Group Invite Link Generation & Sharing Modal */}
+      {isInviteModalOpen && (
+        <GroupInviteLinkModal
+          chat={activeRoom}
+          currentUserUsername={currentUser?.username || userName}
+          onClose={() => setIsInviteModalOpen(false)}
+        />
+      )}
+
+      {/* Invite Link Join Dialog (Prompt from URL ?invite=CODE) */}
+      {inviteModalData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-fadeIn">
+          <div className="w-full max-w-md bg-[#161f2e] border border-white/10 rounded-2xl p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-[#fbbf24] uppercase tracking-wider flex items-center gap-1.5">
+                <Link2 size={14} />
+                Classroom Invitation
+              </span>
+              <button
+                onClick={() => setInviteModalData(null)}
+                className="text-[#94a3b8] hover:text-white cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="text-center space-y-2 py-2">
+              <div className="w-16 h-16 mx-auto rounded-full bg-[#4f46e5] flex items-center justify-center font-bold text-white text-xl shadow-lg border border-white/10">
+                {inviteModalData.grade ? inviteModalData.grade.replace(/[^0-9]/g, '') : 'DP'}
+              </div>
+              <h3 className="text-base font-bold text-white">{inviteModalData.channelName}</h3>
+              <p className="text-xs text-[#94a3b8]">{inviteModalData.memberCount || 40} members enrolled</p>
+              <div className="pt-1">
+                <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
+                  inviteModalData.roleGranted === 'admin'
+                    ? 'bg-[#fbbf24]/20 text-[#fbbf24] border border-[#fbbf24]/30'
+                    : 'bg-[#00a884]/20 text-[#00a884] border border-[#00a884]/30'
+                }`}>
+                  {inviteModalData.roleGranted === 'admin' ? 'Classroom Admin Invitation ⭐️' : 'Student Member Invitation'}
+                </span>
+              </div>
+            </div>
+
+            {inviteError && (
+              <div className="p-3 rounded-lg bg-[#f87171]/15 border border-[#f87171]/30 text-xs text-[#f87171] flex items-center gap-2">
+                <AlertCircle size={14} className="shrink-0" />
+                <span>{inviteError}</span>
+              </div>
+            )}
+
+            {inviteModalData.hasPassword && (
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-[#94a3b8] flex items-center gap-1">
+                  <KeyRound size={12} className="text-[#fbbf24]" />
+                  Enter Passcode for this Link:
+                </label>
+                <input
+                  type="password"
+                  placeholder="Passcode..."
+                  value={invitePasswordInput}
+                  onChange={(e) => setInvitePasswordInput(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg bg-[#0b0f17] border border-white/10 text-xs text-white outline-none focus:border-[#fbbf24]"
+                />
+              </div>
+            )}
+
+            <button
+              onClick={async () => {
+                setInviteJoiningLoading(true);
+                setInviteError(null);
+                try {
+                  const res = await fetch('/api/campus', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      action: 'join_via_invite_link',
+                      inviteCode: inviteCodeFromUrl,
+                      username: currentUser?.username || userName || 'student',
+                      fullName: currentUser?.fullName || userName || 'Student',
+                      password: invitePasswordInput.trim(),
+                    }),
+                  });
+                  const d = await res.json();
+                  if (d.success) {
+                    if (d.pendingApproval) {
+                      alert(d.message || 'Join request submitted! Group admins will review your request.');
+                    } else {
+                      alert(`Enrolled successfully in ${inviteModalData.channelName}!`);
+                      setActiveChatId(inviteModalData.channelId);
+                      setIsMobileChatOpen(true);
+                    }
+                    setInviteModalData(null);
+                  } else {
+                    setInviteError(d.error || 'Failed to join group.');
+                  }
+                } catch {
+                  setInviteError('Network error joining group.');
+                } finally {
+                  setInviteJoiningLoading(false);
+                }
+              }}
+              disabled={inviteJoiningLoading}
+              className="w-full py-2.5 rounded-xl bg-[#4f46e5] hover:bg-[#4338ca] text-white text-xs font-bold transition-colors cursor-pointer shadow-md disabled:opacity-50"
+            >
+              {inviteJoiningLoading ? 'Enrolling...' : inviteModalData.requireApproval ? 'Submit Join Request' : 'Join Classroom Group'}
+            </button>
+          </div>
+        </div>
       )}
 
       {/* Full-Screen Image Lightbox */}
