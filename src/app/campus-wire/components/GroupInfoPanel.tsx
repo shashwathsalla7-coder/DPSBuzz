@@ -17,6 +17,7 @@ import {
   Image as ImageIcon,
   FileText,
   Link2,
+  UserCheck,
 } from 'lucide-react';
 import { ChatRoom, ContactItem } from './types';
 import { DEMO_CONTACTS } from './constants';
@@ -27,6 +28,7 @@ interface GroupInfoPanelProps {
   onOpenMediaGallery: () => void;
   onStartCall: (type: 'voice' | 'video') => void;
   onAddMember?: () => void;
+  onOpenInviteModal?: () => void;
   isTeacher?: boolean;
   isAdmin?: boolean;
   onToggleLock?: (locked: boolean) => void;
@@ -39,6 +41,7 @@ export const GroupInfoPanel: React.FC<GroupInfoPanelProps> = ({
   onOpenMediaGallery,
   onStartCall,
   onAddMember,
+  onOpenInviteModal,
   isTeacher = false,
   isAdmin = false,
   onToggleLock,
@@ -47,6 +50,48 @@ export const GroupInfoPanel: React.FC<GroupInfoPanelProps> = ({
   const [memberSearch, setMemberSearch] = useState('');
   const [isMuted, setIsMuted] = useState(chat.isMuted || false);
   const [disappearingDuration, setDisappearingDuration] = useState('Off');
+  const [pendingRequests, setPendingRequests] = useState<any[]>([]);
+  const [requestActionLoading, setRequestActionLoading] = useState<string | null>(null);
+
+  // Poll / fetch pending join requests for admins
+  React.useEffect(() => {
+    if (chat.isGroup && (isAdmin || isTeacher)) {
+      fetch(`/api/campus?action=get_join_requests&channelId=${chat.id}`)
+        .then((r) => r.json())
+        .then((d) => {
+          if (d.success && Array.isArray(d.requests)) {
+            setPendingRequests(d.requests);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [chat.id, isAdmin, isTeacher]);
+
+  const handleRequestDecision = async (requestId: string, decision: 'approved' | 'rejected') => {
+    setRequestActionLoading(requestId);
+    try {
+      const res = await fetch('/api/campus', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'respond_to_join_request',
+          requestId,
+          decision,
+          reviewerUsername: isAdmin ? 'Admin' : 'Faculty',
+        }),
+      });
+      const d = await res.json();
+      if (d.success) {
+        setPendingRequests((prev) => prev.filter((r) => r.id !== requestId));
+      } else {
+        alert(d.error || 'Failed to update request');
+      }
+    } catch {
+      alert('Network error updating request');
+    } finally {
+      setRequestActionLoading(null);
+    }
+  };
 
   const members: ContactItem[] = chat.members || DEMO_CONTACTS.slice(0, 7);
 
@@ -284,6 +329,66 @@ export const GroupInfoPanel: React.FC<GroupInfoPanelProps> = ({
                 <span>Add participant</span>
               </button>
             </div>
+
+            {/* Invite via Link Button */}
+            <button
+              onClick={onOpenInviteModal}
+              className="w-full mb-3 p-2.5 rounded-xl bg-[#202c33] hover:bg-[#2a3942] border border-white/5 flex items-center justify-between text-left transition-colors cursor-pointer group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-[#4f46e5]/20 text-[#6366f1] flex items-center justify-center shrink-0">
+                  <Link2 size={16} />
+                </div>
+                <div>
+                  <div className="text-xs font-semibold text-[#e9edef] group-hover:text-white">Invite to group via link</div>
+                  <div className="text-[10px] text-[#8696a0]">Shareable link, password & admin rights</div>
+                </div>
+              </div>
+              <ChevronRight size={15} className="text-[#8696a0]" />
+            </button>
+
+            {/* Pending Join Requests for Admins */}
+            {pendingRequests.length > 0 && (
+              <div className="mb-3 p-3 rounded-xl bg-[#1e293b] border border-[#6366f1]/30 space-y-2.5 animate-fadeIn">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                    <UserCheck size={14} className="text-[#38bdf8]" />
+                    Pending Join Requests ({pendingRequests.length})
+                  </span>
+                  <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#6366f1]/20 text-[#818cf8]">
+                    Needs Review
+                  </span>
+                </div>
+                <div className="space-y-2">
+                  {pendingRequests.map((req) => (
+                    <div key={req.id} className="p-2 rounded-lg bg-[#0b0f17] border border-white/5 flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="text-xs font-semibold text-[#f8fafc] truncate">{req.requester_name}</div>
+                        <div className="text-[10px] text-[#94a3b8] truncate">
+                          @{req.requester_username} • Role: {req.requested_role === 'admin' ? '⭐️ Admin' : 'Member'}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          onClick={() => handleRequestDecision(req.id, 'approved')}
+                          disabled={requestActionLoading === req.id}
+                          className="px-2 py-1 rounded-md bg-[#00a884] hover:bg-[#008f6f] text-white text-[11px] font-semibold transition-colors cursor-pointer"
+                        >
+                          Approve
+                        </button>
+                        <button
+                          onClick={() => handleRequestDecision(req.id, 'rejected')}
+                          disabled={requestActionLoading === req.id}
+                          className="px-2 py-1 rounded-md bg-white/10 hover:bg-white/20 text-[#f87171] text-[11px] font-semibold transition-colors cursor-pointer"
+                        >
+                          Decline
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Member search bar */}
             <div className="flex items-center px-2.5 py-1.5 rounded-lg bg-[#202c33] mb-3">
