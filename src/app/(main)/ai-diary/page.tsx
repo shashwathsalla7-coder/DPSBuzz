@@ -396,9 +396,13 @@ export default function AiDiaryPage() {
   const username = currentUser?.username || 'student';
   const userFullName = currentUser?.fullName || username;
   const userClass = (currentUser?.class || '8').toString().replace(/[^0-9]/g, '') || '8';
+  const userSection = (currentUser?.section || 'A').toString().toUpperCase().trim();
 
   useEffect(() => {
     setSelectedClass(userClass);
+    setSelectedSection(userSection);
+    setSelectedDiaryClass(userClass);
+    setSelectedDiarySection(userSection);
     SchoolFeatures.sync(username);
 
     const handleUpdate = () => {
@@ -411,7 +415,7 @@ export default function AiDiaryPage() {
     };
     window.addEventListener('dpsbuzz:campus_updated', handleUpdate);
     return () => window.removeEventListener('dpsbuzz:campus_updated', handleUpdate);
-  }, [username, currentSchedule, userClass]);
+  }, [username, currentSchedule, userClass, userSection]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -481,6 +485,7 @@ export default function AiDiaryPage() {
           messages: [...messages, userMsg],
           prompt: text,
           userClass,
+          section: userSection,
           username,
           apiKey: process.env.NEXT_PUBLIC_GEMINI_API_KEY || '',
         }),

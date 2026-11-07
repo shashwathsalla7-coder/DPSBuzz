@@ -576,8 +576,26 @@ function setStorage<T>(key: string, value: T): void {
     localStorage.setItem(key, serialized);
     storageRawStringCache.set(key, serialized);
     storageMemoryCache.set(key, value);
-  } catch (e) {
-    console.error('Failed to save to localStorage:', e);
+  } catch (e: any) {
+    // QuotaExceededError Recovery: Mobile browsers have a strict 5MB quota
+    if (e?.name === 'QuotaExceededError' || e?.code === 22 || e?.code === 1014) {
+      console.warn(`[DataStore] LocalStorage quota exceeded on key "${key}". Auto-recovering...`);
+      try {
+        // Prune ephemeral data to free up quota
+        localStorage.removeItem('dpsbuzz_views_map_v1');
+        localStorage.removeItem('dpsbuzz_chat_messages_v1');
+        localStorage.removeItem('dpsbuzz_stories_v1');
+        const serialized = JSON.stringify(value);
+        localStorage.setItem(key, serialized);
+        storageRawStringCache.set(key, serialized);
+        storageMemoryCache.set(key, value);
+        return;
+      } catch (pruneErr) {
+        console.warn('[DataStore] Quota still exceeded after prune. Holding in volatile memory cache.', pruneErr);
+      }
+    }
+    // Always persist in volatile memory cache so UI interactions never freeze or crash
+    storageMemoryCache.set(key, value);
   }
 }
 
@@ -1088,7 +1106,20 @@ export const DataStore = {
             }
           }
         }
-        setStorage(STORAGE_KEYS.PROFILES, Array.from(profileMap.values()));
+        // SAFETY CAP: Limit stored profiles to 100 on client device to protect mobile localStorage 5MB quota
+        const finalProfiles = Array.from(profileMap.values());
+        if (finalProfiles.length > 100) {
+          let activeUser = '';
+          try {
+            activeUser = (JSON.parse(localStorage.getItem('dpsbuzz_user') || '{}')?.username || '').toLowerCase().trim();
+          } catch {}
+          const priority = new Set(['shashwath71845', 'madam_principal', 'dpsbuzz', activeUser].filter(Boolean));
+          const prioritized = finalProfiles.filter((p) => priority.has((p.username || '').toLowerCase().trim()));
+          const rest = finalProfiles.filter((p) => !priority.has((p.username || '').toLowerCase().trim())).slice(0, Math.max(0, 100 - prioritized.length));
+          setStorage(STORAGE_KEYS.PROFILES, [...prioritized, ...rest]);
+        } else {
+          setStorage(STORAGE_KEYS.PROFILES, finalProfiles);
+        }
       }
 
       // Clean local habit streaks for deleted users (Strict Leaderboard purge)

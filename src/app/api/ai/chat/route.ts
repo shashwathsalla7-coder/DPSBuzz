@@ -869,6 +869,7 @@ export async function POST(req: NextRequest) {
 
     const todayStr = new Date().toISOString().split('T')[0];
     const cleanClass = (userClass || '8').toString().replace(/[^0-9]/g, '') || '8';
+    const section = (body.section || body.userSection || '').toString().trim();
 
     // 1. Fetch Real Live Cloud Database Context (Cloudflare D1 SQL)
     let diaryEntry: any = null;
@@ -876,11 +877,16 @@ export async function POST(req: NextRequest) {
     let homeworkList: any[] = [];
 
     try {
-      // Find today's diary entry for this class
-      const dRows = await d1Query<any>(
-        'SELECT * FROM campus_diary_entries WHERE class_grade = ? ORDER BY date_str DESC, created_at DESC LIMIT 1;',
-        [cleanClass]
-      );
+      // Find today's verified diary entry for this specific class and section
+      const dRows = (section && section !== 'All')
+        ? await d1Query<any>(
+            'SELECT * FROM campus_diary_entries WHERE (class_grade = ? OR class_grade = ?) AND (section = ? OR section = \'All\') ORDER BY date_str DESC, created_at DESC LIMIT 1;',
+            [cleanClass, `Class ${cleanClass}`, section]
+          )
+        : await d1Query<any>(
+            'SELECT * FROM campus_diary_entries WHERE class_grade = ? OR class_grade = ? ORDER BY date_str DESC, created_at DESC LIMIT 1;',
+            [cleanClass, `Class ${cleanClass}`]
+          );
       if (dRows.length > 0) {
         diaryEntry = dRows[0];
       }

@@ -680,6 +680,36 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    // 5,500 STUDENT CLIENT QUOTA PROTECTION:
+    // Mobile browsers enforce a strict 5MB localStorage limit. Sending thousands of profiles crashes student devices.
+    if (syncProfiles.length > 80 && !isAdmin) {
+      const priorityUsernames = new Set<string>([
+        'shashwath71845',
+        'madam_principal',
+        'dpsbuzz',
+        reqUsername.toLowerCase(),
+      ]);
+
+      // Add authors of visible posts
+      for (const p of syncPosts.slice(0, 30)) {
+        if (p.username) priorityUsernames.add(p.username.toLowerCase());
+      }
+      // Add authors of visible stories
+      for (const s of syncStories.slice(0, 30)) {
+        if (s.username) priorityUsernames.add(s.username.toLowerCase());
+      }
+      // Add follow connections
+      for (const f of syncFollows) {
+        if (f.follower === reqUsername.toLowerCase()) priorityUsernames.add(f.following.toLowerCase());
+        if (f.following === reqUsername.toLowerCase()) priorityUsernames.add(f.follower.toLowerCase());
+      }
+
+      const priorityList = syncProfiles.filter((p: any) => priorityUsernames.has((p.username || '').toLowerCase()));
+      const remainingList = syncProfiles.filter((p: any) => !priorityUsernames.has((p.username || '').toLowerCase()));
+      const budget = Math.max(0, 80 - priorityList.length);
+      syncProfiles = [...priorityList, ...remainingList.slice(0, budget)];
+    }
+
     return NextResponse.json({
       success: true,
       posts: syncPosts,
