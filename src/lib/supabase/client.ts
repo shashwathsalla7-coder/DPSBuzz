@@ -1,23 +1,22 @@
 import { createBrowserClient } from '@supabase/ssr';
 
-let client: ReturnType<typeof createBrowserClient> | null = null;
+const GLOBAL_CLIENT_KEY = '__DPSBUZZ_SUPABASE_BROWSER_CLIENT__';
 
 /**
  * Create a Supabase client for use in browser/client components.
- * Reuses a single browser client instance to avoid multiple GoTrueClient warnings.
+ * Attaches to global window to guarantee a single GoTrueClient instance across hot-reloads and chunks.
  */
 export function createClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder';
+
   if (typeof window === 'undefined') {
-    return createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
+    return createBrowserClient(url, anonKey);
   }
-  if (!client) {
-    client = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
+
+  const win = window as any;
+  if (!win[GLOBAL_CLIENT_KEY]) {
+    win[GLOBAL_CLIENT_KEY] = createBrowserClient(url, anonKey);
   }
-  return client;
+  return win[GLOBAL_CLIENT_KEY];
 }

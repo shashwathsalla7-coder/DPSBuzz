@@ -512,7 +512,7 @@ export function GlobalNotificationListener() {
           .on(
             'postgres_changes',
             { event: 'INSERT', schema: 'public', table: 'messages' },
-            (payload) => {
+            (payload: any) => {
               const freshMessage = payload.new as any;
               if (!freshMessage || !freshMessage.chat_id) return;
               const senderId = (freshMessage.sender_id || '').toLowerCase().trim();
