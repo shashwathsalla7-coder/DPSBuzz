@@ -9,9 +9,9 @@ export async function GET(req: NextRequest) {
       ? rawFolder
       : 'reels';
 
-    const cloud_name = process.env.CLOUDINARY_CLOUD_NAME || 'ogfaxmjw';
-    const api_key = process.env.CLOUDINARY_API_KEY || '585871931796836';
-    const api_secret = process.env.CLOUDINARY_API_SECRET || 'Fpudf-0uhRPjKpFdmQzOiXZTh1M';
+    const cloud_name = process.env.CLOUDINARY_CLOUD_NAME || '';
+    const api_key = process.env.CLOUDINARY_API_KEY || '';
+    const api_secret = process.env.CLOUDINARY_API_SECRET || '';
 
     cloudinary.config({
       cloud_name,

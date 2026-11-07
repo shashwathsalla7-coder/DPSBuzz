@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerStore, addServerStory } from '@/lib/serverStore';
 import { createClient } from '@supabase/supabase-js';
+import { sanitizeText, isValidMediaUrl } from '@/lib/security';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const rawKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -98,6 +99,19 @@ export async function POST(req: NextRequest) {
     const { story } = body;
     if (!story || !story.username) {
       return NextResponse.json({ success: false, error: 'Invalid story object' }, { status: 400, headers: NO_CACHE_HEADERS });
+    }
+
+    // Defensive Security: Sanitize text and validate media URLs
+    story.username = sanitizeText(story.username, 100);
+    if (story.caption) story.caption = sanitizeText(story.caption, 500);
+    if (story.text) story.text = sanitizeText(story.text, 500);
+    if (story.fullName) story.fullName = sanitizeText(story.fullName, 100);
+
+    if (story.imageUrl && !isValidMediaUrl(story.imageUrl)) {
+      story.imageUrl = '';
+    }
+    if (story.mediaUrl && !isValidMediaUrl(story.mediaUrl)) {
+      story.mediaUrl = '';
     }
 
     const supabase = getSupabase();

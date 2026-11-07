@@ -21,9 +21,9 @@ const MAX_VIDEO_BYTES = 35 * 1024 * 1024; // 35 MB Reel video limit
 
 // Helper to configure Cloudinary dynamically
 function ensureCloudinary() {
-  const cloud_name = process.env.CLOUDINARY_CLOUD_NAME || 'ogfaxmjw';
-  const api_key = process.env.CLOUDINARY_API_KEY || '585871931796836';
-  const api_secret = process.env.CLOUDINARY_API_SECRET || 'Fpudf-0uhRPjKpFdmQzOiXZTh1M';
+  const cloud_name = process.env.CLOUDINARY_CLOUD_NAME || '';
+  const api_key = process.env.CLOUDINARY_API_KEY || '';
+  const api_secret = process.env.CLOUDINARY_API_SECRET || '';
 
   if (cloud_name && api_key && api_secret) {
     cloudinary.config({
@@ -42,9 +42,9 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const rawFolder = searchParams.get('folder') || 'posts';
     const folder = ALLOWED_FOLDERS.includes(rawFolder) ? rawFolder : 'posts';
-    const cloud_name = process.env.CLOUDINARY_CLOUD_NAME || 'ogfaxmjw';
-    const api_key = process.env.CLOUDINARY_API_KEY || '585871931796836';
-    const api_secret = process.env.CLOUDINARY_API_SECRET || 'Fpudf-0uhRPjKpFdmQzOiXZTh1M';
+    const cloud_name = process.env.CLOUDINARY_CLOUD_NAME || '';
+    const api_key = process.env.CLOUDINARY_API_KEY || '';
+    const api_secret = process.env.CLOUDINARY_API_SECRET || '';
 
     if (!ensureCloudinary()) {
       return NextResponse.json({ success: false, error: 'Cloudinary not configured' }, { status: 500 });

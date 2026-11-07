@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { v2 as cloudinary } from 'cloudinary';
+import { sanitizeText, isValidMediaUrl } from '@/lib/security';
 import {
   getServerStore,
   addServerChatMessage,
@@ -16,9 +17,9 @@ const rawKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabaseKey = (rawKey && !rawKey.includes('your-service')) ? rawKey : (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '');
 
 function ensureCloudinary() {
-  const cloud_name = process.env.CLOUDINARY_CLOUD_NAME || 'ogfaxmjw';
-  const api_key = process.env.CLOUDINARY_API_KEY || '585871931796836';
-  const api_secret = process.env.CLOUDINARY_API_SECRET || 'Fpudf-0uhRPjKpFdmQzOiXZTh1M';
+  const cloud_name = process.env.CLOUDINARY_CLOUD_NAME || '';
+  const api_key = process.env.CLOUDINARY_API_KEY || '';
+  const api_secret = process.env.CLOUDINARY_API_SECRET || '';
   if (!cloud_name || !api_key || !api_secret) return false;
   try {
     cloudinary.config({
@@ -424,6 +425,20 @@ export async function POST(req: NextRequest) {
 
     if (!message || (!message.text && !message.sharedPost && !message.mediaUrl && !message.audioUrl && !message.image && !message.id)) {
       return NextResponse.json({ success: false, error: 'Invalid message payload' }, { status: 400, headers: NO_CACHE_HEADERS });
+    }
+
+    // Defensive Security: Sanitize text and validate media URLs to stop XSS and SSRF
+    if (message.text) {
+      message.text = sanitizeText(message.text, 2000);
+    }
+    if (message.mediaUrl && !isValidMediaUrl(message.mediaUrl)) {
+      message.mediaUrl = undefined;
+    }
+    if (message.image && !isValidMediaUrl(message.image)) {
+      message.image = undefined;
+    }
+    if (message.audioUrl && !isValidMediaUrl(message.audioUrl)) {
+      message.audioUrl = undefined;
     }
 
     // Verify sender belongs to this conversation
