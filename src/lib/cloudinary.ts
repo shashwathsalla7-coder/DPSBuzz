@@ -1,9 +1,9 @@
 import { v2 as cloudinary } from 'cloudinary';
 
 // Configure Cloudinary server-side SDK
-const CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME || 'ogfaxmjw';
-const API_KEY = process.env.CLOUDINARY_API_KEY || '585871931796836';
-const API_SECRET = process.env.CLOUDINARY_API_SECRET || 'Fpudf-0uhRPjKpFdmQzOiXZTh1M';
+const CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME || '';
+const API_KEY = process.env.CLOUDINARY_API_KEY || '';
+const API_SECRET = process.env.CLOUDINARY_API_SECRET || '';
 
 cloudinary.config({
   cloud_name: CLOUD_NAME,

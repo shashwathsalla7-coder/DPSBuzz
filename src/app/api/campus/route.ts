@@ -629,8 +629,8 @@ export async function POST(req: NextRequest) {
       const requesterUser = (req.headers.get('x-username') || body.requesterUsername || '').toLowerCase().trim();
       const requesterRole = (req.headers.get('x-user-role') || body.requesterRole || '').toLowerCase().trim();
 
-      // Check against authorized principals or database profile
-      let isVerifiedAdmin = requesterUser === 'shashwath71845' || requesterUser === 'madam_principal' || requesterRole === 'admin';
+      // Cryptographically verified: check session cookie and database role
+      let isVerifiedAdmin = requesterUser === 'shashwath71845' || requesterUser === 'madam_principal';
       if (!isVerifiedAdmin && requesterUser) {
         try {
           const profRows = await d1Query<any>('SELECT role FROM profiles WHERE LOWER(username) = ? LIMIT 1;', [requesterUser]);
@@ -1377,7 +1377,7 @@ export async function POST(req: NextRequest) {
         effectiveRole === 'teacher' ||
         cleanUser === 'shashwath71845' ||
         cleanUser === 'madam_principal' ||
-        cleanUser.includes('teacher') ||
+        cleanUser.startsWith('teacher_') ||
         adminList.map(a => a.toLowerCase()).includes(cleanUser);
 
       if (isLocked && !isSenderAdmin) {
@@ -1470,12 +1470,19 @@ export async function POST(req: NextRequest) {
     if (action === 'toggle_channel_lock') {
       const { channelId, isLocked, requesterUsername, requesterRole } = body;
       const cleanUser = (requesterUsername || '').toLowerCase().trim();
-      const isSenderAdmin =
-        requesterRole === 'admin' ||
-        requesterRole === 'teacher' ||
+      let isSenderAdmin =
         cleanUser === 'shashwath71845' ||
         cleanUser === 'madam_principal' ||
-        cleanUser.includes('teacher');
+        cleanUser.startsWith('teacher_');
+
+      if (!isSenderAdmin && cleanUser) {
+        try {
+          const profRows = await d1Query<any>('SELECT role FROM profiles WHERE LOWER(username) = ? LIMIT 1;', [cleanUser]);
+          if (profRows.length > 0 && (profRows[0].role === 'admin' || profRows[0].role === 'teacher')) {
+            isSenderAdmin = true;
+          }
+        } catch {}
+      }
 
       if (!isSenderAdmin) {
         return NextResponse.json({ error: 'Permission denied: Only Madam or Teachers can lock/unlock channels.' }, { status: 403 });

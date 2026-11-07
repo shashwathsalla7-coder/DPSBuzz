@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getServerStore, addServerPost, deleteServerPost } from '@/lib/serverStore';
 import { d1Query, d1Execute, isD1Configured } from '@/lib/cloudflare/d1';
+import { sanitizeText, isValidMediaUrl } from '@/lib/security';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const rawKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -163,6 +164,27 @@ export async function POST(req: NextRequest) {
     // Allow empty caption if photo or repost is present
     if (!post || !post.username) {
       return NextResponse.json({ success: false, error: 'Invalid post object' }, { status: 400 });
+    }
+
+    // Defensive Security: Sanitize text fields and enforce media URL domain whitelist
+    post.caption = sanitizeText(post.caption || '', 2500);
+    post.username = sanitizeText(post.username || '', 100);
+    if (post.fullName) post.fullName = sanitizeText(post.fullName, 100);
+    if (post.song) post.song = sanitizeText(post.song, 150);
+
+    if (post.imageUrl && !isValidMediaUrl(post.imageUrl)) {
+      post.imageUrl = null;
+    }
+    if (Array.isArray(post.images)) {
+      post.images = post.images.filter((img: string) => isValidMediaUrl(img));
+      if (post.images.length === 0 && !post.videoUrl) {
+        post.imageUrl = null;
+      }
+    }
+    if (post.videoUrl && !isValidMediaUrl(post.videoUrl)) {
+      post.videoUrl = null;
+      post.isVideo = false;
+      post.isReel = false;
     }
 
     // Security check: If this is an existing post update (e.g. changing soundtrack / trimming),

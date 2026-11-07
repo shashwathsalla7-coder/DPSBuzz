@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { getClientIp, checkRateLimit, createRateLimitResponse } from '@/lib/security';
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -18,6 +19,17 @@ export function proxy(request: NextRequest) {
     pathname.startsWith('/videos')
   ) {
     return NextResponse.next();
+  }
+
+  // 1b. Edge Rate Limiter for API endpoints
+  if (pathname.startsWith('/api')) {
+    const ip = getClientIp(request);
+    const isMutation = request.method !== 'GET' && request.method !== 'HEAD';
+    const maxReq = isMutation ? 60 : 120;
+    const rateCheck = checkRateLimit(`edge:${ip}:${isMutation ? 'm' : 'r'}`, maxReq, 60000);
+    if (!rateCheck.allowed) {
+      return createRateLimitResponse(rateCheck.retryAfterSec);
+    }
   }
 
   // 2. Read user session cookie
@@ -120,7 +132,7 @@ export function proxy(request: NextRequest) {
     pathname === '/api/admin/login' ||
     pathname === '/api/media/sign-read' ||
     pathname.startsWith('/api/upload') ||
-    pathname.startsWith('/api/campus');
+    (pathname.startsWith('/api/campus') && request.method === 'GET');
 
   // 7. Strict Wall: ALL other routes in the app require a registered, logged-in student account!
   // Especially deep links (e.g. /u/[username], /reels, /chats, /leaderboard, /games, /notices, /post/new, /settings)

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { addServerComment, getServerStore } from '@/lib/serverStore';
 import { createClient } from '@supabase/supabase-js';
+import { sanitizeText, isValidMediaUrl } from '@/lib/security';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const rawKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -61,13 +62,20 @@ export async function POST(
       return NextResponse.json({ success: false, error: 'Comment must contain text or an image' }, { status: 400 });
     }
 
+    const cleanText = sanitizeText(comment.text || '', 1000);
+    const cleanImage = comment.image && isValidMediaUrl(comment.image) ? comment.image : null;
+
+    if (!cleanText && !cleanImage) {
+      return NextResponse.json({ success: false, error: 'Comment content is invalid' }, { status: 400 });
+    }
+
     const commentId = comment.id || `c-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
     const newComment = {
       id: commentId,
-      username: comment.username,
-      userAvatar: comment.userAvatar || null,
-      text: comment.text || '',
-      image: comment.image || null,
+      username: sanitizeText(comment.username, 100),
+      userAvatar: comment.userAvatar && isValidMediaUrl(comment.userAvatar) ? comment.userAvatar : null,
+      text: cleanText,
+      image: cleanImage,
       timeAgo: 'Just now',
     };
 

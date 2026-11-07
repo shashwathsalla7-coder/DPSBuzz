@@ -59,6 +59,18 @@ const nextConfig: NextConfig = {
             key: 'X-XSS-Protection',
             value: '1; mode=block',
           },
+          {
+            key: 'Content-Security-Policy',
+            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https://res.cloudinary.com https://upload.wikimedia.org https://commons.wikimedia.org https://images.unsplash.com https://media.tenor.com https://c.tenor.com https://*.giphy.com https://*.cloudflarestorage.com https://media.dpsbuzz.in https://*.supabase.co; media-src 'self' blob: data: https://res.cloudinary.com https://*.cloudflarestorage.com https://media.dpsbuzz.in; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.cloudinary.com https://*.cloudflarestorage.com https://*.cloudflare.com https://*.zegocloud.com https://*.zego.im wss://*.zegocloud.com wss://*.zego.im; frame-src 'self' https://challenges.cloudflare.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self';",
+          },
+          {
+            key: 'Cross-Origin-Opener-Policy',
+            value: 'same-origin-allow-popups',
+          },
+          {
+            key: 'Cross-Origin-Resource-Policy',
+            value: 'cross-origin',
+          },
         ],
       },
       {
