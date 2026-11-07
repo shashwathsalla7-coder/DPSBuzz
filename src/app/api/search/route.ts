@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getServerStore } from '@/lib/serverStore';
 import { getD1Profiles, isD1Configured } from '@/lib/cloudflare/dbService';
+import { d1Query } from '@/lib/cloudflare/d1';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const rawKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -51,13 +52,42 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // 2. Query Cloudflare D1 profiles (never pauses, permanent database)
+    // 2. Query Cloudflare D1 profiles with direct SQL LIKE filtering and pagination (optimized for 5,500 users)
     if (isD1Configured()) {
       try {
-        const d1Profiles = await getD1Profiles();
-        for (const dp of d1Profiles) {
-          const u = dp.username.toLowerCase().trim();
-          candidateMap.set(u, dp);
+        let d1Profiles: any[] = [];
+        if (q) {
+          const pattern = `%${q}%`;
+          d1Profiles = await d1Query<any>(
+            `SELECT * FROM profiles 
+             WHERE username LIKE ? OR full_name LIKE ? 
+             ORDER BY spirit_points DESC LIMIT 25;`,
+            [pattern, pattern]
+          );
+        } else {
+          d1Profiles = await d1Query<any>(
+            'SELECT * FROM profiles ORDER BY spirit_points DESC LIMIT 30;'
+          );
+        }
+        for (const r of d1Profiles) {
+          const u = (r.username || '').toLowerCase().trim();
+          candidateMap.set(u, {
+            id: r.id,
+            username: r.username,
+            fullName: r.full_name || r.username,
+            avatar: r.avatar_url || null,
+            bio: r.bio || '',
+            class: r.class || '8',
+            section: r.section || 'A',
+            role: r.role || 'student',
+            isVerified: Boolean(r.is_verified),
+            isApproved: Boolean(r.is_approved),
+            isPrivate: Boolean(r.is_private),
+            followerCount: Number(r.follower_count) || 0,
+            followingCount: Number(r.following_count) || 0,
+            postCount: Number(r.post_count) || 0,
+            spiritPoints: Number(r.spirit_points) || 50,
+          });
         }
       } catch (d1Err) {
         console.warn('Cloudflare D1 search lookup notice:', d1Err);

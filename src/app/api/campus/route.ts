@@ -265,9 +265,12 @@ export async function GET(req: NextRequest) {
 
     const now = Date.now();
     const username = (searchParams.get('username') || '').toLowerCase().trim();
+    const classGradeParam = searchParams.get('classGrade') || searchParams.get('class') || '';
+    const sectionParam = searchParams.get('section') || '';
+    const cleanClassGrade = classGradeParam.replace(/[^0-9]/g, '') || classGradeParam;
 
-    // Serve from cache if fresh and no specific user progress requested
-    if (!username && campusPayloadCache && (now - campusPayloadCacheTime < CAMPUS_CACHE_TTL_MS)) {
+    // Serve from cache if fresh and no specific user progress or class filters requested
+    if (!username && !cleanClassGrade && !sectionParam && campusPayloadCache && (now - campusPayloadCacheTime < CAMPUS_CACHE_TTL_MS)) {
       return NextResponse.json(campusPayloadCache, { headers: NO_CACHE_HEADERS });
     }
 
@@ -295,7 +298,12 @@ export async function GET(req: NextRequest) {
       d1Query<any>('SELECT * FROM campus_whatsapp_channels ORDER BY CASE WHEN id = \'channel-class-8g\' THEN 0 WHEN is_locked = 0 THEN 1 ELSE 2 END, created_at ASC;'),
       d1Query<any>('SELECT * FROM campus_whatsapp_messages ORDER BY timestamp ASC LIMIT 300;'),
       d1Query<any>('SELECT * FROM campus_lost_found ORDER BY created_at DESC LIMIT 100;'),
-      d1Query<any>('SELECT * FROM campus_diary_entries ORDER BY date_str DESC, created_at DESC LIMIT 60;'),
+      cleanClassGrade && sectionParam && cleanClassGrade !== 'All' && sectionParam !== 'All'
+        ? d1Query<any>(
+            'SELECT * FROM campus_diary_entries WHERE (class_grade = ? OR class_grade = ? OR class_grade = \'All\') AND (section = ? OR section = \'All\') ORDER BY date_str DESC, created_at DESC LIMIT 50;',
+            [cleanClassGrade, `Class ${cleanClassGrade}`, sectionParam]
+          )
+        : d1Query<any>('SELECT * FROM campus_diary_entries ORDER BY date_str DESC, created_at DESC LIMIT 150;'),
     ]);
 
     // 1. Broadcasts
