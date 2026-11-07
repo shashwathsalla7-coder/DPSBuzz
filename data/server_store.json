@@ -19,8 +19,8 @@
         "shashwath71845"
       ],
       "isPinned": true,
-      "likes": 24,
-      "comments": 5,
+      "likes": 3,
+      "comments": 1,
       "views": 180,
       "createdAt": "2026-10-29T17:30:00.000Z",
       "timeAgo": "Just now"
@@ -274,25 +274,6 @@
       "spiritPoints": 50,
       "referralCount": 0,
       "createdAt": "2026-10-15T12:55:41.483Z"
-    },
-    {
-      "id": "student-1792057599710",
-      "username": "hi",
-      "fullName": "Hi",
-      "avatar": null,
-      "bio": "Class 8-A • DPS Student 🐝",
-      "class": "8",
-      "section": "A",
-      "role": "student",
-      "isVerified": true,
-      "isApproved": true,
-      "isPrivate": false,
-      "followerCount": 0,
-      "followingCount": 0,
-      "postCount": 0,
-      "spiritPoints": 50,
-      "referralCount": 0,
-      "createdAt": "2026-10-15T09:46:39.710Z"
     },
     {
       "id": "dpsbuzz_official_id",
@@ -3829,9 +3810,57 @@
         "conversationId": "ishanvi__shashwath71845",
         "readAt": 1792158238942
       }
+    ],
+    "dhruv_shinde_1d_2__krishna_menon_1d_1": [
+      {
+        "id": "dm-sim-1794063744068-21",
+        "chatId": "dhruv_shinde_1d_2__krishna_menon_1d_1",
+        "senderId": "krishna_menon_1d_1",
+        "recipientId": "dhruv_shinde_1d_2",
+        "text": "Check this celebration GIF! 🎉",
+        "mediaUrl": "https://res.cloudinary.com/ogfaxmjw/image/upload/v1793467674/dpsbuzz/gifs/school_celebration.gif",
+        "createdAt": "2026-11-07T15:02:24.068Z",
+        "conversationId": "dhruv_shinde_1d_2__krishna_menon_1d_1"
+      }
+    ],
+    "dhruv_rao_2b_2__krishna_gupta_2b_1": [
+      {
+        "id": "dm-sim-1794063744344-29",
+        "chatId": "dhruv_rao_2b_2__krishna_gupta_2b_1",
+        "senderId": "krishna_gupta_2b_1",
+        "recipientId": "dhruv_rao_2b_2",
+        "text": "Check this celebration GIF! 🎉",
+        "mediaUrl": "https://res.cloudinary.com/ogfaxmjw/image/upload/v1793467674/dpsbuzz/gifs/applause.gif",
+        "createdAt": "2026-11-07T15:02:24.344Z",
+        "conversationId": "dhruv_rao_2b_2__krishna_gupta_2b_1"
+      },
+      {
+        "id": "dm-sim-1794063949902-29",
+        "chatId": "dhruv_rao_2b_2__krishna_gupta_2b_1",
+        "senderId": "krishna_gupta_2b_1",
+        "recipientId": "dhruv_rao_2b_2",
+        "text": "Check this celebration GIF! 🎉",
+        "mediaUrl": "https://res.cloudinary.com/ogfaxmjw/image/upload/v1793467674/dpsbuzz/gifs/applause.gif",
+        "createdAt": "2026-11-07T15:05:49.902Z",
+        "conversationId": "dhruv_rao_2b_2__krishna_gupta_2b_1"
+      }
+    ],
+    "dhruv_bhatia_urseryb_2__krishna_deshmukh_urseryb_1": [
+      {
+        "id": "dm-sim-1794063948107-1",
+        "chatId": "dhruv_bhatia_urseryb_2__krishna_deshmukh_urseryb_1",
+        "senderId": "krishna_deshmukh_urseryb_1",
+        "recipientId": "dhruv_bhatia_urseryb_2",
+        "text": "Check this celebration GIF! 🎉",
+        "mediaUrl": "https://res.cloudinary.com/ogfaxmjw/image/upload/v1793467674/dpsbuzz/gifs/thumbs_up.gif",
+        "createdAt": "2026-11-07T15:05:48.107Z",
+        "conversationId": "dhruv_bhatia_urseryb_2__krishna_deshmukh_urseryb_1"
+      }
     ]
   },
-  "comments": {},
+  "comments": {
+    "post-launch-video": []
+  },
   "likes": {
     "post-1791976342088": [
       "hi",
@@ -3839,6 +3868,11 @@
       "sahana_3009",
       "rohan728",
       "ishanvi"
+    ],
+    "post-launch-video": [
+      "krishna_menon_urserya_21",
+      "saanvi_kapoor_urserya_38",
+      "aarav_sharma_urserya_30"
     ]
   },
   "notices": [
@@ -4183,5 +4217,5 @@
   "groups": [],
   "groupMembers": {},
   "groupJoinRequests": [],
-  "lastUpdated": 1793873006343
+  "lastUpdated": 1794063949953
 }

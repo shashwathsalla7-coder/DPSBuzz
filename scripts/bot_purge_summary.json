@@ -1,0 +1,32 @@
+{
+  "timestamp": "2026-11-07T15:45:40.195Z",
+  "d1Deletions": {
+    "profiles": 0,
+    "posts": 0,
+    "likes": 0,
+    "comments": 0,
+    "messages": 82,
+    "follows": 0,
+    "campusDiary": 15,
+    "whatsappMessages": 0,
+    "lostAndFound": 0,
+    "broadcasts": 0
+  },
+  "serverStoreCleaned": true,
+  "remainingAuthenticAccounts": [
+    "@shashwath71845",
+    "@madam_principal",
+    "@kvsishaan",
+    "@dpsbuzz",
+    "@sreekrishna",
+    "@chandan",
+    "@varshithjella",
+    "@ashwith",
+    "@sahana_3009",
+    "@rishi_one9",
+    "@mokshith7b",
+    "@rohan728",
+    "@ishanvi",
+    "@vignesh"
+  ]
+}
