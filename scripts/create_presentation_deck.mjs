@@ -87,7 +87,7 @@ async function createDeck() {
       '• Official morning announcements from Madam\n' +
       '• School bus alerts & photo circulars\n' +
       '• 100% Private: Photos restricted to verified class parents\n' +
-      '• Zero phone number leaks (replaces messy WhatsApp)',
+      '• Zero phone number leaks (replaces messy Campus Wire)',
       { x: 1.1, y: 3.1, w: 5.0, h: 3.4, fontSize: 13, color: TEXT_MUTED, lineSpacing: 24 }
     );
 
@@ -280,7 +280,7 @@ async function createDeck() {
       },
       {
         title: '🔒 Zero Phone Leaks',
-        desc: 'Unlike WhatsApp where every parent sees everyone\'s phone number, DPS Buzz hides all phone numbers, email addresses, and admission IDs permanently.',
+        desc: 'Unlike Campus Wire where every parent sees everyone\'s phone number, DPS Buzz hides all phone numbers, email addresses, and admission IDs permanently.',
         x: 4.8
       },
       {

@@ -62,8 +62,8 @@ import {
 } from 'lucide-react';
 import {
   schoolSystem,
-  WhatsAppChannel,
-  WhatsAppMessage,
+  CampusWireChannel,
+  CampusWireMessage,
   GroupInvite,
 } from '@/lib/schoolFeatures';
 import { DataStore, Profile } from '@/lib/dataStore';
@@ -773,7 +773,7 @@ const ALL_STUDENT_DIRECTORY = [
 // ============================================================================
 // AUTHENTIC SEED MESSAGES ISOLATED PER CLASSROOM
 // ============================================================================
-const SEED_CLASS_MESSAGES: WhatsAppMessage[] = [
+const SEED_CLASS_MESSAGES: CampusWireMessage[] = [
   // Class 9-B Messages (ONLY 9-B students & teachers)
   {
     id: 'msg-9b-1',
@@ -941,13 +941,13 @@ const SEED_CLASS_MESSAGES: WhatsAppMessage[] = [
 // APPLE MESSAGE BUBBLE COMPONENT
 // ============================================================================
 interface MessageBubbleProps {
-  msg: WhatsAppMessage;
+  msg: CampusWireMessage;
   isMe: boolean;
   isSameSenderAsPrev: boolean;
   isDark: boolean;
   reactions: ReactionItem[];
   onToggleReaction: (msgId: string, emoji: string) => void;
-  onReply: (msg: WhatsAppMessage) => void;
+  onReply: (msg: CampusWireMessage) => void;
   onOpenProfile: (username: string) => void;
 }
 
@@ -1217,9 +1217,9 @@ export default function GroupsPage() {
 
   // Core State
   const [currentUser, setCurrentUser] = useState<Profile | null>(null);
-  const [channels, setChannels] = useState<WhatsAppChannel[]>([]);
+  const [channels, setChannels] = useState<CampusWireChannel[]>([]);
   const [selectedChannelId, setSelectedChannelId] = useState<string>('channel-class-9b');
-  const [messages, setMessages] = useState<WhatsAppMessage[]>(SEED_CLASS_MESSAGES);
+  const [messages, setMessages] = useState<CampusWireMessage[]>(SEED_CLASS_MESSAGES);
   const [groupInvites, setGroupInvites] = useState<GroupInvite[]>([]);
   const [messageText, setMessageText] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -1281,8 +1281,8 @@ export default function GroupsPage() {
 
   // Offline and Replying
   const [isOnline, setIsOnline] = useState<boolean>(true);
-  const [offlineQueue, setOfflineQueue] = useState<Array<{ msg: WhatsAppMessage; targetChannelId: string }>>([]);
-  const [replyingTo, setReplyingTo] = useState<WhatsAppMessage | null>(null);
+  const [offlineQueue, setOfflineQueue] = useState<Array<{ msg: CampusWireMessage; targetChannelId: string }>>([]);
+  const [replyingTo, setReplyingTo] = useState<CampusWireMessage | null>(null);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [activeCallRoom, setActiveCallRoom] = useState<{ type: 'audio' | 'video'; title: string } | null>(null);
@@ -1332,7 +1332,7 @@ export default function GroupsPage() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            action: 'send_whatsapp_message',
+            action: 'send_wire_message',
             channelId: item.targetChannelId,
             senderUsername: item.msg.senderUsername,
             senderName: item.msg.senderName,
@@ -1353,7 +1353,7 @@ export default function GroupsPage() {
     isSyncingRef.current = true;
     try {
       const res = await fetch(
-        `/api/campus?action=whatsapp_messages&after=${lastSyncTimestampRef.current}`,
+        `/api/campus?action=wire_messages&after=${lastSyncTimestampRef.current}`,
         { cache: 'no-store' }
       );
       if (res.ok) {
@@ -1361,11 +1361,11 @@ export default function GroupsPage() {
         if (Array.isArray(data.messages) && data.messages.length > 0) {
           setMessages((prev) => {
             const existingIds = new Set(prev.map((m) => m.id));
-            const newOnes = data.messages.filter((m: WhatsAppMessage) => !existingIds.has(m.id));
+            const newOnes = data.messages.filter((m: CampusWireMessage) => !existingIds.has(m.id));
             if (newOnes.length === 0) return prev;
             return [...prev, ...newOnes];
           });
-          const highestTs = Math.max(...data.messages.map((m: WhatsAppMessage) => m.timestamp));
+          const highestTs = Math.max(...data.messages.map((m: CampusWireMessage) => m.timestamp));
           if (highestTs > lastSyncTimestampRef.current) {
             lastSyncTimestampRef.current = highestTs;
           }
@@ -1441,9 +1441,9 @@ export default function GroupsPage() {
       const res = await fetch('/api/campus', { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
-        if (Array.isArray(data.whatsappChannels) && data.whatsappChannels.length > 0) {
+        if (Array.isArray(data.wireChannels) && data.wireChannels.length > 0) {
           setChannels(
-            data.whatsappChannels.map((c: any) => ({
+            data.wireChannels.map((c: any) => ({
               ...c,
               name: cleanChannelName(c.name),
               lastMessage: cleanChannelName(c.lastMessage),
@@ -1515,11 +1515,11 @@ export default function GroupsPage() {
           ]);
         }
 
-        if (Array.isArray(data.whatsappMessages) && data.whatsappMessages.length > 0) {
+        if (Array.isArray(data.wireMessages) && data.wireMessages.length > 0) {
           // Merge API messages with SEED_CLASS_MESSAGES
           setMessages((prev) => {
             const seedIds = new Set(prev.map((m) => m.id));
-            const newOnes = data.whatsappMessages.filter((m: WhatsAppMessage) => !seedIds.has(m.id));
+            const newOnes = data.wireMessages.filter((m: CampusWireMessage) => !seedIds.has(m.id));
             return [...prev, ...newOnes];
           });
         }
@@ -1712,7 +1712,7 @@ export default function GroupsPage() {
     const quotedText = replyingTo ? `> Replying to @${replyingTo.senderName}: "${replyingTo.text.slice(0, 180)}"\n\n` : '';
     const finalText = quotedText + textToSend;
 
-    const optimisticMsg: WhatsAppMessage = {
+    const optimisticMsg: CampusWireMessage = {
       id: optimisticId,
       channelId: activeChannel.id,
       senderUsername,
@@ -1743,7 +1743,7 @@ export default function GroupsPage() {
           'x-user-role': senderRole,
         },
         body: JSON.stringify({
-          action: 'send_whatsapp_message',
+          action: 'send_wire_message',
           channelId: activeChannel.id,
           senderUsername,
           senderName,
@@ -1834,7 +1834,7 @@ export default function GroupsPage() {
     e.preventDefault();
     if (!newGroupName.trim()) return;
 
-    const res = await schoolSystem.createWhatsAppChannel({
+    const res = await schoolSystem.createCampusWireChannel({
       name: newGroupName.trim(),
       grade: newGroupGrade,
       section: newGroupSection,
@@ -1931,7 +1931,7 @@ export default function GroupsPage() {
           'x-user-role': 'admin',
         },
         body: JSON.stringify({
-          action: 'send_whatsapp_message',
+          action: 'send_wire_message',
           channelId: 'channel-school-broadcast',
           senderUsername: 'madam_principal',
           senderName: 'Dr. Pratibha Kohli',
@@ -1945,7 +1945,7 @@ export default function GroupsPage() {
       }).catch((err) => console.warn('Broadcast server notice:', err));
 
       // 2. Inject optimistic broadcast message into EVERY classroom channel
-      const allBroadcastMsgs: WhatsAppMessage[] = channels.map((ch) => ({
+      const allBroadcastMsgs: CampusWireMessage[] = channels.map((ch) => ({
         id: `wmsg-broad-${ch.id}-${nowTs}-${Math.floor(Math.random() * 1000)}`,
         channelId: ch.id,
         senderUsername: 'madam_principal',

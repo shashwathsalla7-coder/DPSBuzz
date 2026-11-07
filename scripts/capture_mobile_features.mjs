@@ -84,13 +84,13 @@ async function runMobileFeatureCapture() {
   } catch {}
   await snap('05_mobile_ai_diary_classes.png', 'Mobile AI Diary Section Picker');
 
-  // 6. Mobile School WhatsApp (91 Class Channels)
-  console.log('\n--- Step 6: Mobile School WhatsApp ---');
-  await page.goto(`${BASE_URL}/school-whatsapp`, { waitUntil: 'load' });
-  await snap('06_mobile_school_whatsapp.png', 'Mobile 91 Class WhatsApp Channels');
+  // 6. Mobile School Campus Wire (91 Class Channels)
+  console.log('\n--- Step 6: Mobile School Campus Wire ---');
+  await page.goto(`${BASE_URL}/school-wire`, { waitUntil: 'load' });
+  await snap('06_mobile_school_wire.png', 'Mobile 91 Class Campus Wire Channels');
 
   // 7. Click into Class Channel (e.g. Class 10-A)
-  console.log('\n--- Step 7: Click into Official Class WhatsApp Channel ---');
+  console.log('\n--- Step 7: Click into Official Class Campus Wire Channel ---');
   try {
     const channelItem = await page.$('div:has-text("Class 10"), button:has-text("Class 10"), div[class*="channel"], div:has-text("10-A")');
     if (channelItem) {
@@ -99,7 +99,7 @@ async function runMobileFeatureCapture() {
       await page.waitForTimeout(2000);
     }
   } catch {}
-  await snap('07_mobile_class_channel_chat.png', 'Inside Official Class WhatsApp Channel');
+  await snap('07_mobile_class_channel_chat.png', 'Inside Official Class Campus Wire Channel');
 
   // 8. Mobile Lost & Found Hub
   console.log('\n--- Step 8: Mobile Lost & Found Campus Hub ---');

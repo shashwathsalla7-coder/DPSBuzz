@@ -24,7 +24,7 @@ async function queryD1(sql, params = []) {
 }
 
 async function main() {
-  for (const table of ['campus_whatsapp_channels', 'campus_whatsapp_messages', 'campus_lost_found', 'campus_broadcasts', 'campus_diary_entries']) {
+  for (const table of ['campus_wire_channels', 'campus_wire_messages', 'campus_lost_found', 'campus_broadcasts', 'campus_diary_entries']) {
     const cols = await queryD1(`PRAGMA table_info(${table});`);
     console.log(`Schema for ${table}:`, cols.map(c => `${c.name} (${c.type})`).join(', '));
   }

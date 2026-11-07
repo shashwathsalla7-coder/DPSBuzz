@@ -41,8 +41,8 @@ async function main() {
     'campus_study_schedules',
     'campus_homework',
     'campus_lost_found',
-    'campus_whatsapp_channels',
-    'campus_whatsapp_messages',
+    'campus_wire_channels',
+    'campus_wire_messages',
     'campus_group_invites',
     'campus_diary_entries'
   ];

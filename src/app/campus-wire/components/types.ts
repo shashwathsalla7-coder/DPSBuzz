@@ -1,4 +1,4 @@
-// WhatsApp Desktop Replica – Shared Types
+// Campus Wire OS – Shared Types
 // Clean-room implementation for DPS Buzz
 
 export interface MessageItem {

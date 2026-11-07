@@ -51,7 +51,7 @@ const slides = [
             <li>👑 <strong>Direct from Madam:</strong> Official morning audio thoughts & circulars.</li>
             <li>🚌 <strong>Bus & Event Alerts:</strong> Photo updates of sports day and bus notifications.</li>
             <li>🔒 <strong>100% Private:</strong> Photos restricted strictly to verified class parents.</li>
-            <li>🚫 <strong>Zero Phone Leaks:</strong> No spammy, unorganized WhatsApp groups.</li>
+            <li>🚫 <strong>Zero Phone Leaks:</strong> No spammy, unorganized Campus Wire groups.</li>
           </ul>
         </div>
 

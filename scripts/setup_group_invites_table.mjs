@@ -23,11 +23,11 @@ async function setupGroupInvitesTable() {
 
   console.log('Table campus_group_invites is ready in D1 SQL.');
 
-  // Ensure Class 8-G exists in campus_whatsapp_channels
-  const check8g = await d1Query("SELECT id FROM campus_whatsapp_channels WHERE id = 'channel-class-8g';");
+  // Ensure Class 8-G exists in campus_wire_channels
+  const check8g = await d1Query("SELECT id FROM campus_wire_channels WHERE id = 'channel-class-8g';");
   if (check8g.length === 0) {
     await d1Execute(`
-      INSERT INTO campus_whatsapp_channels (
+      INSERT INTO campus_wire_channels (
         id, name, grade, section, is_locked, admin_usernames, member_count, last_message, last_message_time, enrolled_usernames
       ) VALUES (
         'channel-class-8g',
@@ -42,7 +42,7 @@ async function setupGroupInvitesTable() {
         '["madam_principal"]'
       );
     `);
-    console.log('Created Class 8-G in campus_whatsapp_channels.');
+    console.log('Created Class 8-G in campus_wire_channels.');
   }
 
   // Check existing invites

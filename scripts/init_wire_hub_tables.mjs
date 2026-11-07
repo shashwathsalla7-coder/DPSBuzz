@@ -1,7 +1,7 @@
 import { d1Execute, d1Query, isD1Configured } from '../src/lib/cloudflare/d1.ts';
 
-async function initWhatsAppHubTables() {
-  console.log('Initializing WhatsApp School Hub tables in Cloudflare D1...');
+async function initCampus WireHubTables() {
+  console.log('Initializing Campus Wire School Hub tables in Cloudflare D1...');
   if (!isD1Configured()) {
     console.error('D1 not configured in environment!');
     process.exit(1);
@@ -9,7 +9,7 @@ async function initWhatsAppHubTables() {
 
   // 1. Create channels table
   await d1Execute(`
-    CREATE TABLE IF NOT EXISTS campus_whatsapp_channels (
+    CREATE TABLE IF NOT EXISTS campus_wire_channels (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       grade TEXT NOT NULL,
@@ -26,7 +26,7 @@ async function initWhatsAppHubTables() {
 
   // 2. Create messages table
   await d1Execute(`
-    CREATE TABLE IF NOT EXISTS campus_whatsapp_messages (
+    CREATE TABLE IF NOT EXISTS campus_wire_messages (
       id TEXT PRIMARY KEY,
       channel_id TEXT NOT NULL,
       sender_username TEXT NOT NULL,
@@ -40,14 +40,14 @@ async function initWhatsAppHubTables() {
     );
   `);
 
-  console.log('Tables campus_whatsapp_channels & campus_whatsapp_messages ready!');
+  console.log('Tables campus_wire_channels & campus_wire_messages ready!');
 
   // Seed default school channels
-  const count = await d1Query('SELECT count(*) as c FROM campus_whatsapp_channels;');
+  const count = await d1Query('SELECT count(*) as c FROM campus_wire_channels;');
   if (count[0].c === 0) {
-    console.log('Seeding official school WhatsApp channels...');
+    console.log('Seeding official school Campus Wire channels...');
     await d1Execute(`
-      INSERT INTO campus_whatsapp_channels (id, name, grade, section, is_locked, member_count, last_message, last_message_time)
+      INSERT INTO campus_wire_channels (id, name, grade, section, is_locked, member_count, last_message, last_message_time)
       VALUES
       (
         'channel-school-broadcast',
@@ -93,7 +93,7 @@ async function initWhatsAppHubTables() {
 
     // Seed initial messages
     await d1Execute(`
-      INSERT INTO campus_whatsapp_messages (id, channel_id, sender_username, sender_name, sender_role, sender_class, text, template_type, timestamp)
+      INSERT INTO campus_wire_messages (id, channel_id, sender_username, sender_name, sender_role, sender_class, text, template_type, timestamp)
       VALUES
       (
         'wmsg-1001',
@@ -132,11 +132,11 @@ async function initWhatsAppHubTables() {
     console.log('Seeded initial channels and messages.');
   }
 
-  const channels = await d1Query('SELECT id, name, is_locked, member_count FROM campus_whatsapp_channels;');
+  const channels = await d1Query('SELECT id, name, is_locked, member_count FROM campus_wire_channels;');
   console.log('Channels verified:', channels);
 }
 
-initWhatsAppHubTables().catch(err => {
+initCampus WireHubTables().catch(err => {
   console.error('Error:', err);
   process.exit(1);
 });

@@ -20,7 +20,7 @@ async function testGroupInfo() {
   await page.waitForURL('**/home', { timeout: 15000 }).catch(() => {});
   await page.waitForTimeout(2000);
 
-  await page.goto('http://localhost:3000/whatsapp', { waitUntil: 'load' });
+  await page.goto('http://localhost:3000/wire', { waitUntil: 'load' });
   await page.waitForTimeout(4000);
 
   const chatButtons = page.locator('aside button.w-full');
@@ -35,9 +35,9 @@ async function testGroupInfo() {
       console.log('Opened Group Info sheet...');
       await page.waitForTimeout(5000);
 
-      const shot3 = path.join(ARTIFACT_DIR, '26_mobile_whatsapp_classroom_info.png');
+      const shot3 = path.join(ARTIFACT_DIR, '26_mobile_wire_classroom_info.png');
       await page.screenshot({ path: shot3 });
-      console.log('✅ [CAPTURED] 26_mobile_whatsapp_classroom_info.png');
+      console.log('✅ [CAPTURED] 26_mobile_wire_classroom_info.png');
     }
   }
 

@@ -25,8 +25,8 @@ if (!content.includes('interface GroupInvite')) {
 }
 
 // 2. State variable
-const stateMarker = `let dbWhatsAppMessages: WhatsAppMessage[] = [];`;
-const stateAdd = `let dbWhatsAppMessages: WhatsAppMessage[] = [];
+const stateMarker = `let dbCampus WireMessages: Campus WireMessage[] = [];`;
+const stateAdd = `let dbCampus WireMessages: Campus WireMessage[] = [];
 let dbGroupInvites: GroupInvite[] = [];`;
 
 if (!content.includes('let dbGroupInvites:')) {
@@ -34,11 +34,11 @@ if (!content.includes('let dbGroupInvites:')) {
 }
 
 // 3. syncFromDatabase
-const syncMarker = `        if (Array.isArray(data.whatsappMessages)) {
-          dbWhatsAppMessages = data.whatsappMessages;
+const syncMarker = `        if (Array.isArray(data.wireMessages)) {
+          dbCampus WireMessages = data.wireMessages;
         }`;
-const syncAdd = `        if (Array.isArray(data.whatsappMessages)) {
-          dbWhatsAppMessages = data.whatsappMessages;
+const syncAdd = `        if (Array.isArray(data.wireMessages)) {
+          dbCampus WireMessages = data.wireMessages;
         }
         if (Array.isArray(data.groupInvites)) {
           dbGroupInvites = data.groupInvites;

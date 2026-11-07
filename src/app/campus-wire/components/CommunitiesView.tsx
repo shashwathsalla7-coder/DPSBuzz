@@ -23,7 +23,7 @@ export const CommunitiesView: React.FC<CommunitiesViewProps> = ({
       id: `comm-${Date.now()}`,
       name: newCommName.trim(),
       description: newCommDesc.trim() || 'New community for DPS students',
-      avatarColor: '#25d366',
+      avatarColor: '#00a884',
       initials: newCommName.slice(0, 2).toUpperCase(),
       memberCount: 1,
       groups: ['Announcements', 'General Chat'],

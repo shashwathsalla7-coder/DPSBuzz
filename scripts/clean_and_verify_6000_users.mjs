@@ -286,9 +286,9 @@ async function runCleanAndVerify() {
   }
   await executeD1('DELETE FROM messages WHERE id = ?;', [msgId]);
 
-  // STEP 8: VERIFY WHATSAPP CLASSROOM GROUPS & TEACHER PAGE
+  // STEP 8: VERIFY CAMPUS_WIRE CLASSROOM GROUPS & TEACHER PAGE
   console.log('\n[STEP 8] Verifying 150 Classroom Channels & Teacher Pages...');
-  const totalChannelsInD1 = await queryD1('SELECT COUNT(*) as c FROM campus_whatsapp_channels;');
+  const totalChannelsInD1 = await queryD1('SELECT COUNT(*) as c FROM campus_wire_channels;');
   console.log(` - Registered Channels in D1: ${totalChannelsInD1[0]?.c}`);
   
   // Sample Teacher Page Check

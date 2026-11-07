@@ -5,7 +5,7 @@ const filePath = path.resolve('src/app/api/campus/route.ts');
 let content = fs.readFileSync(filePath, 'utf-8');
 
 // 1. Add groupInvites query in GET
-const getMarker = `    // 8. Fetch WhatsApp Channels from D1`;
+const getMarker = `    // 8. Fetch Campus Wire Channels from D1`;
 const invitesQuery = `    // 7.5 Fetch Group Invites from D1
     let groupInvites: any[] = [];
     try {
@@ -32,10 +32,10 @@ if (!content.includes('let groupInvites: any[] = [];')) {
 }
 
 // 2. Add groupInvites to return JSON
-const returnMarker = `        whatsappChannels,
-        whatsappMessages,`;
-const returnAddition = `        whatsappChannels,
-        whatsappMessages,
+const returnMarker = `        wireChannels,
+        wireMessages,`;
+const returnAddition = `        wireChannels,
+        wireMessages,
         groupInvites,`;
 
 if (!content.includes('groupInvites,') && content.includes(returnMarker)) {
@@ -44,7 +44,7 @@ if (!content.includes('groupInvites,') && content.includes(returnMarker)) {
 
 // 3. Add POST actions for group invites
 const postMarker = `    // ------------------------------------------------------------------------
-    // 12. SEND WHATSAPP MESSAGE (Role & Channel Lock Protected)
+    // 12. SEND CAMPUS_WIRE MESSAGE (Role & Channel Lock Protected)
     // ------------------------------------------------------------------------`;
 
 const inviteActions = `    // ------------------------------------------------------------------------
@@ -104,13 +104,13 @@ const inviteActions = `    // --------------------------------------------------
       await d1Execute('UPDATE campus_group_invites SET status = ? WHERE id = ?;', [status, inviteId]);
 
       if (status === 'accepted') {
-        // Enroll user into channel in campus_whatsapp_channels
-        const chList = await d1Query<any>('SELECT enrolled_usernames, member_count FROM campus_whatsapp_channels WHERE id = ? LIMIT 1;', [inv.group_id]);
+        // Enroll user into channel in campus_wire_channels
+        const chList = await d1Query<any>('SELECT enrolled_usernames, member_count FROM campus_wire_channels WHERE id = ? LIMIT 1;', [inv.group_id]);
         if (chList.length > 0) {
           const enrolled: string[] = JSON.parse(chList[0].enrolled_usernames || '[]');
           if (!enrolled.includes(cleanUser)) {
             enrolled.push(cleanUser);
-            await d1Execute('UPDATE campus_whatsapp_channels SET enrolled_usernames = ?, member_count = member_count + 1 WHERE id = ?;', [JSON.stringify(enrolled), inv.group_id]);
+            await d1Execute('UPDATE campus_wire_channels SET enrolled_usernames = ?, member_count = member_count + 1 WHERE id = ?;', [JSON.stringify(enrolled), inv.group_id]);
           }
 
           // Post welcome system message in channel
@@ -118,7 +118,7 @@ const inviteActions = `    // --------------------------------------------------
           const roleLabel = inv.invitee_role === 'teacher' ? (inv.subject || 'Faculty') : 'Student';
           const welcomeNote = \`👋 @\${cleanUser} accepted Madam's assignment as \${roleLabel} and joined \${inv.group_name}.\`;
           await d1Execute(\`
-            INSERT INTO campus_whatsapp_messages (
+            INSERT INTO campus_wire_messages (
               id, channel_id, sender_username, sender_name, sender_role, sender_class, text, template_type, timestamp
             ) VALUES (?, ?, 'system', 'Office of Principal Madam', 'admin', 'Official Assignment', ?, 'none', ?);
           \`, [sysId, inv.group_id, welcomeNote, Date.now()]);

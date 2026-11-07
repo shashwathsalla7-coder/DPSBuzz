@@ -173,14 +173,14 @@ export async function GET(req: NextRequest) {
     const action = searchParams.get('action');
 
     // ------------------------------------------------------------------------
-    // FAST PATH: Incremental WhatsApp Messages Polling (Used by Class Groups)
+    // FAST PATH: Incremental Campus Wire Messages Polling (Used by Class Groups)
     // Runs in <100ms instead of 5,500ms
     // ------------------------------------------------------------------------
-    if (action === 'whatsapp_messages') {
+    if (action === 'wire_messages') {
       const after = Number(searchParams.get('after')) || 0;
       const channelId = searchParams.get('channelId');
 
-      let query = 'SELECT * FROM campus_whatsapp_messages';
+      let query = 'SELECT * FROM campus_wire_messages';
       const params: any[] = [];
 
       if (after > 0 && channelId) {
@@ -223,26 +223,26 @@ export async function GET(req: NextRequest) {
         {
           success: true,
           messages,
-          whatsappMessages: messages,
+          wireMessages: messages,
         },
         { headers: NO_CACHE_HEADERS }
       );
     }
 
     // ------------------------------------------------------------------------
-    // FAST PATH: WhatsApp Channels List Only (<80ms)
+    // FAST PATH: Campus Wire Channels List Only (<80ms)
     // ------------------------------------------------------------------------
-    if (action === 'whatsapp_channels') {
+    if (action === 'wire_channels') {
       let rawChannels: any[] = [];
       try {
         rawChannels = await d1Query<any>(
-          'SELECT * FROM campus_whatsapp_channels ORDER BY CASE WHEN id = \'channel-class-8g\' THEN 0 WHEN is_locked = 0 THEN 1 ELSE 2 END, created_at ASC;'
+          'SELECT * FROM campus_wire_channels ORDER BY CASE WHEN id = \'channel-class-8g\' THEN 0 WHEN is_locked = 0 THEN 1 ELSE 2 END, created_at ASC;'
         );
       } catch (err) {
         console.warn('D1 fast channels query notice:', err);
       }
 
-      const whatsappChannels = rawChannels.map((c) => ({
+      const wireChannels = rawChannels.map((c) => ({
         id: c.id,
         name: (c.name || '').replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1FA00}-\u{1FA6F}\u{1F004}\u{1F0CF}\u{2B50}\u{2B55}\u{231A}-\u{23F3}]/gu, '').trim(),
         grade: c.grade,
@@ -258,7 +258,7 @@ export async function GET(req: NextRequest) {
       }));
 
       return NextResponse.json(
-        { success: true, channels: whatsappChannels, whatsappChannels },
+        { success: true, channels: wireChannels, wireChannels },
         { headers: NO_CACHE_HEADERS }
       );
     }
@@ -295,8 +295,8 @@ export async function GET(req: NextRequest) {
       username ? d1Query<any>('SELECT * FROM campus_study_schedules WHERE username = ? ORDER BY created_at DESC LIMIT 5;', [username]) : Promise.resolve([]),
       d1Query<any>('SELECT * FROM campus_homework ORDER BY created_at DESC LIMIT 50;'),
       d1Query<any>('SELECT * FROM campus_group_invites ORDER BY created_at DESC LIMIT 100;'),
-      d1Query<any>('SELECT * FROM campus_whatsapp_channels ORDER BY CASE WHEN id = \'channel-class-8g\' THEN 0 WHEN is_locked = 0 THEN 1 ELSE 2 END, created_at ASC;'),
-      d1Query<any>('SELECT * FROM campus_whatsapp_messages ORDER BY timestamp ASC LIMIT 300;'),
+      d1Query<any>('SELECT * FROM campus_wire_channels ORDER BY CASE WHEN id = \'channel-class-8g\' THEN 0 WHEN is_locked = 0 THEN 1 ELSE 2 END, created_at ASC;'),
+      d1Query<any>('SELECT * FROM campus_wire_messages ORDER BY timestamp ASC LIMIT 300;'),
       d1Query<any>('SELECT * FROM campus_lost_found ORDER BY created_at DESC LIMIT 100;'),
       cleanClassGrade && sectionParam && cleanClassGrade !== 'All' && sectionParam !== 'All'
         ? d1Query<any>(
@@ -416,9 +416,9 @@ export async function GET(req: NextRequest) {
       createdAt: inv.created_at,
     }));
 
-    // 8. WhatsApp Channels
+    // 8. Campus Wire Channels
     const rawChannels = channelsResult.status === 'fulfilled' ? channelsResult.value : [];
-    const whatsappChannels = rawChannels.map((c: any) => ({
+    const wireChannels = rawChannels.map((c: any) => ({
       id: c.id,
       name: (c.name || '').replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1FA00}-\u{1FA6F}\u{1F004}\u{1F0CF}\u{2B50}\u{2B55}\u{231A}-\u{23F3}]/gu, '').trim(),
       grade: c.grade,
@@ -433,9 +433,9 @@ export async function GET(req: NextRequest) {
       createdAt: c.created_at,
     }));
 
-    // 9. WhatsApp Messages
+    // 9. Campus Wire Messages
     const rawMsgs = messagesResult.status === 'fulfilled' ? messagesResult.value : [];
-    const whatsappMessages = rawMsgs.map((m: any) => ({
+    const wireMessages = rawMsgs.map((m: any) => ({
       id: m.id,
       channelId: m.channel_id,
       senderUsername: m.sender_username,
@@ -500,8 +500,8 @@ export async function GET(req: NextRequest) {
       studySchedules,
       homework: homeworkList,
       lostFound: lostFoundItems,
-      whatsappChannels,
-      whatsappMessages,
+      wireChannels,
+      wireMessages,
       groupInvites,
       diaryEntries,
     };
@@ -1201,7 +1201,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'channelId and username are required' }, { status: 400 });
       }
 
-      const chList = await d1Query<any>('SELECT * FROM campus_whatsapp_channels WHERE id = ? LIMIT 1;', [channelId]);
+      const chList = await d1Query<any>('SELECT * FROM campus_wire_channels WHERE id = ? LIMIT 1;', [channelId]);
       if (!chList.length) return NextResponse.json({ error: 'Channel not found' }, { status: 404 });
       const ch = chList[0];
 
@@ -1300,13 +1300,13 @@ export async function POST(req: NextRequest) {
       await d1Execute('UPDATE campus_group_invites SET status = ? WHERE id = ?;', [status, inviteId]);
 
       if (status === 'accepted') {
-        // Enroll user into channel in campus_whatsapp_channels
-        const chList = await d1Query<any>('SELECT enrolled_usernames, member_count FROM campus_whatsapp_channels WHERE id = ? LIMIT 1;', [inv.group_id]);
+        // Enroll user into channel in campus_wire_channels
+        const chList = await d1Query<any>('SELECT enrolled_usernames, member_count FROM campus_wire_channels WHERE id = ? LIMIT 1;', [inv.group_id]);
         if (chList.length > 0) {
           const enrolled: string[] = JSON.parse(chList[0].enrolled_usernames || '[]');
           if (!enrolled.includes(cleanUser)) {
             enrolled.push(cleanUser);
-            await d1Execute('UPDATE campus_whatsapp_channels SET enrolled_usernames = ?, member_count = member_count + 1 WHERE id = ?;', [JSON.stringify(enrolled), inv.group_id]);
+            await d1Execute('UPDATE campus_wire_channels SET enrolled_usernames = ?, member_count = member_count + 1 WHERE id = ?;', [JSON.stringify(enrolled), inv.group_id]);
           }
 
           // Post welcome system message in channel
@@ -1314,7 +1314,7 @@ export async function POST(req: NextRequest) {
           const roleLabel = inv.invitee_role === 'teacher' ? (inv.subject || 'Faculty') : 'Student';
           const welcomeNote = `👋 @${cleanUser} accepted Madam's assignment as ${roleLabel} and joined ${inv.group_name}.`;
           await d1Execute(`
-            INSERT INTO campus_whatsapp_messages (
+            INSERT INTO campus_wire_messages (
               id, channel_id, sender_username, sender_name, sender_role, sender_class, text, template_type, timestamp
             ) VALUES (?, ?, 'system', 'Office of Principal Madam', 'admin', 'Official Assignment', ?, 'none', ?);
           `, [sysId, inv.group_id, welcomeNote, Date.now()]);
@@ -1325,9 +1325,9 @@ export async function POST(req: NextRequest) {
     }
 
     // ------------------------------------------------------------------------
-    // 12. SEND WHATSAPP MESSAGE (Role & Channel Lock Protected)
+    // 12. SEND CAMPUS WIRE MESSAGE (Role & Channel Lock Protected)
     // ------------------------------------------------------------------------
-    if (action === 'send_whatsapp_message') {
+    if (action === 'send_wire_message') {
       const { channelId, senderUsername, senderName, senderRole, senderClass, text, templateType, mediaUrl } = body;
       const rawText = (text || '').trim();
       const effectiveMediaUrl = (mediaUrl || body.imageUrl || '').trim();
@@ -1340,7 +1340,7 @@ export async function POST(req: NextRequest) {
         : cleanText;
 
       // Check if channel is locked
-      const chList = await d1Query<any>('SELECT * FROM campus_whatsapp_channels WHERE id = ? LIMIT 1;', [channelId]);
+      const chList = await d1Query<any>('SELECT * FROM campus_wire_channels WHERE id = ? LIMIT 1;', [channelId]);
       if (!chList || chList.length === 0) {
         return NextResponse.json({ error: 'Channel not found' }, { status: 404 });
       }
@@ -1392,7 +1392,7 @@ export async function POST(req: NextRequest) {
       const nowTs = Date.now();
 
       await d1Execute(`
-        INSERT INTO campus_whatsapp_messages (
+        INSERT INTO campus_wire_messages (
           id, channel_id, sender_username, sender_name, sender_role, sender_class, text, template_type, timestamp
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
       `, [
@@ -1409,7 +1409,7 @@ export async function POST(req: NextRequest) {
 
       // Update channel preview
       await d1Execute(`
-        UPDATE campus_whatsapp_channels 
+        UPDATE campus_wire_channels 
         SET last_message = ?, last_message_time = ? 
         WHERE id = ?;
       `, [cleanText.slice(0, 100), nowTime, channelId]);
@@ -1418,11 +1418,11 @@ export async function POST(req: NextRequest) {
       if (channelId === 'channel-school-broadcast' || body.broadcastToAll || isSenderAdmin) {
         if (channelId === 'channel-school-broadcast' || body.broadcastToAll) {
           try {
-            const otherChannels = await d1Query('SELECT id FROM campus_whatsapp_channels WHERE id != ?;', [channelId]);
+            const otherChannels = await d1Query('SELECT id FROM campus_wire_channels WHERE id != ?;', [channelId]);
             for (const chItem of otherChannels) {
               const subId = `wmsg-bcast-${chItem.id}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
               await d1Execute(`
-                INSERT INTO campus_whatsapp_messages (
+                INSERT INTO campus_wire_messages (
                   id, channel_id, sender_username, sender_name, sender_role, sender_class, text, template_type, timestamp
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
               `, [
@@ -1437,7 +1437,7 @@ export async function POST(req: NextRequest) {
                 nowTs,
               ]);
               await d1Execute(`
-                UPDATE campus_whatsapp_channels 
+                UPDATE campus_wire_channels 
                 SET last_message = ?, last_message_time = ? 
                 WHERE id = ?;
               `, [cleanText.slice(0, 100), nowTime, chItem.id]);
@@ -1465,7 +1465,7 @@ export async function POST(req: NextRequest) {
     }
 
     // ------------------------------------------------------------------------
-    // 13. TOGGLE WHATSAPP CHANNEL LOCK (Madam & Teacher Exclusive)
+    // 13. TOGGLE CAMPUS WIRE CHANNEL LOCK (Madam & Teacher Exclusive)
     // ------------------------------------------------------------------------
     if (action === 'toggle_channel_lock') {
       const { channelId, isLocked, requesterUsername, requesterRole } = body;
@@ -1489,7 +1489,7 @@ export async function POST(req: NextRequest) {
       }
 
       const lockVal = isLocked ? 1 : 0;
-      await d1Execute('UPDATE campus_whatsapp_channels SET is_locked = ? WHERE id = ?;', [lockVal, channelId]);
+      await d1Execute('UPDATE campus_wire_channels SET is_locked = ? WHERE id = ?;', [lockVal, channelId]);
 
       // Add system announcement message
       const sysId = `wmsg-sys-${Date.now()}`;
@@ -1498,7 +1498,7 @@ export async function POST(req: NextRequest) {
         : '🔓 Channel unlocked. Student discussions are now open.';
 
       await d1Execute(`
-        INSERT INTO campus_whatsapp_messages (
+        INSERT INTO campus_wire_messages (
           id, channel_id, sender_username, sender_name, sender_role, sender_class, text, template_type, timestamp
         ) VALUES (?, ?, 'system', 'DPS Administration', 'admin', 'Faculty Desk', ?, 'none', ?);
       `, [sysId, channelId, noticeText, Date.now()]);
@@ -1516,19 +1516,19 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'channelId and usernameToAdd are required' }, { status: 400 });
       }
 
-      const chList = await d1Query('SELECT * FROM campus_whatsapp_channels WHERE id = ? LIMIT 1;', [channelId]);
+      const chList = await d1Query('SELECT * FROM campus_wire_channels WHERE id = ? LIMIT 1;', [channelId]);
       if (!chList.length) return NextResponse.json({ error: 'Channel not found' }, { status: 404 });
       const ch = chList[0];
       const enrolled = JSON.parse(ch.enrolled_usernames || '[]');
       if (!enrolled.includes(cleanTarget)) {
         enrolled.push(cleanTarget);
-        await d1Execute('UPDATE campus_whatsapp_channels SET enrolled_usernames = ?, member_count = member_count + 1 WHERE id = ?;', [JSON.stringify(enrolled), channelId]);
+        await d1Execute('UPDATE campus_wire_channels SET enrolled_usernames = ?, member_count = member_count + 1 WHERE id = ?;', [JSON.stringify(enrolled), channelId]);
       }
 
       const sysId = `wmsg-enroll-${Date.now()}`;
       const notice = `👋 @${cleanTarget}${studentName ? ` (${studentName})` : ''} was directly enrolled into this classroom group by faculty.`;
       await d1Execute(`
-        INSERT INTO campus_whatsapp_messages (
+        INSERT INTO campus_wire_messages (
           id, channel_id, sender_username, sender_name, sender_role, sender_class, text, template_type, timestamp
         ) VALUES (?, ?, 'system', 'DPS Faculty Desk', 'admin', 'Administration', ?, 'none', ?);
       `, [sysId, channelId, notice, Date.now()]);
@@ -1537,9 +1537,9 @@ export async function POST(req: NextRequest) {
     }
 
     // ------------------------------------------------------------------------
-    // 14. CREATE WHATSAPP CHANNEL (Teacher & Madam)
+    // 14. CREATE CAMPUS WIRE CHANNEL (Teacher & Madam)
     // ------------------------------------------------------------------------
-    if (action === 'create_whatsapp_channel') {
+    if (action === 'create_wire_channel') {
       const { name, grade, section, isLocked } = body;
       const cleanName = (name || '').trim();
       if (!cleanName) {
@@ -1550,7 +1550,7 @@ export async function POST(req: NextRequest) {
       const id = `channel-${cleanName.toLowerCase().replace(/[^a-z0-9]/g, '-')}-${Date.now().toString().slice(-4)}`;
 
       await d1Execute(`
-        INSERT INTO campus_whatsapp_channels (
+        INSERT INTO campus_wire_channels (
           id, name, grade, section, is_locked, admin_usernames, member_count, last_message, last_message_time
         ) VALUES (?, ?, ?, ?, ?, '["shashwath71845", "madam_principal"]', 44, 'Group created by faculty.', 'Just now');
       `, [id, cleanName, cleanGrade, cleanSec, isLocked ? 1 : 0]);
@@ -1658,7 +1658,7 @@ export async function POST(req: NextRequest) {
 
       const targetRoom = parsedStudents[0].mappedRoomId;
       await d1Execute(`
-        UPDATE campus_whatsapp_channels 
+        UPDATE campus_wire_channels 
         SET member_count = member_count + ? 
         WHERE id = ?;
       `, [parsedStudents.length, targetRoom]);
@@ -1667,12 +1667,12 @@ export async function POST(req: NextRequest) {
       const enrollNotice = `📋 [ROSTER INGESTION COMPLETED] ${parsedStudents.length} student(s) automatically registered & mapped into classroom grid from school office roster: ${parsedStudents.map(s => s.name).slice(0, 3).join(', ')}${parsedStudents.length > 3 ? ` and ${parsedStudents.length - 3} more` : ''}.`;
       
       await d1Execute(`
-        INSERT INTO campus_whatsapp_messages (
+        INSERT INTO campus_wire_messages (
           id, channel_id, sender_username, sender_name, sender_role, sender_class, text, template_type, timestamp
         ) VALUES (?, ?, 'office_registry', 'School Enrollment Engine', 'admin', 'Registrar', ?, 'attendance', ?);
       `, [sysId, targetRoom, enrollNotice, Date.now()]);
 
-      logs.push(`[DATABASE SYNC] Successfully updated campus_whatsapp_channels member count (+${parsedStudents.length}) in Cloudflare D1 SQL.`);
+      logs.push(`[DATABASE SYNC] Successfully updated campus_wire_channels member count (+${parsedStudents.length}) in Cloudflare D1 SQL.`);
       logs.push(`[COMPLETED] Pipeline finished: ${parsedStudents.length} students fully enrolled with 0 manual operator inputs.`);
 
       return NextResponse.json({
@@ -1685,9 +1685,9 @@ export async function POST(req: NextRequest) {
     }
 
     // ------------------------------------------------------------------------
-    // 16. DISPATCH WHATSAPP AUTOMATED TEMPLATE
+    // 16. DISPATCH CAMPUS WIRE AUTOMATED TEMPLATE
     // ------------------------------------------------------------------------
-    if (action === 'dispatch_whatsapp_template') {
+    if (action === 'dispatch_wire_template') {
       const { channelId, templateType, content, senderName } = body;
       if (!channelId || !templateType) {
         return NextResponse.json({ error: 'channelId and templateType are required' }, { status: 400 });
@@ -1710,7 +1710,7 @@ export async function POST(req: NextRequest) {
       const nowTs = Date.now();
 
       await d1Execute(`
-        INSERT INTO campus_whatsapp_messages (
+        INSERT INTO campus_wire_messages (
           id, channel_id, sender_username, sender_name, sender_role, sender_class, text, template_type, timestamp
         ) VALUES (?, ?, 'madam_principal', ?, 'admin', 'Office of Principal', ?, ?, ?);
       `, [
@@ -1723,7 +1723,7 @@ export async function POST(req: NextRequest) {
       ]);
 
       await d1Execute(`
-        UPDATE campus_whatsapp_channels 
+        UPDATE campus_wire_channels 
         SET last_message = ?, last_message_time = ? 
         WHERE id = ?;
       `, [formattedText.slice(0, 100), nowStr, channelId]);

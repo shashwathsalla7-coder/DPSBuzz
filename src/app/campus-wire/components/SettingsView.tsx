@@ -74,7 +74,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <div className="flex-1 min-w-0">
                 <h2 className="text-sm font-semibold text-[#e9edef]">Shashwath</h2>
                 <p className="text-xs text-[#8696a0] truncate mt-0.5">
-                  Hey there! I am using DPS Buzz WhatsApp
+                  Hey there! I am using DPS Buzz Campus Wire
                 </p>
               </div>
             </div>
@@ -262,9 +262,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <div className="p-3 rounded-lg bg-[#202c33] space-y-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-sm text-[#e9edef]">Add WhatsApp Doodle to wallpaper</div>
+                  <div className="text-sm text-[#e9edef]">Add Campus Wire Doodle to wallpaper</div>
                   <div className="text-xs text-[#8696a0]">
-                    Display authentic WhatsApp hand-drawn doodle pattern
+                    Display authentic Campus Wire hand-drawn doodle pattern
                   </div>
                 </div>
                 <input
@@ -363,7 +363,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         {section === 'help' && (
           <div className="p-4 space-y-3">
             <div className="p-3 rounded-lg bg-[#202c33]">
-              <div className="text-sm font-semibold text-[#e9edef]">DPS Buzz WhatsApp Replica</div>
+              <div className="text-sm font-semibold text-[#e9edef]">DPS Buzz Campus Wire OS</div>
               <div className="text-xs text-[#8696a0] mt-1">
                 Version 2.24.12 Desktop Native Build • Powered by Next.js 16 &amp; Cloudflare D1
               </div>

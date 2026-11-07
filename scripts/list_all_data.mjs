@@ -29,11 +29,11 @@ async function main() {
   console.log('Posts in D1:', posts);
   const diary = await queryD1('SELECT id, class_grade, section, uploaded_by_username, date_str FROM campus_diary_entries;');
   console.log('Diary entries in D1:', diary);
-  const wmsgs = await queryD1('SELECT id, channel_id, sender_username, text FROM campus_whatsapp_messages LIMIT 10;');
-  console.log('Sample WhatsApp msgs in D1:', wmsgs);
+  const wmsgs = await queryD1('SELECT id, channel_id, sender_username, text FROM campus_wire_messages LIMIT 10;');
+  console.log('Sample Campus Wire msgs in D1:', wmsgs);
   const lf = await queryD1('SELECT id, title, status FROM campus_lost_found;');
   console.log('Lost and Found in D1:', lf);
-  const channels = await queryD1('SELECT id, name, grade, section FROM campus_whatsapp_channels WHERE id LIKE "%class%" LIMIT 30;');
+  const channels = await queryD1('SELECT id, name, grade, section FROM campus_wire_channels WHERE id LIKE "%class%" LIMIT 30;');
   console.log('Channels in D1:', channels);
 }
 

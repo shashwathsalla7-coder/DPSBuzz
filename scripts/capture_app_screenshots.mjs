@@ -68,7 +68,7 @@ async function captureAllScreenshots() {
   const desktopScreens = [
     { name: '02_home_feed.png', route: '/home', label: 'Home Feed & Official Video' },
     { name: '03_ai_diary.png', route: '/ai-diary', label: 'AI Homework Diary & Timetable' },
-    { name: '04_school_whatsapp.png', route: '/school-whatsapp', label: 'School WhatsApp 91 Class Channels' },
+    { name: '04_school_wire.png', route: '/school-wire', label: 'School Campus Wire 91 Class Channels' },
     { name: '05_lost_found.png', route: '/lost-found', label: 'Lost & Found Campus Hub' },
     { name: '06_study_corner.png', route: '/study-corner', label: 'Study Corner & Notes Exchange' },
     { name: '07_question_box.png', route: '/question-box', label: 'Campus Question Box & Q&A' },
@@ -107,7 +107,7 @@ async function captureAllScreenshots() {
   const mobileScreens = [
     { name: '16_mobile_home_feed.png', route: '/home', label: 'Mobile Home Feed' },
     { name: '17_mobile_ai_diary.png', route: '/ai-diary', label: 'Mobile AI Diary' },
-    { name: '18_mobile_school_whatsapp.png', route: '/school-whatsapp', label: 'Mobile School WhatsApp' },
+    { name: '18_mobile_school_wire.png', route: '/school-wire', label: 'Mobile School Campus Wire' },
     { name: '19_mobile_chats.png', route: '/chats', label: 'Mobile Direct Chats' },
   ];
 
