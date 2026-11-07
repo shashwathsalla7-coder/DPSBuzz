@@ -57,6 +57,31 @@ export default function ProfileClient({ username }: { username: string }) {
   const initialProfile = useMemo(() => {
     const found = DataStore.getProfileByUsername(cleanUsername);
     if (found) return found;
+
+    if (cleanUsername.startsWith('teacher_')) {
+      const parts = cleanUsername.replace('teacher_', '').split('_');
+      const cls = parts[0] ? (isNaN(Number(parts[0])) ? parts[0].toUpperCase() : `Class ${parts[0]}`) : 'Faculty';
+      const sec = (parts[1] || 'A').toUpperCase();
+      return {
+        id: 'user-' + cleanUsername,
+        username: cleanUsername,
+        fullName: `Faculty (${cls}-${sec} Class Teacher)`,
+        avatar: null,
+        bio: `Official Class Teacher of ${cls}-${sec} • Senior Faculty • DPS Campus`,
+        class: parts[0] || 'Faculty',
+        section: sec,
+        gradeDisplay: cls,
+        role: 'teacher' as const,
+        isVerified: true,
+        isApproved: true,
+        followerCount: 40,
+        followingCount: 40,
+        postCount: 0,
+        spiritPoints: 1000,
+        createdAt: new Date().toISOString(),
+      };
+    }
+
     return {
       id: 'user-' + cleanUsername,
       username: cleanUsername,
@@ -65,7 +90,7 @@ export default function ProfileClient({ username }: { username: string }) {
       bio: 'Student • Classes 6–10',
       class: '8',
       section: 'A',
-      role: 'student' as 'admin' | 'student',
+      role: 'student' as 'admin' | 'student' | 'teacher',
       isVerified: false,
       isApproved: true,
       followerCount: 0,
@@ -647,7 +672,16 @@ export default function ProfileClient({ username }: { username: string }) {
   }
 
   const pair = getAvatarColorPair(profile.username);
-  const isOfficial = profile.username.toLowerCase() === 'dpsbuzz_official';
+  const isOfficial =
+    profile.username.toLowerCase() === 'dpsbuzz_official' ||
+    profile.username.toLowerCase() === 'dpsbuzz' ||
+    profile.username.toLowerCase() === 'madam_principal' ||
+    (profile as any).role === 'admin';
+  const isTeacher =
+    (profile as any).role === 'teacher' ||
+    profile.class === 'Staff' ||
+    profile.username.toLowerCase().startsWith('teacher_') ||
+    profile.username.toLowerCase().includes('_faculty');
 
   const rawOriginalPosts = useMemo(() => {
     return DataStore.getPosts(true).filter(
@@ -1195,6 +1229,16 @@ export default function ProfileClient({ username }: { username: string }) {
             <span className="text-sm font-bold" style={{ color: 'var(--text)' }}>
               {profile.fullName}
             </span>
+            {isTeacher && (
+              <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                Faculty
+              </span>
+            )}
+            {isOfficial && !isTeacher && (
+              <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                DPS Official
+              </span>
+            )}
             {!isOwnProfile && isFollowedBy && (
               <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-[var(--surface-sunken)] text-[var(--text-muted)] border border-[var(--line)]">
                 Follows you
@@ -1202,7 +1246,11 @@ export default function ProfileClient({ username }: { username: string }) {
             )}
           </div>
           <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
-            {isOfficial ? 'Official School Office' : `Class ${profile.class}-${profile.section || 'A'} • DPS Student 🐝`}
+            {isOfficial
+              ? 'Official School Office • DPS Administration 🏛️'
+              : isTeacher
+              ? `${profile.gradeDisplay || 'Faculty'} • Class Teacher ${profile.section || ''} 🎓`
+              : `Class ${profile.class}-${profile.section || 'A'} • DPS Student 🐝`}
           </div>
           {profile.bio && (
             <p className="text-xs leading-relaxed whitespace-pre-line pt-0.5" style={{ color: 'var(--text)' }}>
