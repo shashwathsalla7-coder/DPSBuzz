@@ -112,13 +112,13 @@ async function main() {
   };
 
   // Fetch registered channels from D1
-  const existingChannels = await queryD1('SELECT id, name, grade, section FROM campus_whatsapp_channels;');
+  const existingChannels = await queryD1('SELECT id, name, grade, section FROM campus_wire_channels;');
   const channelMap = new Map();
   for (const ch of existingChannels) {
     channelMap.set(`${ch.grade}_${ch.section}`.toLowerCase(), ch.id);
     channelMap.set(ch.id.toLowerCase(), ch.id);
   }
-  console.log(`✓ Loaded ${existingChannels.length} registered WhatsApp classroom channels from Cloudflare D1\n`);
+  console.log(`✓ Loaded ${existingChannels.length} registered Campus Wire classroom channels from Cloudflare D1\n`);
 
   // ---------------------------------------------------------------------------
   // STEP 2: PROFILE & AUTHENTICATION SESSIONS FOR ALL 150 SECTIONS
@@ -370,9 +370,9 @@ async function main() {
   };
 
   // ---------------------------------------------------------------------------
-  // STEP 7: 150 WHATSAPP CLASSROOM GROUPS & ISOLATION CHECK
+  // STEP 7: 150 CAMPUS_WIRE CLASSROOM GROUPS & ISOLATION CHECK
   // ---------------------------------------------------------------------------
-  console.log('[STAGE 7] Testing 150 WhatsApp Classroom Channels (Teacher Dispatches & Isolation)...');
+  console.log('[STAGE 7] Testing 150 Campus Wire Classroom Channels (Teacher Dispatches & Isolation)...');
   let teacherDispatches = 0;
   let studentMessages = 0;
   let lockToggles = 0;
@@ -397,7 +397,7 @@ async function main() {
     const tMsg = await apiFetch('/api/campus', {
       method: 'POST',
       body: JSON.stringify({
-        action: 'send_whatsapp_message',
+        action: 'send_wire_message',
         channelId,
         senderUsername: teacher.username,
         senderName: teacher.fullName,
@@ -437,7 +437,7 @@ async function main() {
     const sMsg = await apiFetch('/api/campus', {
       method: 'POST',
       body: JSON.stringify({
-        action: 'send_whatsapp_message',
+        action: 'send_wire_message',
         channelId,
         senderUsername: student1.username,
         senderName: student1.fullName,
@@ -460,7 +460,7 @@ async function main() {
   console.log(`✓ Student classroom messages received: ${studentMessages}/30`);
   console.log(`✓ Class Isolation: ${isolationViolations} violations (0% cross-class leakage)\n`);
 
-  report.stageResults.classroomWhatsApp = {
+  report.stageResults.classroomCampus Wire = {
     teacherDispatches,
     lockToggles,
     studentMessages,
@@ -653,7 +653,7 @@ async function main() {
   await executeD1("DELETE FROM campus_diary_entries WHERE id LIKE 'diary-%' AND date_str = ?;", [today]);
   await executeD1("DELETE FROM campus_lost_found WHERE title LIKE '%Titan Fastrack%';");
   await executeD1("DELETE FROM campus_broadcasts WHERE title = 'Winter Uniform Mandatory Notice';");
-  await executeD1("DELETE FROM campus_whatsapp_messages WHERE text LIKE '%OFFICIAL NOTICE: Complete Exercise%' OR text LIKE '%Understood, teacher%';");
+  await executeD1("DELETE FROM campus_wire_messages WHERE text LIKE '%OFFICIAL NOTICE: Complete Exercise%' OR text LIKE '%Understood, teacher%';");
   console.log('✓ Purged all transient simulation records. Database is completely clean.\n');
 
   // ---------------------------------------------------------------------------

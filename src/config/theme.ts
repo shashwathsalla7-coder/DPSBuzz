@@ -101,7 +101,7 @@ export const chatConfig = {
     sending: '#A1A1AA',    // Zinc 400 (clock icon)
     sent: '#A1A1AA',       // Zinc 400 (1 grey tick)
     delivered: '#A1A1AA',  // Zinc 400 (2 grey ticks)
-    read: '#22C55E',       // Clear WhatsApp Emerald Green (#22C55E)
+    read: '#22C55E',       // Clear Emerald Green (#22C55E)
     failed: '#EF4444',     // Red error / retry (#EF4444)
   },
 } as const;

@@ -58,7 +58,7 @@ async function main() {
       const lastMsg = `Welcome to ${item.grade}-${sec} Official Classroom. Daily homework and verified announcements.`;
 
       await executeD1(`
-        INSERT OR REPLACE INTO campus_whatsapp_channels (
+        INSERT OR REPLACE INTO campus_wire_channels (
           id, name, grade, section, is_locked, admin_usernames, member_count, last_message, last_message_time, created_at, enrolled_usernames
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, '08:00 AM', ?, '[]');
       `, [channelId, channelName, item.grade, sec, isLocked, adminUsers, item.count, lastMsg, new Date().toISOString()]);

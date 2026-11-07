@@ -6,7 +6,7 @@ let content = fs.readFileSync(filePath, 'utf-8');
 
 // 1. Interfaces
 const interfacesMarker = `export interface LostFoundItem {`;
-const newInterfaces = `export interface WhatsAppChannel {
+const newInterfaces = `export interface Campus WireChannel {
   id: string;
   name: string;
   grade: string;
@@ -20,7 +20,7 @@ const newInterfaces = `export interface WhatsAppChannel {
   createdAt?: string;
 }
 
-export interface WhatsAppMessage {
+export interface Campus WireMessage {
   id: string;
   channelId: string;
   senderUsername: string;
@@ -43,17 +43,17 @@ export interface RosterStudent {
 
 `;
 
-if (!content.includes('interface WhatsAppChannel')) {
+if (!content.includes('interface Campus WireChannel')) {
   content = content.replace(interfacesMarker, newInterfaces + interfacesMarker);
 }
 
 // 2. DB state variables
 const stateMarker = `let dbLostFound: LostFoundItem[] = [];`;
 const stateAdditions = `let dbLostFound: LostFoundItem[] = [];
-let dbWhatsAppChannels: WhatsAppChannel[] = [];
-let dbWhatsAppMessages: WhatsAppMessage[] = [];`;
+let dbCampus WireChannels: Campus WireChannel[] = [];
+let dbCampus WireMessages: Campus WireMessage[] = [];`;
 
-if (!content.includes('let dbWhatsAppChannels:')) {
+if (!content.includes('let dbCampus WireChannels:')) {
   content = content.replace(stateMarker, stateAdditions);
 }
 
@@ -64,30 +64,30 @@ const syncMarker = `        if (Array.isArray(data.lostFound)) {
 const syncAdditions = `        if (Array.isArray(data.lostFound)) {
           dbLostFound = data.lostFound;
         }
-        if (Array.isArray(data.whatsappChannels)) {
-          dbWhatsAppChannels = data.whatsappChannels;
+        if (Array.isArray(data.wireChannels)) {
+          dbCampus WireChannels = data.wireChannels;
         }
-        if (Array.isArray(data.whatsappMessages)) {
-          dbWhatsAppMessages = data.whatsappMessages;
+        if (Array.isArray(data.wireMessages)) {
+          dbCampus WireMessages = data.wireMessages;
         }`;
 
-if (!content.includes('dbWhatsAppChannels = data.whatsappChannels;')) {
+if (!content.includes('dbCampus WireChannels = data.wireChannels;')) {
   content = content.replace(syncMarker, syncAdditions);
 }
 
 // 4. Methods on schoolSystem object
 const methodsMarker = `  async claimLostFound(itemId: string): Promise<boolean> {`;
-const newMethods = `  // --- WHATSAPP SCHOOL HUB ---
-  getWhatsAppChannels(): WhatsAppChannel[] {
-    return dbWhatsAppChannels;
+const newMethods = `  // --- CAMPUS_WIRE SCHOOL HUB ---
+  getCampus WireChannels(): Campus WireChannel[] {
+    return dbCampus WireChannels;
   },
 
-  getWhatsAppMessages(channelId?: string): WhatsAppMessage[] {
-    if (!channelId) return dbWhatsAppMessages;
-    return dbWhatsAppMessages.filter((m) => m.channelId === channelId);
+  getCampus WireMessages(channelId?: string): Campus WireMessage[] {
+    if (!channelId) return dbCampus WireMessages;
+    return dbCampus WireMessages.filter((m) => m.channelId === channelId);
   },
 
-  async sendWhatsAppMessage(data: {
+  async sendCampus WireMessage(data: {
     channelId: string;
     senderUsername: string;
     senderName: string;
@@ -95,8 +95,8 @@ const newMethods = `  // --- WHATSAPP SCHOOL HUB ---
     senderClass?: string;
     text: string;
     templateType?: 'none' | 'attendance' | 'homework' | 'exam';
-  }): Promise<{ success: boolean; message?: WhatsAppMessage; error?: string }> {
-    const optimisticMsg: WhatsAppMessage = {
+  }): Promise<{ success: boolean; message?: Campus WireMessage; error?: string }> {
+    const optimisticMsg: Campus WireMessage = {
       id: \`wmsg-\${Date.now()}\`,
       channelId: data.channelId,
       senderUsername: data.senderUsername,
@@ -108,8 +108,8 @@ const newMethods = `  // --- WHATSAPP SCHOOL HUB ---
       timestamp: Date.now(),
     };
 
-    dbWhatsAppMessages = [...dbWhatsAppMessages, optimisticMsg];
-    const ch = dbWhatsAppChannels.find((c) => c.id === data.channelId);
+    dbCampus WireMessages = [...dbCampus WireMessages, optimisticMsg];
+    const ch = dbCampus WireChannels.find((c) => c.id === data.channelId);
     if (ch) {
       ch.lastMessage = data.text.slice(0, 80);
       ch.lastMessageTime = 'Just now';
@@ -123,13 +123,13 @@ const newMethods = `  // --- WHATSAPP SCHOOL HUB ---
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          action: 'send_whatsapp_message',
+          action: 'send_wire_message',
           ...data,
         }),
       });
       const json = await res.json();
       if (!res.ok) {
-        dbWhatsAppMessages = dbWhatsAppMessages.filter((m) => m.id !== optimisticMsg.id);
+        dbCampus WireMessages = dbCampus WireMessages.filter((m) => m.id !== optimisticMsg.id);
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new Event('dpsbuzz:campus_updated'));
         }
@@ -147,7 +147,7 @@ const newMethods = `  // --- WHATSAPP SCHOOL HUB ---
     requesterUsername: string;
     requesterRole?: string;
   }): Promise<{ success: boolean; error?: string }> {
-    const ch = dbWhatsAppChannels.find((c) => c.id === data.channelId);
+    const ch = dbCampus WireChannels.find((c) => c.id === data.channelId);
     if (ch) {
       ch.isLocked = data.isLocked;
       if (typeof window !== 'undefined') {
@@ -175,26 +175,26 @@ const newMethods = `  // --- WHATSAPP SCHOOL HUB ---
     }
   },
 
-  async createWhatsAppChannel(data: {
+  async createCampus WireChannel(data: {
     name: string;
     grade?: string;
     section?: string;
     isLocked?: boolean;
     requesterUsername?: string;
     requesterRole?: string;
-  }): Promise<{ success: boolean; channel?: WhatsAppChannel; error?: string }> {
+  }): Promise<{ success: boolean; channel?: Campus WireChannel; error?: string }> {
     try {
       const res = await fetch('/api/campus', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          action: 'create_whatsapp_channel',
+          action: 'create_wire_channel',
           ...data,
         }),
       });
       const json = await res.json();
       if (res.ok && json.channel) {
-        dbWhatsAppChannels = [...dbWhatsAppChannels, json.channel];
+        dbCampus WireChannels = [...dbCampus WireChannels, json.channel];
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new Event('dpsbuzz:campus_updated'));
         }
@@ -235,25 +235,25 @@ const newMethods = `  // --- WHATSAPP SCHOOL HUB ---
     }
   },
 
-  async dispatchWhatsAppTemplate(data: {
+  async dispatchCampus WireTemplate(data: {
     channelId: string;
     templateType: 'attendance' | 'homework' | 'exam';
     content?: string;
     senderName?: string;
-  }): Promise<{ success: boolean; message?: WhatsAppMessage; error?: string }> {
+  }): Promise<{ success: boolean; message?: Campus WireMessage; error?: string }> {
     try {
       const res = await fetch('/api/campus', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          action: 'dispatch_whatsapp_template',
+          action: 'dispatch_wire_template',
           ...data,
         }),
       });
       const json = await res.json();
       if (res.ok) {
         if (json.message) {
-          dbWhatsAppMessages = [...dbWhatsAppMessages, json.message];
+          dbCampus WireMessages = [...dbCampus WireMessages, json.message];
           if (typeof window !== 'undefined') {
             window.dispatchEvent(new Event('dpsbuzz:campus_updated'));
           }
@@ -268,9 +268,9 @@ const newMethods = `  // --- WHATSAPP SCHOOL HUB ---
 
   async claimLostFound(itemId: string): Promise<boolean> {`;
 
-if (!content.includes('getWhatsAppChannels()')) {
+if (!content.includes('getCampus WireChannels()')) {
   content = content.replace(methodsMarker, newMethods);
 }
 
 fs.writeFileSync(filePath, content, 'utf-8');
-console.log('Successfully patched src/lib/schoolFeatures.ts with WhatsApp methods!');
+console.log('Successfully patched src/lib/schoolFeatures.ts with Campus Wire methods!');

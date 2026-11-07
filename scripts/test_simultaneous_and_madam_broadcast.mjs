@@ -16,7 +16,7 @@ async function testSimultaneousAndMadamBroadcast() {
   const testMsgText = `📢 [MANDATORY CIRCULAR] Annual Sports Day selections start tomorrow. Track suits required for morning assembly.`;
 
   // Get all classroom channels
-  const channels = await d1Query('SELECT id, name, grade FROM campus_whatsapp_channels;');
+  const channels = await d1Query('SELECT id, name, grade FROM campus_wire_channels;');
   console.log(`Found ${channels.length} channels in D1 to verify multi-channel propagation:`);
   for (const c of channels) {
     console.log(`  - [${c.id}] ${c.name}`);
@@ -26,7 +26,7 @@ async function testSimultaneousAndMadamBroadcast() {
   for (const c of channels) {
     const msgId = `wmsg-test-bcast-${c.id}-${nowTs}`;
     await d1Execute(`
-      INSERT INTO campus_whatsapp_messages (
+      INSERT INTO campus_wire_messages (
         id, channel_id, sender_username, sender_name, sender_role, sender_class, text, template_type, timestamp
       ) VALUES (?, ?, 'madam_principal', 'Principal Madam (Office)', 'admin', 'Office of Principal', ?, 'exam', ?);
     `, [msgId, c.id, testMsgText, nowTs]);
@@ -34,7 +34,7 @@ async function testSimultaneousAndMadamBroadcast() {
 
   // Verify that EVERY channel now has Madam's circular
   for (const c of channels) {
-    const res = await d1Query('SELECT id, text, sender_name FROM campus_whatsapp_messages WHERE channel_id = ? AND timestamp = ?;', [c.id, nowTs]);
+    const res = await d1Query('SELECT id, text, sender_name FROM campus_wire_messages WHERE channel_id = ? AND timestamp = ?;', [c.id, nowTs]);
     if (res.length > 0) {
       console.log(`  [PASS] Channel "${c.name}" received Madam circular directly: "${res[0].text.slice(0, 45)}..."`);
     } else {
@@ -43,7 +43,7 @@ async function testSimultaneousAndMadamBroadcast() {
   }
 
   // Clean up test broadcast
-  await d1Execute('DELETE FROM campus_whatsapp_messages WHERE timestamp = ?;', [nowTs]);
+  await d1Execute('DELETE FROM campus_wire_messages WHERE timestamp = ?;', [nowTs]);
 
   // 2. Test Direct Student Enrolling in Channel
   console.log('\n2. TESTING DIRECT FACULTY ENROLLMENT (NO REQUESTS NEEDED)');
@@ -51,14 +51,14 @@ async function testSimultaneousAndMadamBroadcast() {
   const testStudent = 'vignesh';
 
   // Read current enrolled list
-  const chData = await d1Query('SELECT enrolled_usernames, member_count FROM campus_whatsapp_channels WHERE id = ?;', [targetChannel.id]);
+  const chData = await d1Query('SELECT enrolled_usernames, member_count FROM campus_wire_channels WHERE id = ?;', [targetChannel.id]);
   const enrolled = JSON.parse(chData[0].enrolled_usernames || '[]');
   if (!enrolled.includes(testStudent)) {
     enrolled.push(testStudent);
-    await d1Execute('UPDATE campus_whatsapp_channels SET enrolled_usernames = ? WHERE id = ?;', [JSON.stringify(enrolled), targetChannel.id]);
+    await d1Execute('UPDATE campus_wire_channels SET enrolled_usernames = ? WHERE id = ?;', [JSON.stringify(enrolled), targetChannel.id]);
   }
 
-  const updatedCh = await d1Query('SELECT enrolled_usernames FROM campus_whatsapp_channels WHERE id = ?;', [targetChannel.id]);
+  const updatedCh = await d1Query('SELECT enrolled_usernames FROM campus_wire_channels WHERE id = ?;', [targetChannel.id]);
   const verifiedList = JSON.parse(updatedCh[0].enrolled_usernames || '[]');
   if (verifiedList.includes(testStudent)) {
     console.log(`  [PASS] Student @${testStudent} directly enrolled in "${targetChannel.name}".`);
@@ -90,7 +90,7 @@ async function testSimultaneousAndMadamBroadcast() {
   // 4. Test Fast Incremental Query (< 50ms)
   console.log('\n4. TESTING FAST INCREMENTAL CHAT QUERY FOR SIMULTANEOUS CHATTING');
   const start = performance.now();
-  const recentMsgs = await d1Query('SELECT id, channel_id, sender_name, text FROM campus_whatsapp_messages ORDER BY timestamp DESC LIMIT 5;');
+  const recentMsgs = await d1Query('SELECT id, channel_id, sender_name, text FROM campus_wire_messages ORDER BY timestamp DESC LIMIT 5;');
   const duration = (performance.now() - start).toFixed(2);
   console.log(`  [PASS] Incremental query returned ${recentMsgs.length} messages in ${duration}ms (Ultra Fast Edge Sync)`);
 

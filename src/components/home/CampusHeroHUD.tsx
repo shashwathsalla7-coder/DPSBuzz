@@ -695,7 +695,7 @@ export function CampusHeroHUD() {
         )}
       </div>
 
-      {/* Sleek Rapid Flight Deck: 4 Direct Action Pills (WhatsApp, AI Diary, Notes, Lost & Found) */}
+      {/* Sleek Rapid Flight Deck: 4 Direct Action Pills (Campus Wire, AI Diary, Notes, Lost & Found) */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2.5">
         <Link
           href="/groups"
@@ -710,7 +710,7 @@ export function CampusHeroHUD() {
           </div>
           <div className="min-w-0">
             <div className="text-xs font-bold text-[var(--text)] truncate leading-tight">
-              Class WhatsApp
+              Campus Wire
             </div>
             <div className="text-[10px] text-[var(--text-muted)] truncate">
               Chats & Groups

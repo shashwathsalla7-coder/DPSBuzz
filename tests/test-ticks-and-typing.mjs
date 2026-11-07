@@ -114,7 +114,7 @@ console.log('\n--- CASE 4: Read Receipts Disabled ---');
   // B's own sent messages also stay grey
   let msgFromB = { id: 'msg-from-b', status: 'read' };
   const bSeesGreen = bSettings.readReceiptsEnabled && msgFromB.status === 'read';
-  assert(bSeesGreen === false, 'B also sees only grey ticks on their own sent messages (reciprocal WhatsApp privacy)');
+  assert(bSeesGreen === false, 'B also sees only grey ticks on their own sent messages (reciprocal privacy)');
 }
 
 // -------------------------------------------------------------

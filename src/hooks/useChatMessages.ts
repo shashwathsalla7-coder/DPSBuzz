@@ -274,7 +274,7 @@ export function useChatMessages(chatId: string, currentUserId: string) {
           return next;
         });
       })
-      // Real-time broadcast for Message delivery & read receipts (WhatsApp ticks live update)
+      // Real-time broadcast for Message delivery & read receipts (Campus Wire delivery ticks live update)
       .on('broadcast', { event: 'receipt' }, (payload: any) => {
         const { type, messageIds } = payload.payload || {};
         if (!type) return;

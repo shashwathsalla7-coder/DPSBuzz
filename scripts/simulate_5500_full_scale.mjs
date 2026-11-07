@@ -331,11 +331,11 @@ async function runScaleTest() {
     console.log(`❌ AI Diary Test Exception: ${err.message}`);
   }
 
-  // STEP 6: WhatsApp Classroom Channels at 91 Section Scale
-  console.log('\n[STEP 6] Testing WhatsApp Classroom Channels for 91 Sections...');
+  // STEP 6: Campus Wire Classroom Channels at 91 Section Scale
+  console.log('\n[STEP 6] Testing Campus Wire Classroom Channels for 91 Sections...');
   try {
-    const existingChannels = await queryD1('SELECT id, grade, section, is_locked FROM campus_whatsapp_channels;');
-    console.log(` - Current WhatsApp channels in D1: ${existingChannels.length}`);
+    const existingChannels = await queryD1('SELECT id, grade, section, is_locked FROM campus_wire_channels;');
+    console.log(` - Current Campus Wire channels in D1: ${existingChannels.length}`);
 
     const locked = existingChannels.find(c => c.is_locked === 1);
     if (locked) {
@@ -343,7 +343,7 @@ async function runScaleTest() {
       const isStudentAuthorized = false;
       if (!isStudentAuthorized) {
         console.log(`✓ Channel Lock Enforced: Non-admin students correctly blocked from locked announcement channel.`);
-        report.passed.push('WhatsApp channel lock security verified');
+        report.passed.push('Campus Wire channel lock security verified');
       }
     }
 
@@ -363,7 +363,7 @@ async function runScaleTest() {
       report.passed.push('91 Classroom Channels size verified');
     }
   } catch (err) {
-    console.log(`❌ WhatsApp Scale Test Error: ${err.message}`);
+    console.log(`❌ Campus Wire Scale Test Error: ${err.message}`);
   }
 
   // STEP 7: Lost & Found Campus Lifecycle (Report -> Claim -> Recover)

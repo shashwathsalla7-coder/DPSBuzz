@@ -1,0 +1,21 @@
+{
+  "avoid": [
+    "WhatsApp",
+    "WhatsApp Web",
+    "Meta Platforms",
+    "WhatsApp Inc"
+  ],
+  "domains": [
+    "whatsapp.com",
+    "whatsapp.net",
+    "fb.com",
+    "facebook.com"
+  ],
+  "colors": [
+    "#25d366",
+    "#128c7e",
+    "#075e54",
+    "#34b7f1",
+    "#ece5dd"
+  ]
+}

@@ -17,13 +17,13 @@ const incrementalCode = `export async function GET(req: NextRequest) {
 
     // Fast lightweight incremental sync for simultaneous chatting
     const actionParam = searchParams.get('action');
-    if (actionParam === 'whatsapp_messages') {
+    if (actionParam === 'wire_messages') {
       const channelId = searchParams.get('channelId');
       const afterTs = Number(searchParams.get('after') || '0');
-      let query = 'SELECT * FROM campus_whatsapp_messages WHERE timestamp > ? ORDER BY timestamp ASC LIMIT 200;';
+      let query = 'SELECT * FROM campus_wire_messages WHERE timestamp > ? ORDER BY timestamp ASC LIMIT 200;';
       let params = [afterTs];
       if (channelId) {
-        query = 'SELECT * FROM campus_whatsapp_messages WHERE channel_id = ? AND timestamp > ? ORDER BY timestamp ASC LIMIT 200;';
+        query = 'SELECT * FROM campus_wire_messages WHERE channel_id = ? AND timestamp > ? ORDER BY timestamp ASC LIMIT 200;';
         params = [channelId, afterTs];
       }
       const rawMsgs = await d1Query(query, params);
@@ -42,7 +42,7 @@ const incrementalCode = `export async function GET(req: NextRequest) {
       return NextResponse.json({ success: true, messages }, { headers: NO_CACHE_HEADERS });
     }`;
 
-if (!content.includes(`actionParam === 'whatsapp_messages'`)) {
+if (!content.includes(`actionParam === 'wire_messages'`)) {
   content = content.replace(getTopMarker, incrementalCode);
 }
 
@@ -55,17 +55,17 @@ if (!content.includes('enrolledUsernames: JSON.parse(c.enrolled_usernames')) {
   content = content.replace(channelMapMarker, channelMapAddition);
 }
 
-// 3. Multi-channel broadcast copy in send_whatsapp_message
+// 3. Multi-channel broadcast copy in send_wire_message
 const msgSendMarker = `      // Update channel preview
       await d1Execute(\`
-        UPDATE campus_whatsapp_channels 
+        UPDATE campus_wire_channels 
         SET last_message = ?, last_message_time = ? 
         WHERE id = ?;
       \`, [cleanText.slice(0, 100), nowTime, channelId]);`;
 
 const msgSendMultiBroadcast = `      // Update channel preview
       await d1Execute(\`
-        UPDATE campus_whatsapp_channels 
+        UPDATE campus_wire_channels 
         SET last_message = ?, last_message_time = ? 
         WHERE id = ?;
       \`, [cleanText.slice(0, 100), nowTime, channelId]);
@@ -74,11 +74,11 @@ const msgSendMultiBroadcast = `      // Update channel preview
       if (channelId === 'channel-school-broadcast' || body.broadcastToAll || isSenderAdmin) {
         if (channelId === 'channel-school-broadcast' || body.broadcastToAll) {
           try {
-            const otherChannels = await d1Query('SELECT id FROM campus_whatsapp_channels WHERE id != ?;', [channelId]);
+            const otherChannels = await d1Query('SELECT id FROM campus_wire_channels WHERE id != ?;', [channelId]);
             for (const chItem of otherChannels) {
               const subId = \`wmsg-bcast-\${chItem.id}-\${Date.now()}-\${Math.floor(Math.random() * 1000)}\`;
               await d1Execute(\`
-                INSERT INTO campus_whatsapp_messages (
+                INSERT INTO campus_wire_messages (
                   id, channel_id, sender_username, sender_name, sender_role, sender_class, text, template_type, timestamp
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
               \`, [
@@ -93,7 +93,7 @@ const msgSendMultiBroadcast = `      // Update channel preview
                 nowTs,
               ]);
               await d1Execute(\`
-                UPDATE campus_whatsapp_channels 
+                UPDATE campus_wire_channels 
                 SET last_message = ?, last_message_time = ? 
                 WHERE id = ?;
               \`, [cleanText.slice(0, 100), nowTime, chItem.id]);
@@ -110,7 +110,7 @@ if (!content.includes('If sent by Principal Madam OR targeting school-wide broad
 
 // 4. Add action add_student_to_channel
 const newActionMarker = `    // ------------------------------------------------------------------------
-    // 14. CREATE WHATSAPP CHANNEL (Teacher & Madam)
+    // 14. CREATE CAMPUS_WIRE CHANNEL (Teacher & Madam)
     // ------------------------------------------------------------------------`;
 
 const addStudentAction = `    // ------------------------------------------------------------------------
@@ -123,19 +123,19 @@ const addStudentAction = `    // -----------------------------------------------
         return NextResponse.json({ error: 'channelId and usernameToAdd are required' }, { status: 400 });
       }
 
-      const chList = await d1Query('SELECT * FROM campus_whatsapp_channels WHERE id = ? LIMIT 1;', [channelId]);
+      const chList = await d1Query('SELECT * FROM campus_wire_channels WHERE id = ? LIMIT 1;', [channelId]);
       if (!chList.length) return NextResponse.json({ error: 'Channel not found' }, { status: 404 });
       const ch = chList[0];
       const enrolled = JSON.parse(ch.enrolled_usernames || '[]');
       if (!enrolled.includes(cleanTarget)) {
         enrolled.push(cleanTarget);
-        await d1Execute('UPDATE campus_whatsapp_channels SET enrolled_usernames = ?, member_count = member_count + 1 WHERE id = ?;', [JSON.stringify(enrolled), channelId]);
+        await d1Execute('UPDATE campus_wire_channels SET enrolled_usernames = ?, member_count = member_count + 1 WHERE id = ?;', [JSON.stringify(enrolled), channelId]);
       }
 
       const sysId = \`wmsg-enroll-\${Date.now()}\`;
       const notice = \`👋 @\${cleanTarget}\${studentName ? \` (\${studentName})\` : ''} was directly enrolled into this classroom group by faculty.\`;
       await d1Execute(\`
-        INSERT INTO campus_whatsapp_messages (
+        INSERT INTO campus_wire_messages (
           id, channel_id, sender_username, sender_name, sender_role, sender_class, text, template_type, timestamp
         ) VALUES (?, ?, 'system', 'DPS Faculty Desk', 'admin', 'Administration', ?, 'none', ?);
       \`, [sysId, channelId, notice, Date.now()]);

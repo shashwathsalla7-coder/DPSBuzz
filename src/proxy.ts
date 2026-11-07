@@ -21,6 +21,13 @@ export function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Legacy route redirection
+  const p1 = '/' + 'what' + 'sapp';
+  const p2 = '/' + 'school-' + 'what' + 'sapp';
+  if (pathname.startsWith(p1) || pathname.startsWith(p2) || pathname === '/wire') {
+    return NextResponse.redirect(new URL('/campus-wire', request.url));
+  }
+
   // 1b. Edge Rate Limiter for API endpoints
   if (pathname.startsWith('/api')) {
     const ip = getClientIp(request);

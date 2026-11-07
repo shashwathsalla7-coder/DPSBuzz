@@ -57,7 +57,7 @@ import {
 } from './components/types';
 
 import {
-  WHATSAPP_DOODLE_DARK,
+  CAMPUS_DOODLE_DARK,
   DEMO_CONTACTS,
   DEMO_STATUSES,
   DEMO_CALLS,
@@ -84,7 +84,7 @@ import { TeacherNoticeModal } from './components/TeacherNoticeModal';
 import { PinnedNoticeBanner } from './components/PinnedNoticeBanner';
 
 import { DataStore, Profile } from '@/lib/dataStore';
-import { SchoolFeatures, WhatsAppChannel, WhatsAppMessage } from '@/lib/schoolFeatures';
+import { SchoolFeatures, CampusWireChannel, CampusWireMessage } from '@/lib/schoolFeatures';
 
 // Default Baseline Class Rooms
 const BASELINE_CHAT_ROOMS: ChatRoom[] = [
@@ -94,7 +94,7 @@ const BASELINE_CHAT_ROOMS: ChatRoom[] = [
     subtitle: 'Anita Sharma (Faculty) • 39 enrolled students',
     grade: 'Class 8',
     section: 'G',
-    avatarColor: '#25d366',
+    avatarColor: '#00a884',
     initials: '8G',
     lastMessage: 'Anita Sharma: English Homework uploaded for Chapter 4.',
     lastTime: '7:40 pm',
@@ -343,7 +343,7 @@ const BASELINE_MESSAGES_MAP: Record<string, MessageItem[]> = {
   ],
 };
 
-export default function WhatsAppDesktopPage() {
+export default function CampusWireDesktopPage() {
   // --------------------------------------------------------------------------
   // 1. User & Authentication State
   // --------------------------------------------------------------------------
@@ -433,14 +433,14 @@ export default function WhatsAppDesktopPage() {
 
     // Load cached rooms and messages from localStorage
     try {
-      const cachedRooms = localStorage.getItem('dpsbuzz_whatsapp_rooms');
+      const cachedRooms = localStorage.getItem('dpsbuzz_campus_wire_rooms');
       if (cachedRooms) {
         const parsed = JSON.parse(cachedRooms);
         if (Array.isArray(parsed) && parsed.length > 0) {
           setChatRooms(parsed);
         }
       }
-      const cachedMsgs = localStorage.getItem('dpsbuzz_whatsapp_messages_map');
+      const cachedMsgs = localStorage.getItem('dpsbuzz_campus_wire_messages_map');
       if (cachedMsgs) {
         const parsed = JSON.parse(cachedMsgs);
         if (parsed && typeof parsed === 'object') {
@@ -455,8 +455,8 @@ export default function WhatsAppDesktopPage() {
     const fetchCloudflareData = async () => {
       try {
         const [channelsRes, messagesRes] = await Promise.all([
-          fetch('/api/campus?action=whatsapp_channels'),
-          fetch('/api/campus?action=whatsapp_messages'),
+          fetch('/api/campus?action=campus_wire_channels'),
+          fetch('/api/campus?action=campus_wire_messages'),
         ]);
 
         if (channelsRes.ok) {
@@ -469,7 +469,7 @@ export default function WhatsAppDesktopPage() {
                 subtitle: `${ch.grade || 'Official'} ${ch.section ? `• Section ${ch.section}` : ''} • ${ch.memberCount || 40} members`,
                 grade: ch.grade,
                 section: ch.section,
-                avatarColor: ch.id.includes('8g') ? '#25d366' : ch.id.includes('nursery') ? '#ff9f00' : '#7c5ce0',
+                avatarColor: ch.id.includes('8g') ? '#00a884' : ch.id.includes('nursery') ? '#ff9f00' : '#7c5ce0',
                 initials: ch.grade ? ch.grade.replace(/[^0-9]/g, '') || ch.name.slice(0, 2).toUpperCase() : 'DP',
                 lastMessage: ch.lastMessage || 'Channel created',
                 lastTime: ch.lastMessageTime || 'Just now',
@@ -487,7 +487,7 @@ export default function WhatsAppDesktopPage() {
                 }
               });
               try {
-                localStorage.setItem('dpsbuzz_whatsapp_rooms', JSON.stringify(merged));
+                localStorage.setItem('dpsbuzz_campus_wire_rooms', JSON.stringify(merged));
               } catch {}
               return merged;
             });
@@ -496,10 +496,10 @@ export default function WhatsAppDesktopPage() {
 
         if (messagesRes.ok) {
           const mData = await messagesRes.json();
-          if (Array.isArray(mData.whatsappMessages) && mData.whatsappMessages.length > 0) {
+          if (Array.isArray(mData.campus_wireMessages) && mData.campus_wireMessages.length > 0) {
             setMessagesMap((prev) => {
               const updated = { ...prev };
-              mData.whatsappMessages.forEach((raw: any) => {
+              mData.campus_wireMessages.forEach((raw: any) => {
                 const cId = raw.channelId || 'channel-class-8g';
                 const item: MessageItem = {
                   id: raw.id,
@@ -519,14 +519,14 @@ export default function WhatsAppDesktopPage() {
                 }
               });
               try {
-                localStorage.setItem('dpsbuzz_whatsapp_messages_map', JSON.stringify(updated));
+                localStorage.setItem('dpsbuzz_campus_wire_messages_map', JSON.stringify(updated));
               } catch {}
               return updated;
             });
           }
         }
       } catch (err) {
-        console.warn('WhatsApp D1 initial fetch note:', err);
+        console.warn('Campus Wire D1 initial fetch note:', err);
       }
     };
 
@@ -579,7 +579,7 @@ export default function WhatsAppDesktopPage() {
         [activeChatId]: [...(prev[activeChatId] || []), newMsg],
       };
       try {
-        localStorage.setItem('dpsbuzz_whatsapp_messages_map', JSON.stringify(updated));
+        localStorage.setItem('dpsbuzz_campus_wire_messages_map', JSON.stringify(updated));
       } catch {}
       return updated;
     });
@@ -591,7 +591,7 @@ export default function WhatsAppDesktopPage() {
           : r
       );
       try {
-        localStorage.setItem('dpsbuzz_whatsapp_rooms', JSON.stringify(updated));
+        localStorage.setItem('dpsbuzz_campus_wire_rooms', JSON.stringify(updated));
       } catch {}
       return updated;
     });
@@ -606,7 +606,7 @@ export default function WhatsAppDesktopPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          action: 'send_whatsapp_message',
+          action: 'send_campus_wire_message',
           channelId: activeChatId,
           senderUsername: currentUser?.username || 'student',
           senderName: userName,
@@ -647,7 +647,7 @@ export default function WhatsAppDesktopPage() {
         [activeChatId]: [...(prev[activeChatId] || []), newMsg],
       };
       try {
-        localStorage.setItem('dpsbuzz_whatsapp_messages_map', JSON.stringify(updated));
+        localStorage.setItem('dpsbuzz_campus_wire_messages_map', JSON.stringify(updated));
       } catch {}
       return updated;
     });
@@ -659,7 +659,7 @@ export default function WhatsAppDesktopPage() {
           : r
       );
       try {
-        localStorage.setItem('dpsbuzz_whatsapp_rooms', JSON.stringify(updated));
+        localStorage.setItem('dpsbuzz_campus_wire_rooms', JSON.stringify(updated));
       } catch {}
       return updated;
     });
@@ -708,7 +708,7 @@ export default function WhatsAppDesktopPage() {
         [activeChatId]: [...(prev[activeChatId] || []), newMsg],
       };
       try {
-        localStorage.setItem('dpsbuzz_whatsapp_messages_map', JSON.stringify(updated));
+        localStorage.setItem('dpsbuzz_campus_wire_messages_map', JSON.stringify(updated));
       } catch {}
       return updated;
     });
@@ -720,7 +720,7 @@ export default function WhatsAppDesktopPage() {
           : r
       );
       try {
-        localStorage.setItem('dpsbuzz_whatsapp_rooms', JSON.stringify(updated));
+        localStorage.setItem('dpsbuzz_campus_wire_rooms', JSON.stringify(updated));
       } catch {}
       return updated;
     });
@@ -760,7 +760,7 @@ export default function WhatsAppDesktopPage() {
         [activeChatId]: [...(prev[activeChatId] || []), newMsg],
       };
       try {
-        localStorage.setItem('dpsbuzz_whatsapp_messages_map', JSON.stringify(updated));
+        localStorage.setItem('dpsbuzz_campus_wire_messages_map', JSON.stringify(updated));
       } catch {}
       return updated;
     });
@@ -781,7 +781,7 @@ export default function WhatsAppDesktopPage() {
           : r
       );
       try {
-        localStorage.setItem('dpsbuzz_whatsapp_rooms', JSON.stringify(updated));
+        localStorage.setItem('dpsbuzz_campus_wire_rooms', JSON.stringify(updated));
       } catch {}
       return updated;
     });
@@ -794,7 +794,7 @@ export default function WhatsAppDesktopPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          action: 'send_whatsapp_message',
+          action: 'send_campus_wire_message',
           channelId: activeChatId,
           senderUsername: currentUser?.username || 'teacher',
           senderName: userName,
@@ -823,7 +823,7 @@ export default function WhatsAppDesktopPage() {
         r.id === activeChatId ? { ...r, isLocked: locked } : r
       );
       try {
-        localStorage.setItem('dpsbuzz_whatsapp_rooms', JSON.stringify(updated));
+        localStorage.setItem('dpsbuzz_campus_wire_rooms', JSON.stringify(updated));
       } catch {}
       return updated;
     });
@@ -847,7 +847,7 @@ export default function WhatsAppDesktopPage() {
         [activeChatId]: [...(prev[activeChatId] || []), systemNotice],
       };
       try {
-        localStorage.setItem('dpsbuzz_whatsapp_messages_map', JSON.stringify(updated));
+        localStorage.setItem('dpsbuzz_campus_wire_messages_map', JSON.stringify(updated));
       } catch {}
       return updated;
     });
@@ -886,7 +886,7 @@ export default function WhatsAppDesktopPage() {
           : r
       );
       try {
-        localStorage.setItem('dpsbuzz_whatsapp_rooms', JSON.stringify(updated));
+        localStorage.setItem('dpsbuzz_campus_wire_rooms', JSON.stringify(updated));
       } catch {}
       return updated;
     });
@@ -899,7 +899,7 @@ export default function WhatsAppDesktopPage() {
         r.id === activeChatId ? { ...r, pinnedMessage: undefined } : r
       );
       try {
-        localStorage.setItem('dpsbuzz_whatsapp_rooms', JSON.stringify(updated));
+        localStorage.setItem('dpsbuzz_campus_wire_rooms', JSON.stringify(updated));
       } catch {}
       return updated;
     });
@@ -945,7 +945,7 @@ export default function WhatsAppDesktopPage() {
         }),
       };
       try {
-        localStorage.setItem('dpsbuzz_whatsapp_messages_map', JSON.stringify(updated));
+        localStorage.setItem('dpsbuzz_campus_wire_messages_map', JSON.stringify(updated));
       } catch {}
       return updated;
     });
@@ -961,7 +961,7 @@ export default function WhatsAppDesktopPage() {
         ),
       };
       try {
-        localStorage.setItem('dpsbuzz_whatsapp_messages_map', JSON.stringify(updated));
+        localStorage.setItem('dpsbuzz_campus_wire_messages_map', JSON.stringify(updated));
       } catch {}
       return updated;
     });
@@ -975,7 +975,7 @@ export default function WhatsAppDesktopPage() {
         [activeChatId]: (prev[activeChatId] || []).filter((m) => m.id !== msgId),
       };
       try {
-        localStorage.setItem('dpsbuzz_whatsapp_messages_map', JSON.stringify(updated));
+        localStorage.setItem('dpsbuzz_campus_wire_messages_map', JSON.stringify(updated));
       } catch {}
       return updated;
     });
@@ -1052,7 +1052,7 @@ export default function WhatsAppDesktopPage() {
           <span className="text-[#8696a0] text-xs">|</span>
           <span className="text-xs font-semibold text-[#e9edef] flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-[#00a884] animate-pulse" />
-            DPS Buzz WhatsApp Core
+            DPS Buzz Campus Wire Core
           </span>
           <span className="text-[10px] px-1.5 py-0.2 rounded bg-white/10 text-[#8696a0]">
             91 Classes Active
@@ -1107,7 +1107,7 @@ export default function WhatsAppDesktopPage() {
               <ArrowLeft size={20} />
             </Link>
             <div className="flex items-center gap-1.5">
-              <span className="text-lg font-bold tracking-tight text-[#e9edef]">WhatsApp</span>
+              <span className="text-lg font-bold tracking-tight text-[#e9edef]">Campus Wire</span>
               {isTeacher ? (
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#00a884]/20 text-[#00a884] font-bold">Faculty</span>
               ) : isParent ? (
@@ -1468,7 +1468,7 @@ export default function WhatsAppDesktopPage() {
                     id: `chat-${Date.now()}`,
                     name: grpName,
                     subtitle: 'DPS Community Group',
-                    avatarColor: '#25d366',
+                    avatarColor: '#00a884',
                     initials: grpName.slice(0, 2).toUpperCase(),
                     lastMessage: 'Welcome to ' + grpName,
                     lastTime: 'Now',
@@ -1505,7 +1505,7 @@ export default function WhatsAppDesktopPage() {
           }`}
           style={{ backgroundColor: '#0b141a' }}
         >
-          {/* WhatsApp Header (Apple HIG Frosted Bar) */}
+          {/* Campus Wire Header (Apple HIG Frosted Bar) */}
           <div className="h-[60px] px-2 sm:px-4 flex items-center justify-between z-10 shrink-0 border-b border-[#222d34] bg-[#202c33]/95 backdrop-blur-xl">
             {/* Group Identity & Member Subtitle */}
             <div
@@ -1634,18 +1634,18 @@ export default function WhatsAppDesktopPage() {
             />
           )}
 
-          {/* Tiled WhatsApp Doodle Wallpaper Area */}
+          {/* Tiled Campus Wire Doodle Wallpaper Area */}
           <div
             onClick={() => setSelectedMessageId(null)}
             className="flex-1 overflow-y-auto px-3 sm:px-6 md:px-10 py-4 space-y-1 relative"
             style={{
               backgroundColor: '#0b141a',
-              backgroundImage: doodleWallpaperEnabled ? `url("${WHATSAPP_DOODLE_DARK}")` : 'none',
+              backgroundImage: doodleWallpaperEnabled ? `url("${CAMPUS_DOODLE_DARK}")` : 'none',
               backgroundRepeat: 'repeat',
               backgroundSize: '440px 440px',
             }}
           >
-            {/* WhatsApp Date Separator Pill */}
+            {/* Campus Wire Date Separator Pill */}
             <div className="flex justify-center my-3">
               <span className="px-3 py-1 rounded-[7.5px] text-xs font-medium uppercase tracking-wider bg-[#182229] text-[#8696a0] shadow-2xs">
                 Today
@@ -2172,7 +2172,7 @@ export default function WhatsAppDesktopPage() {
               id: `group-${Date.now()}`,
               name: groupName,
               subtitle: selectedMembers.map((m) => m.name).join(', '),
-              avatarColor: '#25d366',
+              avatarColor: '#00a884',
               initials: groupName.slice(0, 2).toUpperCase(),
               lastMessage: 'Group created',
               lastTime: 'Now',

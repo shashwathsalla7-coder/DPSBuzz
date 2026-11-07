@@ -4,13 +4,13 @@ import path from 'path';
 const filePath = path.resolve('src/app/api/campus/route.ts');
 let content = fs.readFileSync(filePath, 'utf-8');
 
-// 1. Add WhatsApp channels & messages to GET
+// 1. Add Campus Wire channels & messages to GET
 const getQueryMarker = `    // 7. Fetch Lost & Found Items from D1`;
-const getQueryInsertion = `    // 8. Fetch WhatsApp Channels from D1
-    let whatsappChannels: any[] = [];
+const getQueryInsertion = `    // 8. Fetch Campus Wire Channels from D1
+    let wireChannels: any[] = [];
     try {
-      const rawChannels = await d1Query<any>('SELECT * FROM campus_whatsapp_channels ORDER BY is_locked DESC, created_at ASC;');
-      whatsappChannels = rawChannels.map((c) => ({
+      const rawChannels = await d1Query<any>('SELECT * FROM campus_wire_channels ORDER BY is_locked DESC, created_at ASC;');
+      wireChannels = rawChannels.map((c) => ({
         id: c.id,
         name: c.name,
         grade: c.grade,
@@ -24,14 +24,14 @@ const getQueryInsertion = `    // 8. Fetch WhatsApp Channels from D1
         createdAt: c.created_at,
       }));
     } catch (e) {
-      console.warn('D1 WhatsApp channels query notice:', e);
+      console.warn('D1 Campus Wire channels query notice:', e);
     }
 
-    // 9. Fetch WhatsApp Messages from D1
-    let whatsappMessages: any[] = [];
+    // 9. Fetch Campus Wire Messages from D1
+    let wireMessages: any[] = [];
     try {
-      const rawMsgs = await d1Query<any>('SELECT * FROM campus_whatsapp_messages ORDER BY timestamp ASC LIMIT 300;');
-      whatsappMessages = rawMsgs.map((m) => ({
+      const rawMsgs = await d1Query<any>('SELECT * FROM campus_wire_messages ORDER BY timestamp ASC LIMIT 300;');
+      wireMessages = rawMsgs.map((m) => ({
         id: m.id,
         channelId: m.channel_id,
         senderUsername: m.sender_username,
@@ -44,33 +44,33 @@ const getQueryInsertion = `    // 8. Fetch WhatsApp Channels from D1
         createdAt: m.created_at,
       }));
     } catch (e) {
-      console.warn('D1 WhatsApp messages query notice:', e);
+      console.warn('D1 Campus Wire messages query notice:', e);
     }
 
 `;
 
-if (!content.includes('whatsappChannels: any[] = []')) {
+if (!content.includes('wireChannels: any[] = []')) {
   content = content.replace(getQueryMarker, getQueryInsertion + getQueryMarker);
 }
 
-// 2. Add whatsappChannels and whatsappMessages to the GET return json
+// 2. Add wireChannels and wireMessages to the GET return json
 const getReturnMarker = `        homework: homeworkList,
         lostFound: lostFoundItems,`;
 const getReturnReplacement = `        homework: homeworkList,
         lostFound: lostFoundItems,
-        whatsappChannels,
-        whatsappMessages,`;
+        wireChannels,
+        wireMessages,`;
 
-if (!content.includes('whatsappChannels,') && content.includes(getReturnMarker)) {
+if (!content.includes('wireChannels,') && content.includes(getReturnMarker)) {
   content = content.replace(getReturnMarker, getReturnReplacement);
 }
 
-// 3. Add POST actions for WhatsApp Hub before the default "Unknown action"
+// 3. Add POST actions for Campus Wire Hub before the default "Unknown action"
 const postMarker = `    return NextResponse.json({ error: \`Unknown action: \${action}\` }, { status: 400 });`;
 const postActions = `    // ------------------------------------------------------------------------
-    // 12. SEND WHATSAPP MESSAGE (Role & Channel Lock Protected)
+    // 12. SEND CAMPUS_WIRE MESSAGE (Role & Channel Lock Protected)
     // ------------------------------------------------------------------------
-    if (action === 'send_whatsapp_message') {
+    if (action === 'send_wire_message') {
       const { channelId, senderUsername, senderName, senderRole, senderClass, text, templateType } = body;
       const cleanText = (text || '').trim();
       if (!channelId || !cleanText) {
@@ -78,7 +78,7 @@ const postActions = `    // ----------------------------------------------------
       }
 
       // Check if channel is locked
-      const chList = await d1Query<any>('SELECT * FROM campus_whatsapp_channels WHERE id = ? LIMIT 1;', [channelId]);
+      const chList = await d1Query<any>('SELECT * FROM campus_wire_channels WHERE id = ? LIMIT 1;', [channelId]);
       if (!chList || chList.length === 0) {
         return NextResponse.json({ error: 'Channel not found' }, { status: 404 });
       }
@@ -107,7 +107,7 @@ const postActions = `    // ----------------------------------------------------
       const nowTs = Date.now();
 
       await d1Execute(\`
-        INSERT INTO campus_whatsapp_messages (
+        INSERT INTO campus_wire_messages (
           id, channel_id, sender_username, sender_name, sender_role, sender_class, text, template_type, timestamp
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
       \`, [
@@ -124,7 +124,7 @@ const postActions = `    // ----------------------------------------------------
 
       // Update channel preview
       await d1Execute(\`
-        UPDATE campus_whatsapp_channels 
+        UPDATE campus_wire_channels 
         SET last_message = ?, last_message_time = ? 
         WHERE id = ?;
       \`, [cleanText.slice(0, 100), nowTime, channelId]);
@@ -146,7 +146,7 @@ const postActions = `    // ----------------------------------------------------
     }
 
     // ------------------------------------------------------------------------
-    // 13. TOGGLE WHATSAPP CHANNEL LOCK (Madam & Teacher Exclusive)
+    // 13. TOGGLE CAMPUS_WIRE CHANNEL LOCK (Madam & Teacher Exclusive)
     // ------------------------------------------------------------------------
     if (action === 'toggle_channel_lock') {
       const { channelId, isLocked, requesterUsername, requesterRole } = body;
@@ -163,7 +163,7 @@ const postActions = `    // ----------------------------------------------------
       }
 
       const lockVal = isLocked ? 1 : 0;
-      await d1Execute('UPDATE campus_whatsapp_channels SET is_locked = ? WHERE id = ?;', [lockVal, channelId]);
+      await d1Execute('UPDATE campus_wire_channels SET is_locked = ? WHERE id = ?;', [lockVal, channelId]);
 
       // Add system announcement message
       const sysId = \`wmsg-sys-\${Date.now()}\`;
@@ -172,7 +172,7 @@ const postActions = `    // ----------------------------------------------------
         : '🔓 Channel unlocked. Student discussions are now open.';
 
       await d1Execute(\`
-        INSERT INTO campus_whatsapp_messages (
+        INSERT INTO campus_wire_messages (
           id, channel_id, sender_username, sender_name, sender_role, sender_class, text, template_type, timestamp
         ) VALUES (?, ?, 'system', 'DPS Administration', 'admin', 'Faculty Desk', ?, 'none', ?);
       \`, [sysId, channelId, noticeText, Date.now()]);
@@ -181,9 +181,9 @@ const postActions = `    // ----------------------------------------------------
     }
 
     // ------------------------------------------------------------------------
-    // 14. CREATE WHATSAPP CHANNEL (Teacher & Madam)
+    // 14. CREATE CAMPUS_WIRE CHANNEL (Teacher & Madam)
     // ------------------------------------------------------------------------
-    if (action === 'create_whatsapp_channel') {
+    if (action === 'create_wire_channel') {
       const { name, grade, section, isLocked } = body;
       const cleanName = (name || '').trim();
       if (!cleanName) {
@@ -194,7 +194,7 @@ const postActions = `    // ----------------------------------------------------
       const id = \`channel-\${cleanName.toLowerCase().replace(/[^a-z0-9]/g, '-')}-\${Date.now().toString().slice(-4)}\`;
 
       await d1Execute(\`
-        INSERT INTO campus_whatsapp_channels (
+        INSERT INTO campus_wire_channels (
           id, name, grade, section, is_locked, admin_usernames, member_count, last_message, last_message_time
         ) VALUES (?, ?, ?, ?, ?, '["shashwath71845", "madam_principal"]', 44, 'Group created by faculty.', 'Just now');
       \`, [id, cleanName, cleanGrade, cleanSec, isLocked ? 1 : 0]);
@@ -302,7 +302,7 @@ const postActions = `    // ----------------------------------------------------
 
       const targetRoom = parsedStudents[0].mappedRoomId;
       await d1Execute(\`
-        UPDATE campus_whatsapp_channels 
+        UPDATE campus_wire_channels 
         SET member_count = member_count + ? 
         WHERE id = ?;
       \`, [parsedStudents.length, targetRoom]);
@@ -311,12 +311,12 @@ const postActions = `    // ----------------------------------------------------
       const enrollNotice = \`📋 [ROSTER INGESTION COMPLETED] \${parsedStudents.length} student(s) automatically registered & mapped into classroom grid from school office roster: \${parsedStudents.map(s => s.name).slice(0, 3).join(', ')}\${parsedStudents.length > 3 ? \` and \${parsedStudents.length - 3} more\` : ''}.\`;
       
       await d1Execute(\`
-        INSERT INTO campus_whatsapp_messages (
+        INSERT INTO campus_wire_messages (
           id, channel_id, sender_username, sender_name, sender_role, sender_class, text, template_type, timestamp
         ) VALUES (?, ?, 'office_registry', 'School Enrollment Engine', 'admin', 'Registrar', ?, 'attendance', ?);
       \`, [sysId, targetRoom, enrollNotice, Date.now()]);
 
-      logs.push(\`[DATABASE SYNC] Successfully updated campus_whatsapp_channels member count (+\${parsedStudents.length}) in Cloudflare D1 SQL.\`);
+      logs.push(\`[DATABASE SYNC] Successfully updated campus_wire_channels member count (+\${parsedStudents.length}) in Cloudflare D1 SQL.\`);
       logs.push(\`[COMPLETED] Pipeline finished: \${parsedStudents.length} students fully enrolled with 0 manual operator inputs.\`);
 
       return NextResponse.json({
@@ -329,9 +329,9 @@ const postActions = `    // ----------------------------------------------------
     }
 
     // ------------------------------------------------------------------------
-    // 16. DISPATCH WHATSAPP AUTOMATED TEMPLATE
+    // 16. DISPATCH CAMPUS_WIRE AUTOMATED TEMPLATE
     // ------------------------------------------------------------------------
-    if (action === 'dispatch_whatsapp_template') {
+    if (action === 'dispatch_wire_template') {
       const { channelId, templateType, content, senderName } = body;
       if (!channelId || !templateType) {
         return NextResponse.json({ error: 'channelId and templateType are required' }, { status: 400 });
@@ -354,7 +354,7 @@ const postActions = `    // ----------------------------------------------------
       const nowTs = Date.now();
 
       await d1Execute(\`
-        INSERT INTO campus_whatsapp_messages (
+        INSERT INTO campus_wire_messages (
           id, channel_id, sender_username, sender_name, sender_role, sender_class, text, template_type, timestamp
         ) VALUES (?, ?, 'madam_principal', ?, 'admin', 'Office of Principal', ?, ?, ?);
       \`, [
@@ -367,7 +367,7 @@ const postActions = `    // ----------------------------------------------------
       ]);
 
       await d1Execute(\`
-        UPDATE campus_whatsapp_channels 
+        UPDATE campus_wire_channels 
         SET last_message = ?, last_message_time = ? 
         WHERE id = ?;
       \`, [formattedText.slice(0, 100), nowStr, channelId]);
@@ -390,7 +390,7 @@ const postActions = `    // ----------------------------------------------------
 
 `;
 
-if (!content.includes('send_whatsapp_message')) {
+if (!content.includes('send_wire_message')) {
   content = content.replace(postMarker, postActions + postMarker);
 }
 

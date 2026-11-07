@@ -422,7 +422,7 @@ function DownloadContent() {
                   </span>
                 </div>
                 <p className="text-xs text-zinc-300 mt-0.5 font-medium">
-                  Direct package for Android phones • Shareable via WhatsApp or Bluetooth
+                  Direct package for Android phones • Shareable via Campus Wire or Bluetooth
                 </p>
               </div>
             </div>

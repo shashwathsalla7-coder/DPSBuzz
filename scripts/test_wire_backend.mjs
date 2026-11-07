@@ -1,14 +1,14 @@
 import { d1Query, d1Execute, isD1Configured } from '../src/lib/cloudflare/d1.ts';
 
-async function testWhatsAppBackend() {
-  console.log('--- Testing WhatsApp School Hub Backend in Cloudflare D1 ---');
+async function testCampus WireBackend() {
+  console.log('--- Testing Campus Wire School Hub Backend in Cloudflare D1 ---');
   if (!isD1Configured()) {
     console.error('D1 is not configured!');
     process.exit(1);
   }
 
   // 1. Verify channels
-  const channels = await d1Query('SELECT id, name, grade, is_locked, member_count FROM campus_whatsapp_channels;');
+  const channels = await d1Query('SELECT id, name, grade, is_locked, member_count FROM campus_wire_channels;');
   console.log(`[PASS] Found ${channels.length} channels in D1:`);
   for (const c of channels) {
     console.log(`  - [${c.id}] ${c.name} (Grade: ${c.grade}, Locked: ${c.is_locked}, Members: ${c.member_count})`);
@@ -18,7 +18,7 @@ async function testWhatsAppBackend() {
   }
 
   // 2. Verify messages
-  const messages = await d1Query('SELECT id, channel_id, sender_name, text FROM campus_whatsapp_messages LIMIT 5;');
+  const messages = await d1Query('SELECT id, channel_id, sender_name, text FROM campus_wire_messages LIMIT 5;');
   console.log(`[PASS] Found ${messages.length} sample messages in D1:`);
   for (const m of messages) {
     console.log(`  - [${m.channel_id}] ${m.sender_name}: "${m.text.slice(0, 50)}..."`);
@@ -54,10 +54,10 @@ Kavya Reddy,Class 9-B,PRK-892110,DPS-2024-0982
     throw new Error(`Expected 3 parsed students, got ${parsed.length}`);
   }
 
-  console.log('\n>>> ALL WHATSAPP D1 BACKEND TESTS PASSED (100% GREEN) <<<');
+  console.log('\n>>> ALL CAMPUS_WIRE D1 BACKEND TESTS PASSED (100% GREEN) <<<');
 }
 
-testWhatsAppBackend().catch((e) => {
+testCampus WireBackend().catch((e) => {
   console.error('Test failed:', e);
   process.exit(1);
 });

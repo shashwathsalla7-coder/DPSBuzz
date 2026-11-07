@@ -181,7 +181,7 @@ export const GroupInfoPanel: React.FC<GroupInfoPanelProps> = ({
           <div>
             <div className="text-xs font-semibold text-[#e9edef]">Encryption</div>
             <div className="text-[11px] text-[#8696a0] mt-0.5 leading-relaxed">
-              Messages and calls are end-to-end encrypted. No one outside of this chat, not even WhatsApp, can read or listen to them.
+              Messages and calls are end-to-end encrypted. No one outside of this chat, not even Campus Wire, can read or listen to them.
             </div>
           </div>
         </div>

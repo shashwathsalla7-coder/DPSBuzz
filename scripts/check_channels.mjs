@@ -24,7 +24,7 @@ async function queryD1(sql, params = []) {
 }
 
 async function main() {
-  const rows = await queryD1('SELECT id, name, grade, section, is_locked, member_count FROM campus_whatsapp_channels;');
+  const rows = await queryD1('SELECT id, name, grade, section, is_locked, member_count FROM campus_wire_channels;');
   console.log('Channels in D1:', rows);
 }
 

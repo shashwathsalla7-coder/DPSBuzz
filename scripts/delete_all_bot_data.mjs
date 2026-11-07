@@ -222,17 +222,17 @@ async function deleteAllBotData() {
     report.d1Deletions.campusDiary = deletedCount;
   }
 
-  // 10. Clean Campus WhatsApp Messages
-  if (tableNames.includes('campus_whatsapp_messages')) {
-    const totalBefore = await queryD1('SELECT COUNT(*) as c FROM campus_whatsapp_messages;');
+  // 10. Clean Campus Campus Wire Messages
+  if (tableNames.includes('campus_wire_messages')) {
+    const totalBefore = await queryD1('SELECT COUNT(*) as c FROM campus_wire_messages;');
     await executeD1(
-      `DELETE FROM campus_whatsapp_messages WHERE text LIKE '%OFFICIAL NOTICE: Complete Exercise%' OR text LIKE '%Understood, teacher%' OR (LOWER(sender_username) NOT IN (${placeholders}) AND sender_username != 'system');`,
+      `DELETE FROM campus_wire_messages WHERE text LIKE '%OFFICIAL NOTICE: Complete Exercise%' OR text LIKE '%Understood, teacher%' OR (LOWER(sender_username) NOT IN (${placeholders}) AND sender_username != 'system');`,
       AUTHENTIC_USERNAMES.map(u => u.toLowerCase())
     );
-    const totalAfter = await queryD1('SELECT COUNT(*) as c FROM campus_whatsapp_messages;');
+    const totalAfter = await queryD1('SELECT COUNT(*) as c FROM campus_wire_messages;');
     const deletedCount = (totalBefore[0]?.c || 0) - (totalAfter[0]?.c || 0);
-    console.log(`✓ campus_whatsapp_messages: Deleted ${deletedCount} bot messages. ${totalAfter[0]?.c} authentic messages remaining.`);
-    report.d1Deletions.whatsappMessages = deletedCount;
+    console.log(`✓ campus_wire_messages: Deleted ${deletedCount} bot messages. ${totalAfter[0]?.c} authentic messages remaining.`);
+    report.d1Deletions.wireMessages = deletedCount;
   }
 
   // 11. Clean Campus Lost and Found

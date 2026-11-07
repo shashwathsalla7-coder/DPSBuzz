@@ -1,8 +1,8 @@
 import { d1Query, d1Execute, isD1Configured } from '../src/lib/cloudflare/d1.ts';
 
-async function testWhatsAppFullSuite() {
+async function testCampus WireFullSuite() {
   console.log('================================================================');
-  console.log('   DPS BUZZ WHATSAPP SCHOOL CLONE: FULL VERIFICATION SUITE');
+  console.log('   DPS BUZZ CAMPUS_WIRE SCHOOL CLONE: FULL VERIFICATION SUITE');
   console.log('================================================================\n');
 
   if (!isD1Configured()) {
@@ -11,7 +11,7 @@ async function testWhatsAppFullSuite() {
   }
 
   // 1. Verify default channels in Cloudflare D1
-  const channels = await d1Query('SELECT id, name, grade, section, is_locked, member_count FROM campus_whatsapp_channels;');
+  const channels = await d1Query('SELECT id, name, grade, section, is_locked, member_count FROM campus_wire_channels;');
   console.log(`[TEST 1: Channels Query] Found ${channels.length} channels in D1:`);
   for (const c of channels) {
     console.log(`  - [${c.id}] ${c.name} | Grade: ${c.grade} | Locked: ${c.is_locked ? 'YES (🔒 Read-Only)' : 'NO (🔓 Open)'} | Members: ${c.member_count}`);
@@ -45,12 +45,12 @@ async function testWhatsAppFullSuite() {
   const testMsgId = `wmsg-test-${Date.now()}`;
   const testText = '📢 [PRINCIPAL DISPATCH VERIFICATION] Testing automated dispatches across all student tablets and laptops.';
   await d1Execute(`
-    INSERT INTO campus_whatsapp_messages (
+    INSERT INTO campus_wire_messages (
       id, channel_id, sender_username, sender_name, sender_role, sender_class, text, template_type, timestamp
     ) VALUES (?, ?, 'madam_principal', 'Principal Madam (Office)', 'admin', 'Office of Principal', ?, 'exam', ?);
   `, [testMsgId, lockedChannel.id, testText, Date.now()]);
 
-  const verifyMsg = await d1Query('SELECT id, text, sender_name FROM campus_whatsapp_messages WHERE id = ?;', [testMsgId]);
+  const verifyMsg = await d1Query('SELECT id, text, sender_name FROM campus_wire_messages WHERE id = ?;', [testMsgId]);
   if (verifyMsg.length > 0 && verifyMsg[0].text === testText) {
     console.log(`[TEST 3: D1 Message Persistence] [PASS] Successfully verified message in Cloudflare D1: "${verifyMsg[0].text}"`);
   } else {
@@ -58,7 +58,7 @@ async function testWhatsAppFullSuite() {
   }
 
   // Clean up test message to keep D1 clean
-  await d1Execute('DELETE FROM campus_whatsapp_messages WHERE id = ?;', [testMsgId]);
+  await d1Execute('DELETE FROM campus_wire_messages WHERE id = ?;', [testMsgId]);
 
   // 4. Test Raw Roster Parsing & Pattern Extraction Pipeline
   console.log('\n[TEST 4: Raw Roster Ingestion & Pattern Extraction Engine]');
@@ -112,11 +112,11 @@ Ananya Verma,Class 10-A,PRK-774921,DPS-2024-1102
   console.log('  - [PASS] All 3 pre-made message schemas validated.');
 
   console.log('\n================================================================');
-  console.log('   ALL WHATSAPP CLONE VERIFICATIONS PASSED (100% GREEN)       ');
+  console.log('   ALL CAMPUS_WIRE CLONE VERIFICATIONS PASSED (100% GREEN)       ');
   console.log('================================================================');
 }
 
-testWhatsAppFullSuite().catch((err) => {
+testCampus WireFullSuite().catch((err) => {
   console.error('Test suite failed:', err);
   process.exit(1);
 });

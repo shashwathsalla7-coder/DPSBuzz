@@ -10,7 +10,7 @@ async function auditStorage() {
   const d1Tables = [
     'campus_broadcasts', 'campus_homework', 'campus_lost_found', 
     'campus_questions', 'campus_quiz_progress', 'campus_study_notes', 
-    'campus_study_schedules', 'campus_whatsapp_channels', 'campus_whatsapp_messages'
+    'campus_study_schedules', 'campus_wire_channels', 'campus_wire_messages'
   ];
 
   console.log('1. CLOUDFLARE D1 SQL DATABASE (Primary Campus Store)');

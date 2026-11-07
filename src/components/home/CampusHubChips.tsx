@@ -16,10 +16,10 @@ export function CampusHubChips() {
   const hubs = [
     {
       title: 'Class Groups',
-      subtitle: 'Class WhatsApp & Chat',
+      subtitle: 'Campus Wire & Chat',
       icon: Users,
       href: '/groups',
-      badge: 'WhatsApp',
+      badge: 'Wire',
       color: 'from-emerald-600 to-teal-500',
       textColor: 'text-emerald-500',
     },
