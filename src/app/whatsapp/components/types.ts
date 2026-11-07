@@ -4,16 +4,21 @@
 export interface MessageItem {
   id: string;
   senderName: string;
+  senderUsername?: string;
+  senderRole?: 'admin' | 'teacher' | 'student' | 'parent';
+  senderClass?: string;
   senderColor?: string;
   subtitle?: string;
   text: string;
   time: string;
+  timestamp?: number;
   isMe?: boolean;
   isVideo?: boolean;
   isImage?: boolean;
   isDocument?: boolean;
   isVoiceNote?: boolean;
   voiceDuration?: string;
+  audioUrl?: string;
   videoDuration?: string;
   videoCaption?: string;
   imageUrl?: string;
@@ -23,15 +28,19 @@ export interface MessageItem {
   quotedAuthor?: string;
   quotedText?: string;
   isStarred?: boolean;
+  isPinned?: boolean;
   isForwarded?: boolean;
   isDeleted?: boolean;
   disappearing?: boolean;
+  templateType?: 'none' | 'attendance' | 'homework' | 'exam' | 'system';
 }
 
 export interface ChatRoom {
   id: string;
   name: string;
   subtitle: string;
+  grade?: string;
+  section?: string;
   avatarColor: string;
   initials: string;
   lastMessage: string;
@@ -42,8 +51,13 @@ export interface ChatRoom {
   isArchived?: boolean;
   isGroup?: boolean;
   isLocked?: boolean;
+  isSchoolBroadcast?: boolean;
+  targetAudience?: 'all' | 'students' | 'parents' | 'teachers';
   type?: 'group' | 'direct' | 'broadcast' | 'community';
   members?: ContactItem[];
+  adminUsernames?: string[];
+  enrolledUsernames?: string[];
+  pinnedMessage?: { id: string; text: string; senderName: string };
   description?: string;
   createdBy?: string;
   createdAt?: string;

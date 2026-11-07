@@ -14,7 +14,7 @@ import Logo from '@/components/ui/Logo';
 
 const navItems = [
   { href: '/home', icon: Home, label: 'Home' },
-  { href: '/school-whatsapp', icon: Users, label: 'School WhatsApp' },
+  { href: '/whatsapp', icon: Users, label: 'School WhatsApp' },
   { href: '/ai-diary', icon: Bot, label: 'AI Diary' },
   { href: '/study-corner', icon: BookOpen, label: 'Study Corner' },
   { href: '/question-box', icon: HelpCircle, label: 'Question Box' },

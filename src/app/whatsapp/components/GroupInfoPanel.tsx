@@ -27,6 +27,10 @@ interface GroupInfoPanelProps {
   onOpenMediaGallery: () => void;
   onStartCall: (type: 'voice' | 'video') => void;
   onAddMember?: () => void;
+  isTeacher?: boolean;
+  isAdmin?: boolean;
+  onToggleLock?: (locked: boolean) => void;
+  onQuickDispatch?: (type: 'homework' | 'attendance' | 'exam') => void;
 }
 
 export const GroupInfoPanel: React.FC<GroupInfoPanelProps> = ({
@@ -35,6 +39,10 @@ export const GroupInfoPanel: React.FC<GroupInfoPanelProps> = ({
   onOpenMediaGallery,
   onStartCall,
   onAddMember,
+  isTeacher = false,
+  isAdmin = false,
+  onToggleLock,
+  onQuickDispatch,
 }) => {
   const [memberSearch, setMemberSearch] = useState('');
   const [isMuted, setIsMuted] = useState(chat.isMuted || false);
@@ -177,6 +185,89 @@ export const GroupInfoPanel: React.FC<GroupInfoPanelProps> = ({
             </div>
           </div>
         </div>
+
+        {/* Teacher / Admin Controls Section */}
+        {chat.isGroup && (
+          <div className="p-4 bg-[#182229]/70 border-b border-[#222d34] space-y-3">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-[#00a884]">
+              Classroom Administration
+            </div>
+
+            {/* Broadcast Mode Lock Switch */}
+            <div className="flex items-center justify-between p-3 rounded-xl bg-[#202c33] border border-[#222d34]">
+              <div className="flex items-start gap-2.5">
+                <Lock size={16} className={chat.isLocked ? 'text-[#00a884]' : 'text-[#8696a0]'} />
+                <div>
+                  <div className="text-xs font-semibold text-[#e9edef] flex items-center gap-1.5">
+                    Broadcast Lock
+                    {chat.isLocked ? (
+                      <span className="text-[10px] px-1.5 py-0.2 rounded bg-[#00a884]/20 text-[#00a884] font-bold">
+                        LOCKED
+                      </span>
+                    ) : (
+                      <span className="text-[10px] px-1.5 py-0.2 rounded bg-white/10 text-[#8696a0] font-bold">
+                        OPEN
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-[10px] text-[#8696a0] mt-0.5">
+                    {chat.isLocked
+                      ? 'Only verified faculty & admins can send messages.'
+                      : 'All enrolled students can send messages and doubts.'}
+                  </div>
+                </div>
+              </div>
+
+              {(isTeacher || isAdmin) ? (
+                <button
+                  type="button"
+                  onClick={() => onToggleLock && onToggleLock(!chat.isLocked)}
+                  className={`w-11 h-6 flex items-center rounded-full p-0.5 cursor-pointer transition-colors shrink-0 ${
+                    chat.isLocked ? 'bg-[#00a884]' : 'bg-[#2a3942]'
+                  }`}
+                  title="Toggle Broadcast Lock"
+                >
+                  <div
+                    className={`bg-white w-5 h-5 rounded-full shadow-md transform transition-transform ${
+                      chat.isLocked ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              ) : (
+                <span className="text-[10px] text-[#8696a0] font-medium shrink-0">
+                  {chat.isLocked ? 'Locked' : 'Open'}
+                </span>
+              )}
+            </div>
+
+            {/* Teacher Quick Dispatcher */}
+            {(isTeacher || isAdmin) && onQuickDispatch && (
+              <div className="space-y-1.5">
+                <div className="text-[11px] font-semibold text-[#8696a0]">Quick Faculty Dispatches</div>
+                <div className="grid grid-cols-3 gap-1.5">
+                  <button
+                    onClick={() => onQuickDispatch('homework')}
+                    className="p-2 rounded-lg bg-[#202c33] hover:bg-[#2a3942] text-[11px] font-medium text-[#e9edef] text-center border border-[#222d34] transition-colors cursor-pointer"
+                  >
+                    📝 Homework
+                  </button>
+                  <button
+                    onClick={() => onQuickDispatch('attendance')}
+                    className="p-2 rounded-lg bg-[#202c33] hover:bg-[#2a3942] text-[11px] font-medium text-[#e9edef] text-center border border-[#222d34] transition-colors cursor-pointer"
+                  >
+                    ⚠️ Roll Call
+                  </button>
+                  <button
+                    onClick={() => onQuickDispatch('exam')}
+                    className="p-2 rounded-lg bg-[#202c33] hover:bg-[#2a3942] text-[11px] font-medium text-[#e9edef] text-center border border-[#222d34] transition-colors cursor-pointer"
+                  >
+                    📋 Exam Notice
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Participants Section */}
         {chat.isGroup && (
