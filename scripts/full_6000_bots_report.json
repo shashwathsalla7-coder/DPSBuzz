@@ -1,0 +1,82 @@
+{
+  "startTime": "2026-11-07T15:05:12.742Z",
+  "population": {
+    "totalStudents": 6000,
+    "totalTeachers": 150,
+    "totalSections": 150,
+    "studentsPerSection": 40,
+    "gradesCovered": "Nursery to Class 12"
+  },
+  "stageResults": {
+    "authentication": {
+      "testedProfiles": 330,
+      "success": 330,
+      "failed": 0,
+      "status": "PASSED"
+    },
+    "stories": {
+      "storiesPosted": 50,
+      "activeStoriesRetrieved": 88,
+      "status": "PASSED"
+    },
+    "feedAndReels": {
+      "totalPosts": 30,
+      "reels": 10,
+      "gifs": 15,
+      "status": "PASSED"
+    },
+    "socialLoop": {
+      "likesVerified": 40,
+      "commentsVerified": 15,
+      "sharePostInChat": "PASSED",
+      "savesBookmarks": "PASSED",
+      "reposts": "PASSED",
+      "status": "PASSED"
+    },
+    "directMessaging": {
+      "pairsTested": 30,
+      "successfulDeliveries": 30,
+      "gifSharing": "PASSED",
+      "status": "PASSED"
+    },
+    "classroomWhatsApp": {
+      "teacherDispatches": 30,
+      "lockToggles": 30,
+      "studentMessages": 29,
+      "isolationViolations": 0,
+      "status": "PASSED"
+    },
+    "teacherPages": {
+      "sampleVerified": 20,
+      "facultyBadgeVerified": "PASSED",
+      "studentRosterVerified": "40 Students per Class Teacher",
+      "status": "PASSED"
+    },
+    "aiDiary": {
+      "uploadsProcessed": 10,
+      "bonusPointsRule": "+50 Points First Submission",
+      "status": "PASSED"
+    },
+    "lostAndFound": {
+      "reported": 1,
+      "claimed": 1,
+      "lifecycleStatus": "VERIFIED",
+      "status": "PASSED"
+    },
+    "principalBroadcast": {
+      "dispatched": 1,
+      "reach": "6,000 Students across 150 Classroom Channels",
+      "status": "PASSED"
+    },
+    "studyCornerQuiz": {
+      "quizAnswered": 1,
+      "pointsAwarded": "+15 Points (Medium Bloom Taxonomy)",
+      "status": "PASSED"
+    }
+  },
+  "featureMetrics": {},
+  "bottlenecks": [],
+  "failures": [],
+  "status": "COMPLETED_SUCCESSFULLY",
+  "durationSeconds": "67.4"
+}
