@@ -233,6 +233,34 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: true, profile: match }, { headers: NO_CACHE_HEADERS });
     }
 
+    // 3. Fallback for generated Class Teachers (teacher_<grade>_<sec>)
+    if (username.startsWith('teacher_')) {
+      const clean = username.replace('teacher_', '');
+      const parts = clean.split('_');
+      const gradePart = parts[0] || 'Faculty';
+      const clsDisplay = isNaN(Number(gradePart)) ? gradePart.toUpperCase() : `Class ${gradePart}`;
+      const secPart = (parts[1] || 'A').toUpperCase();
+      const teacherProfile = {
+        id: `teach_${gradePart}_${secPart}`,
+        username,
+        fullName: `Faculty (${clsDisplay}-${secPart} Class Teacher)`,
+        avatar: null,
+        bio: `Official Class Teacher of ${clsDisplay}-${secPart} • Senior Faculty • DPS Campus`,
+        class: gradePart,
+        section: secPart,
+        gradeDisplay: clsDisplay,
+        role: 'teacher',
+        isVerified: true,
+        isApproved: true,
+        followerCount: 40,
+        followingCount: 40,
+        postCount: 0,
+        spiritPoints: 1000,
+        createdAt: new Date().toISOString(),
+      };
+      return NextResponse.json({ success: true, profile: teacherProfile }, { headers: NO_CACHE_HEADERS });
+    }
+
     return NextResponse.json({ success: false, error: 'User not found' }, { status: 404, headers: NO_CACHE_HEADERS });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500, headers: NO_CACHE_HEADERS });

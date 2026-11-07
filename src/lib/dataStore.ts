@@ -13,7 +13,10 @@ export interface Profile {
   class?: string;
   section?: string;
   admissionNumber?: string;
-  role: 'student' | 'admin';
+  role: 'student' | 'admin' | 'teacher';
+  gradeDisplay?: string;
+  assignedClass?: string;
+  assignedSection?: string;
   isVerified: boolean;
   isApproved: boolean;
   isPrivate?: boolean; // If true: Private account (must accept follow before chatting and exchanging photos/posts)
