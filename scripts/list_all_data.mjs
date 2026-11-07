@@ -33,6 +33,8 @@ async function main() {
   console.log('Sample WhatsApp msgs in D1:', wmsgs);
   const lf = await queryD1('SELECT id, title, status FROM campus_lost_found;');
   console.log('Lost and Found in D1:', lf);
+  const channels = await queryD1('SELECT id, name, grade, section FROM campus_whatsapp_channels WHERE id LIKE "%class%" LIMIT 30;');
+  console.log('Channels in D1:', channels);
 }
 
 main().catch(console.error);
