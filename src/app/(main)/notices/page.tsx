@@ -68,7 +68,7 @@ export default function NoticesPage() {
               color: 'var(--text)',
             }}
           >
-            School Notices
+            Notices
           </h1>
         </div>
 
@@ -78,7 +78,7 @@ export default function NoticesPage() {
               href="/admin"
               className="px-3 py-1 bg-[var(--primary)] text-[var(--on-primary)] text-xs font-bold rounded-full flex items-center gap-1 shrink-0 hover:opacity-90 shadow-sm"
             >
-              + Create Notice
+              + New
             </Link>
           )}
 
@@ -120,8 +120,8 @@ export default function NoticesPage() {
 
       <div className="p-4 max-w-[480px] mx-auto space-y-4">
         {/* Category Filter Chips (6px radius, not pills) & Mark All Read */}
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex gap-2 overflow-x-auto no-scrollbar py-1 flex-1">
+        <div className="flex flex-col-reverse gap-2">
+          <div className="flex gap-2 overflow-x-auto no-scrollbar py-1 -mx-4 px-4">
             {categories.map((c) => {
               const isSelected = selectedCategory === c;
               return (
@@ -129,7 +129,7 @@ export default function NoticesPage() {
                   key={c}
                   type="button"
                   onClick={() => setSelectedCategory(c)}
-                  className="h-8 px-3.5 rounded-[6px] text-xs font-semibold shrink-0 transition-all btn-press cursor-pointer shadow-xs"
+                  className="h-9 px-4 rounded-full text-sm font-medium shrink-0 transition-colors btn-press cursor-pointer"
                   style={{
                     backgroundColor: isSelected ? 'var(--primary-tint)' : 'var(--surface-sunken)',
                     color: isSelected ? 'var(--primary)' : 'var(--text-muted)',
@@ -147,15 +147,11 @@ export default function NoticesPage() {
               DataStore.markAllNoticesAsRead();
               reloadData();
             }}
-            className="h-8 px-3 rounded-full text-[11px] font-bold border shrink-0 btn-press cursor-pointer whitespace-nowrap shadow-xs hover:border-[var(--primary)] transition-colors"
-            style={{
-              backgroundColor: 'var(--surface-sunken)',
-              borderColor: 'var(--line)',
-              color: 'var(--primary)',
-            }}
+            className="self-end h-9 px-2 text-sm font-semibold cursor-pointer whitespace-nowrap hover:underline"
+            style={{ color: 'var(--primary)' }}
             title="Mark all notices as read"
           >
-            Mark All Read ✓
+            Mark all as read
           </button>
         </div>
 
@@ -171,7 +167,7 @@ export default function NoticesPage() {
                   borderColor: 'var(--line)',
                 }}
               >
-                <div className="w-12 h-12 rounded-full bg-amber-500/15 text-amber-500 mx-auto flex items-center justify-center text-xl mb-2">
+                <div className="w-12 h-12 rounded-full bg-[var(--gold-tint)] text-[var(--gold)] mx-auto flex items-center justify-center text-xl mb-2">
                   📢
                 </div>
                 <p className="text-sm font-bold" style={{ color: 'var(--text)' }}>

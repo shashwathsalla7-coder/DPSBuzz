@@ -317,7 +317,7 @@ export function ChatBackgroundSelector({
         {/* Top Header */}
         <div className="p-4 pb-3 border-b flex items-center justify-between" style={{ borderColor: 'var(--line)' }}>
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-full bg-pink-500/15 flex items-center justify-center text-pink-500">
+            <div className="w-8 h-8 rounded-full bg-[var(--primary-tint)] flex items-center justify-center text-[var(--primary)]">
               <Palette size={17} />
             </div>
             <div>
@@ -334,7 +334,7 @@ export function ChatBackgroundSelector({
             <button
               type="button"
               onClick={handleReset}
-              className="p-1.5 rounded-full hover:bg-[var(--surface-sunken)] text-[var(--text-muted)] hover:text-rose-500 transition-colors cursor-pointer"
+              className="p-1.5 rounded-full hover:bg-[var(--surface-sunken)] text-[var(--text-muted)] hover:text-[var(--primary)] transition-colors cursor-pointer"
               title="Reset to default theme"
               aria-label="Reset background"
             >

@@ -141,7 +141,7 @@ export function AdVideoCard({
         {/* Ad Header */}
         <div className="flex items-center justify-between p-3.5 border-b" style={{ borderColor: 'var(--line, #26262b)' }}>
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-purple-600 via-pink-600 to-amber-500 p-[2px] flex items-center justify-center flex-shrink-0">
+            <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-[var(--accent-cta)] via-[var(--accent-cta)] to-[var(--gold)] p-[2px] flex items-center justify-center flex-shrink-0">
               <div className="w-full h-full bg-black rounded-full flex items-center justify-center text-sm">
                 🐝
               </div>
@@ -151,7 +151,7 @@ export function AdVideoCard({
                 <span className="font-semibold text-sm text-[var(--text,#fafafa)] truncate">
                   {title}
                 </span>
-                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-500/15 text-purple-400 border border-purple-500/30">
+                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-[var(--primary-tint)] text-[var(--primary)] border border-[var(--line-strong)]">
                   <Sparkles size={10} /> Ad
                 </span>
               </div>
@@ -164,7 +164,7 @@ export function AdVideoCard({
           {actionUrl && (
             <Link
               href={actionUrl}
-              className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:opacity-90 transition-opacity flex items-center gap-1"
+              className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-gradient-to-r from-[var(--accent-cta)] to-[var(--accent-cta)] text-white hover:opacity-90 transition-opacity flex items-center gap-1"
             >
               {actionText}
               <ExternalLink size={12} />
@@ -181,7 +181,7 @@ export function AdVideoCard({
             <div className="p-6 text-center text-neutral-400 space-y-2">
               <p className="text-sm font-medium">Ad Video Preview</p>
               <p className="text-xs text-neutral-500">
-                Drop your video file into <code className="text-purple-400">public/videos/ad.mp4</code> to display it here.
+                Drop your video file into <code className="text-[var(--primary)]">public/videos/ad.mp4</code> to display it here.
               </p>
             </div>
           ) : (
@@ -203,10 +203,10 @@ export function AdVideoCard({
               <button
                 type="button"
                 onClick={handleFullscreen}
-                className="absolute top-3 left-3 z-20 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/75 backdrop-blur-md border border-white/20 text-white text-xs font-semibold hover:bg-black/90 active:scale-95 transition-all shadow-lg group-hover:border-pink-500/50"
+                className="absolute top-3 left-3 z-20 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/75 backdrop-blur-md border border-white/20 text-white text-xs font-semibold hover:bg-black/90 active:scale-95 transition-all shadow-lg group-hover:border-[var(--line-strong)]"
                 aria-label="Tap to open full screen complete view"
               >
-                <Maximize2 size={13} className="text-pink-400" />
+                <Maximize2 size={13} className="text-[var(--primary)]" />
                 <span>Tap to Open Full Screen</span>
               </button>
 
@@ -243,7 +243,7 @@ export function AdVideoCard({
               {/* Bottom Progress Bar */}
               <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/40 z-10">
                 <div
-                  className="h-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-100"
+                  className="h-full bg-gradient-to-r from-[var(--accent-cta)] to-[var(--accent-cta)] transition-all duration-100"
                   style={{ width: `${progress}%` }}
                 />
               </div>
@@ -261,7 +261,7 @@ export function AdVideoCard({
             <span className="text-xs font-semibold text-white tracking-wide">
               {actionText.toUpperCase()}
             </span>
-            <span className="text-xs text-pink-400 font-bold flex items-center gap-1">
+            <span className="text-xs text-[var(--primary)] font-bold flex items-center gap-1">
               Tap here &gt;
             </span>
           </Link>
@@ -285,7 +285,7 @@ export function AdVideoCard({
           {/* Top Header */}
           <div className="flex items-center justify-between p-4 bg-gradient-to-b from-black/80 to-transparent z-10">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-purple-600 to-pink-600 flex items-center justify-center text-xs">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[var(--accent-cta)] to-[var(--accent-cta)] flex items-center justify-center text-xs">
                 🐝
               </div>
               <div>
@@ -341,7 +341,7 @@ export function AdVideoCard({
                 <Link
                   href={actionUrl}
                   onClick={() => setIsModalOpen(false)}
-                  className="inline-flex items-center gap-1.5 px-6 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold text-xs shadow-lg shadow-pink-600/30 hover:opacity-90 transition-opacity"
+                  className="inline-flex items-center gap-1.5 px-6 py-2.5 rounded-xl bg-gradient-to-r from-[var(--accent-cta)] to-[var(--accent-cta)] text-white font-semibold text-xs shadow-lg  hover:opacity-90 transition-opacity"
                 >
                   <span>{actionText}</span>
                   <ExternalLink size={13} />

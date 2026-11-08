@@ -105,7 +105,7 @@ export function GlobalModerationGuard() {
                 setShowAppealModal(true);
                 setAppealSubmitted(false);
               }}
-              className="px-5 py-2.5 bg-pink-600 hover:bg-pink-500 text-white font-bold text-xs flex items-center gap-2 cursor-pointer rounded-none transition-colors"
+              className="px-5 py-2.5 bg-[var(--accent-cta)] hover:bg-[var(--accent-cta)] text-white font-bold text-xs flex items-center gap-2 cursor-pointer rounded-none transition-colors"
             >
               <Send size={14} />
               <span>Submit Ban Appeal 📝</span>
@@ -123,7 +123,7 @@ export function GlobalModerationGuard() {
           {/* BAN APPEAL MODAL */}
           {showAppealModal && (
             <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4">
-              <div className="w-full max-w-md bg-[var(--surface)] border-2 border-pink-500 p-5 rounded-none text-left space-y-4">
+              <div className="w-full max-w-md bg-[var(--surface)] border-2 border-[var(--line-strong)] p-5 rounded-none text-left space-y-4">
                 <div className="flex items-center justify-between border-b border-[var(--line)] pb-2.5">
                   <h3 className="text-sm font-bold text-[var(--text)]">
                     Official Reinstatement Appeal 📨
@@ -160,7 +160,7 @@ export function GlobalModerationGuard() {
                       onChange={(e) => setAppealReasonText(e.target.value)}
                       rows={4}
                       placeholder="Write your explanation here..."
-                      className="w-full p-3 bg-[var(--surface-sunken)] border border-[var(--line)] text-xs text-[var(--text)] rounded-none focus:outline-none focus:border-pink-500"
+                      className="w-full p-3 bg-[var(--surface-sunken)] border border-[var(--line)] text-xs text-[var(--text)] rounded-none focus:outline-none focus:border-[var(--line-strong)]"
                     />
                     <div className="flex gap-2">
                       <button
@@ -181,7 +181,7 @@ export function GlobalModerationGuard() {
                           setAppealSubmitted(true);
                         }}
                         disabled={!appealReasonText.trim()}
-                        className="flex-1 py-2 bg-pink-600 hover:bg-pink-500 disabled:opacity-50 text-white text-xs font-bold rounded-none"
+                        className="flex-1 py-2 bg-[var(--accent-cta)] hover:bg-[var(--accent-cta)] disabled:opacity-50 text-white text-xs font-bold rounded-none"
                       >
                         Submit Appeal
                       </button>
@@ -197,8 +197,8 @@ export function GlobalModerationGuard() {
       {/* 2. OFFICIAL WARNING MODAL POPUP (0px FLAT CORNERS) */}
       {!isBanned && activeWarning && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 rounded-none">
-          <div className="bg-[var(--surface)] border-2 border-amber-500 p-5 max-w-md w-full text-center rounded-none shadow-2xl">
-            <div className="w-12 h-12 bg-amber-500/10 border border-amber-500/40 text-amber-500 flex items-center justify-center mx-auto mb-3 rounded-none">
+          <div className="bg-[var(--surface)] border-2 border-[var(--gold)] p-5 max-w-md w-full text-center rounded-none shadow-2xl">
+            <div className="w-12 h-12 bg-[var(--gold-tint)] border border-[var(--gold)] text-[var(--gold)] flex items-center justify-center mx-auto mb-3 rounded-none">
               <AlertTriangle size={26} />
             </div>
             <h2 className="text-sm font-black text-[var(--text)] tracking-wider uppercase mb-1">
@@ -212,7 +212,7 @@ export function GlobalModerationGuard() {
               <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider block mb-1">
                 Notice Directive:
               </span>
-              <p className="text-xs font-semibold text-amber-400 leading-relaxed">
+              <p className="text-xs font-semibold text-[var(--gold)] leading-relaxed">
                 "{activeWarning.reason}"
               </p>
             </div>

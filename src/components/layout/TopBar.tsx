@@ -67,7 +67,7 @@ export const TopBar: FC<TopBarProps> = ({ notificationCount = 0 }) => {
       <header
         className="sticky top-0 z-30 md:hidden flex flex-col border-b transition-all"
         style={{
-          backgroundColor: 'var(--surface)',
+          backgroundColor: 'var(--bg)',
           borderColor: 'var(--line)',
           paddingTop: 'max(env(safe-area-inset-top, 0px), 8px)',
         }}
@@ -99,7 +99,7 @@ export const TopBar: FC<TopBarProps> = ({ notificationCount = 0 }) => {
               <Bell size={20} strokeWidth={1.8} />
               {unreadCount > 0 && (
                 <span
-                  className="absolute top-1.5 right-1.5 min-w-[16px] h-[16px] px-1 rounded-full text-[10px] font-bold text-white flex items-center justify-center tabular-nums leading-none bg-red-600 border border-[var(--surface)] shadow-xs"
+                  className="absolute top-1.5 right-1.5 min-w-[16px] h-[16px] px-1 rounded-full text-[10px] font-bold text-white flex items-center justify-center tabular-nums leading-none bg-[var(--like)] border-2 border-[var(--bg)]"
                 >
                   {unreadCount > 9 ? '9+' : unreadCount}
                 </span>
@@ -109,13 +109,10 @@ export const TopBar: FC<TopBarProps> = ({ notificationCount = 0 }) => {
             {/* Menu Drawer Button (40-44px tap target) */}
             <button
               onClick={() => setIsMenuOpen(true)}
-              className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-[var(--surface-sunken)] active:scale-95 transition-all cursor-pointer shadow-xs border border-[var(--line)]"
-              style={{
-                color: 'var(--text)',
-                backgroundColor: 'var(--surface-sunken)',
-              }}
+              className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-[var(--surface-sunken)] active:scale-95 transition-all cursor-pointer"
+              style={{ color: 'var(--text)' }}
               aria-label="Open menu"
-              title="Open school menu"
+              title="Menu"
             >
               <Menu size={20} strokeWidth={2} />
             </button>
@@ -142,7 +139,7 @@ export const TopBar: FC<TopBarProps> = ({ notificationCount = 0 }) => {
                 className="font-bold text-base tracking-[-0.02em]"
                 style={{ fontFamily: "var(--font-cabinet), 'Cabinet Grotesk', sans-serif" }}
               >
-                School Navigation
+                Menu
               </span>
               <button
                 onClick={() => setIsMenuOpen(false)}

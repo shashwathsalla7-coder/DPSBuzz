@@ -151,7 +151,7 @@ export async function proxy(request: NextRequest) {
         return NextResponse.json(
           {
             success: false,
-            error: 'Authentication required. Please log in or create an account to access DPSBuzz.',
+            error: 'Authentication required. Please log in or create an account to access DPS Buzz.',
           },
           { status: 401, headers: { 'X-Robots-Tag': 'noindex, nofollow, noarchive' } }
         );

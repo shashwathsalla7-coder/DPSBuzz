@@ -192,7 +192,7 @@ export function CricketGameDrawer({
       className="fixed inset-0 z-[70] bg-black/75 backdrop-blur-sm flex items-end justify-center select-none animate-fade-in"
       role="dialog"
       aria-modal="true"
-      aria-label="DPSBuzz Games Arena"
+      aria-label="DPS Buzz Games Arena"
     >
       <div className="absolute inset-0" onClick={onClose} />
 

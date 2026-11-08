@@ -142,7 +142,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
       fallback={
         <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4 select-none">
           <div className="relative flex items-center justify-center">
-            <div className="w-14 h-14 rounded-full bg-gradient-to-tr from-purple-600 via-pink-600 to-amber-500 p-[3px] animate-spin">
+            <div className="w-14 h-14 rounded-full bg-gradient-to-tr from-[var(--accent-cta)] via-[var(--accent-cta)] to-[var(--gold)] p-[3px] animate-spin">
               <div className="w-full h-full bg-black rounded-full" />
             </div>
             <span className="absolute text-2xl">🐝</span>

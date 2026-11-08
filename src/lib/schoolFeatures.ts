@@ -1285,7 +1285,7 @@ export const SchoolFeatures = {
       status: data.status,
       location: data.location,
       specificSpot: data.specificSpot || data.location,
-      description: data.description || 'Reported on DPSBuzz',
+      description: data.description || 'Reported on DPS Buzz',
       imageUrl: data.imageUrl || '',
       reporterUsername: data.reporterUsername,
       reporterName: data.reporterName,

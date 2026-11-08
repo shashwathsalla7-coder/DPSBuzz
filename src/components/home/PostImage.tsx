@@ -1,5 +1,6 @@
 'use client';
 
+import { timeAgo as formatTimeAgo } from '@/lib/utils';
 import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import {
@@ -243,7 +244,7 @@ export const PostImage: React.FC<PostImageProps> = ({
     <div className="relative mx-3 select-none">
       {/* 4:5 or 16:9 Fixed Ratio Media Container (28px radius, no border, no shadow) */}
       <div
-        className={`w-full ${isVideo ? 'aspect-[4/5] sm:aspect-video' : 'aspect-[4/5]'} relative rounded-[28px] overflow-hidden cursor-pointer bg-black`}
+        className={`w-full ${isVideo ? 'aspect-[4/5] sm:aspect-video' : totalImages === 0 ? 'min-h-[220px]' : 'aspect-[4/5]'} relative rounded-[24px] overflow-hidden cursor-pointer ${totalImages === 0 && !isVideo ? 'bg-[#1E1F4A]' : 'bg-black'}`}
         style={{
           backgroundColor: isVideo ? '#000000' : 'var(--surface-sunken)',
         }}
@@ -393,14 +394,13 @@ export const PostImage: React.FC<PostImageProps> = ({
             </div>
           </div>
         ) : totalImages === 0 ? (
-          <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center bg-gradient-to-br from-indigo-950 via-slate-900 to-black text-white relative">
-            <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-xl mb-3 shadow-lg">
-              🐝
-            </div>
-            <p className="text-sm font-bold max-w-xs line-clamp-3 leading-snug">
-              {post.caption || 'DPS Buzz Campus Update'}
+          <div className="w-full min-h-[220px] flex items-center px-6 pt-20 pb-8 text-white">
+            <p
+              className="text-xl font-bold leading-snug whitespace-pre-line break-words line-clamp-[8]"
+              style={{ fontFamily: "var(--font-cabinet), 'Cabinet Grotesk', sans-serif" }}
+            >
+              {post.caption?.trim() || 'Posted without a caption.'}
             </p>
-            <span className="text-[11px] text-white/50 mt-2 font-medium">@{post.username}</span>
           </div>
         ) : totalImages === 1 ? (
           /* Single Photo with Instant Cache Check & Zero Blank Glitch */
@@ -517,7 +517,7 @@ export const PostImage: React.FC<PostImageProps> = ({
                 : post.class
                 ? `Class ${post.class.trim()}`
                 : 'DPS Student'}{' '}
-              · {post.timeAgo}
+              · {post.createdAt ? formatTimeAgo(post.createdAt) : post.timeAgo}
             </div>
           </div>
         </div>
@@ -567,7 +567,7 @@ export const PostImage: React.FC<PostImageProps> = ({
               }}
               className={`h-8 px-2.5 rounded-full flex items-center gap-1.5 backdrop-blur-md border border-white/25 transition-all active:scale-95 cursor-pointer shadow-lg ${
                 isPlayingAudio
-                  ? 'bg-black/85 text-white ring-2 ring-pink-500'
+                  ? 'bg-black/85 text-white ring-2 ring-[var(--line-strong)]'
                   : 'bg-black/60 text-white/90 hover:bg-black/80'
               }`}
               aria-label={isPlayingAudio ? 'Pause post music' : 'Play post music'}
@@ -575,7 +575,7 @@ export const PostImage: React.FC<PostImageProps> = ({
             >
               {isPlayingAudio ? (
                 <>
-                  <Volume2 size={14} className="text-pink-400" />
+                  <Volume2 size={14} className="text-[var(--primary)]" />
                   <div className="flex items-end gap-0.5 h-2.5" aria-hidden="true">
                     <span className="w-0.5 bg-pink-400 rounded-full animate-[pulse_0.6s_ease-in-out_infinite] h-2.5" />
                     <span className="w-0.5 bg-pink-400 rounded-full animate-[pulse_0.8s_ease-in-out_infinite] h-1.5" />

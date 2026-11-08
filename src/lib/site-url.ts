@@ -1,5 +1,5 @@
 /**
- * Centralized site URL resolver for DPSBus.
+ * Centralized site URL resolver for DPS Buzz.
  * Enables changing the custom domain via SITE_URL environment variable without code changes.
  */
 export function getBaseUrl(): string {

@@ -44,23 +44,23 @@ export function HomeQuestionBoxTeaser() {
   return (
     <div className="px-4">
       <div
-        className="p-4 rounded-2xl border bg-gradient-to-tr from-violet-600/10 via-[var(--surface)] to-amber-500/5 shadow-xs space-y-3 relative overflow-hidden backdrop-blur-xs"
+        className="p-4 rounded-2xl border bg-gradient-to-tr from-[var(--primary-tint)] via-[var(--surface)] to-[var(--gold-tint)] shadow-xs space-y-3 relative overflow-hidden backdrop-blur-xs"
         style={{ borderColor: 'var(--line)' }}
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="w-6 h-6 rounded-lg bg-gradient-to-tr from-violet-600 to-indigo-600 text-white flex items-center justify-center font-bold text-xs shadow-xs">
+            <span className="w-6 h-6 rounded-lg bg-gradient-to-tr from-[var(--accent-cta)] to-[var(--accent-cta)] text-white flex items-center justify-center font-bold text-xs shadow-xs">
               <BrainCircuit size={14} />
             </span>
             <span className="text-xs font-bold text-[var(--text)]">Daily Question Box</span>
-            <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-full bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/20 flex items-center gap-1">
+            <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-full bg-[var(--primary-tint)] text-[var(--primary)] dark:text-[var(--primary)] border border-[var(--line-strong)] flex items-center gap-1">
               <Sparkles size={10} />
               <span>AI Ranked</span>
             </span>
           </div>
 
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 text-xs font-bold text-amber-500">
+            <div className="flex items-center gap-1 text-xs font-bold text-[var(--gold)]">
               <Flame size={14} className="fill-amber-500" />
               <span>{progress.currentStreak || 0}d Streak</span>
             </div>
@@ -80,7 +80,7 @@ export function HomeQuestionBoxTeaser() {
               Subject: <strong className="text-[var(--text)]">{question.subject}</strong>
             </span>
             {question.difficulty && (
-              <span className="text-[9px] uppercase font-bold px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400">
+              <span className="text-[9px] uppercase font-bold px-1.5 py-0.2 rounded bg-[var(--gold-tint)] text-[var(--gold)] dark:text-[var(--gold)]">
                 {question.difficulty}
               </span>
             )}
@@ -96,12 +96,12 @@ export function HomeQuestionBoxTeaser() {
             const isPicked = picked === i;
             const isRight = i === question.correctIndex;
 
-            let cls = 'bg-[var(--surface-sunken)] border-[var(--line)] hover:border-violet-500/40 text-[var(--text)]';
+            let cls = 'bg-[var(--surface-sunken)] border-[var(--line)] hover:border-[var(--line-strong)] text-[var(--text)]';
             if (isDone) {
               if (isRight) {
                 cls = 'bg-emerald-500/10 border-emerald-500 text-emerald-600 dark:text-emerald-400 font-bold';
               } else if (isPicked && !isRight) {
-                cls = 'bg-rose-500/10 border-rose-500 text-rose-500 line-through';
+                cls = 'bg-[var(--primary-tint)] border-[var(--line-strong)] text-[var(--primary)] line-through';
               } else {
                 cls = 'opacity-50 border-[var(--line)]';
               }

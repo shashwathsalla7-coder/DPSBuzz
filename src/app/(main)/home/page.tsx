@@ -28,7 +28,6 @@ import { NoticeStrip } from '@/components/home/NoticeStrip';
 import { FeedTabs } from '@/components/home/FeedTabs';
 import { PostCard } from '@/components/home/PostCard';
 import { StarBoardTeaser } from '@/components/home/StarBoardTeaser';
-import { GetAppWidget } from '@/components/home/GetAppWidget';
 import { HomeFeedSkeleton } from '@/components/home/HomeFeedSkeleton';
 import { SuggestedAccountsList } from '@/components/suggestions';
 import { HomeStreakWidget } from '@/components/home/HomeStreakWidget';
@@ -484,6 +483,15 @@ function HomeContent() {
   const displayedPosts = useMemo(() => {
     if (demoState === 'empty') return [];
 
+    // Skip posts with nothing to show (no text, photo, video or repost).
+    const hasContent = (p: Post) =>
+      Boolean(p.caption?.trim()) ||
+      Boolean(p.images && p.images.length > 0) ||
+      Boolean(p.imageUrl) ||
+      Boolean(p.videoUrl) ||
+      Boolean(p.isRepost);
+    const contentPosts = posts.filter(hasContent);
+
     const myUsername = (currentUser.username || '').toLowerCase().trim();
     const followedSet = new Set(followedUsernames.map((u) => u.toLowerCase().trim()));
     const now = Date.now();
@@ -570,7 +578,7 @@ function HomeContent() {
     };
 
     if (activeTab === 'following') {
-      const filtered = posts.filter((p) => {
+      const filtered = contentPosts.filter((p) => {
         const u = (p.username || '').toLowerCase().trim();
         const isMine = u === myUsername;
         if (isMine) {
@@ -640,7 +648,7 @@ function HomeContent() {
       return true; // Public posts are visible to all students
     };
 
-    const publicAndFollowedPosts = posts.filter(isPostVisible);
+    const publicAndFollowedPosts = contentPosts.filter(isPostVisible);
     const sorted = [...publicAndFollowedPosts].sort(sortFn);
     const seenOriginalPostIds = new Set<string>();
     const deduplicated: Post[] = [];
@@ -730,14 +738,10 @@ function HomeContent() {
       {/* 2. Story row: horizontal snap scroll, 60px avatars with neon ring */}
       <StoriesRow />
 
-      {/* Campus Command Hub: Wow Moment Live Assembly HUD (Principal's Desk with Speech Synthesis, House Standings, Daily Brain Teaser & 1-Tap Action Pills) */}
-      <CampusHeroHUD />
 
       {/* 3. Feed tabs "Following" and "Whole School" as segmented control */}
       <FeedTabs activeTab={activeTab} onChange={setActiveTab} />
 
-      {/* Desktop App Banner (Slim dismissible bar, hidden on mobile) */}
-      <GetAppWidget />
 
       {/* Accessible quick entrance to Four in a Row (Connect4) game */}
       <div className="sr-only">
@@ -788,8 +792,7 @@ function HomeContent() {
       ) : displayedPosts.length === 0 ? (
         /* QUIET FEED / NEW USER STATE: Prompt them to search & display suggested accounts */
         <div className="space-y-4 px-3 py-4 max-w-[480px] mx-auto">
-          {/* Daily Habit Streaks, Strike Points & Star Board Widget */}
-          <HomeStreakWidget />
+          <CampusHeroHUD />
 
           {/* 1. Prompt to Search & Discover Classmates */}
           <div
@@ -799,12 +802,9 @@ function HomeContent() {
               borderColor: 'var(--line)',
             }}
           >
-            <div className="w-12 h-12 rounded-full mx-auto flex items-center justify-center bg-[var(--primary)]/10 text-[var(--primary)] text-xl shadow-xs">
-              🔍
-            </div>
             <div>
               <h3 className="text-base font-bold text-[var(--text)]">
-                Find Your School Classmates
+                Find your classmates
               </h3>
               <p className="text-xs text-[var(--text-muted)] max-w-xs mx-auto leading-relaxed mt-1">
                 Search by class grade like <span className="font-bold text-[var(--text)]">&quot;6&quot;, &quot;7&quot;, &quot;8&quot;, &quot;10&quot;</span> or your friends&apos; names to follow them and see their moments!
@@ -862,7 +862,7 @@ function HomeContent() {
               className="inline-flex items-center gap-1.5 px-6 py-3 rounded-full text-xs font-bold text-white shadow-sm hover:opacity-90 transition-opacity"
               style={{ backgroundColor: 'var(--primary)' }}
             >
-              <span>+ Share first post</span>
+              <span>Share your first post</span>
             </Link>
           </div>
         </div>
@@ -903,11 +903,18 @@ function HomeContent() {
                 </div>
               )}
 
-              {/* Compact Star Board & Streak Board Teaser between posts */}
-              {postIdx === 1 && <StarBoardTeaser />}
+              {/* School updates (Principal's desk, class diary, daily challenge) */}
+              {postIdx === 1 && (
+                <div className="my-3">
+                  <CampusHeroHUD />
+                </div>
+              )}
 
-              {/* In-feed Daily Habit Streak & Strike Points Widget */}
-              {postIdx === 2 && <HomeStreakWidget />}
+              {/* Daily habit streak */}
+              {postIdx === 4 && <HomeStreakWidget />}
+
+              {/* Star Board */}
+              {postIdx === 7 && <StarBoardTeaser />}
             </div>
           ))}
 

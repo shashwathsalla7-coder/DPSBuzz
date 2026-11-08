@@ -168,7 +168,7 @@ export const StarBoardTeaser: React.FC<StarBoardTeaserProps> = ({
             color: activeTab === 'leaderboard' ? 'var(--text)' : undefined,
           }}
         >
-          <Trophy size={13} className={activeTab === 'leaderboard' ? 'text-amber-500' : ''} />
+          <Trophy size={13} className={activeTab === 'leaderboard' ? 'text-[var(--gold)]' : ''} />
           <span>Star Board</span>
         </button>
 
@@ -184,7 +184,7 @@ export const StarBoardTeaser: React.FC<StarBoardTeaserProps> = ({
             color: activeTab === 'streaks' ? 'var(--text)' : undefined,
           }}
         >
-          <Flame size={13} className={activeTab === 'streaks' ? 'text-orange-500' : ''} />
+          <Flame size={13} className={activeTab === 'streaks' ? 'text-[var(--primary)]' : ''} />
           <span>Streaks</span>
         </button>
       </div>
@@ -200,7 +200,7 @@ export const StarBoardTeaser: React.FC<StarBoardTeaserProps> = ({
                 borderColor: 'var(--line)',
               }}
             >
-              <Sparkles size={20} className="mx-auto text-amber-500 mb-1" />
+              <Sparkles size={20} className="mx-auto text-[var(--gold)] mb-1" />
               <p className="text-xs font-bold text-[var(--text)]">School Star Board Open</p>
               <p className="text-[11px] text-[var(--text-muted)] mt-0.5">
                 Share moments with classmates to take the top podium!
@@ -266,10 +266,10 @@ export const StarBoardTeaser: React.FC<StarBoardTeaserProps> = ({
                     borderColor: 'rgba(245, 158, 11, 0.5)',
                   }}
                 >
-                  <Crown size={14} className="text-amber-500 mb-0.5 animate-bounce" />
+                  <Crown size={14} className="text-[var(--gold)] mb-0.5 animate-bounce" />
                   <div className="relative mb-1">
                     <div
-                      className="w-13 h-13 rounded-full flex items-center justify-center font-black text-sm ring-3 ring-amber-400 shadow-md overflow-hidden"
+                      className="w-13 h-13 rounded-full flex items-center justify-center font-black text-sm ring-3 ring-[var(--gold)] shadow-md overflow-hidden"
                       style={{
                         backgroundColor: getAvatarColorPair(firstStudent.username).bg,
                         color: getAvatarColorPair(firstStudent.username).text,
@@ -285,14 +285,14 @@ export const StarBoardTeaser: React.FC<StarBoardTeaserProps> = ({
                         firstStudent.fullName.slice(0, 2).toUpperCase()
                       )}
                     </div>
-                    <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full text-[10px] font-black flex items-center justify-center text-amber-950 bg-gradient-to-tr from-amber-400 to-yellow-300 ring-1 ring-[var(--surface)] shadow-xs">
+                    <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full text-[10px] font-black flex items-center justify-center text-amber-950 bg-gradient-to-tr from-[var(--gold)] to-[var(--gold)] ring-1 ring-[var(--surface)] shadow-xs">
                       1
                     </span>
                   </div>
                   <p className="text-xs font-black text-[var(--text)] truncate w-full">
                     {firstStudent.fullName.split(' ')[0]}
                   </p>
-                  <p className="text-[10px] text-amber-500 font-black uppercase tracking-wide">
+                  <p className="text-[10px] text-[var(--gold)] font-black uppercase tracking-wide">
                     👑 Gold
                   </p>
                   <p className="text-[10px] text-[var(--text-muted)] font-bold tabular-nums">
@@ -310,7 +310,7 @@ export const StarBoardTeaser: React.FC<StarBoardTeaserProps> = ({
                 >
                   <div className="relative mb-1">
                     <div
-                      className="w-11 h-11 rounded-full flex items-center justify-center font-bold text-xs ring-2 ring-orange-600 shadow-xs overflow-hidden"
+                      className="w-11 h-11 rounded-full flex items-center justify-center font-bold text-xs ring-2 ring-[var(--line-strong)] shadow-xs overflow-hidden"
                       style={{
                         backgroundColor: getAvatarColorPair(thirdStudent.username).bg,
                         color: getAvatarColorPair(thirdStudent.username).text,
@@ -326,14 +326,14 @@ export const StarBoardTeaser: React.FC<StarBoardTeaserProps> = ({
                         thirdStudent.fullName.slice(0, 2).toUpperCase()
                       )}
                     </div>
-                    <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full text-[9px] font-black flex items-center justify-center text-white bg-orange-700 ring-1 ring-[var(--surface)] shadow-xs">
+                    <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full text-[9px] font-black flex items-center justify-center text-white bg-[var(--accent-cta)] ring-1 ring-[var(--surface)] shadow-xs">
                       3
                     </span>
                   </div>
                   <p className="text-xs font-bold text-[var(--text)] truncate w-full">
                     {thirdStudent.fullName.split(' ')[0]}
                   </p>
-                  <p className="text-[10px] text-orange-600 font-extrabold uppercase tracking-wide">
+                  <p className="text-[10px] text-[var(--primary)] font-extrabold uppercase tracking-wide">
                     🥉 Bronze
                   </p>
                   <p className="text-[10px] text-[var(--text-muted)] font-medium tabular-nums">
@@ -341,8 +341,8 @@ export const StarBoardTeaser: React.FC<StarBoardTeaserProps> = ({
                   </p>
                 </Link>
               ) : (
-                <div className="p-2 rounded-[16px] border border-dashed border-orange-500/40 flex flex-col items-center opacity-60">
-                  <div className="w-10 h-10 rounded-full border border-dashed border-orange-500 flex items-center justify-center text-orange-500 text-xs mb-1 font-bold">
+                <div className="p-2 rounded-[16px] border border-dashed border-[var(--line-strong)] flex flex-col items-center opacity-60">
+                  <div className="w-10 h-10 rounded-full border border-dashed border-[var(--line-strong)] flex items-center justify-center text-[var(--primary)] text-xs mb-1 font-bold">
                     3
                   </div>
                   <p className="text-[10px] font-bold text-[var(--text-muted)]">Spot 3</p>
@@ -364,7 +364,7 @@ export const StarBoardTeaser: React.FC<StarBoardTeaserProps> = ({
                 borderColor: 'var(--line)',
               }}
             >
-              <Flame size={20} className="mx-auto text-orange-500 mb-1" />
+              <Flame size={20} className="mx-auto text-[var(--primary)] mb-1" />
               <p className="text-xs font-bold text-[var(--text)]">Ignite Your Streak! 🔥</p>
               <p className="text-[11px] text-[var(--text-muted)] mt-0.5">
                 Post with #studies or #sports to start your daily streak.
@@ -404,7 +404,7 @@ export const StarBoardTeaser: React.FC<StarBoardTeaserProps> = ({
                   <p className="text-xs font-bold text-[var(--text)] truncate w-full">
                     {secondStreak.fullName.split(' ')[0]}
                   </p>
-                  <p className="text-[10px] text-orange-500 font-extrabold tabular-nums">
+                  <p className="text-[10px] text-[var(--primary)] font-extrabold tabular-nums">
                     🔥 {secondStreak.streakDays}d
                   </p>
                 </Link>
@@ -427,10 +427,10 @@ export const StarBoardTeaser: React.FC<StarBoardTeaserProps> = ({
                     borderColor: 'rgba(245, 158, 11, 0.5)',
                   }}
                 >
-                  <Crown size={14} className="text-amber-500 mb-0.5 animate-bounce" />
+                  <Crown size={14} className="text-[var(--gold)] mb-0.5 animate-bounce" />
                   <div className="relative mb-1">
                     <div
-                      className="w-13 h-13 rounded-full flex items-center justify-center font-black text-sm ring-3 ring-amber-400 shadow-md overflow-hidden"
+                      className="w-13 h-13 rounded-full flex items-center justify-center font-black text-sm ring-3 ring-[var(--gold)] shadow-md overflow-hidden"
                       style={{
                         backgroundColor: getAvatarColorPair(firstStreak.username).bg,
                         color: getAvatarColorPair(firstStreak.username).text,
@@ -446,14 +446,14 @@ export const StarBoardTeaser: React.FC<StarBoardTeaserProps> = ({
                         firstStreak.fullName.slice(0, 2).toUpperCase()
                       )}
                     </div>
-                    <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full text-[10px] font-black flex items-center justify-center text-amber-950 bg-gradient-to-tr from-amber-400 to-yellow-300 ring-1 ring-[var(--surface)] shadow-xs">
+                    <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full text-[10px] font-black flex items-center justify-center text-amber-950 bg-gradient-to-tr from-[var(--gold)] to-[var(--gold)] ring-1 ring-[var(--surface)] shadow-xs">
                       1
                     </span>
                   </div>
                   <p className="text-xs font-black text-[var(--text)] truncate w-full">
                     {firstStreak.fullName.split(' ')[0]}
                   </p>
-                  <p className="text-[10px] text-orange-500 font-black tabular-nums">
+                  <p className="text-[10px] text-[var(--primary)] font-black tabular-nums">
                     🔥 {firstStreak.streakDays}d streak
                   </p>
                 </Link>
@@ -468,7 +468,7 @@ export const StarBoardTeaser: React.FC<StarBoardTeaserProps> = ({
                 >
                   <div className="relative mb-1">
                     <div
-                      className="w-11 h-11 rounded-full flex items-center justify-center font-bold text-xs ring-2 ring-orange-600 shadow-xs overflow-hidden"
+                      className="w-11 h-11 rounded-full flex items-center justify-center font-bold text-xs ring-2 ring-[var(--line-strong)] shadow-xs overflow-hidden"
                       style={{
                         backgroundColor: getAvatarColorPair(thirdStreak.username).bg,
                         color: getAvatarColorPair(thirdStreak.username).text,
@@ -484,20 +484,20 @@ export const StarBoardTeaser: React.FC<StarBoardTeaserProps> = ({
                         thirdStreak.fullName.slice(0, 2).toUpperCase()
                       )}
                     </div>
-                    <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full text-[9px] font-black flex items-center justify-center text-white bg-orange-700 ring-1 ring-[var(--surface)] shadow-xs">
+                    <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full text-[9px] font-black flex items-center justify-center text-white bg-[var(--accent-cta)] ring-1 ring-[var(--surface)] shadow-xs">
                       3
                     </span>
                   </div>
                   <p className="text-xs font-bold text-[var(--text)] truncate w-full">
                     {thirdStreak.fullName.split(' ')[0]}
                   </p>
-                  <p className="text-[10px] text-orange-500 font-extrabold tabular-nums">
+                  <p className="text-[10px] text-[var(--primary)] font-extrabold tabular-nums">
                     🔥 {thirdStreak.streakDays}d
                   </p>
                 </Link>
               ) : (
-                <div className="p-2 rounded-[16px] border border-dashed border-orange-500/40 flex flex-col items-center opacity-60">
-                  <div className="w-10 h-10 rounded-full border border-dashed border-orange-500 flex items-center justify-center text-orange-500 text-xs mb-1 font-bold">
+                <div className="p-2 rounded-[16px] border border-dashed border-[var(--line-strong)] flex flex-col items-center opacity-60">
+                  <div className="w-10 h-10 rounded-full border border-dashed border-[var(--line-strong)] flex items-center justify-center text-[var(--primary)] text-xs mb-1 font-bold">
                     3
                   </div>
                   <p className="text-[10px] font-bold text-[var(--text-muted)]">Spot 3</p>
@@ -514,7 +514,7 @@ export const StarBoardTeaser: React.FC<StarBoardTeaserProps> = ({
           href="/leaderboard"
           className="btn-apple w-full py-2.5 px-3 rounded-[14px] flex items-center justify-center gap-1.5 text-xs font-bold transition-all text-white shadow-xs"
           style={{
-            background: 'linear-gradient(135deg, #833AB4, #C13584, #F77737)',
+            background: 'linear-gradient(135deg, #6B5BF2, #6B5BF2, #7B6CFF)',
           }}
         >
           <span>View Full Leaderboard & Streaks</span>

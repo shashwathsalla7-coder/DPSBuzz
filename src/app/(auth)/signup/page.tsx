@@ -243,12 +243,12 @@ export default function SignupPage() {
       >
         {/* Notice when accessing a protected app link without being logged in */}
         {redirectParam && (
-          <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-2.5 text-xs text-amber-200">
+          <div className="p-3.5 rounded-xl bg-[var(--gold-tint)] border border-[var(--gold)] flex items-start gap-2.5 text-xs text-[var(--gold)]">
             <span className="text-base shrink-0">🔒</span>
             <div>
-              <p className="font-bold text-amber-300">Account Required to Access Link</p>
-              <p className="text-[11px] text-amber-200/80 mt-0.5">
-                Create your student account to view this content on DPSBuzz.
+              <p className="font-bold text-[var(--gold)]">Account Required to Access Link</p>
+              <p className="text-[11px] text-[var(--gold)]/80 mt-0.5">
+                Create your student account to view this content on DPS Buzz.
               </p>
             </div>
           </div>
@@ -385,10 +385,10 @@ export default function SignupPage() {
             <div className="space-y-1.5 pt-1">
               <div className="flex items-center justify-between">
                 <label htmlFor="ref" className="block text-xs font-semibold flex items-center gap-1.5" style={{ color: 'var(--text)' }}>
-                  <Gift size={13} className="text-pink-500" />
+                  <Gift size={13} className="text-[var(--primary)]" />
                   <span>Referred by (Optional)</span>
                 </label>
-                <span className="text-[10px] text-pink-500 font-bold">+25 Pts Bonus</span>
+                <span className="text-[10px] text-[var(--primary)] font-bold">+25 Pts Bonus</span>
               </div>
               <input
                 id="ref"
@@ -574,7 +574,7 @@ export default function SignupPage() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
                   <span className="text-xs font-bold flex items-center gap-1.5" style={{ color: 'var(--text)' }}>
-                    <Music size={13} className="text-pink-500" />
+                    <Music size={13} className="text-[var(--primary)]" />
                     <span>Favorite Song / Profile Anthem</span>
                   </span>
                   <span className="text-[10px] px-2 py-0.2 rounded-full bg-[var(--surface-sunken)] border border-[var(--line)] text-[var(--text-muted)] font-bold">
@@ -607,7 +607,7 @@ export default function SignupPage() {
                 <button
                   type="button"
                   onClick={() => setShowSongPicker(true)}
-                  className="w-full py-3 px-3 rounded-xl border border-dashed border-[var(--line)] hover:border-pink-500/50 bg-[var(--surface-sunken)] hover:bg-pink-500/5 flex items-center justify-center gap-2 text-xs font-semibold text-[var(--text)] hover:text-pink-400 transition-colors cursor-pointer"
+                  className="w-full py-3 px-3 rounded-xl border border-dashed border-[var(--line)] hover:border-[var(--line-strong)] bg-[var(--surface-sunken)] hover:bg-[var(--primary-tint)] flex items-center justify-center gap-2 text-xs font-semibold text-[var(--text)] hover:text-[var(--primary)] transition-colors cursor-pointer"
                 >
                   <Music size={15} />
                   <span>Choose Your Favorite Song 🎵</span>
@@ -680,13 +680,13 @@ export default function SignupPage() {
               {favoriteSong && (
                 <div className="flex items-center justify-between pb-1 border-b border-[var(--line)]">
                   <span className="font-semibold text-[var(--text-muted)]">Favorite Song:</span>
-                  <span className="font-bold text-pink-500 truncate max-w-[180px]">🎵 {favoriteSong.title}</span>
+                  <span className="font-bold text-[var(--primary)] truncate max-w-[180px]">🎵 {favoriteSong.title}</span>
                 </div>
               )}
               {referredBy && (
                 <div className="flex items-center justify-between pb-1 border-b border-[var(--line)]">
                   <span className="font-semibold text-[var(--text-muted)]">Referred by:</span>
-                  <span className="font-bold text-pink-500 flex items-center gap-1">
+                  <span className="font-bold text-[var(--primary)] flex items-center gap-1">
                     <Gift size={11} /> @{referredBy} (+25 Bonus Pts)
                   </span>
                 </div>

@@ -92,7 +92,7 @@ export const DesktopSidebar: FC = () => {
           )}
           {item.label === 'Alerts' && unreadNotifsCount > 0 && (
             <span
-              className="lg:hidden absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-pink-500"
+              className="lg:hidden absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-[var(--accent-cta)]"
             />
           )}
         </div>
@@ -106,7 +106,7 @@ export const DesktopSidebar: FC = () => {
           </span>
         )}
         {item.label === 'Alerts' && unreadNotifsCount > 0 && (
-          <span className="hidden lg:flex ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-pink-500 text-white text-[10px] font-extrabold items-center justify-center animate-bounce-in shadow-xs">
+          <span className="hidden lg:flex ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-[var(--accent-cta)] text-white text-[10px] font-extrabold items-center justify-center animate-bounce-in shadow-xs">
             {unreadNotifsCount > 9 ? '9+' : unreadNotifsCount}
           </span>
         )}

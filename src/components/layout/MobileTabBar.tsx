@@ -49,8 +49,8 @@ export const MobileTabBar: FC = () => {
     <nav
       className={`fixed bottom-0 left-0 right-0 z-40 md:hidden w-full transition-colors border-t select-none ${
         isDarkReels
-          ? 'bg-[#0B0F17] border-[#1F2937] text-white'
-          : 'bg-[var(--surface)] border-[var(--line)] text-[var(--text)]'
+          ? 'bg-black border-white/10 text-white'
+          : 'bg-[var(--tabbar-bg)] border-[var(--line)] text-[var(--text)]'
       }`}
       style={{
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
@@ -111,7 +111,7 @@ export const MobileTabBar: FC = () => {
           aria-label="Create Post"
           aria-current={isCreateActive ? 'page' : undefined}
         >
-          <div className="w-8 h-8 rounded-full bg-[var(--primary)] text-white flex items-center justify-center shadow-xs">
+          <div className="w-8 h-8 rounded-full bg-[var(--accent-cta)] text-[var(--on-accent-cta)] flex items-center justify-center">
             <SquarePlus size={18} strokeWidth={2.2} />
           </div>
           <span className={`text-[12px] leading-tight mt-0.5 ${isCreateActive ? 'font-semibold' : 'font-medium'}`}>
@@ -140,7 +140,7 @@ export const MobileTabBar: FC = () => {
             />
             {unreadChatsCount > 0 && (
               <span
-                className="absolute -top-1.5 -right-2 min-w-[16px] h-[16px] px-1 rounded-full text-[10px] font-bold text-white flex items-center justify-center leading-none bg-red-600 border border-[var(--surface)] shadow-xs"
+                className="absolute -top-1.5 -right-2 min-w-[16px] h-[16px] px-1 rounded-full text-[10px] font-bold text-white flex items-center justify-center leading-none bg-[var(--like)] border-2 border-[var(--tabbar-bg)]"
                 aria-label={`${unreadChatsCount} unread chats`}
               >
                 {unreadChatsCount > 9 ? '9+' : unreadChatsCount}

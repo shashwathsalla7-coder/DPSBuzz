@@ -89,7 +89,7 @@ export default function StreakTierLadder({
               >
                 {currentTier ? `${currentTier.label} Tier` : 'Starter Streak'}
               </span>
-              <span className="text-xs font-bold text-amber-500 font-mono">
+              <span className="text-xs font-bold text-[var(--gold)] font-mono">
                 🔥 {currentStreakDays}d streak
               </span>
             </div>
@@ -118,8 +118,8 @@ export default function StreakTierLadder({
       <div className="space-y-1.5 pt-1">
         <div className="flex items-center justify-between text-[10px] font-bold font-mono text-[var(--text-muted)]">
           <span className={currentStreakDays >= 3 ? 'text-emerald-500' : ''}>Good (3d)</span>
-          <span className={currentStreakDays >= 7 ? 'text-amber-500' : ''}>Better (7d)</span>
-          <span className={currentStreakDays >= 14 ? 'text-yellow-500' : ''}>Best (14d) 🏆</span>
+          <span className={currentStreakDays >= 7 ? 'text-[var(--gold)]' : ''}>Better (7d)</span>
+          <span className={currentStreakDays >= 14 ? 'text-[var(--gold)]' : ''}>Best (14d) 🏆</span>
         </div>
 
         <div

@@ -319,7 +319,7 @@ export function CampusHeroHUD() {
             <div
               className={`px-2.5 py-1 rounded-full text-[10px] font-bold flex items-center gap-1.5 border transition-all ${
                 periodInfo.isRecess
-                  ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
+                  ? 'bg-[var(--gold-tint)] text-[var(--gold)] dark:text-[var(--gold)] border-[var(--gold)]'
                   : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
               }`}
             >
@@ -352,7 +352,7 @@ export function CampusHeroHUD() {
               borderColor: activeTab === 'circular' ? 'var(--line)' : 'transparent',
             }}
           >
-            <GraduationCap size={13} className="text-amber-500 shrink-0" />
+            <GraduationCap size={13} className="text-[var(--gold)] shrink-0" />
             <span className="truncate">Principal&apos;s Desk</span>
             {latestBroadcast && !isAcknowledged && (
               <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
@@ -373,7 +373,7 @@ export function CampusHeroHUD() {
               borderColor: activeTab === 'diary' ? 'var(--line)' : 'transparent',
             }}
           >
-            <Camera size={13} className="text-amber-500 shrink-0" />
+            <Camera size={13} className="text-[var(--gold)] shrink-0" />
             <span className="truncate">Class Diary</span>
             {todayDiary && (
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
@@ -394,10 +394,10 @@ export function CampusHeroHUD() {
               borderColor: activeTab === 'quiz' ? 'var(--line)' : 'transparent',
             }}
           >
-            <BrainCircuit size={13} className="text-violet-500 shrink-0" />
+            <BrainCircuit size={13} className="text-[var(--primary)] shrink-0" />
             <span className="truncate">Daily Challenge</span>
             {progress.currentStreak > 0 && (
-              <span className="text-[9px] font-extrabold text-amber-500 flex items-center shrink-0">
+              <span className="text-[9px] font-extrabold text-[var(--gold)] flex items-center shrink-0">
                 <Flame size={10} className="fill-amber-500" />
                 {progress.currentStreak}d
               </span>
@@ -417,10 +417,10 @@ export function CampusHeroHUD() {
                         <img
                           src={latestBroadcast.senderAvatar}
                           alt={latestBroadcast.sender}
-                          className="w-10 h-10 rounded-full object-cover border-2 border-amber-500/40 shadow-xs"
+                          className="w-10 h-10 rounded-full object-cover border-2 border-[var(--gold)] shadow-xs"
                         />
                       ) : (
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-500 to-amber-700 text-white flex items-center justify-center font-bold shadow-xs border-2 border-amber-500/40">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[var(--gold)] to-[var(--gold)] text-white flex items-center justify-center font-bold shadow-xs border-2 border-[var(--gold)]">
                           <GraduationCap size={18} />
                         </div>
                       )}
@@ -434,7 +434,7 @@ export function CampusHeroHUD() {
                         <h3 className="text-xs font-bold text-[var(--text)] truncate">
                           {latestBroadcast.sender}
                         </h3>
-                        <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                        <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded-full bg-[var(--gold-tint)] text-[var(--gold)] dark:text-[var(--gold)] border border-[var(--gold)]">
                           Official Circular
                         </span>
                       </div>
@@ -451,7 +451,7 @@ export function CampusHeroHUD() {
                       onClick={toggleSpeech}
                       className={`px-2.5 py-1.5 rounded-full text-[11px] font-bold flex items-center gap-1.5 transition-all cursor-pointer border ${
                         isPlayingSpeech
-                          ? 'bg-amber-500 text-black border-amber-400 shadow-xs'
+                          ? 'bg-amber-500 text-black border-[var(--gold)] shadow-xs'
                           : 'bg-[var(--surface-sunken)] hover:bg-[var(--primary)] hover:text-white text-[var(--text)] border-[var(--line)]'
                       }`}
                       title={isPlayingSpeech ? 'Stop speech audio' : "Listen to Madam Principal's Address"}
@@ -463,7 +463,7 @@ export function CampusHeroHUD() {
                         </>
                       ) : (
                         <>
-                          <Volume2 size={13} className="text-amber-500" />
+                          <Volume2 size={13} className="text-[var(--gold)]" />
                           <span>Listen 🔊</span>
                         </>
                       )}
@@ -498,7 +498,7 @@ export function CampusHeroHUD() {
 
                   {/* Equalizer animation when speaking */}
                   {isPlayingSpeech && (
-                    <div className="mt-2 pt-2 border-t border-[var(--line)] flex items-center justify-between text-[10px] text-amber-500 font-bold">
+                    <div className="mt-2 pt-2 border-t border-[var(--line)] flex items-center justify-between text-[10px] text-[var(--gold)] font-bold">
                       <span className="flex items-center gap-1">
                         <Radio size={12} className="animate-pulse" />
                         <span>Live Voice Synthesis • Audio Broadcast Playing</span>
@@ -541,7 +541,7 @@ export function CampusHeroHUD() {
                   borderColor: 'var(--line)',
                 }}
               >
-                <div className="w-9 h-9 rounded-full mx-auto bg-amber-500/10 text-amber-500 flex items-center justify-center">
+                <div className="w-9 h-9 rounded-full mx-auto bg-[var(--gold-tint)] text-[var(--gold)] flex items-center justify-center">
                   <GraduationCap size={20} />
                 </div>
                 <h4 className="text-xs font-bold text-[var(--text)]">Office of the Principal</h4>
@@ -570,11 +570,11 @@ export function CampusHeroHUD() {
               <div className="space-y-2.5">
                 <div className="flex items-center justify-between text-xs">
                   <div className="flex items-center gap-1.5">
-                    <Camera size={14} className="text-amber-500" />
+                    <Camera size={14} className="text-[var(--gold)]" />
                     <span className="font-bold text-[var(--text)]">Class {todayDiary.classGrade} Today&apos;s Diary</span>
                   </div>
                   {todayDiary.isFirstSubmission && (
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 font-extrabold flex items-center gap-1 border border-amber-500/30">
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--gold-tint)] text-[var(--gold)] dark:text-[var(--gold)] font-extrabold flex items-center gap-1 border border-[var(--gold)]">
                       <Trophy size={11} />
                       <span>First Submission (+{todayDiary.pointsAwarded} pts)</span>
                     </span>
@@ -629,14 +629,14 @@ export function CampusHeroHUD() {
           <div className="p-3.5 space-y-3 animate-fade-in">
             <div className="flex items-center justify-between text-xs">
               <div className="flex items-center gap-1.5">
-                <BrainCircuit size={14} className="text-violet-500" />
+                <BrainCircuit size={14} className="text-[var(--primary)]" />
                 <span className="font-bold text-[var(--text)]">Daily Question Box</span>
-                <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded-full bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/20">
+                <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded-full bg-[var(--primary-tint)] text-[var(--primary)] dark:text-[var(--primary)] border border-[var(--line-strong)]">
                   {question.subject}
                 </span>
               </div>
 
-              <div className="flex items-center gap-1 text-[11px] font-bold text-amber-500">
+              <div className="flex items-center gap-1 text-[11px] font-bold text-[var(--gold)]">
                 <Flame size={13} className="fill-amber-500" />
                 <span>+10 pts</span>
               </div>
@@ -658,7 +658,7 @@ export function CampusHeroHUD() {
                   if (isCorrect) {
                     btnStyle = 'bg-emerald-500/15 border-emerald-500 text-emerald-700 dark:text-emerald-300 font-bold';
                   } else if (isSelected) {
-                    btnStyle = 'bg-rose-500/15 border-rose-500 text-rose-700 dark:text-rose-300 font-bold';
+                    btnStyle = 'bg-[var(--primary-tint)] border-[var(--line-strong)] text-[var(--primary)] dark:text-[var(--primary)] font-bold';
                   } else {
                     btnStyle = 'bg-[var(--surface-sunken)] border-[var(--line)] text-[var(--text-muted)] opacity-60';
                   }
@@ -726,7 +726,7 @@ export function CampusHeroHUD() {
             borderColor: 'var(--line)',
           }}
         >
-          <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+          <div className="w-8 h-8 rounded-lg bg-[var(--gold-tint)] text-[var(--gold)] dark:text-[var(--gold)] border border-[var(--gold)] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
             <Bot size={17} />
           </div>
           <div className="min-w-0">
@@ -768,7 +768,7 @@ export function CampusHeroHUD() {
             borderColor: 'var(--line)',
           }}
         >
-          <div className="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+          <div className="w-8 h-8 rounded-lg bg-[var(--primary-tint)] text-[var(--primary)] dark:text-[var(--primary)] border border-[var(--line-strong)] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
             <Search size={17} />
           </div>
           <div className="min-w-0">

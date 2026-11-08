@@ -66,7 +66,7 @@ export function CricketLeaderboardModal({
       className="fixed inset-0 z-[120] bg-black/80 backdrop-blur-md flex items-center justify-center p-3 select-none"
       role="dialog"
       aria-modal="true"
-      aria-label="DPSBuzz Cricket Leaderboard & Match Center"
+      aria-label="DPS Buzz Cricket Leaderboard & Match Center"
     >
       <div className="absolute inset-0" onClick={onClose} />
 
@@ -162,7 +162,7 @@ export function CricketLeaderboardModal({
                       </div>
                       <h4 className="text-sm font-bold text-white">No matches played yet!</h4>
                       <p className="text-xs text-slate-400 max-w-xs leading-relaxed">
-                        Challenge a classmate in chat to take the #1 spot on the DPSBuzz Cricket Leaderboard.
+                        Challenge a classmate in chat to take the #1 spot on the DPS Buzz Cricket Leaderboard.
                       </p>
                     </div>
                   ) : (

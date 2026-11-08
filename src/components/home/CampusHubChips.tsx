@@ -29,8 +29,8 @@ export function CampusHubChips() {
       icon: Bot,
       href: '/ai-diary',
       badge: 'Bot',
-      color: 'from-amber-500 to-yellow-400',
-      textColor: 'text-amber-500',
+      color: 'from-[var(--gold)] to-[var(--gold)]',
+      textColor: 'text-[var(--gold)]',
     },
     {
       title: 'Study Corner',
@@ -38,7 +38,7 @@ export function CampusHubChips() {
       icon: BookOpen,
       href: '/study-corner',
       badge: 'Nursery–10',
-      color: 'from-blue-600 to-indigo-500',
+      color: 'from-blue-600 to-[var(--accent-cta)]',
       textColor: 'text-blue-500',
     },
     {
@@ -56,8 +56,8 @@ export function CampusHubChips() {
       icon: Megaphone,
       href: '/notices',
       badge: 'Official',
-      color: 'from-rose-500 to-orange-400',
-      textColor: 'text-rose-500',
+      color: 'from-[var(--accent-cta)] to-[var(--accent-cta)]',
+      textColor: 'text-[var(--primary)]',
     },
     {
       title: 'Lost & Found',
@@ -65,8 +65,8 @@ export function CampusHubChips() {
       icon: Search,
       href: '/lost-found',
       badge: 'Recovery',
-      color: 'from-amber-600 to-red-500',
-      textColor: 'text-amber-500',
+      color: 'from-[var(--gold)] to-red-500',
+      textColor: 'text-[var(--gold)]',
     },
   ];
 
@@ -74,7 +74,7 @@ export function CampusHubChips() {
     <div className="px-4">
       <div className="flex items-center justify-between mb-2">
         <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-1.5">
-          <Sparkles size={13} className="text-amber-500" />
+          <Sparkles size={13} className="text-[var(--gold)]" />
           <span>Campus Hub • Nursery to Class 10</span>
         </h3>
         <span className="text-[10px] font-semibold text-[var(--text-muted)]">Live Features</span>
@@ -87,7 +87,7 @@ export function CampusHubChips() {
             <Link
               key={hub.title}
               href={hub.href}
-              className="p-3 rounded-2xl border bg-[var(--surface)] hover:bg-[var(--surface-sunken)] hover:border-amber-500/40 transition-all flex flex-col justify-between space-y-2 group shadow-2xs"
+              className="p-3 rounded-2xl border bg-[var(--surface)] hover:bg-[var(--surface-sunken)] hover:border-[var(--gold)] transition-all flex flex-col justify-between space-y-2 group shadow-2xs"
               style={{ borderColor: 'var(--line)' }}
             >
               <div className="flex items-center justify-between">
@@ -102,7 +102,7 @@ export function CampusHubChips() {
               </div>
 
               <div>
-                <h4 className="text-xs font-bold text-[var(--text)] group-hover:text-amber-500 transition-colors">
+                <h4 className="text-xs font-bold text-[var(--text)] group-hover:text-[var(--gold)] transition-colors">
                   {hub.title}
                 </h4>
                 <p className="text-[10px] text-[var(--text-muted)] leading-tight truncate">

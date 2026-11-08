@@ -181,12 +181,12 @@ export default function LoginPage() {
 
         {/* Notice when accessing a protected app link without being logged in */}
         {redirectParam && (
-          <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-2.5 text-xs text-amber-200">
+          <div className="p-3.5 rounded-xl bg-[var(--gold-tint)] border border-[var(--gold)] flex items-start gap-2.5 text-xs text-[var(--gold)]">
             <span className="text-base shrink-0">🔒</span>
             <div>
-              <p className="font-bold text-amber-300">Account Required to Access Link</p>
-              <p className="text-[11px] text-amber-200/80 mt-0.5">
-                You must have an account and be logged in to view content on DPSBuzz.
+              <p className="font-bold text-[var(--gold)]">Account Required to Access Link</p>
+              <p className="text-[11px] text-[var(--gold)]/80 mt-0.5">
+                You must have an account and be logged in to view content on DPS Buzz.
               </p>
             </div>
           </div>
@@ -218,7 +218,7 @@ export default function LoginPage() {
                   fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
                   setActiveSession(null);
                 }}
-                className="px-2.5 py-1 rounded-lg border text-xs font-semibold text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                className="px-2.5 py-1 rounded-lg border text-xs font-semibold text-[var(--primary)] hover:bg-[var(--primary-tint)] transition-colors cursor-pointer"
                 style={{ borderColor: 'var(--line)' }}
               >
                 Log Out
@@ -296,7 +296,7 @@ export default function LoginPage() {
           {error && (
             <p
               role="alert"
-              className="text-xs font-medium px-3 py-2 rounded-lg border border-rose-500/30 bg-rose-500/10 text-rose-300"
+              className="text-xs font-medium px-3 py-2 rounded-lg border border-[var(--line-strong)] bg-[var(--primary-tint)] text-[var(--primary)]"
             >
               {error}
             </p>

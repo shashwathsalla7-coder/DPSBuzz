@@ -198,7 +198,7 @@ export default function LostFoundPage() {
         status: reportStatus,
         location: reportLocation,
         specificSpot: reportSpot.trim() || reportLocation,
-        description: reportDesc.trim() || 'Reported via DPSBuzz Lost & Found Portal',
+        description: reportDesc.trim() || 'Reported via DPS Buzz Lost & Found Portal',
         imageUrl: uploadedImageUrl || undefined,
         reporterUsername: username,
         reporterName: userFullName,

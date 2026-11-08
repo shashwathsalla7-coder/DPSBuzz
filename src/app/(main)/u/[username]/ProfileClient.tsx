@@ -1085,7 +1085,7 @@ export default function ProfileClient({ username }: { username: string }) {
                 title="Click to share or edit note"
               >
                 {noteSong && (
-                  <Music size={10} className="text-pink-500 animate-pulse shrink-0" />
+                  <Music size={10} className="text-[var(--primary)] animate-pulse shrink-0" />
                 )}
                 <span className="truncate">{currentNote || '+ Note'}</span>
                 <div
@@ -1108,7 +1108,7 @@ export default function ProfileClient({ username }: { username: string }) {
                 title={`Note from @${profile.username}`}
               >
                 {profileNote.song && (
-                  <Music size={10} className="text-pink-500 animate-pulse shrink-0" />
+                  <Music size={10} className="text-[var(--primary)] animate-pulse shrink-0" />
                 )}
                 <span className="truncate">{profileNote.text}</span>
                 <div
@@ -1125,7 +1125,7 @@ export default function ProfileClient({ username }: { username: string }) {
             <div
               className={`relative rounded-full transition-all ${
                 hasActiveStory
-                  ? 'story-ring p-[3px] bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] shadow-md cursor-pointer'
+                  ? 'story-ring p-[3px] bg-gradient-to-tr from-[#7B6CFF] via-[#6B5BF2] to-[#6B5BF2] shadow-md cursor-pointer'
                   : ''
               }`}
               onClick={() => setShowEnlargedPhoto(true)}
@@ -1332,7 +1332,7 @@ export default function ProfileClient({ username }: { username: string }) {
               <button
                 type="button"
                 onClick={() => setShowSongPickerModal(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold border border-dashed border-[var(--line)] bg-[var(--surface-sunken)] hover:border-pink-500/50 hover:text-pink-400 text-[var(--text-muted)] transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold border border-dashed border-[var(--line)] bg-[var(--surface-sunken)] hover:border-[var(--line-strong)] hover:text-[var(--primary)] text-[var(--text-muted)] transition-colors cursor-pointer"
               >
                 <Music size={12} />
                 <span>+ Add Profile Song 🎵</span>
@@ -1625,7 +1625,7 @@ export default function ProfileClient({ username }: { username: string }) {
             </div>
 
             <div className="p-2 rounded-[12px] border bg-[var(--surface)]" style={{ borderColor: 'var(--line)' }}>
-              <div className="text-sm font-extrabold tabular-nums font-mono text-amber-400">
+              <div className="text-sm font-extrabold tabular-nums font-mono text-[var(--gold)]">
                 ⭐ {userStreak.habitPoints}
               </div>
               <div className="text-[10px] text-[var(--text-muted)] mt-0.5">Star Points</div>
@@ -1775,7 +1775,7 @@ export default function ProfileClient({ username }: { username: string }) {
             <Repeat2 size={19} />
             <span className="text-[11px] font-semibold">Reposts</span>
             {repostPosts.length > 0 && (
-              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-pink-500/20 text-pink-500 font-bold tabular-nums">
+              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-[var(--primary-tint)] text-[var(--primary)] font-bold tabular-nums">
                 {repostPosts.length}
               </span>
             )}
@@ -1810,7 +1810,7 @@ export default function ProfileClient({ username }: { username: string }) {
               <Bookmark size={19} />
               <span className="text-[11px] font-semibold">Saved</span>
               {savedPosts.length > 0 && (
-                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-500 font-bold tabular-nums">
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-[var(--gold-tint)] text-[var(--gold)] font-bold tabular-nums">
                   {savedPosts.length}
                 </span>
               )}
@@ -1962,7 +1962,7 @@ export default function ProfileClient({ username }: { username: string }) {
                         className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-full bg-black/65 backdrop-blur-xs flex items-center gap-1 text-white shadow-xs z-10 text-[9px] font-bold"
                         title="Tagged photo pushed to your main grid"
                       >
-                        <Tag size={10} className="text-pink-400" />
+                        <Tag size={10} className="text-[var(--primary)]" />
                         <span>Tagged</span>
                       </div>
                     )}
@@ -1974,7 +1974,7 @@ export default function ProfileClient({ username }: { username: string }) {
                         loading="lazy"
                       />
                     ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center text-xs text-[var(--text-muted)] p-2 text-center bg-gradient-to-br from-blue-500/10 to-indigo-500/10">
+                      <div className="w-full h-full flex flex-col items-center justify-center text-xs text-[var(--text-muted)] p-2 text-center bg-gradient-to-br from-blue-500/10 to-[var(--primary-tint)]">
                         <span className="font-semibold text-[11px] line-clamp-2">{post.caption.slice(0, 30)}</span>
                       </div>
                     )}
@@ -2034,13 +2034,13 @@ export default function ProfileClient({ username }: { username: string }) {
                         loading="lazy"
                       />
                     ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center text-xs text-[var(--text-muted)] p-2 text-center bg-gradient-to-br from-purple-500/10 to-pink-500/10">
+                      <div className="w-full h-full flex flex-col items-center justify-center text-xs text-[var(--text-muted)] p-2 text-center bg-gradient-to-br from-[var(--primary-tint)] to-[var(--primary-tint)]">
                         <span className="font-semibold text-[11px] line-clamp-2">{post.caption.slice(0, 30)}</span>
                       </div>
                     )}
                     {/* Repost attribution overlay */}
                     <div className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-full bg-black/60 text-white text-[9px] font-bold flex items-center gap-1 backdrop-blur-xs">
-                      <Repeat2 size={10} className="text-pink-400" />
+                      <Repeat2 size={10} className="text-[var(--primary)]" />
                       <span>{post.repostedFrom ? `@${post.repostedFrom.username}` : 'Repost'}</span>
                     </div>
                     {post.likes > 0 && (
@@ -2089,13 +2089,13 @@ export default function ProfileClient({ username }: { username: string }) {
                         loading="lazy"
                       />
                     ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center text-xs text-[var(--text-muted)] p-2 text-center bg-gradient-to-br from-blue-500/10 to-indigo-500/10">
+                      <div className="w-full h-full flex flex-col items-center justify-center text-xs text-[var(--text-muted)] p-2 text-center bg-gradient-to-br from-blue-500/10 to-[var(--primary-tint)]">
                         <span className="font-semibold text-[11px] line-clamp-2">{post.caption.slice(0, 30)}</span>
                       </div>
                     )}
                     {/* Tagged by badge */}
                     <div className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-full bg-black/60 text-white text-[9px] font-bold flex items-center gap-1 backdrop-blur-xs">
-                      <Tag size={10} className="text-pink-400" />
+                      <Tag size={10} className="text-[var(--primary)]" />
                       <span>@{post.username}</span>
                     </div>
 
@@ -2154,13 +2154,13 @@ export default function ProfileClient({ username }: { username: string }) {
                       loading="lazy"
                     />
                   ) : (
-                    <div className="w-full h-full flex flex-col items-center justify-center text-xs text-[var(--text-muted)] p-2 text-center bg-gradient-to-br from-amber-500/10 to-orange-500/10">
+                    <div className="w-full h-full flex flex-col items-center justify-center text-xs text-[var(--text-muted)] p-2 text-center bg-gradient-to-br from-[var(--gold-tint)] to-[var(--primary-tint)]">
                       <span className="font-semibold text-[11px] line-clamp-2">{post.caption.slice(0, 30)}</span>
                     </div>
                   )}
                   {/* Saved bookmark attribution badge */}
                   <div className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-full bg-black/60 text-white text-[9px] font-bold flex items-center gap-1 backdrop-blur-xs">
-                    <Bookmark size={10} className="fill-amber-400 text-amber-400" />
+                    <Bookmark size={10} className="fill-amber-400 text-[var(--gold)]" />
                     <span>Saved</span>
                   </div>
                   {post.likes > 0 && (
@@ -2237,12 +2237,12 @@ export default function ProfileClient({ username }: { username: string }) {
                       {selectedPostDetail.username}
                     </span>
                     {DataStore.isPostPinned(selectedPostDetail.username, selectedPostDetail.id) && (
-                      <span className="text-[10px] font-bold text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+                      <span className="text-[10px] font-bold text-[var(--gold)] bg-[var(--gold-tint)] px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
                         <Pin size={10} className="fill-amber-500 rotate-45" /> Pinned
                       </span>
                     )}
                     {selectedPostDetail.isRepost && (
-                      <span className="text-[10px] font-bold text-pink-500 bg-pink-500/10 px-1.5 py-0.2 rounded-full flex items-center gap-0.5">
+                      <span className="text-[10px] font-bold text-[var(--primary)] bg-[var(--primary-tint)] px-1.5 py-0.2 rounded-full flex items-center gap-0.5">
                         <Repeat2 size={10} /> Repost
                       </span>
                     )}
@@ -2280,8 +2280,8 @@ export default function ProfileClient({ username }: { username: string }) {
                     onClick={() => setShowPostSongPickerModal(true)}
                     className={`p-1.5 rounded-full transition-colors cursor-pointer ${
                       selectedPostDetail.song
-                        ? 'text-pink-500 bg-pink-500/10 hover:bg-pink-500/20'
-                        : 'text-[var(--text-muted)] hover:text-pink-500 hover:bg-[var(--surface-sunken)]'
+                        ? 'text-[var(--primary)] bg-[var(--primary-tint)] hover:bg-[var(--primary-tint)]'
+                        : 'text-[var(--text-muted)] hover:text-[var(--primary)] hover:bg-[var(--surface-sunken)]'
                     }`}
                     title={selectedPostDetail.song ? `Change music ("${selectedPostDetail.song.title}") 🎵` : 'Add background music 🎵'}
                     aria-label="Change music"
@@ -2299,8 +2299,8 @@ export default function ProfileClient({ username }: { username: string }) {
                     }}
                     className={`p-1.5 rounded-full transition-colors cursor-pointer ${
                       DataStore.isPostPinned(profile.username, selectedPostDetail.id)
-                        ? 'text-amber-500 bg-amber-500/10 hover:bg-amber-500/20'
-                        : 'text-[var(--text-muted)] hover:text-amber-500 hover:bg-[var(--surface-sunken)]'
+                        ? 'text-[var(--gold)] bg-[var(--gold-tint)] hover:bg-[var(--gold-tint)]'
+                        : 'text-[var(--text-muted)] hover:text-[var(--gold)] hover:bg-[var(--surface-sunken)]'
                     }`}
                     aria-label={DataStore.isPostPinned(profile.username, selectedPostDetail.id) ? 'Unpin post' : 'Pin post to profile'}
                     title={DataStore.isPostPinned(profile.username, selectedPostDetail.id) ? 'Unpin post' : 'Pin post to profile'}
@@ -2358,13 +2358,13 @@ export default function ProfileClient({ username }: { username: string }) {
             {/* Repost attribution header if this post is a repost */}
             {selectedPostDetail.isRepost && selectedPostDetail.repostedFrom && (
               <div
-                className="px-4 py-2 border-b flex items-center gap-2 text-xs font-semibold bg-pink-500/5"
+                className="px-4 py-2 border-b flex items-center gap-2 text-xs font-semibold bg-[var(--primary-tint)]"
                 style={{ borderColor: 'var(--line)', color: 'var(--text)' }}
               >
-                <Repeat2 size={14} className="text-pink-400" />
+                <Repeat2 size={14} className="text-[var(--primary)]" />
                 <span>
                   Reposted from{' '}
-                  <span className="text-pink-500 font-bold">
+                  <span className="text-[var(--primary)] font-bold">
                     @{selectedPostDetail.repostedFrom.username}
                   </span>
                 </span>
@@ -2468,7 +2468,7 @@ export default function ProfileClient({ username }: { username: string }) {
                 <button
                   type="button"
                   onClick={() => setShowDetailRepostSheet(true)}
-                  className="flex items-center gap-1 text-xs font-semibold hover:text-pink-500 transition-colors cursor-pointer text-pink-500"
+                  className="flex items-center gap-1 text-xs font-semibold hover:text-[var(--primary)] transition-colors cursor-pointer text-[var(--primary)]"
                   title="Repost this post"
                 >
                   <Repeat2 size={21} />
@@ -2487,7 +2487,7 @@ export default function ProfileClient({ username }: { username: string }) {
                     setPostsVersion((v) => v + 1);
                     showToast(saved ? 'Post saved to bookmarks! 🔖' : 'Post unsaved from bookmarks! ❌');
                   }}
-                  className="p-1 text-xs font-semibold hover:text-amber-400 transition-colors cursor-pointer"
+                  className="p-1 text-xs font-semibold hover:text-[var(--gold)] transition-colors cursor-pointer"
                   style={{ color: 'var(--text-muted)' }}
                   title={DataStore.isPostSaved(selectedPostDetail.id, DataStore.getCurrentUser()?.username) ? 'Unsave post' : 'Save post'}
                 >
@@ -2495,7 +2495,7 @@ export default function ProfileClient({ username }: { username: string }) {
                     size={19}
                     className={
                       DataStore.isPostSaved(selectedPostDetail.id, DataStore.getCurrentUser()?.username)
-                        ? 'fill-amber-400 text-amber-400'
+                        ? 'fill-amber-400 text-[var(--gold)]'
                         : ''
                     }
                   />
@@ -2537,7 +2537,7 @@ export default function ProfileClient({ username }: { username: string }) {
                     <button
                       type="button"
                       onClick={() => setShowPostSongPickerModal(true)}
-                      className="text-[10px] font-bold px-2 py-1 rounded-full bg-[var(--surface-sunken)] border border-[var(--line)] text-[var(--text-muted)] hover:text-pink-400 hover:border-pink-500/30 flex items-center gap-1 transition-colors cursor-pointer shrink-0"
+                      className="text-[10px] font-bold px-2 py-1 rounded-full bg-[var(--surface-sunken)] border border-[var(--line)] text-[var(--text-muted)] hover:text-[var(--primary)] hover:border-[var(--line-strong)] flex items-center gap-1 transition-colors cursor-pointer shrink-0"
                       title="Change background music for this post 🎵"
                     >
                       <Music size={11} />
@@ -2553,9 +2553,9 @@ export default function ProfileClient({ username }: { username: string }) {
                   <button
                     type="button"
                     onClick={() => setShowPostSongPickerModal(true)}
-                    className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-[var(--surface-sunken)] border border-dashed border-[var(--line)] text-[var(--text-muted)] hover:text-pink-400 hover:border-pink-500/30 flex items-center gap-1.5 transition-colors cursor-pointer"
+                    className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-[var(--surface-sunken)] border border-dashed border-[var(--line)] text-[var(--text-muted)] hover:text-[var(--primary)] hover:border-[var(--line-strong)] flex items-center gap-1.5 transition-colors cursor-pointer"
                   >
-                    <Music size={12} className="text-pink-400" />
+                    <Music size={12} className="text-[var(--primary)]" />
                     <span>+ Add Background Music 🎵</span>
                   </button>
                 </div>
@@ -2576,7 +2576,7 @@ export default function ProfileClient({ username }: { username: string }) {
               return (
                 <div className="p-4 space-y-1.5">
                   {hasSlideCaptions && allImgs.length > 1 && (
-                    <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full bg-pink-500/10 text-pink-500 border border-pink-500/20">
+                    <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full bg-[var(--primary-tint)] text-[var(--primary)] border border-[var(--line-strong)]">
                       📸 Slide {detailSlideIndex + 1} of {allImgs.length}
                     </span>
                   )}
@@ -3277,7 +3277,7 @@ export default function ProfileClient({ username }: { username: string }) {
                     color: 'var(--text)',
                   }}
                 >
-                  <Camera size={16} className="text-pink-500" />
+                  <Camera size={16} className="text-[var(--primary)]" />
                   <span>{newHighlightImage ? 'Change Highlight Photo 📷' : 'Upload Cover Photo (Camera / Gallery) 📸'}</span>
                 </button>
               </div>
@@ -3565,7 +3565,7 @@ export default function ProfileClient({ username }: { username: string }) {
                 style={{ backgroundColor: 'var(--surface-sunken)', borderColor: 'var(--line)' }}
               >
                 <div className="flex items-center gap-2 min-w-0">
-                  <div className="w-7 h-7 rounded-full bg-pink-500/15 text-pink-500 flex items-center justify-center shrink-0">
+                  <div className="w-7 h-7 rounded-full bg-[var(--primary-tint)] text-[var(--primary)] flex items-center justify-center shrink-0">
                     <Music size={13} />
                   </div>
                   <div className="min-w-0">
@@ -3672,7 +3672,7 @@ export default function ProfileClient({ username }: { username: string }) {
                   className="w-full h-full object-cover"
                 />
               ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center text-[var(--text-muted)] bg-gradient-to-tr from-purple-500/20 via-pink-500/20 to-orange-500/20">
+                <div className="w-full h-full flex flex-col items-center justify-center text-[var(--text-muted)] bg-gradient-to-tr from-[var(--primary-tint)] via-[var(--primary-tint)] to-[var(--primary-tint)]">
                   <span className="text-6xl font-bold text-[var(--primary)]">
                     {(profile.fullName || profile.username || '?').charAt(0).toUpperCase()}
                   </span>
@@ -3778,7 +3778,7 @@ export default function ProfileClient({ username }: { username: string }) {
               <label className="text-xs font-semibold flex items-center justify-between" style={{ color: 'var(--text)' }}>
                 <span>Attach Photo from Gallery (Mandatory) 📸 *</span>
                 {!habitPhoto && (
-                  <span className="text-[10px] text-amber-500 font-medium">Photo required</span>
+                  <span className="text-[10px] text-[var(--gold)] font-medium">Photo required</span>
                 )}
               </label>
               <input
@@ -3999,7 +3999,7 @@ export default function ProfileClient({ username }: { username: string }) {
                 {peekPost.song && (
                   <div className="absolute bottom-2.5 inset-x-2.5 z-10">
                     <div className="px-2.5 py-1 rounded-full bg-black/70 backdrop-blur-xs text-white text-[11px] font-medium flex items-center gap-1.5 shadow-md">
-                      <Music size={12} className="text-pink-400 shrink-0 animate-pulse" />
+                      <Music size={12} className="text-[var(--primary)] shrink-0 animate-pulse" />
                       <span className="truncate">{peekPost.song.title} • {peekPost.song.artist}</span>
                     </div>
                   </div>
@@ -4041,7 +4041,7 @@ export default function ProfileClient({ username }: { username: string }) {
                 }}
                 className="w-full px-4 py-3 flex items-center gap-3 text-left text-xs font-semibold hover:bg-[var(--surface-sunken)] transition-colors cursor-pointer text-[var(--text)] group"
               >
-                <Maximize2 size={18} className="text-[var(--text-muted)] group-hover:text-pink-500 transition-colors shrink-0" />
+                <Maximize2 size={18} className="text-[var(--text-muted)] group-hover:text-[var(--primary)] transition-colors shrink-0" />
                 <div className="flex-1 min-w-0">
                   <span className="flex items-center gap-1.5">
                     <span>Adjust preview</span>
@@ -4069,7 +4069,7 @@ export default function ProfileClient({ username }: { username: string }) {
                   <Pin
                     size={18}
                     className={`rotate-45 shrink-0 transition-colors ${
-                      peekPost.isPinned ? 'text-amber-500 fill-amber-500' : 'text-[var(--text-muted)] group-hover:text-amber-500'
+                      peekPost.isPinned ? 'text-[var(--gold)] fill-amber-500' : 'text-[var(--text-muted)] group-hover:text-[var(--gold)]'
                     }`}
                   />
                   <div className="flex-1 min-w-0">
@@ -4077,7 +4077,7 @@ export default function ProfileClient({ username }: { username: string }) {
                     <p className="text-[10px] font-normal text-[var(--text-muted)]">Keep at the top of your grid</p>
                   </div>
                   {peekPost.isPinned && (
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-500 font-bold">
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--gold-tint)] text-[var(--gold)] font-bold">
                       Pinned
                     </span>
                   )}
@@ -4164,14 +4164,14 @@ export default function ProfileClient({ username }: { username: string }) {
                   }}
                   className="w-full px-4 py-3 flex items-center gap-3 text-left text-xs font-semibold hover:bg-[var(--surface-sunken)] transition-colors cursor-pointer text-[var(--text)] group"
                 >
-                  <Music size={18} className="text-pink-500 shrink-0" />
+                  <Music size={18} className="text-[var(--primary)] shrink-0" />
                   <div className="flex-1 min-w-0">
                     <span>{peekPost.song ? 'Change background music' : 'Add background music'}</span>
                     <p className="text-[10px] font-normal text-[var(--text-muted)]">
                       {peekPost.song ? `Current: ${peekPost.song.title}` : 'Pick soundtrack from music library'}
                     </p>
                   </div>
-                  <span className="text-[10px] text-pink-500 font-bold">🎵</span>
+                  <span className="text-[10px] text-[var(--primary)] font-bold">🎵</span>
                 </button>
               )}
 

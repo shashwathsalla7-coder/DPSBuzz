@@ -265,7 +265,7 @@ export const ChatNotesTray: React.FC<ChatNotesTrayProps> = ({ onReplyToNote }) =
                   className={`w-16 h-16 rounded-full overflow-hidden flex items-center justify-center cursor-pointer shadow-md mt-3 relative transition-transform group-hover:scale-102 p-0.5 ${
                     myNote
                       ? 'ring-2'
-                      : 'border-2 border-pink-500/40 hover:border-pink-500 bg-black/40'
+                      : 'border-2 border-[var(--line-strong)] hover:border-[var(--line-strong)] bg-black/40'
                   }`}
                   style={
                     myNote
@@ -436,7 +436,7 @@ export const ChatNotesTray: React.FC<ChatNotesTrayProps> = ({ onReplyToNote }) =
                         type="button"
                         onClick={(e) => handleToggleSong(e, note.song!)}
                         className={`btn-apple absolute bottom-0.5 right-0.5 w-5 h-5 rounded-full flex items-center justify-center text-white shadow-md border border-white/40 ${
-                          isThisSongPlaying ? 'bg-pink-500 animate-pulse' : 'bg-black/80 hover:bg-pink-600'
+                          isThisSongPlaying ? 'bg-[var(--accent-cta)] animate-pulse' : 'bg-black/80 hover:bg-[var(--accent-cta)]'
                         }`}
                         aria-label="Toggle song preview"
                       >
@@ -579,9 +579,9 @@ export const ChatNotesTray: React.FC<ChatNotesTrayProps> = ({ onReplyToNote }) =
 
               {/* Attached Song with Continuous Marquee & Live Player */}
               {activeNoteAction.song && (
-                <div className="p-3 rounded-2xl bg-zinc-900/90 border border-pink-500/40 space-y-2 shadow-sm">
+                <div className="p-3 rounded-2xl bg-zinc-900/90 border border-[var(--line-strong)] space-y-2 shadow-sm">
                   <div className="flex items-center justify-between text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
-                    <span className="flex items-center gap-1 text-pink-400">
+                    <span className="flex items-center gap-1 text-[var(--primary)]">
                       <Disc3 size={12} className={playerState.isPlaying && playerState.currentTrack?.id === activeNoteAction.song.id ? 'animate-spin' : ''} />
                       <span>Attached Music</span>
                     </span>
@@ -597,7 +597,7 @@ export const ChatNotesTray: React.FC<ChatNotesTrayProps> = ({ onReplyToNote }) =
 
                     <div className="flex-1 min-w-0 overflow-hidden">
                       <div className="overflow-hidden relative h-5 flex items-center">
-                        <div className="animate-notes-marquee text-xs font-bold text-pink-200">
+                        <div className="animate-notes-marquee text-xs font-bold text-[var(--primary)]">
                           <span>{activeNoteAction.song.title} • {activeNoteAction.song.artist} &nbsp;&nbsp;&nbsp;&nbsp; 🎵 &nbsp;</span>
                           <span>{activeNoteAction.song.title} • {activeNoteAction.song.artist} &nbsp;&nbsp;&nbsp;&nbsp; 🎵 &nbsp;</span>
                         </div>
@@ -610,7 +610,7 @@ export const ChatNotesTray: React.FC<ChatNotesTrayProps> = ({ onReplyToNote }) =
                     <button
                       type="button"
                       onClick={() => globalAudio.toggleTrack(activeNoteAction.song!)}
-                      className="btn-apple w-8 h-8 rounded-full bg-gradient-to-tr from-pink-500 to-rose-500 text-white flex items-center justify-center shrink-0 shadow-md hover:opacity-90 transition-opacity cursor-pointer"
+                      className="btn-apple w-8 h-8 rounded-full bg-gradient-to-tr from-[var(--accent-cta)] to-[var(--accent-cta)] text-white flex items-center justify-center shrink-0 shadow-md hover:opacity-90 transition-opacity cursor-pointer"
                       aria-label={
                         playerState.isPlaying && playerState.currentTrack?.id === activeNoteAction.song.id
                           ? 'Pause song'
@@ -628,7 +628,7 @@ export const ChatNotesTray: React.FC<ChatNotesTrayProps> = ({ onReplyToNote }) =
                   {playerState.currentTrack?.id === activeNoteAction.song.id && (
                     <div className="w-full h-1 bg-zinc-800 rounded-full overflow-hidden mt-1">
                       <div
-                        className="h-full bg-pink-500 transition-all duration-200"
+                        className="h-full bg-[var(--accent-cta)] transition-all duration-200"
                         style={{ width: `${playerState.progress * 100}%` }}
                       />
                     </div>
@@ -647,7 +647,7 @@ export const ChatNotesTray: React.FC<ChatNotesTrayProps> = ({ onReplyToNote }) =
                       key={emoji}
                       type="button"
                       onClick={() => handleSendReply(activeNoteAction, emoji)}
-                      className="btn-apple py-2 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-pink-500/50 text-lg flex items-center justify-center transition-all cursor-pointer shadow-2xs hover:scale-105 active:scale-95"
+                      className="btn-apple py-2 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-[var(--line-strong)] text-lg flex items-center justify-center transition-all cursor-pointer shadow-2xs hover:scale-105 active:scale-95"
                       title={`Send ${emoji} in chat`}
                     >
                       <span>{emoji}</span>
@@ -670,7 +670,7 @@ export const ChatNotesTray: React.FC<ChatNotesTrayProps> = ({ onReplyToNote }) =
                     value={replyInputText}
                     onChange={(e) => setReplyInputText(e.target.value)}
                     placeholder={`Reply to @${activeNoteAction.username}...`}
-                    className="flex-1 bg-zinc-900 border border-zinc-800 rounded-full px-4 py-2 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-pink-500 transition-colors"
+                    className="flex-1 bg-zinc-900 border border-zinc-800 rounded-full px-4 py-2 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-[var(--line-strong)] transition-colors"
                   />
                   <button
                     type="submit"
@@ -779,7 +779,7 @@ export const ChatNotesTray: React.FC<ChatNotesTrayProps> = ({ onReplyToNote }) =
               {/* Music Selection Pill — Directly Below Avatar (Matching User Prompt) */}
               <div className="mt-4 flex flex-col items-center">
                 {selectedSong ? (
-                  <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-zinc-800/90 border border-pink-500/40 shadow-lg animate-scale-in">
+                  <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-zinc-800/90 border border-[var(--line-strong)] shadow-lg animate-scale-in">
                     <img
                       src={selectedSong.artworkUrl}
                       alt={selectedSong.title}
@@ -796,7 +796,7 @@ export const ChatNotesTray: React.FC<ChatNotesTrayProps> = ({ onReplyToNote }) =
                     <button
                       type="button"
                       onClick={() => setIsSongPickerOpen(true)}
-                      className="px-2 py-0.5 rounded-full text-[9.5px] font-bold bg-pink-500/20 text-pink-300 hover:bg-pink-500/30 transition-colors flex items-center gap-0.5 cursor-pointer shrink-0"
+                      className="px-2 py-0.5 rounded-full text-[9.5px] font-bold bg-[var(--primary-tint)] text-[var(--primary)] hover:bg-[var(--primary-tint)] transition-colors flex items-center gap-0.5 cursor-pointer shrink-0"
                       title="Choose chorus or main part ✂️"
                     >
                       <span>✂️ Part</span>
@@ -807,7 +807,7 @@ export const ChatNotesTray: React.FC<ChatNotesTrayProps> = ({ onReplyToNote }) =
                         e.stopPropagation();
                         globalAudio.toggleTrack(selectedSong);
                       }}
-                      className="w-6 h-6 rounded-full bg-pink-500 text-white flex items-center justify-center shrink-0 hover:scale-105 active:scale-95 cursor-pointer shadow-xs"
+                      className="w-6 h-6 rounded-full bg-[var(--accent-cta)] text-white flex items-center justify-center shrink-0 hover:scale-105 active:scale-95 cursor-pointer shadow-xs"
                       aria-label={playerState.isPlaying && playerState.currentTrack?.id === selectedSong.id ? 'Pause' : 'Play'}
                     >
                       {playerState.isPlaying && playerState.currentTrack?.id === selectedSong.id ? (
@@ -832,7 +832,7 @@ export const ChatNotesTray: React.FC<ChatNotesTrayProps> = ({ onReplyToNote }) =
                     onClick={() => setIsSongPickerOpen(true)}
                     className="px-4 py-2 rounded-full bg-zinc-800/90 hover:bg-zinc-700 text-white border border-white/10 text-xs font-semibold flex items-center gap-2 transition-all hover:scale-105 active:scale-95 shadow-md cursor-pointer"
                   >
-                    <Music size={14} className="text-pink-400" />
+                    <Music size={14} className="text-[var(--primary)]" />
                     <span>Add music 🎵</span>
                   </button>
                 )}

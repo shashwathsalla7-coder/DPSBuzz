@@ -8,12 +8,18 @@ import { sanitizeText } from '@/lib/security';
 // The browser no longer needs (and after the RLS lock-down, no longer has) table access.
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+const rawServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+// Same fallback as the rest of the server code. After migration 013 the anon key has no
+// table access, so a real service_role key MUST be configured before running it.
+const dbKey =
+  rawServiceKey && !rawServiceKey.includes('your-service')
+    ? rawServiceKey
+    : process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 const NO_CACHE = { 'Cache-Control': 'no-store' };
 
 function db() {
-  if (!supabaseUrl || !serviceKey || serviceKey.includes('your-service')) return null;
-  return createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
+  if (!supabaseUrl || !dbKey) return null;
+  return createClient(supabaseUrl, dbKey, { auth: { persistSession: false } });
 }
 
 function altId(chatId: string) {

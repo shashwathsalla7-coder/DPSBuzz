@@ -92,14 +92,14 @@ export function MadamBroadcastCard() {
       {!latest ? (
         /* Empty State / Principal Desk Card (Live Database Synced) */
         <div
-          className="p-4 rounded-2xl border bg-gradient-to-br from-amber-500/10 via-[var(--surface)] to-yellow-500/5 shadow-xs space-y-3 relative overflow-hidden backdrop-blur-xs"
+          className="p-4 rounded-2xl border bg-gradient-to-br from-[var(--gold-tint)] via-[var(--surface)] to-[var(--gold-tint)] shadow-xs space-y-3 relative overflow-hidden backdrop-blur-xs"
           style={{ borderColor: 'var(--line)' }}
         >
-          <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
+          <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--gold-tint)] rounded-full blur-2xl pointer-events-none" />
 
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-full bg-gradient-to-br from-amber-500 to-amber-700 text-white flex items-center justify-center font-black shadow-xs border-2 border-amber-500/40">
+              <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[var(--gold)] to-[var(--gold)] text-white flex items-center justify-center font-black shadow-xs border-2 border-[var(--gold)]">
                 <GraduationCap size={22} className="text-white" />
               </div>
               <div>
@@ -107,7 +107,7 @@ export function MadamBroadcastCard() {
                   <h3 className="text-sm font-bold text-[var(--text)] tracking-tight">
                     Office of the Principal
                   </h3>
-                  <span className="inline-flex items-center gap-1 text-[10px] font-extrabold px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400">
+                  <span className="inline-flex items-center gap-1 text-[10px] font-extrabold px-1.5 py-0.5 rounded-full bg-[var(--gold-tint)] text-[var(--gold)] dark:text-[var(--gold)]">
                     <ShieldCheck size={11} />
                     <span>Official Desk</span>
                   </span>
@@ -125,7 +125,7 @@ export function MadamBroadcastCard() {
             <button
               type="button"
               onClick={() => setIsComposeOpen(true)}
-              className="px-3.5 py-1.5 bg-gradient-to-r from-amber-500 to-amber-600 text-black font-bold text-xs rounded-full hover:opacity-95 active:scale-95 transition-all shadow-xs flex items-center gap-1 cursor-pointer shrink-0"
+              className="px-3.5 py-1.5 bg-gradient-to-r from-[var(--gold)] to-[var(--gold)] text-black font-bold text-xs rounded-full hover:opacity-95 active:scale-95 transition-all shadow-xs flex items-center gap-1 cursor-pointer shrink-0"
               title="Compose Broadcast"
             >
               <Plus size={14} strokeWidth={2.5} />
@@ -140,11 +140,11 @@ export function MadamBroadcastCard() {
       ) : (
         /* Main Broadcast Card (Real-Time Live from Database) */
         <div
-          className="p-4 rounded-2xl border bg-gradient-to-br from-amber-500/10 via-[var(--surface)] to-yellow-500/5 shadow-xs space-y-3 relative overflow-hidden backdrop-blur-xs"
+          className="p-4 rounded-2xl border bg-gradient-to-br from-[var(--gold-tint)] via-[var(--surface)] to-[var(--gold-tint)] shadow-xs space-y-3 relative overflow-hidden backdrop-blur-xs"
           style={{ borderColor: 'var(--line)' }}
         >
           {/* Decorative corner accent */}
-          <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
+          <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--gold-tint)] rounded-full blur-2xl pointer-events-none" />
 
           {/* Header with Principal Seal */}
           <div className="flex items-start justify-between gap-3">
@@ -154,10 +154,10 @@ export function MadamBroadcastCard() {
                   <img
                     src={latest.senderAvatar}
                     alt={latest.sender}
-                    className="w-11 h-11 rounded-full object-cover border-2 border-amber-500/40 shadow-xs"
+                    className="w-11 h-11 rounded-full object-cover border-2 border-[var(--gold)] shadow-xs"
                   />
                 ) : (
-                  <div className="w-11 h-11 rounded-full bg-gradient-to-br from-amber-500 to-amber-700 text-white flex items-center justify-center font-black shadow-xs border-2 border-amber-500/40">
+                  <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[var(--gold)] to-[var(--gold)] text-white flex items-center justify-center font-black shadow-xs border-2 border-[var(--gold)]">
                     <GraduationCap size={20} className="text-white" />
                   </div>
                 )}
@@ -171,7 +171,7 @@ export function MadamBroadcastCard() {
                   <h3 className="text-sm font-bold text-[var(--text)] tracking-tight">
                     {latest.sender}
                   </h3>
-                  <span className="inline-flex items-center gap-0.5 text-[10px] font-extrabold px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400">
+                  <span className="inline-flex items-center gap-0.5 text-[10px] font-extrabold px-1.5 py-0.5 rounded-full bg-[var(--gold-tint)] text-[var(--gold)] dark:text-[var(--gold)]">
                     <ShieldCheck size={11} />
                     <span>Office of Principal</span>
                   </span>
@@ -207,7 +207,7 @@ export function MadamBroadcastCard() {
                 📢 {latest.targetAudienceLabel}
               </span>
               {latest.priority === 'urgent' && (
-                <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md bg-rose-500/10 text-rose-600 dark:text-rose-400 animate-pulse">
+                <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md bg-[var(--primary-tint)] text-[var(--primary)] dark:text-[var(--primary)] animate-pulse">
                   Urgent
                 </span>
               )}
@@ -236,7 +236,7 @@ export function MadamBroadcastCard() {
               className={`px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
                 isAcknowledged
                   ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
-                  : 'bg-[var(--surface-sunken)] hover:bg-amber-500/10 hover:text-amber-500 border border-[var(--line)]'
+                  : 'bg-[var(--surface-sunken)] hover:bg-[var(--gold-tint)] hover:text-[var(--gold)] border border-[var(--line)]'
               }`}
             >
               <Check size={13} className={isAcknowledged ? 'text-emerald-500' : ''} />
@@ -284,7 +284,7 @@ export function MadamBroadcastCard() {
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
                   placeholder="e.g. Schedule for Half-Yearly Assessments"
-                  className="w-full h-9 px-3 rounded-xl border bg-[var(--surface-sunken)] text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-amber-500/30"
+                  className="w-full h-9 px-3 rounded-xl border bg-[var(--surface-sunken)] text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--gold)]"
                   style={{ borderColor: 'var(--line)' }}
                 />
               </div>
@@ -328,7 +328,7 @@ export function MadamBroadcastCard() {
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                   placeholder="Type the official message here. It will be stored in the cloud database and synced to all student phones instantly..."
-                  className="w-full p-3 rounded-xl border bg-[var(--surface-sunken)] text-[var(--text)] text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/30 leading-relaxed"
+                  className="w-full p-3 rounded-xl border bg-[var(--surface-sunken)] text-[var(--text)] text-xs focus:outline-none focus:ring-2 focus:ring-[var(--gold)] leading-relaxed"
                   style={{ borderColor: 'var(--line)' }}
                 />
               </div>
@@ -336,7 +336,7 @@ export function MadamBroadcastCard() {
 
             <div className="flex items-center justify-between pt-2 border-t" style={{ borderColor: 'var(--line)' }}>
               <span className="text-[10px] text-[var(--text-muted)] flex items-center gap-1">
-                <ShieldCheck size={12} className="text-amber-500" />
+                <ShieldCheck size={12} className="text-[var(--gold)]" />
                 <span>Sender: Office of the Principal</span>
               </span>
 

@@ -130,12 +130,12 @@ export const HomeStreakWidget: React.FC<HomeStreakWidgetProps> = ({
       <div className="px-3 py-1.5 flex items-center gap-2 overflow-x-auto no-scrollbar select-none animate-fade-in">
         <Link
           href="/leaderboard?tab=streaks"
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-orange-500/15 to-amber-500/15 border border-orange-500/30 text-orange-400 hover:text-orange-300 text-xs font-bold shrink-0 transition-transform active:scale-95 shadow-xs"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-[var(--primary-tint)] to-[var(--gold-tint)] border border-[var(--line-strong)] text-[var(--primary)] hover:text-[var(--primary)] text-xs font-bold shrink-0 transition-transform active:scale-95 shadow-xs"
         >
-          <Flame size={14} className="animate-pulse text-orange-500 fill-orange-500" />
+          <Flame size={14} className="animate-pulse text-[var(--primary)] fill-orange-500" />
           <span>{streakDays}d Streak</span>
           {hasPostedToday && (
-            <span className="text-[10px] px-1 rounded-full bg-orange-500/20 text-orange-300 font-extrabold">
+            <span className="text-[10px] px-1 rounded-full bg-[var(--primary-tint)] text-[var(--primary)] font-extrabold">
               ✓ Active
             </span>
           )}
@@ -151,9 +151,9 @@ export const HomeStreakWidget: React.FC<HomeStreakWidgetProps> = ({
 
         <Link
           href="/leaderboard?tab=leaders"
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-amber-500/15 to-yellow-500/15 border border-amber-500/30 text-amber-300 hover:text-amber-200 text-xs font-bold shrink-0 transition-transform active:scale-95 shadow-xs"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-[var(--gold-tint)] to-[var(--gold-tint)] border border-[var(--gold)] text-[var(--gold)] hover:text-[var(--gold)] text-xs font-bold shrink-0 transition-transform active:scale-95 shadow-xs"
         >
-          <Trophy size={13} className="text-amber-400" />
+          <Trophy size={13} className="text-[var(--gold)]" />
           <span>Rank #{myRank}</span>
         </Link>
 
@@ -182,7 +182,7 @@ export const HomeStreakWidget: React.FC<HomeStreakWidgetProps> = ({
       {/* Widget Header with dismiss button */}
       <div className="flex items-center justify-between mb-3.5 relative z-10">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-[10px] bg-orange-500/15 border border-orange-500/25 flex items-center justify-center text-orange-500 shadow-xs">
+          <div className="w-8 h-8 rounded-[10px] bg-[var(--primary-tint)] border border-[var(--line-strong)] flex items-center justify-center text-[var(--primary)] shadow-xs">
             <Flame size={17} className="fill-orange-500" />
           </div>
           <div>
@@ -245,16 +245,16 @@ export const HomeStreakWidget: React.FC<HomeStreakWidgetProps> = ({
         {/* Stat 1: Streak */}
         <Link
           href="/leaderboard?tab=streaks"
-          className="p-2.5 rounded-[12px] border text-center transition-transform active:scale-95 hover:border-orange-500/40 cursor-pointer"
+          className="p-2.5 rounded-[12px] border text-center transition-transform active:scale-95 hover:border-[var(--line-strong)] cursor-pointer"
           style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--line)' }}
         >
           <div className="flex items-center justify-center gap-1 mb-0.5">
-            <Flame size={16} className="text-orange-500 fill-orange-500 animate-pulse" />
+            <Flame size={16} className="text-[var(--primary)] fill-orange-500 animate-pulse" />
             <span className="text-base font-black tracking-tight" style={{ color: 'var(--text)' }}>
               {streakDays}d
             </span>
           </div>
-          <p className="text-[10px] font-bold text-orange-400 uppercase tracking-tight">
+          <p className="text-[10px] font-bold text-[var(--primary)] uppercase tracking-tight">
             Streak Fire
           </p>
           <p className="text-[9px] text-[var(--text-muted)] truncate font-medium mt-0.5">
@@ -285,16 +285,16 @@ export const HomeStreakWidget: React.FC<HomeStreakWidgetProps> = ({
         {/* Stat 3: School Star Board Rank */}
         <Link
           href="/leaderboard?tab=leaders"
-          className="p-2.5 rounded-[12px] border text-center transition-transform active:scale-95 hover:border-amber-500/40 cursor-pointer"
+          className="p-2.5 rounded-[12px] border text-center transition-transform active:scale-95 hover:border-[var(--gold)] cursor-pointer"
           style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--line)' }}
         >
           <div className="flex items-center justify-center gap-1 mb-0.5">
-            <Trophy size={15} className="text-amber-500" />
+            <Trophy size={15} className="text-[var(--gold)]" />
             <span className="text-base font-bold tracking-tight" style={{ color: 'var(--text)' }}>
               #{myRank}
             </span>
           </div>
-          <p className="text-[10px] font-semibold text-amber-600 uppercase tracking-tight">
+          <p className="text-[10px] font-semibold text-[var(--gold)] uppercase tracking-tight">
             School Rank
           </p>
           <p className="text-[9px] text-[var(--text-muted)] truncate font-medium mt-0.5">
@@ -316,7 +316,7 @@ export const HomeStreakWidget: React.FC<HomeStreakWidgetProps> = ({
             className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${
               hasPostedToday
                 ? 'bg-emerald-500/20 text-emerald-500'
-                : 'bg-orange-500/20 text-orange-500'
+                : 'bg-[var(--primary-tint)] text-[var(--primary)]'
             }`}
           >
             {hasPostedToday ? (
@@ -353,8 +353,8 @@ export const HomeStreakWidget: React.FC<HomeStreakWidgetProps> = ({
       </div>
 
       {/* Daily Streak Golden Rule Highlight */}
-      <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/25 text-[11px] text-amber-400 font-medium flex items-start gap-2">
-        <Flame size={14} className="shrink-0 mt-0.5 text-amber-500 animate-flame" />
+      <div className="p-2.5 rounded-xl bg-[var(--gold-tint)] border border-[var(--gold)] text-[11px] text-[var(--gold)] font-medium flex items-start gap-2">
+        <Flame size={14} className="shrink-0 mt-0.5 text-[var(--gold)] animate-flame" />
         <div className="leading-snug">
           <strong className="font-bold text-white">Daily Streak Rule:</strong> Post daily to keep your habit streak alive! Earn <strong className="text-white">+25 points</strong> on your 1st post each day. If you miss even one day, your streak resets to 0!
         </div>
@@ -364,7 +364,7 @@ export const HomeStreakWidget: React.FC<HomeStreakWidgetProps> = ({
       {topStudent && (
         <div className="mt-3 pt-2.5 border-t flex items-center justify-between text-xs text-[var(--text-muted)]" style={{ borderColor: 'var(--line)' }}>
           <div className="flex items-center gap-1.5 min-w-0">
-            <Crown size={14} className="text-amber-500 shrink-0" />
+            <Crown size={14} className="text-[var(--gold)] shrink-0" />
             <span className="truncate">
               Top Student: <strong className="text-[var(--text)]">@{topStudent.username}</strong> ({topStudent.points} pts)
             </span>

@@ -1,5 +1,6 @@
 'use client';
 
+import { timeAgo as formatTimeAgo } from '@/lib/utils';
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, CheckCheck, UserPlus, Users, Check, X, Shield, Sparkles } from 'lucide-react';
@@ -97,7 +98,22 @@ export default function NotificationsPage() {
     showToast(`Declined friend request from @${req.requester}`);
   };
 
-  const todayNotifs = notifications.filter((n) => n.timeAgo.includes('h') || n.timeAgo.includes('m') || n.timeAgo === 'Just now');
+  // Who caused the notification (the sender), not the person receiving it.
+  const actorOf = (n: NotificationItem): string => {
+    const explicit = (n as NotificationItem & { actorUsername?: string; actor?: string }).actorUsername ||
+      (n as NotificationItem & { actor?: string }).actor;
+    if (explicit) return explicit.toLowerCase();
+    const m = /@([a-z0-9._]+)/i.exec(`${n.title} ${n.body || ''}`);
+    return m ? m[1].toLowerCase() : 'dpsbuzz';
+  };
+  const whenOf = (n: NotificationItem): string =>
+    n.createdAt ? formatTimeAgo(n.createdAt) : n.timeAgo.includes('ago') || n.timeAgo === 'Just now' ? n.timeAgo : `${n.timeAgo} ago`;
+  const isToday = (n: NotificationItem): boolean =>
+    n.createdAt
+      ? Date.now() - new Date(n.createdAt).getTime() < 24 * 60 * 60 * 1000
+      : n.timeAgo.includes('h') || n.timeAgo.includes('m') || n.timeAgo === 'Just now';
+
+  const todayNotifs = notifications.filter(isToday);
   const earlierNotifs = notifications.filter((n) => !todayNotifs.includes(n));
 
   const handleNotificationClick = (notif: NotificationItem) => {
@@ -110,7 +126,9 @@ export default function NotificationsPage() {
   };
 
   const renderNotificationRow = (notif: NotificationItem) => {
-    const pair = getAvatarColorPair(notif.userId);
+    const actor = actorOf(notif);
+    const actorAvatar = DataStore.getProfileByUsername(actor)?.avatar;
+    const pair = getAvatarColorPair(actor);
     const rowContent = (
       <div
         key={notif.id}
@@ -125,28 +143,21 @@ export default function NotificationsPage() {
             className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs shrink-0 relative overflow-hidden"
             style={{ backgroundColor: pair.bg, color: pair.text }}
           >
-            {DataStore.getProfileByUsername(notif.userId)?.avatar ? (
-              <img
-                src={DataStore.getProfileByUsername(notif.userId)?.avatar || ''}
-                alt={notif.userId}
-                className="w-full h-full object-cover"
-              />
+            {actorAvatar ? (
+              <img src={actorAvatar} alt={actor} className="w-full h-full object-cover" />
             ) : (
-              notif.userId.slice(0, 2).toUpperCase()
+              actor.slice(0, 2).toUpperCase()
             )}
             {notif.type === 'chat' && (
-              <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-pink-500 text-white flex items-center justify-center text-[9px] shadow-xs z-10">
-                💬
+              <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-[var(--accent-cta)] border-2 border-[var(--surface)] z-10" aria-hidden="true">
               </span>
             )}
             {notif.type === 'reel' && (
-              <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-rose-500 text-white flex items-center justify-center text-[9px] shadow-xs z-10">
-                🎬
+              <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-[var(--accent-cta)] border-2 border-[var(--surface)] z-10" aria-hidden="true">
               </span>
             )}
             {notif.type === 'post' && (
-              <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-blue-500 text-white flex items-center justify-center text-[9px] shadow-xs z-10">
-                📸
+              <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-[var(--accent-cta)] border-2 border-[var(--surface)] z-10" aria-hidden="true">
               </span>
             )}
           </div>
@@ -160,7 +171,7 @@ export default function NotificationsPage() {
               </p>
             )}
             <span className="text-[10px] tabular-nums" style={{ color: 'var(--text-muted)' }}>
-              {notif.timeAgo.includes('ago') || notif.timeAgo === 'Just now' ? notif.timeAgo : `${notif.timeAgo} ago`}
+              {whenOf(notif)}
             </span>
           </div>
         </div>
@@ -284,7 +295,7 @@ export default function NotificationsPage() {
                       <button
                         type="button"
                         onClick={() => handleDeclineFollowReq(freq)}
-                        className="p-1.5 rounded-full text-[var(--text-muted)] hover:bg-[var(--surface-sunken)] hover:text-rose-500 transition-colors cursor-pointer"
+                        className="p-1.5 rounded-full text-[var(--text-muted)] hover:bg-[var(--surface-sunken)] hover:text-[var(--primary)] transition-colors cursor-pointer"
                         aria-label="Decline request"
                       >
                         <X size={15} />
@@ -343,7 +354,7 @@ export default function NotificationsPage() {
                       <button
                         type="button"
                         onClick={() => handleDeclineGroupReq(greq)}
-                        className="p-1.5 rounded-full text-[var(--text-muted)] hover:bg-[var(--surface-sunken)] hover:text-rose-500 transition-colors cursor-pointer"
+                        className="p-1.5 rounded-full text-[var(--text-muted)] hover:bg-[var(--surface-sunken)] hover:text-[var(--primary)] transition-colors cursor-pointer"
                         aria-label="Decline request"
                       >
                         <X size={15} />

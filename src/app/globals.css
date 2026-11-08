@@ -48,40 +48,40 @@
 /* Light Theme Tokens — Clean Calm Neutral System with Single Blue Accent */
 :root {
   --bg: #FFFFFF;
-  --surface: #F8FAFC;
-  --surface-sunken: #F1F5F9;
-  --line: #E2E8F0;
-  --line-strong: #CBD5E1;
-  --text: #0F172A;
-  --text-muted: #64748B;
+  --surface: #F5F6FB;
+  --surface-sunken: #ECEEF7;
+  --line: #E1E4F0;
+  --line-strong: #C9CDE0;
+  --text: #14162B;
+  --text-muted: #5E6488;
 
-  --primary: #2B4BFF;
-  --primary-hover: #2139D6;
-  --primary-tint: #EFF4FF;
+  --primary: #5546E0;
+  --primary-hover: #4536C8;
+  --primary-tint: #EEEBFF;
   --on-primary: #FFFFFF;
   --tabbar-bg: #FFFFFF;
-  --tabbar-border: #E2E8F0;
-  --tabbar-shadow: 0 -1px 0 #E2E8F0;
+  --tabbar-border: #E1E4F0;
+  --tabbar-shadow: 0 -1px 0 #E1E4F0;
   --blue-header: #FFFFFF;
-  --blue-card-bg: #F8FAFC;
-  --blue-card-border: #E2E8F0;
+  --blue-card-bg: #F5F6FB;
+  --blue-card-border: #E1E4F0;
 
-  --accent: #2B4BFF;
-  --accent-hover: #2139D6;
-  --accent-tint: #EFF4FF;
-  --accent-cta: #2B4BFF;
-  --accent-cta-hover: #2139D6;
+  --accent: #5546E0;
+  --accent-hover: #4536C8;
+  --accent-tint: #EEEBFF;
+  --accent-cta: #5546E0;
+  --accent-cta-hover: #4536C8;
   --on-accent-cta: #FFFFFF;
 
-  --like: #E5365F;
+  --like: #D12D5A;
   --danger: #C62828;
   --success: #15803D;
-  --warning: #0B9DB0;
+  --warning: #9A6700;
 
-  --gold: #0B9DB0;
-  --gold-hover: #088495;
-  --gold-tint: #E0F6F9;
-  --gold-cta: #2B4BFF;
+  --gold: #9A6700;
+  --gold-hover: #7D5400;
+  --gold-tint: #FFF4DB;
+  --gold-cta: #5546E0;
   --on-gold-cta: #FFFFFF;
   --silver: #C4CCD8;
   --bronze: #596275;
@@ -92,7 +92,7 @@
   --ease-out: cubic-bezier(.2,.8,.2,1);
   --ease-spring: cubic-bezier(.34,1.56,.64,1);
 
-  --elev-tabbar: 0 -1px 0 #E2E8F0;
+  --elev-tabbar: 0 -1px 0 #E1E4F0;
   --elev-1: 0 1px 3px rgba(15, 23, 42, 0.05);
   --elev-sticker: none;
 
@@ -124,48 +124,48 @@
 
 /* Dark Theme Tokens */
 :root[data-theme="dark"], body[data-theme="dark"], [data-theme="dark"] {
-  --bg: #0B0F17;
-  --surface: #111827;
-  --surface-sunken: #080C14;
-  --line: #1F2937;
-  --line-strong: #374151;
-  --text: #F8FAFC;
-  --text-muted: #94A3B8;
+  --bg: #0E1124;
+  --surface: #161A33;
+  --surface-sunken: #0A0D1C;
+  --line: #262C52;
+  --line-strong: #343B6A;
+  --text: #EEF0FA;
+  --text-muted: #9AA3C7;
 
-  --primary: #4D6BFF;
-  --primary-hover: #7088FF;
-  --primary-tint: #162038;
+  --primary: #8E80FF;
+  --primary-hover: #A79CFF;
+  --primary-tint: #1E1F4A;
   --on-primary: #FFFFFF;
-  --tabbar-bg: #111827;
-  --tabbar-border: #1F2937;
-  --tabbar-shadow: 0 -1px 0 #1F2937;
-  --blue-header: #111827;
-  --blue-card-bg: #080C14;
-  --blue-card-border: #1F2937;
+  --tabbar-bg: #121530;
+  --tabbar-border: #262C52;
+  --tabbar-shadow: 0 -1px 0 #262C52;
+  --blue-header: #121530;
+  --blue-card-bg: #0A0D1C;
+  --blue-card-border: #262C52;
 
-  --accent: #3CC8DA;
-  --accent-hover: #62D6E6;
-  --accent-tint: #0E2830;
-  --accent-cta: #7C9BFF;
-  --accent-cta-hover: #9DB4FF;
-  --on-accent-cta: #0E1530;
+  --accent: #8E80FF;
+  --accent-hover: #A79CFF;
+  --accent-tint: #1E1F4A;
+  --accent-cta: #6B5BF2;
+  --accent-cta-hover: #7B6CFF;
+  --on-accent-cta: #FFFFFF;
 
   --like: #FF5C85;
   --danger: #FF6B6B;
   --success: #22C55E;
-  --warning: #3CC8DA;
+  --warning: #F5B83D;
 
-  --gold: #3CC8DA;
-  --gold-hover: #62D6E6;
-  --gold-tint: #0E2830;
-  --gold-cta: #7C9BFF;
-  --on-gold-cta: #0E1530;
-  --silver: #3A4357;
-  --bronze: #98A2B6;
+  --gold: #F5B83D;
+  --gold-hover: #FFC95E;
+  --gold-tint: #2E2614;
+  --gold-cta: #6B5BF2;
+  --on-gold-cta: #FFFFFF;
+  --silver: #343B6A;
+  --bronze: #9AA3C7;
 
-  --elev-tabbar: 0 8px 24px rgba(0,0,0,0.5);
-  --elev-1: 0 4px 20px rgba(0,0,0,0.5);
-  --elev-sticker: 2px 2px 0 #000000;
+  --elev-tabbar: 0 -1px 0 #262C52;
+  --elev-1: 0 1px 0 rgba(255,255,255,0.03);
+  --elev-sticker: none;
 
   color-scheme: dark;
 }
@@ -336,7 +336,7 @@ h1, h2, h3, h4, .font-display {
   width: 62px;
   height: 62px;
   border-radius: 9999px;
-  background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+  background: linear-gradient(135deg, var(--accent-cta) 0%, var(--primary) 100%);
   padding: 3px;
   display: flex;
   align-items: center;
@@ -603,6 +603,7 @@ button:not([disabled]):not([data-no-apple="true"]):active,
 }
 
 .profile-light-sweep::after {
+  display: none; /* removed: the white diagonal sweep looked like a rendering glitch */
   content: '';
   position: absolute;
   top: -100%;
@@ -1070,3 +1071,19 @@ video:-webkit-full-screen {
 
 
 
+
+
+/* Primary filled action (used by many buttons). Was referenced but never defined. */
+.gradient-bg {
+  background: var(--accent-cta);
+  color: var(--on-accent-cta);
+}
+.gradient-bg:hover {
+  background: var(--accent-cta-hover);
+}
+
+/* Visible keyboard focus everywhere */
+:where(a, button, input, select, textarea, [role='button'], [tabindex]):focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}

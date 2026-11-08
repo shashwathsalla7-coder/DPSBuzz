@@ -15,27 +15,27 @@ const siteUrl = getBaseUrl();
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: 'DPSBus — School Social Media App',
-    template: '%s | DPSBus',
+    default: 'DPS Buzz — School Social Media App',
+    template: '%s | DPS Buzz',
   },
   description:
-    'DPSBus is the official school social media app and student community for classes 6 to 10. Connect with classmates, share academic achievements, and stay updated.',
-  applicationName: 'DPSBus',
-  authors: [{ name: 'DPSBus Community', url: siteUrl }],
+    'DPS Buzz is the official school social media app and student community for classes 6 to 10. Connect with classmates, share academic achievements, and stay updated.',
+  applicationName: 'DPS Buzz',
+  authors: [{ name: 'DPS Buzz Community', url: siteUrl }],
   generator: 'Next.js',
   keywords: [
-    'DPSBus',
+    'DPS Buzz',
     'DPS Bus',
-    'DPSBus app',
+    'DPS Buzz app',
     'DPS Buzz',
     'school social media app',
     'DPS Hyderabad',
-    'DPSBus APK download',
+    'DPS Buzz APK download',
     'DPS student community',
     'DPS student social app',
   ],
-  creator: 'Shashwath • DPSBus Admin',
-  publisher: 'DPSBus Student Community',
+  creator: 'Shashwath • DPS Buzz Admin',
+  publisher: 'DPS Buzz Student Community',
   formatDetection: {
     email: false,
     address: false,
@@ -59,24 +59,24 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'en_IN',
     url: siteUrl,
-    siteName: 'DPSBus',
-    title: 'DPSBus — School Social Media App',
+    siteName: 'DPS Buzz',
+    title: 'DPS Buzz — School Social Media App',
     description:
-      'DPSBus is the official school social media app and student community. Connect with classmates, view announcements, and download the app.',
+      'DPS Buzz is the official school social media app and student community. Connect with classmates, view announcements, and download the app.',
     images: [
       {
         url: `${siteUrl}/opengraph-image`,
         width: 1200,
         height: 630,
-        alt: 'DPSBus — School Social Media App',
+        alt: 'DPS Buzz — School Social Media App',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'DPSBus — School Social Media App',
+    title: 'DPS Buzz — School Social Media App',
     description:
-      'DPSBus is the official school social media app for students. Connect with classmates and download the app.',
+      'DPS Buzz is the official school social media app for students. Connect with classmates and download the app.',
     images: [`${siteUrl}/opengraph-image`],
     creator: '@dpsbus',
   },
@@ -96,7 +96,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'DPSBus',
+    title: 'DPS Buzz',
   },
   verification: {
     google: '6qEUA72oc0FtLXS-QeBPATmv_1rQvgyDBL9UjzGCxoA',
@@ -144,12 +144,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   document.documentElement.setAttribute('data-theme', themeParam);
                 } else {
                   const storedTheme = localStorage.getItem('dpsbuzz_theme');
-                  if (storedTheme) {
+                  if (storedTheme === 'system') {
+                    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                    document.documentElement.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
+                  } else if (storedTheme === 'light' || storedTheme === 'dark') {
                     document.documentElement.setAttribute('data-theme', storedTheme);
-                  } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-                    document.documentElement.setAttribute('data-theme', 'dark');
                   } else {
-                    document.documentElement.setAttribute('data-theme', 'light');
+                    // DPS Buzz is dark by default; Light is available in Settings.
+                    document.documentElement.setAttribute('data-theme', 'dark');
                   }
                 }
               } catch (e) {}

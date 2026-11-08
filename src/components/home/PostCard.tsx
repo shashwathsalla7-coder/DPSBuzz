@@ -213,7 +213,7 @@ const PostCardComponent: React.FC<PostCardProps> = ({
       {post.isRepost && post.repostedFrom && (
         <div className="px-3 py-1.5 mb-2 mx-1 flex items-center justify-between bg-[var(--surface-sunken)] border border-[var(--line)] rounded-xl text-xs shadow-2xs">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <Repeat2 size={13} className="text-pink-500 shrink-0" />
+            <Repeat2 size={13} className="text-[var(--primary)] shrink-0" />
             <span className="font-semibold text-[var(--text)]">
               @{post.username} reposted
             </span>
@@ -388,17 +388,13 @@ const PostCardComponent: React.FC<PostCardProps> = ({
           )}
         </div>
 
-        {/* Timestamp */}
-        <p className="text-xs text-[var(--text-muted)] font-medium">
-          {post.timeAgo}
-        </p>
 
         {/* Caption (username + text, 2-line clamp, "more") with Per-Slide Captions */}
-        {currentCaption && (
+        {currentCaption && (totalImages > 0 || Boolean(post.videoUrl)) && (
           <div className="text-sm leading-relaxed text-[var(--text)] pt-0.5 space-y-1">
             {hasPerSlideCaptions && totalImages > 1 && (
               <div className="flex items-center gap-1.5 pb-0.5">
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-pink-500/10 text-pink-500 border border-pink-500/20">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[var(--primary-tint)] text-[var(--primary)] border border-[var(--line-strong)]">
                   📸 Slide {activeSlide + 1} of {totalImages}
                 </span>
               </div>
@@ -433,7 +429,7 @@ const PostCardComponent: React.FC<PostCardProps> = ({
         {post.taggedUsers && post.taggedUsers.length > 0 && (
           <div className="flex items-center gap-1.5 flex-wrap pt-1 select-none">
             <span className="text-[11px] text-[var(--text-muted)] flex items-center gap-1 font-medium">
-              <Tag size={12} className="text-pink-500" />
+              <Tag size={12} className="text-[var(--primary)]" />
               <span>With</span>
             </span>
             {post.taggedUsers.map((u) => {
@@ -504,12 +500,12 @@ const PostCardComponent: React.FC<PostCardProps> = ({
               <button
                 type="button"
                 onClick={handleUnrepost}
-                className="w-full py-3 px-4 rounded-xl text-xs font-bold flex items-center gap-3 bg-pink-500/10 hover:bg-pink-500/20 text-pink-500 border border-pink-500/25 transition-colors cursor-pointer"
+                className="w-full py-3 px-4 rounded-xl text-xs font-bold flex items-center gap-3 bg-[var(--primary-tint)] hover:bg-[var(--primary-tint)] text-[var(--primary)] border border-[var(--line-strong)] transition-colors cursor-pointer"
               >
-                <Repeat2 size={18} className="text-pink-500" />
+                <Repeat2 size={18} className="text-[var(--primary)]" />
                 <div className="text-left">
                   <span className="block font-bold">Undo Repost (Unrepost) 🔄</span>
-                  <span className="text-[10px] text-pink-400 font-normal">Remove this repost from your feed and profile</span>
+                  <span className="text-[10px] text-[var(--primary)] font-normal">Remove this repost from your feed and profile</span>
                 </div>
               </button>
             )}
@@ -520,7 +516,7 @@ const PostCardComponent: React.FC<PostCardProps> = ({
               className="w-full py-3 px-4 rounded-xl text-xs font-bold flex items-center gap-3 bg-[var(--surface-sunken)] hover:bg-[var(--line)] transition-colors cursor-pointer"
               style={{ color: 'var(--text)' }}
             >
-              <Repeat2 size={18} className="text-pink-500" />
+              <Repeat2 size={18} className="text-[var(--primary)]" />
               <div className="text-left">
                 <span className="block">Repost to Feed 🔄</span>
                 <span className="text-[10px] text-[var(--text-muted)] font-normal">Shows on the feed and your profile</span>

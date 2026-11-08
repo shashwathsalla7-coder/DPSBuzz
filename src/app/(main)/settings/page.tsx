@@ -44,7 +44,7 @@ export default function SettingsPage() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Theme mode: system | light | dark
-  const [theme, setTheme] = useState<'system' | 'light' | 'dark'>('system');
+  const [theme, setTheme] = useState<'system' | 'light' | 'dark'>('dark');
   const [quietHours, setQuietHours] = useState(true);
   const [schoolNoticesNotif, setSchoolNoticesNotif] = useState(true);
   const [readReceipts, setReadReceipts] = useState(true);
@@ -394,10 +394,10 @@ export default function SettingsPage() {
         <section className="space-y-2">
           <div className="flex items-center justify-between">
             <h2 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider flex items-center gap-1.5">
-              <ArrowLeftRight size={13} className="text-pink-500" />
+              <ArrowLeftRight size={13} className="text-[var(--primary)]" />
               <span>Your Activity</span>
             </h2>
-            <span className="text-[10px] text-pink-500 font-bold px-2 py-0.5 rounded-full bg-pink-500/10 border border-pink-500/20">
+            <span className="text-[10px] text-[var(--primary)] font-bold px-2 py-0.5 rounded-full bg-[var(--primary-tint)] border border-[var(--line-strong)]">
               Interactions & History
             </span>
           </div>
@@ -406,13 +406,13 @@ export default function SettingsPage() {
             className="p-4 bg-[var(--surface)] border border-[var(--line)] rounded-none flex items-center justify-between hover:bg-[var(--surface-sunken)] transition-colors group cursor-pointer"
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-purple-500/20 via-pink-500/20 to-orange-500/20 border border-pink-500/30 flex items-center justify-center text-pink-400 group-hover:scale-105 transition-transform shrink-0">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[var(--primary-tint)] via-[var(--primary-tint)] to-[var(--primary-tint)] border border-[var(--line-strong)] flex items-center justify-center text-[var(--primary)] group-hover:scale-105 transition-transform shrink-0">
                 <ArrowLeftRight size={20} />
               </div>
               <div className="min-w-0">
                 <p className="text-sm font-bold text-[var(--text)] flex items-center gap-1.5">
                   <span>Your activity</span>
-                  <span className="text-[11px] text-pink-400">⚡</span>
+                  <span className="text-[11px] text-[var(--primary)]">⚡</span>
                 </p>
                 <p className="text-xs text-[var(--text-muted)] leading-tight mt-0.5">
                   Review and delete likes, comments, story replies, photos, and check ban/warning appeals
@@ -427,10 +427,10 @@ export default function SettingsPage() {
         <section className="space-y-2">
           <div className="flex items-center justify-between">
             <h2 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider flex items-center gap-1.5">
-              <Music size={13} className="text-pink-500" />
+              <Music size={13} className="text-[var(--primary)]" />
               <span>Profile Anthem & Favorite Song</span>
             </h2>
-            <span className="text-[10px] text-pink-500 font-bold px-2 py-0.5 rounded-full bg-pink-500/10 border border-pink-500/20">
+            <span className="text-[10px] text-[var(--primary)] font-bold px-2 py-0.5 rounded-full bg-[var(--primary-tint)] border border-[var(--line-strong)]">
               Music Vibe
             </span>
           </div>
@@ -466,7 +466,7 @@ export default function SettingsPage() {
               <button
                 type="button"
                 onClick={() => setShowSongPicker(true)}
-                className="w-full py-3 px-3 rounded-xl border border-dashed border-[var(--line)] hover:border-pink-500/50 bg-[var(--surface-sunken)] hover:bg-pink-500/5 flex items-center justify-center gap-2 text-xs font-semibold text-[var(--text)] hover:text-pink-400 transition cursor-pointer"
+                className="w-full py-3 px-3 rounded-xl border border-dashed border-[var(--line)] hover:border-[var(--line-strong)] bg-[var(--surface-sunken)] hover:bg-[var(--primary-tint)] flex items-center justify-center gap-2 text-xs font-semibold text-[var(--text)] hover:text-[var(--primary)] transition cursor-pointer"
               >
                 <Music size={15} />
                 <span>+ Choose Favorite Song 🎵</span>
@@ -479,7 +479,7 @@ export default function SettingsPage() {
         <section className="space-y-2">
           <div className="flex items-center justify-between">
             <h2 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider flex items-center gap-1.5">
-              <Gift size={13} className="text-pink-500" />
+              <Gift size={13} className="text-[var(--primary)]" />
               <span>Refer & Earn (+25 Points)</span>
             </h2>
             <span className="text-[10px] text-emerald-500 font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
@@ -542,7 +542,7 @@ export default function SettingsPage() {
                 <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider block">
                   Points Earned
                 </span>
-                <span className="text-sm font-mono font-bold text-amber-500 mt-0.5 block">
+                <span className="text-sm font-mono font-bold text-[var(--gold)] mt-0.5 block">
                   ⭐ {(currentUser?.referralCount || 0) * 25} pts
                 </span>
               </div>
@@ -635,10 +635,10 @@ export default function SettingsPage() {
         <section className="space-y-2">
           <div className="flex items-center justify-between">
             <h2 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider flex items-center gap-1.5">
-              <Download size={13} className="text-pink-500" />
+              <Download size={13} className="text-[var(--primary)]" />
               <span>Install & Download App</span>
             </h2>
-            <span className="text-[10px] text-pink-500 font-bold px-2 py-0.5 rounded-full bg-pink-500/10 border border-pink-500/20">
+            <span className="text-[10px] text-[var(--primary)] font-bold px-2 py-0.5 rounded-full bg-[var(--primary-tint)] border border-[var(--line-strong)]">
               v1.4 Available
             </span>
           </div>
@@ -659,14 +659,14 @@ export default function SettingsPage() {
             <div className="grid grid-cols-2 gap-2 text-xs">
               <Link
                 href="/download?platform=desktop"
-                className="p-2.5 rounded-xl bg-[var(--surface-sunken)] border border-[var(--line)] hover:border-pink-500/40 text-[var(--text)] font-semibold flex items-center justify-center gap-2 transition"
+                className="p-2.5 rounded-xl bg-[var(--surface-sunken)] border border-[var(--line)] hover:border-[var(--line-strong)] text-[var(--text)] font-semibold flex items-center justify-center gap-2 transition"
               >
                 <Laptop size={14} className="text-blue-400 shrink-0" />
                 <span className="truncate">Laptop / PC</span>
               </Link>
               <Link
                 href="/download?platform=android"
-                className="p-2.5 rounded-xl bg-[var(--surface-sunken)] border border-[var(--line)] hover:border-pink-500/40 text-[var(--text)] font-semibold flex items-center justify-center gap-2 transition"
+                className="p-2.5 rounded-xl bg-[var(--surface-sunken)] border border-[var(--line)] hover:border-[var(--line-strong)] text-[var(--text)] font-semibold flex items-center justify-center gap-2 transition"
               >
                 <Smartphone size={14} className="text-emerald-400 shrink-0" />
                 <span className="truncate">Android APK v1.4</span>
@@ -697,7 +697,7 @@ export default function SettingsPage() {
                     className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                       notifPermission === 'granted'
                         ? 'bg-emerald-500/15 text-emerald-500 border border-emerald-500/30'
-                        : 'bg-amber-500/15 text-amber-500 border border-amber-500/30'
+                        : 'bg-[var(--gold-tint)] text-[var(--gold)] border border-[var(--gold)]'
                     }`}
                   >
                     {notifPermission === 'granted' ? 'Active' : 'Disabled'}
@@ -765,7 +765,7 @@ export default function SettingsPage() {
             <h2 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">
               App Permissions (Camera & Media) 📸
             </h2>
-            <span className="text-[10px] text-pink-500 font-bold px-2 py-0.5 rounded-full bg-pink-500/10 border border-pink-500/20">
+            <span className="text-[10px] text-[var(--primary)] font-bold px-2 py-0.5 rounded-full bg-[var(--primary-tint)] border border-[var(--line-strong)]">
               Stories & Photos
             </span>
           </div>
@@ -774,7 +774,7 @@ export default function SettingsPage() {
             {/* Camera Permission */}
             <div className="p-3.5 flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-pink-500/10 border border-pink-500/20 flex items-center justify-center text-pink-500 shrink-0">
+                <div className="w-9 h-9 rounded-xl bg-[var(--primary-tint)] border border-[var(--line-strong)] flex items-center justify-center text-[var(--primary)] shrink-0">
                   <Camera size={18} />
                 </div>
                 <div>
@@ -785,7 +785,7 @@ export default function SettingsPage() {
                         <CheckCircle2 size={10} /> Allowed
                       </span>
                     ) : (
-                      <span className="text-[10px] text-amber-500 font-bold px-1.5 py-0.2 rounded-full bg-amber-500/10 border border-amber-500/20">
+                      <span className="text-[10px] text-[var(--gold)] font-bold px-1.5 py-0.2 rounded-full bg-[var(--gold-tint)] border border-[var(--gold)]">
                         Tap to Allow
                       </span>
                     )}
@@ -807,7 +807,7 @@ export default function SettingsPage() {
             {/* Photos & Gallery Permission */}
             <div className="p-3.5 flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-500 shrink-0">
+                <div className="w-9 h-9 rounded-xl bg-[var(--primary-tint)] border border-[var(--line-strong)] flex items-center justify-center text-[var(--primary)] shrink-0">
                   <ImageIcon size={18} />
                 </div>
                 <div>
@@ -838,7 +838,7 @@ export default function SettingsPage() {
                 How to enable in Android App Settings:
               </p>
               <p>
-                Go to <span className="font-medium text-[var(--text)]">Phone Settings → Apps → DPS Buzz → Permissions → Camera & Photos</span> and choose <span className="text-pink-400 font-semibold">&ldquo;Allow while using the app&rdquo;</span>.
+                Go to <span className="font-medium text-[var(--text)]">Phone Settings → Apps → DPS Buzz → Permissions → Camera & Photos</span> and choose <span className="text-[var(--primary)] font-semibold">&ldquo;Allow while using the app&rdquo;</span>.
               </p>
             </div>
           </div>
@@ -876,7 +876,7 @@ export default function SettingsPage() {
               <div className="flex-1 pr-2">
                 <div className="flex items-center gap-1.5">
                   <p className="text-sm font-semibold text-[var(--text)]">Account Privacy</p>
-                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${privateAccount ? 'bg-amber-500/15 text-amber-500 border border-amber-500/20' : 'bg-emerald-500/15 text-emerald-500 border border-emerald-500/20'}`}>
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${privateAccount ? 'bg-[var(--gold-tint)] text-[var(--gold)] border border-[var(--gold)]' : 'bg-emerald-500/15 text-emerald-500 border border-emerald-500/20'}`}>
                     {privateAccount ? 'Private 🔒' : 'Public 🌐'}
                   </span>
                 </div>

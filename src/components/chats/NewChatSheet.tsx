@@ -151,7 +151,7 @@ export const NewChatSheet: React.FC<NewChatSheetProps> = ({
                       onClose();
                     }}
                     className={`w-full px-4 py-3 flex items-center gap-3.5 text-left transition-colors cursor-pointer select-none ${
-                      isShash ? 'bg-amber-500/10 hover:bg-amber-500/20' : 'hover:bg-[var(--surface-sunken)]'
+                      isShash ? 'bg-[var(--gold-tint)] hover:bg-[var(--gold-tint)]' : 'hover:bg-[var(--surface-sunken)]'
                     }`}
                   >
                     <button
@@ -163,7 +163,7 @@ export const NewChatSheet: React.FC<NewChatSheetProps> = ({
                       }}
                       title={`View ${student.name}'s profile`}
                       className={`w-11 h-11 rounded-full flex items-center justify-center font-bold text-xs shrink-0 border cursor-pointer hover:opacity-80 transition-opacity overflow-hidden ${
-                        isShash ? 'border-amber-400 text-black text-sm' : ''
+                        isShash ? 'border-[var(--gold)] text-black text-sm' : ''
                       }`}
                       style={{
                         backgroundColor: isShash ? '#FFD700' : colors.bg,

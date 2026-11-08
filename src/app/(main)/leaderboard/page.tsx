@@ -308,7 +308,7 @@ export default function LeaderboardPage() {
             <ArrowLeft size={20} />
           </Link>
           <div className="flex items-center gap-2">
-            <Trophy size={18} className="text-amber-500" />
+            <Trophy size={18} className="text-[var(--gold)]" />
             <h1 className="text-base font-extrabold tracking-tight text-[var(--text)]">
               Leaderboard & Streaks
             </h1>
@@ -358,8 +358,8 @@ export default function LeaderboardPage() {
             </div>
 
             {/* Streak Flame Badge */}
-            <div className="px-3 py-1.5 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-600 font-bold text-xs flex items-center gap-1.5 shrink-0 shadow-xs">
-              <Flame size={15} className="text-orange-500" />
+            <div className="px-3 py-1.5 rounded-full bg-[var(--primary-tint)] border border-[var(--line-strong)] text-[var(--primary)] font-bold text-xs flex items-center gap-1.5 shrink-0 shadow-xs">
+              <Flame size={15} className="text-[var(--primary)]" />
               <span className="tabular-nums font-mono text-sm">{myStreak?.streakDays ?? 0}d Streak</span>
             </div>
           </div>
@@ -385,7 +385,7 @@ export default function LeaderboardPage() {
                     <CheckCircle2 size={13} /> Secured
                   </span>
                 ) : (
-                  <span className="text-amber-500 flex items-center gap-1">
+                  <span className="text-[var(--gold)] flex items-center gap-1">
                     <Clock size={13} /> Pending
                   </span>
                 )}
@@ -407,7 +407,7 @@ export default function LeaderboardPage() {
         {/* Streaks & Leaderboard Explainer Banner */}
         <div className="p-3.5 rounded-[14px] bg-[var(--surface-sunken)] border border-[var(--line)] flex items-center justify-between gap-3 shadow-xs">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-[10px] bg-orange-500/10 text-orange-500 flex items-center justify-center text-base shrink-0">
+            <div className="w-8 h-8 rounded-[10px] bg-[var(--primary-tint)] text-[var(--primary)] flex items-center justify-center text-base shrink-0">
               🔥
             </div>
             <div className="min-w-0">
@@ -439,7 +439,7 @@ export default function LeaderboardPage() {
                 : 'text-[var(--text-muted)] hover:text-[var(--text)]'
             }`}
           >
-            <Flame size={15} className={activeTab === 'streaks' ? 'text-orange-500' : ''} />
+            <Flame size={15} className={activeTab === 'streaks' ? 'text-[var(--primary)]' : ''} />
             <span>Habit Streaks</span>
           </button>
 
@@ -452,7 +452,7 @@ export default function LeaderboardPage() {
                 : 'text-[var(--text-muted)] hover:text-[var(--text)]'
             }`}
           >
-            <Crown size={15} className={activeTab === 'leaders' ? 'text-amber-500' : ''} />
+            <Crown size={15} className={activeTab === 'leaders' ? 'text-[var(--gold)]' : ''} />
             <span>Star Board</span>
           </button>
         </div>
@@ -563,8 +563,8 @@ export default function LeaderboardPage() {
 
                       {/* Streak & Points */}
                       <div className="text-right shrink-0">
-                        <div className="flex items-center gap-1 justify-end font-bold text-xs text-orange-500 tabular-nums font-mono">
-                          <Flame size={13} className="text-orange-500" />
+                        <div className="flex items-center gap-1 justify-end font-bold text-xs text-[var(--primary)] tabular-nums font-mono">
+                          <Flame size={13} className="text-[var(--primary)]" />
                           <span>{s.streakDays}d streak</span>
                         </div>
                         <span className="text-[10px] text-[var(--text-muted)] tabular-nums font-medium">
@@ -583,7 +583,7 @@ export default function LeaderboardPage() {
                 </div>
               ) : (
                 <div className="p-6 rounded-[22px] border text-center bg-[var(--surface)] border-[var(--line)] space-y-2">
-                  <Flame size={24} className="mx-auto text-orange-500" />
+                  <Flame size={24} className="mx-auto text-[var(--primary)]" />
                   <p className="text-xs font-bold text-[var(--text)]">No habit streaks recorded yet!</p>
                   <p className="text-[11px] text-[var(--text-muted)]">
                     Be the very first student to post with #studies or #sports and claim rank #1!
@@ -663,7 +663,7 @@ export default function LeaderboardPage() {
               </div>
             ) : (
               <div className="p-6 rounded-[14px] border text-center bg-[var(--surface)] border-[var(--line)] space-y-2">
-                <Trophy size={24} className="mx-auto text-amber-500" />
+                <Trophy size={24} className="mx-auto text-[var(--gold)]" />
                 <p className="text-xs font-bold text-[var(--text)]">No student rankings recorded yet!</p>
                 <p className="text-[11px] text-[var(--text-muted)]">
                   Connect with classmates to claim Rank #1 on the Star Board!
@@ -691,7 +691,7 @@ export default function LeaderboardPage() {
             <div className="w-9 h-1 rounded-full bg-[var(--line-strong)] mx-auto sm:hidden" />
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="p-1 rounded-full bg-orange-500/20 text-orange-500">
+                <span className="p-1 rounded-full bg-[var(--primary-tint)] text-[var(--primary)]">
                   <Flame size={16} />
                 </span>
                 <h3 className="font-bold text-sm text-[var(--text)]">Post Today&apos;s Habit</h3>
@@ -847,11 +847,11 @@ function HabitStreakPodium({
       }}
     >
       {/* Background Ambient Glow */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-24 bg-amber-500/10 blur-2xl pointer-events-none" />
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-24 bg-[var(--gold-tint)] blur-2xl pointer-events-none" />
 
       <div className="text-center pb-2 relative z-10">
         <span className="text-xs font-black uppercase tracking-wider text-[var(--text-muted)] flex items-center justify-center gap-1.5">
-          <Trophy size={14} className="text-amber-500" />
+          <Trophy size={14} className="text-[var(--gold)]" />
           <span>Top Streak Champions</span>
         </span>
       </div>
@@ -889,7 +889,7 @@ function HabitStreakPodium({
             <p className="text-xs font-bold text-[var(--text)] truncate max-w-[95px]">
               {second.fullName.split(' ')[0]}
             </p>
-            <span className="text-[11px] font-extrabold text-orange-500 tabular-nums">
+            <span className="text-[11px] font-extrabold text-[var(--primary)] tabular-nums">
               🔥 {second.streakDays}d
             </span>
 
@@ -928,7 +928,7 @@ function HabitStreakPodium({
             </div>
             <div className="relative mb-2">
               <div
-                className="w-17 h-17 rounded-full flex items-center justify-center font-black text-base ring-4 ring-amber-400 shadow-xl group-hover:scale-105 transition-transform overflow-hidden"
+                className="w-17 h-17 rounded-full flex items-center justify-center font-black text-base ring-4 ring-[var(--gold)] shadow-xl group-hover:scale-105 transition-transform overflow-hidden"
                 style={{
                   backgroundColor: getAvatarColorPair(first.username).bg,
                   color: getAvatarColorPair(first.username).text,
@@ -944,14 +944,14 @@ function HabitStreakPodium({
                   first.fullName.slice(0, 2).toUpperCase()
                 )}
               </div>
-              <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-gradient-to-tr from-amber-500 to-yellow-300 text-amber-950 text-xs font-black flex items-center justify-center ring-2 ring-[var(--surface)] shadow-md">
+              <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-gradient-to-tr from-[var(--gold)] to-[var(--gold)] text-amber-950 text-xs font-black flex items-center justify-center ring-2 ring-[var(--surface)] shadow-md">
                 1
               </div>
             </div>
             <p className="text-xs font-black text-[var(--text)] truncate max-w-[105px]">
               {first.fullName.split(' ')[0]}
             </p>
-            <span className="text-xs font-black text-orange-500 tabular-nums">
+            <span className="text-xs font-black text-[var(--primary)] tabular-nums">
               🔥 {first.streakDays}d streak
             </span>
             <span className="text-[10px] font-bold text-[var(--text-muted)] tabular-nums">
@@ -959,9 +959,9 @@ function HabitStreakPodium({
             </span>
 
             {/* Gold Pedestal Column */}
-            <div className="w-full mt-2 h-28 rounded-t-2xl border-t-2 border-x border-amber-400/60 bg-gradient-to-t from-amber-500/30 via-amber-400/15 to-transparent flex flex-col items-center justify-center p-2 shadow-md">
-              <span className="text-2xl font-black text-amber-400">1</span>
-              <span className="text-[9px] uppercase tracking-widest font-black text-amber-500">Gold</span>
+            <div className="w-full mt-2 h-28 rounded-t-2xl border-t-2 border-x border-[var(--gold)] bg-gradient-to-t from-[var(--gold-tint)] via-[var(--gold-tint)] to-transparent flex flex-col items-center justify-center p-2 shadow-md">
+              <span className="text-2xl font-black text-[var(--gold)]">1</span>
+              <span className="text-[9px] uppercase tracking-widest font-black text-[var(--gold)]">Gold</span>
             </div>
           </Link>
         ) : (
@@ -971,13 +971,13 @@ function HabitStreakPodium({
             className="btn-apple flex flex-col items-center group cursor-pointer -translate-y-3"
           >
             <div className="text-2xl mb-0.5">👑</div>
-            <div className="w-17 h-17 rounded-full border-2 border-dashed border-amber-400 flex items-center justify-center text-amber-400 mb-2">
+            <div className="w-17 h-17 rounded-full border-2 border-dashed border-[var(--gold)] flex items-center justify-center text-[var(--gold)] mb-2">
               <Plus size={24} />
             </div>
-            <p className="text-xs font-bold text-amber-500">Claim #1</p>
+            <p className="text-xs font-bold text-[var(--gold)]">Claim #1</p>
             <span className="text-[10px] text-[var(--text-muted)]">Post First Streak</span>
-            <div className="w-full mt-2 h-28 rounded-t-2xl border-t-2 border-x border-dashed border-amber-400/40 flex items-center justify-center">
-              <span className="text-2xl font-black text-amber-400/50">1</span>
+            <div className="w-full mt-2 h-28 rounded-t-2xl border-t-2 border-x border-dashed border-[var(--gold)] flex items-center justify-center">
+              <span className="text-2xl font-black text-[var(--gold)]/50">1</span>
             </div>
           </button>
         )}
@@ -990,7 +990,7 @@ function HabitStreakPodium({
           >
             <div className="relative mb-2">
               <div
-                className="w-13 h-13 rounded-full flex items-center justify-center font-bold text-xs ring-4 ring-orange-600/70 shadow-md group-hover:scale-105 transition-transform overflow-hidden"
+                className="w-13 h-13 rounded-full flex items-center justify-center font-bold text-xs ring-4 ring-[var(--line-strong)] shadow-md group-hover:scale-105 transition-transform overflow-hidden"
                 style={{
                   backgroundColor: getAvatarColorPair(third.username).bg,
                   color: getAvatarColorPair(third.username).text,
@@ -1006,21 +1006,21 @@ function HabitStreakPodium({
                   third.fullName.slice(0, 2).toUpperCase()
                 )}
               </div>
-              <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-orange-700 text-white text-[10px] font-black flex items-center justify-center ring-2 ring-[var(--surface)] shadow-xs">
+              <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-[var(--accent-cta)] text-white text-[10px] font-black flex items-center justify-center ring-2 ring-[var(--surface)] shadow-xs">
                 3
               </div>
             </div>
             <p className="text-xs font-bold text-[var(--text)] truncate max-w-[95px]">
               {third.fullName.split(' ')[0]}
             </p>
-            <span className="text-[11px] font-extrabold text-orange-500 tabular-nums">
+            <span className="text-[11px] font-extrabold text-[var(--primary)] tabular-nums">
               🔥 {third.streakDays}d
             </span>
 
             {/* Bronze Pedestal Column */}
-            <div className="w-full mt-2 h-16 rounded-t-2xl border-t-2 border-x border-orange-600/40 bg-gradient-to-t from-orange-600/25 via-orange-500/10 to-transparent flex flex-col items-center justify-center p-2 shadow-sm">
-              <span className="text-lg font-black text-orange-600/80">3</span>
-              <span className="text-[9px] uppercase tracking-widest font-extrabold text-orange-600">Bronze</span>
+            <div className="w-full mt-2 h-16 rounded-t-2xl border-t-2 border-x border-[var(--line-strong)] bg-gradient-to-t from-[var(--primary-tint)] via-[var(--primary-tint)] to-transparent flex flex-col items-center justify-center p-2 shadow-sm">
+              <span className="text-lg font-black text-[var(--primary)]/80">3</span>
+              <span className="text-[9px] uppercase tracking-widest font-extrabold text-[var(--primary)]">Bronze</span>
             </div>
           </Link>
         ) : (
@@ -1029,13 +1029,13 @@ function HabitStreakPodium({
             onClick={onOpenPost}
             className="btn-apple flex flex-col items-center group cursor-pointer opacity-70 hover:opacity-100"
           >
-            <div className="w-13 h-13 rounded-full border-2 border-dashed border-orange-500 flex items-center justify-center text-orange-500 mb-2">
+            <div className="w-13 h-13 rounded-full border-2 border-dashed border-[var(--line-strong)] flex items-center justify-center text-[var(--primary)] mb-2">
               <Plus size={18} />
             </div>
             <p className="text-xs font-bold text-[var(--text-muted)]">Be #3</p>
             <span className="text-[10px] text-[var(--text-muted)]">Post Habit</span>
-            <div className="w-full mt-2 h-16 rounded-t-2xl border-t-2 border-x border-dashed border-orange-500/30 flex items-center justify-center">
-              <span className="text-lg font-black text-orange-500/40">3</span>
+            <div className="w-full mt-2 h-16 rounded-t-2xl border-t-2 border-x border-dashed border-[var(--line-strong)] flex items-center justify-center">
+              <span className="text-lg font-black text-[var(--primary)]/40">3</span>
             </div>
           </button>
         )}
@@ -1076,11 +1076,11 @@ function StudentLeaderPodium({
         borderColor: 'var(--line)',
       }}
     >
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-24 bg-amber-500/10 blur-2xl pointer-events-none" />
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-24 bg-[var(--gold-tint)] blur-2xl pointer-events-none" />
 
       <div className="text-center pb-2 relative z-10">
         <span className="text-xs font-black uppercase tracking-wider text-[var(--text-muted)] flex items-center justify-center gap-1.5">
-          <Crown size={14} className="text-amber-500" />
+          <Crown size={14} className="text-[var(--gold)]" />
           <span>Star Board Leaders</span>
         </span>
       </div>
@@ -1117,7 +1117,7 @@ function StudentLeaderPodium({
             <p className="text-xs font-bold text-[var(--text)] truncate max-w-[95px]">
               {second.name.split(' ')[0]}
             </p>
-            <span className="text-[11px] font-extrabold text-pink-500 tabular-nums">
+            <span className="text-[11px] font-extrabold text-[var(--primary)] tabular-nums">
               👥 {second.followers} {second.followers === 1 ? 'follower' : 'followers'}
             </span>
             <span className="text-[10px] font-bold text-[var(--text-muted)] tabular-nums truncate max-w-[95px] block">
@@ -1154,7 +1154,7 @@ function StudentLeaderPodium({
             </div>
             <div className="relative mb-2">
               <div
-                className="w-17 h-17 rounded-full flex items-center justify-center font-black text-base ring-4 ring-amber-400 shadow-xl group-hover:scale-105 transition-transform overflow-hidden"
+                className="w-17 h-17 rounded-full flex items-center justify-center font-black text-base ring-4 ring-[var(--gold)] shadow-xl group-hover:scale-105 transition-transform overflow-hidden"
                 style={{
                   backgroundColor: getAvatarColorPair(first.username).bg,
                   color: getAvatarColorPair(first.username).text,
@@ -1170,14 +1170,14 @@ function StudentLeaderPodium({
                   first.name.slice(0, 2).toUpperCase()
                 )}
               </div>
-              <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-gradient-to-tr from-amber-500 to-yellow-300 text-amber-950 text-xs font-black flex items-center justify-center ring-2 ring-[var(--surface)] shadow-md">
+              <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-gradient-to-tr from-[var(--gold)] to-[var(--gold)] text-amber-950 text-xs font-black flex items-center justify-center ring-2 ring-[var(--surface)] shadow-md">
                 1
               </div>
             </div>
             <p className="text-xs font-black text-[var(--text)] truncate max-w-[105px]">
               {first.name.split(' ')[0]}
             </p>
-            <span className="text-xs font-black text-pink-500 tabular-nums">
+            <span className="text-xs font-black text-[var(--primary)] tabular-nums">
               👥 {first.followers} {first.followers === 1 ? 'follower' : 'followers'}
             </span>
             <span className="text-[10px] font-bold text-[var(--text-muted)] tabular-nums block">
@@ -1185,21 +1185,21 @@ function StudentLeaderPodium({
             </span>
 
             {/* Gold Pedestal Column */}
-            <div className="w-full mt-2 h-28 rounded-t-2xl border-t-2 border-x border-amber-400/60 bg-gradient-to-t from-amber-500/30 via-amber-400/15 to-transparent flex flex-col items-center justify-center p-2 shadow-md">
-              <span className="text-2xl font-black text-amber-400">1</span>
-              <span className="text-[9px] uppercase tracking-widest font-black text-amber-500">Gold</span>
+            <div className="w-full mt-2 h-28 rounded-t-2xl border-t-2 border-x border-[var(--gold)] bg-gradient-to-t from-[var(--gold-tint)] via-[var(--gold-tint)] to-transparent flex flex-col items-center justify-center p-2 shadow-md">
+              <span className="text-2xl font-black text-[var(--gold)]">1</span>
+              <span className="text-[9px] uppercase tracking-widest font-black text-[var(--gold)]">Gold</span>
             </div>
           </Link>
         ) : (
           <div className="flex flex-col items-center -translate-y-3 opacity-60">
             <div className="text-2xl mb-0.5">👑</div>
-            <div className="w-17 h-17 rounded-full border-2 border-dashed border-amber-400 flex items-center justify-center text-amber-400 mb-2">
+            <div className="w-17 h-17 rounded-full border-2 border-dashed border-[var(--gold)] flex items-center justify-center text-[var(--gold)] mb-2">
               1
             </div>
-            <p className="text-xs font-bold text-amber-500">Spot #1 Open</p>
+            <p className="text-xs font-bold text-[var(--gold)]">Spot #1 Open</p>
             <p className="text-[10px] text-[var(--text-muted)]">Top student spot</p>
-            <div className="w-full mt-2 h-28 rounded-t-2xl border-t-2 border-x border-dashed border-amber-400/30 flex items-center justify-center">
-              <span className="text-2xl font-black text-amber-400/40">1</span>
+            <div className="w-full mt-2 h-28 rounded-t-2xl border-t-2 border-x border-dashed border-[var(--gold)] flex items-center justify-center">
+              <span className="text-2xl font-black text-[var(--gold)]/40">1</span>
             </div>
           </div>
         )}
@@ -1212,7 +1212,7 @@ function StudentLeaderPodium({
           >
             <div className="relative mb-2">
               <div
-                className="w-13 h-13 rounded-full flex items-center justify-center font-bold text-xs ring-4 ring-orange-600/70 shadow-md group-hover:scale-105 transition-transform overflow-hidden"
+                className="w-13 h-13 rounded-full flex items-center justify-center font-bold text-xs ring-4 ring-[var(--line-strong)] shadow-md group-hover:scale-105 transition-transform overflow-hidden"
                 style={{
                   backgroundColor: getAvatarColorPair(third.username).bg,
                   color: getAvatarColorPair(third.username).text,
@@ -1228,14 +1228,14 @@ function StudentLeaderPodium({
                   third.name.slice(0, 2).toUpperCase()
                 )}
               </div>
-              <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-orange-700 text-white text-[10px] font-black flex items-center justify-center ring-2 ring-[var(--surface)] shadow-xs">
+              <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-[var(--accent-cta)] text-white text-[10px] font-black flex items-center justify-center ring-2 ring-[var(--surface)] shadow-xs">
                 3
               </div>
             </div>
             <p className="text-xs font-bold text-[var(--text)] truncate max-w-[95px]">
               {third.name.split(' ')[0]}
             </p>
-            <span className="text-[11px] font-extrabold text-pink-500 tabular-nums">
+            <span className="text-[11px] font-extrabold text-[var(--primary)] tabular-nums">
               👥 {third.followers} {third.followers === 1 ? 'follower' : 'followers'}
             </span>
             <span className="text-[10px] font-bold text-[var(--text-muted)] tabular-nums truncate max-w-[95px] block">
@@ -1243,20 +1243,20 @@ function StudentLeaderPodium({
             </span>
 
             {/* Bronze Pedestal Column */}
-            <div className="w-full mt-2 h-16 rounded-t-2xl border-t-2 border-x border-orange-600/40 bg-gradient-to-t from-orange-600/25 via-orange-500/10 to-transparent flex flex-col items-center justify-center p-2 shadow-sm">
-              <span className="text-lg font-black text-orange-600/80">3</span>
-              <span className="text-[9px] uppercase tracking-widest font-extrabold text-orange-600">Bronze</span>
+            <div className="w-full mt-2 h-16 rounded-t-2xl border-t-2 border-x border-[var(--line-strong)] bg-gradient-to-t from-[var(--primary-tint)] via-[var(--primary-tint)] to-transparent flex flex-col items-center justify-center p-2 shadow-sm">
+              <span className="text-lg font-black text-[var(--primary)]/80">3</span>
+              <span className="text-[9px] uppercase tracking-widest font-extrabold text-[var(--primary)]">Bronze</span>
             </div>
           </Link>
         ) : (
           <div className="flex flex-col items-center opacity-60">
-            <div className="w-13 h-13 rounded-full border-2 border-dashed border-orange-500 flex items-center justify-center text-orange-500 mb-2">
+            <div className="w-13 h-13 rounded-full border-2 border-dashed border-[var(--line-strong)] flex items-center justify-center text-[var(--primary)] mb-2">
               3
             </div>
             <p className="text-xs font-bold text-[var(--text-muted)]">Spot #3 Open</p>
             <p className="text-[10px] text-[var(--text-muted)]">Gain followers</p>
-            <div className="w-full mt-2 h-16 rounded-t-2xl border-t-2 border-x border-dashed border-orange-500/30 flex items-center justify-center">
-              <span className="text-lg font-black text-orange-500/30">3</span>
+            <div className="w-full mt-2 h-16 rounded-t-2xl border-t-2 border-x border-dashed border-[var(--line-strong)] flex items-center justify-center">
+              <span className="text-lg font-black text-[var(--primary)]/30">3</span>
             </div>
           </div>
         )}

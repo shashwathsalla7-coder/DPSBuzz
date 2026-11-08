@@ -112,7 +112,7 @@ export const ChatActionsSheet: React.FC<ChatActionsSheetProps> = ({
               className="w-full px-3 py-2.5 rounded-[10px] flex items-center gap-3 text-left hover:bg-[var(--surface-sunken)] transition-colors cursor-pointer"
               style={{ color: 'var(--text)' }}
             >
-              <Gamepad2 size={18} className="text-pink-500" />
+              <Gamepad2 size={18} className="text-[var(--primary)]" />
               <span>Play Games (Connect 4, Cricket, 2048 Solo 🎮)</span>
             </button>
           )}
@@ -128,7 +128,7 @@ export const ChatActionsSheet: React.FC<ChatActionsSheetProps> = ({
               className="w-full px-3 py-2.5 rounded-[10px] flex items-center gap-3 text-left hover:bg-[var(--surface-sunken)] transition-colors cursor-pointer"
               style={{ color: 'var(--text)' }}
             >
-              <Palette size={18} className="text-pink-500" />
+              <Palette size={18} className="text-[var(--primary)]" />
               <span>Change chat wallpaper & background</span>
             </button>
           )}

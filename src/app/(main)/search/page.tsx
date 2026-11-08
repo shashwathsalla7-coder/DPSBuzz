@@ -714,7 +714,7 @@ function SearchContent() {
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-2.5 text-white">
                     <p className="text-[11px] font-bold truncate">@{post.username}</p>
                     <p className="text-[10px] text-white/80 flex items-center gap-1 mt-0.5">
-                      <Heart size={10} className="fill-rose-500 text-rose-500" />
+                      <Heart size={10} className="fill-rose-500 text-[var(--primary)]" />
                       <span>{post.likes} likes</span>
                     </p>
                   </div>
@@ -907,7 +907,7 @@ function SearchContent() {
                           </p>
                         )}
                         <p className="text-[10px] text-white/90 flex items-center gap-1 mt-1 font-bold">
-                          <Heart size={10} className="fill-rose-500 text-rose-500" />
+                          <Heart size={10} className="fill-rose-500 text-[var(--primary)]" />
                           <span>{post.likes} likes</span>
                         </p>
                       </div>

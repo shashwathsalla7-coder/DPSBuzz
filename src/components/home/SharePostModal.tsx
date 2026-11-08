@@ -228,7 +228,7 @@ export const SharePostModal: React.FC<SharePostModalProps> = ({
           <div>
             <h3 className="font-bold text-sm text-[var(--text)] flex items-center gap-1.5">
               <span>Share Post to Chat</span>
-              <Sparkles size={14} className="text-pink-500" />
+              <Sparkles size={14} className="text-[var(--primary)]" />
             </h3>
             <p className="text-[11px] text-[var(--text-muted)]">
               Send directly to classmates with real-time post preview
@@ -290,7 +290,7 @@ export const SharePostModal: React.FC<SharePostModalProps> = ({
             placeholder="Search friends, classmates..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full h-9 pl-9 pr-8 rounded-xl text-xs border outline-none bg-[var(--surface-sunken)] border-[var(--line)] text-[var(--text)] transition-colors focus:border-pink-500"
+            className="w-full h-9 pl-9 pr-8 rounded-xl text-xs border outline-none bg-[var(--surface-sunken)] border-[var(--line)] text-[var(--text)] transition-colors focus:border-[var(--line-strong)]"
           />
           {searchQuery && (
             <button
@@ -335,7 +335,7 @@ export const SharePostModal: React.FC<SharePostModalProps> = ({
                     <div
                       className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 transition-all ${
                         isSelected
-                          ? 'bg-pink-500 border-pink-500 text-white'
+                          ? 'bg-[var(--accent-cta)] border-[var(--line-strong)] text-white'
                           : 'border-[var(--line)] bg-[var(--surface)]'
                       }`}
                     >
@@ -405,7 +405,7 @@ export const SharePostModal: React.FC<SharePostModalProps> = ({
             placeholder="Write a message... (optional)"
             value={optionalMessage}
             onChange={(e) => setOptionalMessage(e.target.value)}
-            className="w-full h-9 px-3 rounded-xl text-xs border outline-none bg-[var(--surface-sunken)] border-[var(--line)] text-[var(--text)] transition-colors focus:border-pink-500"
+            className="w-full h-9 px-3 rounded-xl text-xs border outline-none bg-[var(--surface-sunken)] border-[var(--line)] text-[var(--text)] transition-colors focus:border-[var(--line-strong)]"
           />
         </div>
 
@@ -419,7 +419,7 @@ export const SharePostModal: React.FC<SharePostModalProps> = ({
               className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl border text-xs font-semibold cursor-pointer hover:bg-[var(--surface-sunken)] active:scale-95 transition-all text-[var(--text)]"
               style={{ borderColor: 'var(--line)' }}
             >
-              <Copy size={13} className="text-pink-500" />
+              <Copy size={13} className="text-[var(--primary)]" />
               <span>Copy Link</span>
             </button>
 
@@ -429,7 +429,7 @@ export const SharePostModal: React.FC<SharePostModalProps> = ({
               className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl border text-xs font-semibold cursor-pointer hover:bg-[var(--surface-sunken)] active:scale-95 transition-all text-[var(--text)]"
               style={{ borderColor: 'var(--line)' }}
             >
-              <Share2 size={13} className="text-pink-500" />
+              <Share2 size={13} className="text-[var(--primary)]" />
               <span>Share via Apps</span>
             </button>
           </div>

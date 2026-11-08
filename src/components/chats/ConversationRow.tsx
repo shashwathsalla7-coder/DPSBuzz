@@ -225,7 +225,7 @@ export const ConversationRow: React.FC<ConversationRowProps> = React.memo(({
                 className="w-[56px] h-[56px] rounded-full p-[2.5px] flex items-center justify-center -m-0.5"
                 style={{
                   background: conversation.hasUnseenStory !== false
-                    ? 'linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)'
+                    ? 'linear-gradient(45deg, #7B6CFF 0%, #7B6CFF 25%, #6B5BF2 50%, #6B5BF2 75%, #6B5BF2 100%)'
                     : 'linear-gradient(135deg, rgba(255, 255, 255, 0.88) 0%, rgba(255, 255, 255, 0.65) 100%)',
                 }}
               >
@@ -293,7 +293,7 @@ export const ConversationRow: React.FC<ConversationRowProps> = React.memo(({
                 {isGroup ? conversation.name : (conversation.username ? `@${conversation.username}` : conversation.name)}
               </h3>
               {conversation.inboxTier === 'REQUESTS' && (
-                <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-500/20 text-amber-400 shrink-0">
+                <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-[var(--gold-tint)] text-[var(--gold)] shrink-0">
                   Request
                 </span>
               )}
