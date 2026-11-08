@@ -85,6 +85,34 @@ export async function d1Query<T = any>(sql: string, params: any[] = []): Promise
 }
 
 /**
+ * Like d1Query, but THROWS on any failure instead of returning [].
+ * Use for security-sensitive reads where "error" must never look like "no rows".
+ */
+export async function d1QueryStrict<T = any>(sql: string, params: any[] = []): Promise<T[]> {
+  if (!isD1Configured()) {
+    throw new Error('Cloudflare D1 is not configured');
+  }
+  const endpoint = `https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/d1/database/${CF_DATABASE_ID}/query`;
+  const res = await fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${CF_API_TOKEN}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ sql, params }),
+    cache: 'no-store',
+  });
+  if (!res.ok) {
+    throw new Error(`D1 query failed with HTTP ${res.status}`);
+  }
+  const data: D1ApiResponse<T> = await res.json();
+  if (!data.success || !data.result?.[0]?.success) {
+    throw new Error(`D1 query error: ${JSON.stringify(data.errors || [])}`);
+  }
+  return data.result[0].results || [];
+}
+
+/**
  * Executes an INSERT, UPDATE, or DELETE query against Cloudflare D1.
  */
 export async function d1Execute(sql: string, params: any[] = []): Promise<boolean> {

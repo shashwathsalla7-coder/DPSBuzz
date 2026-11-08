@@ -5,6 +5,7 @@
 // =====================================================
 
 import { NextRequest, NextResponse, connection } from 'next/server';
+import { getSession } from '@/lib/auth/session';
 import { MusicReport } from '@/lib/music/types';
 
 let IN_MEMORY_REPORTS: MusicReport[] = [
@@ -31,8 +32,10 @@ export function updateInternalReportStatus(reportId: string, status: 'resolved' 
 export async function GET(request: NextRequest) {
   await connection();
   const searchParams = request.nextUrl.searchParams;
-  const username = searchParams.get('username') || '';
-  const isAdmin = searchParams.get('isAdmin') === 'true';
+  void searchParams;
+  const session = getSession(request);
+  const username = session?.username || '';
+  const isAdmin = session?.role === 'admin';
 
   // Privacy protection: Regular students can only see their own reports
   if (!isAdmin) {
@@ -48,7 +51,8 @@ export async function POST(request: NextRequest) {
   await connection();
   try {
     const body = await request.json();
-    const { trackId, trackTitle, trackArtist, reporterUsername, reason } = body;
+    const { trackId, trackTitle, trackArtist, reason } = body;
+    const reporterUsername = getSession(request)?.username || 'anonymous';
 
     if (!trackId || !reason) {
       return NextResponse.json({ error: 'Missing trackId or reason' }, { status: 400 });

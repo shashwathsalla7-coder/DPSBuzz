@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation';
 import { Eye, EyeOff } from 'lucide-react';
 import { school } from '@/config/school';
 import Logo from '@/components/ui/Logo';
-import { DataStore } from '@/lib/dataStore';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -46,6 +45,7 @@ export default function LoginPage() {
           localStorage.removeItem('dpsbuzz_user');
           localStorage.removeItem('dpsbuzz_shashwath_authenticated');
           document.cookie = 'dpsbuzz_user=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
+                  fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
           setActiveSession(null);
           return;
         }
@@ -77,137 +77,29 @@ export default function LoginPage() {
     }
 
     setIsLoading(true);
-
     const cleanInput = usernameInput.trim().toLowerCase().replace(/^@+/, '');
 
-    // Shashwath Super Administrator credentials check (restricted strictly to true admin)
-    if (cleanInput === 'shashwath71845') {
-      if (password === '71845shashwath123') {
-        const superAdmin = {
-          id: 'admin-shashwath-id',
-          username: 'shashwath71845',
-          fullName: 'Shashwath Salla',
-          role: 'admin',
-          isVerified: true,
-          isApproved: true,
-          avatar: null,
-          bio: 'DPS Buzz Super Administrator 🛡️ • Full Systems & Moderation Access',
-          class: 'Staff',
-          section: 'Admin',
-          followerCount: 0,
-          followingCount: 0,
-          postCount: 1,
-          spiritPoints: 0,
-          createdAt: '2026-10-01T00:00:00.000Z',
-        };
-        localStorage.setItem('dpsbuzz_shashwath_authenticated', 'true');
-        localStorage.setItem('dpsbuzz_user', JSON.stringify(superAdmin));
-        const adminSessionCookie = encodeURIComponent(JSON.stringify({ id: superAdmin.id, username: superAdmin.username, role: superAdmin.role }));
-        document.cookie = `dpsbuzz_user=${adminSessionCookie}; path=/; max-age=31536000; SameSite=Lax`;
-
-        try {
-          localStorage.removeItem('dpsbuzz_chat_conversations_v2');
-          localStorage.removeItem('dpsbuzz_chat_messages_v1');
-          sessionStorage.clear();
-        } catch {}
-
-        // Ensure in profiles list and server
-        const profiles = JSON.parse(localStorage.getItem('dpsbuzz_profiles_v2') || '[]');
-        if (!profiles.some((p: any) => p.username === 'shashwath71845')) {
-          profiles.unshift(superAdmin);
-          localStorage.setItem('dpsbuzz_profiles_v2', JSON.stringify(profiles));
-        }
-
-        fetch('/api/auth/profile', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ profile: superAdmin }),
-        }).catch(() => {});
-
-        // Instant client-side transition to intended link or /home
-        const destination =
-          redirectParam && redirectParam.startsWith('/') && !redirectParam.startsWith('//')
-            ? redirectParam
-            : '/home';
-        router.replace(destination);
-        setTimeout(() => {
-          if (typeof window !== 'undefined' && window.location.pathname.startsWith('/login')) {
-            window.location.replace(destination);
-          }
-        }, 350);
-        return;
-      } else {
-        setError('Incorrect password for administrator shashwath71845.');
+    // The server checks the password and sets a signed, httpOnly session cookie.
+    let data: any = null;
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: cleanInput, password }),
+      });
+      data = await res.json().catch(() => null);
+      if (!res.ok || !data?.success || !data.profile) {
+        setError(data?.error || 'Login failed. Please try again.');
         setIsLoading(false);
         return;
       }
-    }
-
-    // Check banned status
-    const bannedUsers = JSON.parse(localStorage.getItem('dpsbuzz_banned_users_v1') || '[]');
-    if (bannedUsers.includes(cleanInput)) {
-      setError('This account has been banned by school administration for community violations.');
+    } catch {
+      setError('Could not reach the server. Check your internet connection.');
       setIsLoading(false);
       return;
     }
 
-    // Check DataStore profiles locally first for instantaneous (0ms) login
-    let profiles = JSON.parse(localStorage.getItem('dpsbuzz_profiles_v2') || '[]');
-    let match = profiles.find(
-      (p: any) =>
-        (p.username || '').toLowerCase().replace(/^@+/, '') === cleanInput ||
-        (p.fullName || '').toLowerCase() === cleanInput
-    );
-
-    // If not found in raw localStorage array, check DataStore registry & seeds directly
-    if (!match) {
-      const dsProfile =
-        DataStore.getProfileByUsername(cleanInput) ||
-        DataStore.getProfiles().find(
-          (p: any) =>
-            (p.username || '').toLowerCase().replace(/^@+/, '') === cleanInput ||
-            (p.fullName || '').toLowerCase() === cleanInput
-        );
-      if (dsProfile) {
-        match = dsProfile;
-      }
-    }
-
-    // If not found locally, fetch from authoritative /api/auth/profile with 3.5s timeout (prevents login stalls)
-    if (!match || (match as any).alias_of) {
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3500);
-        const profRes = await fetch(`/api/auth/profile?username=${encodeURIComponent(cleanInput)}`, {
-          cache: 'no-store',
-          signal: controller.signal,
-        });
-        clearTimeout(timeoutId);
-        if (profRes.ok) {
-          const profData = await profRes.json();
-          if (profData.success && profData.profile) {
-            match = profData.profile;
-            const updated = [...profiles.filter((p: any) => (p.username || '').toLowerCase() !== cleanInput), match];
-            localStorage.setItem('dpsbuzz_profiles_v2', JSON.stringify(updated));
-          }
-        }
-      } catch (e) {
-        console.warn('Database profile lookup notice:', e);
-      }
-    }
-
-    if (!match) {
-      setError("We couldn't find an account with that username. Please check your spelling or sign up first.");
-      setIsLoading(false);
-      return;
-    }
-
-    if (bannedUsers.includes(match.username.toLowerCase())) {
-      setError('This account has been suspended by school administration.');
-      setIsLoading(false);
-      return;
-    }
-
+    const match = data.profile;
     try {
       localStorage.removeItem('dpsbuzz_chat_conversations_v2');
       localStorage.removeItem('dpsbuzz_chat_messages_v1');
@@ -215,9 +107,24 @@ export default function LoginPage() {
     } catch {}
 
     localStorage.setItem('dpsbuzz_user', JSON.stringify(match));
-    const userSessionCookie = encodeURIComponent(JSON.stringify({ id: match.id, username: match.username, role: match.role || 'student' }));
-    document.cookie = `dpsbuzz_user=${userSessionCookie}; path=/; max-age=31536000; SameSite=Lax`;
-    
+    if (match.role === 'admin') {
+      localStorage.setItem('dpsbuzz_shashwath_authenticated', 'true');
+    } else {
+      localStorage.removeItem('dpsbuzz_shashwath_authenticated');
+    }
+    try {
+      const profiles = JSON.parse(localStorage.getItem('dpsbuzz_profiles_v2') || '[]');
+      const updated = [
+        ...profiles.filter((p: any) => (p.username || '').toLowerCase() !== String(match.username).toLowerCase()),
+        match,
+      ];
+      localStorage.setItem('dpsbuzz_profiles_v2', JSON.stringify(updated));
+    } catch {}
+
+    if (data.passwordJustSet) {
+      alert('Your password has been saved. Use it every time you log in from now on.');
+    }
+
     // Fast client-side navigation to intended link or /home
     const destination =
       redirectParam && redirectParam.startsWith('/') && !redirectParam.startsWith('//')
@@ -265,7 +172,10 @@ export default function LoginPage() {
             Log in
           </h2>
           <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-            Enter your student username to continue
+            Enter your student username and password to continue
+          </p>
+          <p className="text-[11px] mt-1.5" style={{ color: 'var(--text-muted)' }}>
+            Logging in for the first time since the security update? The password you type now becomes your password.
           </p>
         </div>
 
@@ -305,6 +215,7 @@ export default function LoginPage() {
                   localStorage.removeItem('dpsbuzz_user');
                   localStorage.removeItem('dpsbuzz_shashwath_authenticated');
                   document.cookie = 'dpsbuzz_user=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
+                  fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
                   setActiveSession(null);
                 }}
                 className="px-2.5 py-1 rounded-lg border text-xs font-semibold text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
@@ -381,6 +292,15 @@ export default function LoginPage() {
               </button>
             </div>
           </div>
+
+          {error && (
+            <p
+              role="alert"
+              className="text-xs font-medium px-3 py-2 rounded-lg border border-rose-500/30 bg-rose-500/10 text-rose-300"
+            >
+              {error}
+            </p>
+          )}
 
           <button
             type="submit"

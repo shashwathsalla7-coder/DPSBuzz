@@ -23,7 +23,7 @@ export default function SignupPage() {
   const [className, setClassName] = useState('8');
   const [section, setSection] = useState('A');
   const [isPrivate, setIsPrivate] = useState(false);
-  const [schoolCode, setSchoolCode] = useState('DPS71845');
+  const [schoolCode, setSchoolCode] = useState('');
   const [referredBy, setReferredBy] = useState('');
 
   // Step 2: Credentials & Favorite Song (Optional)
@@ -64,22 +64,11 @@ export default function SignupPage() {
     }
 
     if (!schoolCode.trim()) {
-      setError('Please enter the school invite code (DPS71845) to continue.');
+      setError('Please enter the school code your class teacher gave you.');
       return;
     }
 
-    const clean = schoolCode.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
-    const validCode = DataStore.getInviteCode().toUpperCase().replace(/[^A-Z0-9]/g, '');
-    if (
-      clean !== 'DPS71845' &&
-      clean !== '71845' &&
-      clean !== validCode &&
-      clean !== 'DPSBUZZ2026' &&
-      !clean.includes('71845')
-    ) {
-      setError('Invalid school code. Please enter DPS71845 to continue.');
-      return;
-    }
+    // The school code is checked on the server when the account is created.
 
     // Guard against duplicate accounts: Check if student with this full name already exists in this class
     try {
@@ -90,7 +79,7 @@ export default function SignupPage() {
         const checkData = await checkRes.json();
         if (checkData.exists) {
           setError(
-            `An account already exists for "${fullName.trim()}" in Class ${className}-${section} (username: @${checkData.username}). Please log in with this account instead of creating a duplicate.`
+            `An account already exists for "${fullName.trim()}" in Class ${className}-${section} . Please log in with this account instead of creating a duplicate.`
           );
           return;
         }
@@ -133,7 +122,7 @@ export default function SignupPage() {
       const checkRes = await fetch(`/api/auth/profile?username=${encodeURIComponent(cleanUser)}`, { cache: 'no-store' });
       if (checkRes.ok) {
         const checkData = await checkRes.json();
-        if (checkData.success && checkData.profile) {
+        if (checkData.success && (checkData.exists || checkData.profile)) {
           setError('This username is already taken. Please choose another username.');
           return;
         }
@@ -158,7 +147,7 @@ export default function SignupPage() {
         className,
         section,
         username: username.trim(),
-        inviteCode: schoolCode.trim() || 'DPS71845',
+        inviteCode: schoolCode.trim(),
         isPrivate,
         song: favoriteSong || undefined,
         referredBy: referredBy.trim() || undefined,
@@ -170,25 +159,32 @@ export default function SignupPage() {
         return;
       }
 
-      // Authoritative database sync: Await Supabase registration BEFORE redirecting
-      try {
-        const resp = await fetch('/api/auth/profile', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ profile: result.profile, isNewSignup: true }),
-        });
-
-        if (!resp.ok) {
-          const errData = await resp.json().catch(() => ({}));
-          console.warn('Initial server signup sync notice:', errData);
-        }
-      } catch (networkErr) {
-        console.warn('Network sync notice during registration:', networkErr);
+      // The server validates the school code, stores a hashed password and starts the session.
+      const resp = await fetch('/api/auth/profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          profile: result.profile,
+          isNewSignup: true,
+          password,
+          inviteCode: schoolCode.trim(),
+        }),
+      }).catch(() => null);
+      const respData = resp ? await resp.json().catch(() => ({})) : {};
+      if (!resp || !resp.ok || !respData.success) {
+        try {
+          const list = JSON.parse(localStorage.getItem('dpsbuzz_profiles_v2') || '[]');
+          localStorage.setItem(
+            'dpsbuzz_profiles_v2',
+            JSON.stringify(list.filter((p: any) => (p.username || '').toLowerCase() !== result.profile!.username.toLowerCase()))
+          );
+        } catch {}
+        setError(respData.error || 'Could not create your account. Please check your connection and try again.');
+        setIsLoading(false);
+        return;
       }
 
       localStorage.setItem('dpsbuzz_user', JSON.stringify(result.profile));
-      const signupCookie = encodeURIComponent(JSON.stringify({ id: result.profile.id, username: result.profile.username, role: result.profile.role || 'student' }));
-      document.cookie = `dpsbuzz_user=${signupCookie}; path=/; max-age=31536000; SameSite=Lax`;
 
       // Instant reliable client-side navigation to destination link or home feed
       const destination =
@@ -359,19 +355,18 @@ export default function SignupPage() {
             </div>
 
 
-            {/* School Code (Official: DPS71845) */}
+            {/* School Code (validated on the server) */}
             <div className="space-y-1.5 pt-1">
               <div className="flex items-center justify-between">
                 <label htmlFor="sc" className="block text-xs font-semibold flex items-center gap-1.5" style={{ color: 'var(--text)' }}>
                   <Shield size={13} style={{ color: 'var(--primary)' }} />
                   <span>School Code</span>
                 </label>
-                <span className="text-[10px] text-emerald-500 font-bold">✓ DPS71845 Verified</span>
               </div>
               <input
                 id="sc"
                 type="text"
-                placeholder="DPS71845"
+                placeholder="Enter school code"
                 value={schoolCode}
                 onChange={(e) => setSchoolCode(e.target.value.toUpperCase())}
                 className="w-full h-12 px-3.5 rounded-xl border text-sm transition outline-none uppercase font-mono tracking-wider"
@@ -382,7 +377,7 @@ export default function SignupPage() {
                 }}
               />
               <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
-                Official school code: <strong className="text-pink-500">DPS71845</strong>
+                Ask your class teacher for the school code.
               </p>
             </div>
 

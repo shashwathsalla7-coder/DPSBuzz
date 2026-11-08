@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getSession } from '@/lib/auth/session';
 import {
   createConnect4Session,
   getConnect4Session,
@@ -21,10 +22,14 @@ const NO_CACHE_HEADERS = {
 
 export async function GET(req: NextRequest) {
   try {
+    const session = getSession(req);
+    if (!session) {
+      return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+    }
     const { searchParams } = new URL(req.url);
     const action = searchParams.get('action');
     const gameId = searchParams.get('gameId');
-    const username = (searchParams.get('username') || searchParams.get('viewer') || '').toLowerCase().trim();
+    const username = session.username;
     const targetUser = (searchParams.get('targetUser') || '').toLowerCase().trim();
 
     // 1. Leaderboard
@@ -63,8 +68,15 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const session = getSession(req);
+    if (!session) {
+      return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+    }
     const body = await req.json();
-    const { action, gameId, username } = body;
+    const { action, gameId } = body;
+    const username = session.username;
+    body.username = username;
+    body.inviter = username;
     const cleanUser = (username || '').toLowerCase().trim();
 
     // 1. Invite a player to play Connect 4

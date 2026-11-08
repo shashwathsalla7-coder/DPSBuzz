@@ -73,30 +73,6 @@ export default function JoinGroupPage() {
     fetchInvite();
   }, [inviteCode]);
 
-  // Handle quick login
-  const handleQuickLogin = (uname: string, name: string, role: string) => {
-    const prof: Profile = {
-      id: `usr-${uname}`,
-      username: uname,
-      fullName: name,
-      avatar: '',
-      bio: `${role.toUpperCase()} at Delhi Public School`,
-      role: (role === 'teacher' || role === 'admin' ? role : 'student'),
-      class: 'Class 8',
-      section: 'G',
-      isVerified: true,
-      isApproved: true,
-      followerCount: 12,
-      followingCount: 15,
-      postCount: 4,
-      spiritPoints: 120,
-      createdAt: new Date().toISOString(),
-    };
-    localStorage.setItem('dpsbuzz_user', JSON.stringify(prof));
-    document.cookie = `dpsbuzz_user=${encodeURIComponent(JSON.stringify(prof))}; path=/; max-age=31536000; SameSite=Lax`;
-    setCurrentUser(prof);
-  };
-
   const handleJoin = async () => {
     if (!currentUser) {
       alert('Please sign in or select your profile below to join the classroom.');
@@ -273,34 +249,18 @@ export default function JoinGroupPage() {
                       </div>
 
                       <div className="grid grid-cols-2 gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => handleQuickLogin('shashwath71845', 'Shashwath', 'admin')}
-                          className="p-2 rounded-lg bg-[#1e293b] hover:bg-[#253347] text-[11px] font-medium text-white border border-white/5 transition-colors cursor-pointer text-left"
+                        <a
+                          href={`/login?redirect=${encodeURIComponent('/join/' + inviteCode)}`}
+                          className="p-2 rounded-lg bg-[#1e293b] hover:bg-[#253347] text-[11px] font-medium text-white border border-white/5 transition-colors text-center"
                         >
-                          👤 Shashwath (Admin)
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleQuickLogin('sahana_3009', 'Sahana', 'student')}
-                          className="p-2 rounded-lg bg-[#1e293b] hover:bg-[#253347] text-[11px] font-medium text-white border border-white/5 transition-colors cursor-pointer text-left"
+                          Log in
+                        </a>
+                        <a
+                          href={`/signup?redirect=${encodeURIComponent('/join/' + inviteCode)}`}
+                          className="p-2 rounded-lg bg-[#1e293b] hover:bg-[#253347] text-[11px] font-medium text-white border border-white/5 transition-colors text-center"
                         >
-                          🎓 Sahana (Student)
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleQuickLogin('rishi_one9', 'Rishi', 'student')}
-                          className="p-2 rounded-lg bg-[#1e293b] hover:bg-[#253347] text-[11px] font-medium text-white border border-white/5 transition-colors cursor-pointer text-left"
-                        >
-                          🎓 Rishi (Student)
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleQuickLogin('teacher_anita', 'Anita Sharma', 'teacher')}
-                          className="p-2 rounded-lg bg-[#1e293b] hover:bg-[#253347] text-[11px] font-medium text-white border border-white/5 transition-colors cursor-pointer text-left"
-                        >
-                          📚 Anita (Faculty)
-                        </button>
+                          Create account
+                        </a>
                       </div>
                     </div>
                   )}

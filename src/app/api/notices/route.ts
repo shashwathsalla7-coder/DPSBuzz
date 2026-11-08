@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getSession, isStaff, isAdmin } from '@/lib/auth/session';
 import { getServerStore, saveServerStore } from '@/lib/serverStore';
 import type { Notice } from '@/lib/dataStore';
 
@@ -30,6 +31,9 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    if (!isStaff(getSession(req))) {
+      return NextResponse.json({ success: false, error: 'Only teachers and admins can post notices.' }, { status: 403 });
+    }
     const body = await req.json();
     const { notice, notices } = body;
 
@@ -71,6 +75,9 @@ export async function POST(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
+    if (!isStaff(getSession(req))) {
+      return NextResponse.json({ success: false, error: 'Only teachers and admins can delete notices.' }, { status: 403 });
+    }
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
 

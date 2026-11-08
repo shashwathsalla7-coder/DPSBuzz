@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getServerStore, saveServerStore } from '@/lib/serverStore';
+import { getSession } from '@/lib/auth/session';
+import { sanitizeSyncBody } from '@/lib/auth/syncGuard';
 import {
   getD1Profiles,
   getD1Follows,
@@ -38,20 +40,17 @@ function getSupabase() {
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const username = searchParams.get('username')?.toLowerCase().trim() || '';
     const mode = searchParams.get('mode');
 
-    // Extract auth user from cookie
-    const userCookie = req.cookies.get('dpsbuzz_user')?.value;
-    let authUser = '';
-    if (userCookie) {
-      try {
-        const parsed = JSON.parse(decodeURIComponent(userCookie));
-        authUser = (parsed?.username || '').toLowerCase().trim();
-      } catch {}
+    // Identity comes only from the signed session (the ?username= param is ignored).
+    const session = getSession(req);
+    if (!session) {
+      return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401, headers: NO_CACHE_HEADERS });
     }
-    const reqUsername = authUser || username;
-    const isAdmin = username === 'shashwath71845' || reqUsername === 'shashwath71845';
+    const username = session.username;
+    const authUser = session.username;
+    const reqUsername = session.username;
+    const isAdmin = session.role === 'admin';
     const isLightweightMode = mode === 'incoming' || mode === 'alerts';
 
     const sb = getSupabase();
@@ -741,9 +740,13 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { posts, stories, profiles, comments, likes } = body;
+    const session = getSession(req);
+    if (!session) {
+      return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401, headers: NO_CACHE_HEADERS });
+    }
     const current = await getServerStore({ forceRefresh: true });
+    const body = sanitizeSyncBody(await req.json().catch(() => ({})), session, current);
+    const { posts, stories, profiles, comments, likes } = body;
     const deletedIds = new Set(current.deletedPostIds || []);
     const deletedUsernames = new Set((current.deletedUsernames || []).map((u) => u.toLowerCase().trim()));
     const sb = getSupabase();
@@ -815,16 +818,8 @@ export async function POST(req: NextRequest) {
     // 3. Merge profiles (exclude deleted usernames, update existing ones)
     let mergedProfiles = [...current.profiles];
     if (Array.isArray(profiles)) {
-      const userCookie = req.cookies.get('dpsbuzz_user')?.value;
-      let authUser = '';
-      let isAdmin = false;
-      if (userCookie) {
-        try {
-          const parsed = JSON.parse(decodeURIComponent(userCookie));
-          authUser = (parsed?.username || '').toLowerCase().trim();
-          isAdmin = parsed?.role === 'admin' && authUser === 'shashwath71845';
-        } catch {}
-      }
+      const authUser = session.username;
+      const isAdmin = session.role === 'admin';
 
       const existingMap = new Map(mergedProfiles.map((pr) => [pr.username.toLowerCase().trim(), pr]));
       for (const pr of profiles) {
@@ -832,7 +827,7 @@ export async function POST(req: NextRequest) {
         if (!u || deletedUsernames.has(u)) continue;
 
         // Security: Non-admin users can ONLY update their own profile details
-        if (!isAdmin && authUser && u !== authUser) {
+        if (!isAdmin && u !== authUser) {
           continue;
         }
 
@@ -875,6 +870,13 @@ export async function POST(req: NextRequest) {
             }).eq('username', u).then(() => {}, () => {});
           }
         } else {
+          if (!isAdmin) {
+            pr.role = 'student';
+            pr.followerCount = 0;
+            pr.followingCount = 0;
+            pr.postCount = 0;
+            pr.spiritPoints = 50;
+          }
           mergedProfiles.push(pr);
           existingMap.set(u, pr);
 
@@ -1219,7 +1221,7 @@ export async function POST(req: NextRequest) {
       stories: mergedStories,
       profiles: mergedProfiles,
       comments: mergedComments,
-      likes: { ...current.likes, ...(likes || {}) },
+      likes: { ...current.likes, ...(likes || {}) }, // per-user filtered by sanitizeSyncBody
       notices: mergedNotices,
       follows: mergedFollows,
       followRequests: mergedFollowRequests,

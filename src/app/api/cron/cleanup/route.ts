@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { deleteR2Object, deleteR2Objects } from '@/lib/r2';
 import { pruneExpiredServerChatPhotos, pruneExpiredServerStories } from '@/lib/serverStore';
+import { getSession, isAdmin } from '@/lib/auth/session';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const rawKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -19,8 +20,9 @@ export async function POST(req: NextRequest) {
     const authHeader = req.headers.get('authorization');
     const cronSecret = process.env.CRON_SECRET;
 
-    // Verify secret if configured
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+    // Only the scheduler (CRON_SECRET) or a logged-in admin may trigger cleanup.
+    const viaSecret = Boolean(cronSecret) && authHeader === `Bearer ${cronSecret}`;
+    if (!viaSecret && !isAdmin(getSession(req))) {
       return NextResponse.json({ success: false, error: 'Unauthorized cron trigger' }, { status: 401 });
     }
 

@@ -487,7 +487,6 @@ export default function AiDiaryPage() {
           userClass,
           section: userSection,
           username,
-          apiKey: process.env.NEXT_PUBLIC_GEMINI_API_KEY || '',
         }),
       });
 
@@ -520,7 +519,8 @@ export default function AiDiaryPage() {
 
     // 2. Direct Browser Call to Google Gemini 3.5 Flash (Bypasses server cold starts & guarantees solution)
     try {
-      const clientApiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY || '';
+      // The Gemini key is server-only now; the browser never calls Gemini directly.
+      const clientApiKey = '';
       if (clientApiKey) {
         const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${clientApiKey}`;
         const gRes = await fetch(geminiUrl, {

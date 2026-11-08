@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getSession, isStaff, isAdmin } from '@/lib/auth/session';
 import { getServerStore, addServerStory } from '@/lib/serverStore';
 import { createClient } from '@supabase/supabase-js';
 import { sanitizeText, isValidMediaUrl } from '@/lib/security';
@@ -95,8 +96,11 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    const session = getSession(req);
+    if (!session) return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
     const body = await req.json();
     const { story } = body;
+    if (story && typeof story === 'object') story.username = session.username;
     if (!story || !story.username) {
       return NextResponse.json({ success: false, error: 'Invalid story object' }, { status: 400, headers: NO_CACHE_HEADERS });
     }

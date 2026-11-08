@@ -47,13 +47,8 @@ const RETRY_BACKOFF_MS = [2000, 5000, 10000]; // 3 automatic retries with growin
 // Helper to log send failures safely (Zero message text, zero personal data)
 async function logFailureDiagnostics(errorType: string, statusCode?: number, durationMs?: number) {
   try {
-    await supabase.from('chat_send_failures').insert([
-      {
-        error_type: errorType,
-        status_code: statusCode || null,
-        duration_ms: durationMs || null,
-      },
-    ]);
+    // Logged locally only: the browser has no direct database access.
+    console.warn('[chat] send failure', { errorType, statusCode, durationMs });
   } catch {}
 }
 
@@ -122,13 +117,11 @@ export function useChatMessages(chatId: string, currentUserId: string) {
   const fetchHistoricalPayload = useCallback(async () => {
     if (!chatId) return;
     try {
-      const altChatId = chatId.includes('__') ? chatId.split('__').reverse().join('__') : chatId;
-      const { data, error } = await supabase
-        .from('messages')
-        .select('*')
-        .or(`chat_id.eq.${chatId},chat_id.eq.${altChatId}`)
-        .order('created_at', { ascending: false })
-        .limit(200);
+      // Read through the server, which checks that you are in this conversation.
+      const res = await fetch(`/api/chats/messages?chatId=${encodeURIComponent(chatId)}`, { cache: 'no-store' });
+      const json = await res.json().catch(() => ({}));
+      const data: any[] | null = res.ok && json.success ? json.messages : null;
+      const error = res.ok ? null : { message: json.error || `HTTP ${res.status}` };
 
       if (error) {
         console.warn('Historical chat fetch warning:', error.message);
@@ -180,6 +173,18 @@ export function useChatMessages(chatId: string, currentUserId: string) {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
+  }, [chatId, fetchHistoricalPayload]);
+
+  // 3b. Poll for new messages while the tab is visible. Database realtime events are not
+  // delivered to the browser once Supabase row-level security blocks the public key.
+  useEffect(() => {
+    if (!chatId) return;
+    const timer = setInterval(() => {
+      if (typeof document === 'undefined' || document.visibilityState === 'visible') {
+        fetchHistoricalPayload();
+      }
+    }, 4000);
+    return () => clearInterval(timer);
   }, [chatId, fetchHistoricalPayload]);
 
   // 4. Realtime Channel Subscription with Reconnect, Typing Broadcast & Status Handling
@@ -442,29 +447,17 @@ export function useChatMessages(chatId: string, currentUserId: string) {
       const timeoutId = setTimeout(() => controller.abort(), 8000);
 
       // Check if already persisted on server (Prevents duplicate messages on network retries)
-      const { data: existingRecord } = await supabase
-        .from('messages')
-        .select('id, client_id, chat_id, created_at')
-        .eq('client_id', trackingId)
-        .maybeSingle();
-
-      if (existingRecord) {
-        clearTimeout(timeoutId);
-        return { success: true, data: existingRecord };
-      }
-
-      // Safe insert with returned row
-      const { data, error } = await supabase
-        .from('messages')
-        .insert([
-          {
-            chat_id: targetChatId,
-            sender_id: targetSenderId,
-            text: content,
-            client_id: trackingId,
-          },
-        ])
-        .select();
+      // Send through the server: it sets sender_id from your login and de-duplicates retries.
+      void targetSenderId;
+      const res = await fetch('/api/chats/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chatId: targetChatId, clientId: trackingId, text: content }),
+        signal: controller.signal,
+      });
+      const json = await res.json().catch(() => ({}));
+      const data = res.ok && json.success ? [json.message] : null;
+      const error: any = res.ok && json.success ? null : { code: String(json.code || res.status), message: json.error || `HTTP ${res.status}` };
 
       clearTimeout(timeoutId);
       const duration = Date.now() - t0;

@@ -54,6 +54,7 @@ export function GlobalModerationGuard() {
       localStorage.removeItem('dpsbuzz_user');
       localStorage.removeItem('dpsbuzz_shashwath_authenticated');
       document.cookie = 'dpsbuzz_user=; path=/; max-age=0; SameSite=Lax';
+      fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
     }
     router.push('/login');
   };

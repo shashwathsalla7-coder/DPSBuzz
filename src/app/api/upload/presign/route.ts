@@ -1,3 +1,4 @@
+import { getSession } from '@/lib/auth/session';
 import { NextRequest, NextResponse } from 'next/server';
 import {
   generateCloudinaryUploadSignature,
@@ -108,16 +109,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 4. Role validation (Notices attachments only permitted for admin)
-    let verifiedRole = 'student';
-    const userCookie = req.cookies.get('dpsbuzz_user')?.value;
-    if (userCookie) {
-      try {
-        const parsed = JSON.parse(decodeURIComponent(userCookie));
-        if (parsed?.role === 'admin' && parsed?.username === 'shashwath71845') {
-          verifiedRole = 'admin';
-        }
-      } catch {}
-    }
+    const verifiedRole = getSession(req)?.role === 'admin' ? 'admin' : 'student';
 
     if (folder === 'notices' && verifiedRole !== 'admin') {
       return NextResponse.json(

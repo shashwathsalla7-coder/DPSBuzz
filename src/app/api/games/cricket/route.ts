@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getSession } from '@/lib/auth/session';
 import {
   createGameSession,
   getRawGameSession,
@@ -24,11 +25,15 @@ const NO_CACHE_HEADERS = {
 
 export async function GET(req: NextRequest) {
   try {
+    const session = getSession(req);
+    if (!session) {
+      return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+    }
     const { searchParams } = new URL(req.url);
     const action = searchParams.get('action');
     const gameId = searchParams.get('gameId');
-    const viewerParam = searchParams.get('viewer') || '';
-    const usernameParam = searchParams.get('username') || '';
+    const viewerParam = session.username;
+    const usernameParam = session.username;
     const targetUserParam = searchParams.get('targetUser') || '';
 
     const username = (usernameParam || viewerParam).toLowerCase().trim();
@@ -74,8 +79,15 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const session = getSession(req);
+    if (!session) {
+      return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+    }
     const body = await req.json();
-    const { action, gameId, username } = body;
+    const { action, gameId } = body;
+    const username = session.username;
+    body.username = username;
+    body.inviter = username;
     const cleanUser = (username || '').toLowerCase().trim();
 
     // 1. Invite a player to play Guess the Cricketer

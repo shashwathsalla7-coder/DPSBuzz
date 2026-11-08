@@ -5,6 +5,7 @@
 // =====================================================
 
 import { NextRequest, NextResponse, connection } from 'next/server';
+import { getSession } from '@/lib/auth/session';
 import {
   getInternalBlocklist,
   addToInternalBlocklist,
@@ -21,11 +22,9 @@ import { MusicTrack, MusicBlockItem } from '@/lib/music/types';
 export async function GET(request: NextRequest) {
   await connection();
   const searchParams = request.nextUrl.searchParams;
-  const authHeader = request.headers.get('authorization') || '';
-  const isAdminParam = searchParams.get('isAdmin') === 'true';
-
-  // Basic authorization check for admin access
-  if (!isAdminParam && !authHeader.includes('admin')) {
+  void searchParams;
+  // Admin role comes only from the signed session.
+  if (getSession(request)?.role !== 'admin') {
     return NextResponse.json({ error: 'Unauthorized: Admin access required' }, { status: 403 });
   }
 
@@ -49,9 +48,9 @@ export async function POST(request: NextRequest) {
   await connection();
   try {
     const body = await request.json();
-    const { action, isAdmin } = body;
+    const { action } = body;
 
-    if (!isAdmin) {
+    if (getSession(request)?.role !== 'admin') {
       return NextResponse.json({ error: 'Unauthorized: Admin access required' }, { status: 403 });
     }
 

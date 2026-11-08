@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getSession } from '@/lib/auth/session';
 import type { CallSession } from '@/lib/dataStore';
 import {
   getServerCall,
@@ -63,8 +64,12 @@ function mergeCallSessions(
 
 export async function GET(req: NextRequest) {
   try {
+    const session = getSession(req);
+    if (!session) {
+      return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+    }
     const { searchParams } = new URL(req.url);
-    const username = searchParams.get('username')?.toLowerCase().trim();
+    const username = session.username;
     const callId = searchParams.get('callId');
 
     const now = Date.now();
@@ -189,7 +194,27 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const session = getSession(req);
+    if (!session) {
+      return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+    }
     const body = await req.json();
+    if (body?.action === 'initiate') {
+      body.callerUsername = session.username;
+    } else if (body?.callId && session.role !== 'admin') {
+      const known = mergeCallSessions(localCache.get(body.callId) || null, await getServerCall(body.callId));
+      if (known && known.callerUsername !== session.username && known.receiverUsername !== session.username) {
+        return NextResponse.json({ success: false, error: 'You are not part of this call' }, { status: 403 });
+      }
+      if (!known) {
+        // Unknown call: only allow the caller/receiver fields to name the session user.
+        const c = String(body.callerUsername || '').toLowerCase().trim();
+        const r = String(body.receiverUsername || '').toLowerCase().trim();
+        if (c !== session.username && r !== session.username) {
+          return NextResponse.json({ success: false, error: 'You are not part of this call' }, { status: 403 });
+        }
+      }
+    }
     const {
       action,
       callId,

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getSession } from '@/lib/auth/session';
 import { d1Query } from '@/lib/cloudflare/d1';
 
 const NO_CACHE_HEADERS = {
@@ -860,7 +861,8 @@ function generateAcademicResponse(
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { messages = [], prompt = '', userClass = '8', username = 'student', apiKey: clientKey } = body;
+    const { messages = [], prompt = '', userClass = '8' } = body;
+    const username = getSession(req)?.username || 'student';
 
     const queryText = (prompt || (messages.length > 0 ? messages[messages.length - 1]?.text : '') || '').trim();
     if (!queryText) {
@@ -921,8 +923,6 @@ export async function POST(req: NextRequest) {
       process.env.GEMINI_API_KEY ||
       process.env.GOOGLE_AI_API_KEY ||
       process.env.GOOGLE_API_KEY ||
-      process.env.NEXT_PUBLIC_GEMINI_API_KEY ||
-      clientKey ||
       ''
     ).trim();
 

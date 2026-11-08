@@ -16,7 +16,7 @@ async function testCampus Wire() {
   console.log('Logging in as shashwath71845...');
   await page.goto('http://localhost:3000/login', { waitUntil: 'load' });
   await page.fill('input[type="text"]', 'shashwath71845');
-  await page.fill('input[type="password"]', '71845shashwath123');
+  await page.fill('input[type="password"]', process.env.ADMIN_PASSWORD || '');
   await page.click('button[type="submit"]', { timeout: 5000 });
   await page.waitForURL('**/home', { timeout: 15000 }).catch(() => {});
   await page.waitForTimeout(2000);

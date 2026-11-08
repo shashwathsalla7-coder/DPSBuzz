@@ -69,7 +69,25 @@ if (CLOUD_NAME && API_KEY && API_SECRET) {
 
 const DATA_DIR = path.join(process.cwd(), 'data');
 const STORE_FILE = path.join(DATA_DIR, 'server_store.json');
-const CLOUD_STORE_PUBLIC_ID = 'dpsbuzz_store.json';
+// SECURITY: the store holds profiles, private chats and notifications. It is
+// uploaded as a PRIVATE Cloudinary raw asset and only read back via a signed,
+// short-lived API download URL. The old public file (`dpsbuzz_store.json` under
+// /raw/upload/) is read once for migration only and must be deleted afterwards.
+const CLOUD_STORE_PUBLIC_ID = 'dpsbuzz_store_private.json';
+const LEGACY_PUBLIC_STORE_ID = 'dpsbuzz_store.json';
+
+// Local `next dev` must never overwrite the production cloud backup.
+const CLOUD_SYNC_ENABLED =
+  process.env.SERVER_STORE_CLOUD_SYNC === '1' ||
+  (process.env.NODE_ENV === 'production' && process.env.SERVER_STORE_CLOUD_SYNC !== '0');
+
+function privateStoreUrl(): string {
+  return cloudinary.utils.private_download_url(CLOUD_STORE_PUBLIC_ID, '', {
+    resource_type: 'raw',
+    type: 'private',
+    expires_at: Math.floor(Date.now() / 1000) + 60,
+  });
+}
 
 const DEFAULT_ADMIN: Profile = {
   id: 'admin-shashwath-id',
@@ -287,16 +305,28 @@ async function fetchCloudStore(): Promise<ServerStoreData | null> {
   if (Date.now() - lastCloudFetchFailure < 120000) {
     return null;
   }
-  try {
-    const url = `https://res.cloudinary.com/${CLOUD_NAME}/raw/upload/${CLOUD_STORE_PUBLIC_ID}?t=${Date.now()}`;
+  if (!CLOUD_SYNC_ENABLED || !API_KEY || !API_SECRET) {
+    return null;
+  }
+  const tryFetch = async (url: string) => {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 1200);
-    const res = await fetch(url, { cache: 'no-store', signal: controller.signal });
-    clearTimeout(timeout);
-    if (res.ok) {
-      const data = await res.json();
-      return normalizeStore(data);
+    const timeout = setTimeout(() => controller.abort(), 2500);
+    try {
+      const res = await fetch(url, { cache: 'no-store', signal: controller.signal });
+      if (!res.ok) return null;
+      return normalizeStore(await res.json());
+    } finally {
+      clearTimeout(timeout);
     }
+  };
+  try {
+    const priv = await tryFetch(privateStoreUrl());
+    if (priv) return priv;
+    // One-time migration from the legacy public file (until it is deleted).
+    const legacy = await tryFetch(
+      `https://res.cloudinary.com/${CLOUD_NAME}/raw/upload/${LEGACY_PUBLIC_STORE_ID}?t=${Date.now()}`
+    );
+    if (legacy) return legacy;
   } catch {
     lastCloudFetchFailure = Date.now();
   }
@@ -305,6 +335,7 @@ async function fetchCloudStore(): Promise<ServerStoreData | null> {
 
 function scheduleCloudUpload(data: ServerStoreData): void {
   // Debounce background backup so user requests and serverless routes never wait for Cloudinary
+  if (!CLOUD_SYNC_ENABLED) return;
   pendingCloudData = data;
   if (cloudUploadTimer) return;
 
@@ -321,6 +352,7 @@ function scheduleCloudUpload(data: ServerStoreData): void {
       await Promise.race([
         cloudinary.uploader.upload(base64Data, {
           resource_type: 'raw',
+          type: 'private',
           public_id: CLOUD_STORE_PUBLIC_ID,
           overwrite: true,
           invalidate: true,

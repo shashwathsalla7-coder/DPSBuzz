@@ -270,7 +270,7 @@ export default function SettingsPage() {
     sessionStorage.clear();
     document.cookie = 'dpsbuzz_user=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
     document.cookie = 'dpsbuzz_admin_session=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
-    router.push('/login');
+    fetch('/api/auth/logout', { method: 'POST' }).finally(() => router.push('/login'));
   };
 
   const handleDeleteAccount = () => {

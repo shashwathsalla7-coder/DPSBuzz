@@ -3318,6 +3318,15 @@ export const DataStore = {
     reasons[clean] = reason;
     setStorage(STORAGE_KEYS.BAN_REASONS, reasons);
 
+    // Enforce on the server (admin session required) so the ban works on every device.
+    if (typeof window !== 'undefined') {
+      fetch('/api/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'ban', username: clean, reason }),
+      }).catch(() => {});
+    }
+
     if (typeof window !== 'undefined') {
       window.dispatchEvent(
         new CustomEvent('dpsbuzz:content_updated', {
@@ -3336,6 +3345,14 @@ export const DataStore = {
     const reasons = this.getBanReasons();
     delete reasons[clean];
     setStorage(STORAGE_KEYS.BAN_REASONS, reasons);
+
+    if (typeof window !== 'undefined') {
+      fetch('/api/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'unban', username: clean }),
+      }).catch(() => {});
+    }
 
     if (typeof window !== 'undefined') {
       window.dispatchEvent(
@@ -5341,6 +5358,7 @@ export const DataStore = {
     localStorage.removeItem('dpsbuzz_saved_posts_v1');
 
     // 7. Clear active session so next launch forces clean login/signup
+    fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
     localStorage.removeItem('dpsbuzz_user');
     localStorage.removeItem('dpsbuzz_shashwath_authenticated');
     document.cookie = 'dpsbuzz_user=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';

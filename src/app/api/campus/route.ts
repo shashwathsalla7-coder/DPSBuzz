@@ -1,3 +1,4 @@
+import { getSession, type Session } from '@/lib/auth/session';
 import { NextRequest, NextResponse } from 'next/server';
 import { d1Query, d1Execute, isD1Configured } from '@/lib/cloudflare/d1';
 import { createClient } from '@supabase/supabase-js';
@@ -167,10 +168,74 @@ export function invalidateCampusCache() {
 // ============================================================================
 // GET: Fetch all Campus Features directly from Database
 // ============================================================================
+// ============================================================================
+// AUTHORIZATION: identity and role come ONLY from the signed session cookie.
+// ============================================================================
+const STAFF_ONLY_ACTIONS = new Set([
+  'upload_diary_entry',
+  'create_broadcast',
+  'add_homework',
+  'create_wire_channel',
+  'create_campus_wire_channel',
+  'ingest_student_roster',
+  'dispatch_wire_template',
+  'dispatch_campus_wire_template',
+]);
+const CHANNEL_ADMIN_ACTIONS = new Set([
+  'toggle_channel_lock',
+  'add_student_to_channel',
+  'create_invite_link',
+  'respond_to_join_request',
+  'revoke_invite_link',
+]);
+// Fields that name "who is doing this". They are overwritten with the session user.
+const ACTOR_FIELDS = [
+  'username', 'uploadedByUsername', 'requesterUsername', 'authorUsername', 'senderUsername',
+  'reporterUsername', 'finderUsername', 'claimerUsername', 'reviewerUsername', 'createdBy', 'invitedBy',
+];
+const ROLE_FIELDS = ['requesterRole', 'senderRole', 'authorRole', 'uploaderRole'];
+
+async function isChannelAdmin(channelId: unknown, session: Session): Promise<boolean> {
+  if (session.role === 'admin' || session.role === 'teacher') return true;
+  if (!channelId || typeof channelId !== 'string') return false;
+  try {
+    const rows = await d1Query<any>('SELECT admin_usernames FROM campus_wire_channels WHERE id = ? LIMIT 1;', [channelId]);
+    const admins: string[] = JSON.parse(rows[0]?.admin_usernames || '[]');
+    return admins.map((a) => String(a).toLowerCase().trim()).includes(session.username);
+  } catch {
+    return false;
+  }
+}
+
+async function channelIdForLinkOrRequest(body: any): Promise<string | null> {
+  if (body.channelId) return String(body.channelId);
+  try {
+    if (body.linkId) {
+      const r = await d1Query<any>('SELECT channel_id FROM campus_wire_invite_links WHERE id = ? LIMIT 1;', [body.linkId]);
+      return r[0]?.channel_id || null;
+    }
+    if (body.requestId) {
+      const r = await d1Query<any>('SELECT channel_id FROM campus_wire_join_requests WHERE id = ? LIMIT 1;', [body.requestId]);
+      return r[0]?.channel_id || null;
+    }
+  } catch {}
+  return null;
+}
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const action = searchParams.get('action');
+    const session = getSession(req);
+    if (!session && action !== 'get_invite_link_details') {
+      return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+    }
+    if (
+      (action === 'get_join_requests' || action === 'get_channel_invite_links') &&
+      !(await isChannelAdmin(searchParams.get('channelId'), session!))
+    ) {
+      return NextResponse.json({ success: false, error: 'Channel admin access required' }, { status: 403 });
+    }
 
     // ------------------------------------------------------------------------
     // FAST PATH: Incremental Campus Wire Messages Polling (Used by Class Groups)
@@ -317,7 +382,7 @@ export async function GET(req: NextRequest) {
     }
 
     const now = Date.now();
-    const username = (searchParams.get('username') || '').toLowerCase().trim();
+    const username = session ? session.username : '';
     const classGradeParam = searchParams.get('classGrade') || searchParams.get('class') || '';
     const sectionParam = searchParams.get('section') || '';
     const cleanClassGrade = classGradeParam.replace(/[^0-9]/g, '') || classGradeParam;
@@ -576,8 +641,22 @@ export async function GET(req: NextRequest) {
 // ============================================================================
 export async function POST(req: NextRequest) {
   try {
+    const session = getSession(req);
+    if (!session) {
+      return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+    }
     const body = await req.json();
     const { action } = body;
+
+    for (const f of ACTOR_FIELDS) if (f in body || f === 'username') body[f] = session.username;
+    for (const f of ROLE_FIELDS) if (f in body) body[f] = session.role;
+
+    if (STAFF_ONLY_ACTIONS.has(action) && session.role !== 'admin' && session.role !== 'teacher') {
+      return NextResponse.json({ success: false, error: 'Only teachers and admins can do this.' }, { status: 403 });
+    }
+    if (CHANNEL_ADMIN_ACTIONS.has(action) && !(await isChannelAdmin(await channelIdForLinkOrRequest(body), session))) {
+      return NextResponse.json({ success: false, error: 'Channel admin access required' }, { status: 403 });
+    }
     invalidateCampusCache();
 
     // ------------------------------------------------------------------------
@@ -590,7 +669,7 @@ export async function POST(req: NextRequest) {
       const section = (body.section || 'All').toString().trim();
       const imageUrl = (body.imageUrl || '').toString().trim();
       const homeworkSummary = (body.homeworkSummary || '').toString().trim();
-      const username = (body.username || body.uploadedByUsername || req.headers.get('x-username') || 'student').toString().trim();
+      const username = session.username;
       const fullName = (body.fullName || body.uploadedByName || username).toString().trim();
       const dateStr = (body.dateStr || new Date().toISOString().split('T')[0]).toString().trim();
 
@@ -679,8 +758,8 @@ export async function POST(req: NextRequest) {
     // 1. CREATE BROADCAST (Office of the Principal - Protected)
     // ------------------------------------------------------------------------
     if (action === 'create_broadcast') {
-      const requesterUser = (req.headers.get('x-username') || body.requesterUsername || '').toLowerCase().trim();
-      const requesterRole = (req.headers.get('x-user-role') || body.requesterRole || '').toLowerCase().trim();
+      const requesterUser = session.username;
+      const requesterRole = session.role;
 
       // Cryptographically verified: check session cookie and database role
       let isVerifiedAdmin = requesterUser === 'shashwath71845' || requesterUser === 'madam_principal';
@@ -1408,7 +1487,7 @@ export async function POST(req: NextRequest) {
       let effectiveName = (senderName || cleanUser || 'Student').trim();
 
       if (cleanUser === 'madam_principal' || senderRole === 'admin') {
-        const authUser = (req.headers.get('x-username') || '').toLowerCase().trim();
+        const authUser = session.username;
         const isLegitAdmin = authUser === 'shashwath71845' || authUser === 'madam_principal' || cleanUser === 'shashwath71845';
         if (!isLegitAdmin) {
           try {

@@ -1,7 +1,22 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { getClientIp, checkRateLimit, createRateLimitResponse } from '@/lib/security';
+import { getSession, clearSessionCookie } from '@/lib/auth/session';
+import { listBanned, credentialsAvailable } from '@/lib/auth/credentials';
 
-export function proxy(request: NextRequest) {
+// Banned usernames, refreshed at most once a minute so existing sessions get cut off too.
+let bannedCache: { at: number; set: Set<string> } = { at: 0, set: new Set() };
+async function getBannedSet(): Promise<Set<string>> {
+  if (Date.now() - bannedCache.at < 60_000 || !credentialsAvailable()) return bannedCache.set;
+  try {
+    const rows = await listBanned();
+    bannedCache = { at: Date.now(), set: new Set(rows.map((r) => r.username)) };
+  } catch {
+    bannedCache.at = Date.now();
+  }
+  return bannedCache.set;
+}
+
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // 1. Static files & public assets - allow always
@@ -30,36 +45,27 @@ export function proxy(request: NextRequest) {
 
   // 1b. Edge Rate Limiter for API endpoints
   if (pathname.startsWith('/api')) {
-    const ip = getClientIp(request);
+    const sessionForLimit = getSession(request);
+    const bucket = sessionForLimit ? `u:${sessionForLimit.username}` : `ip:${getClientIp(request)}`;
     const isMutation = request.method !== 'GET' && request.method !== 'HEAD';
-    const maxReq = isMutation ? 60 : 120;
-    const rateCheck = checkRateLimit(`edge:${ip}:${isMutation ? 'm' : 'r'}`, maxReq, 60000);
+    // Logged-in users get their own bucket (a whole school shares one Wi-Fi IP).
+    const maxReq = sessionForLimit ? (isMutation ? 120 : 300) : isMutation ? 30 : 600;
+    const rateCheck = checkRateLimit(`edge:${bucket}:${isMutation ? 'm' : 'r'}`, maxReq, 60000);
     if (!rateCheck.allowed) {
       return createRateLimitResponse(rateCheck.retryAfterSec);
     }
   }
 
-  // 2. Read user session cookie or auth header
-  const userCookie =
-    request.cookies.get('dpsbuzz_user')?.value ||
-    request.headers.get('x-dpsbuzz-user') ||
-    (request.headers.get('authorization')?.startsWith('Bearer ')
-      ? request.headers.get('authorization')?.slice(7)
-      : undefined);
-  let hasValidUser = false;
-
-  if (userCookie) {
-    try {
-      const decoded = decodeURIComponent(userCookie);
-      const user = JSON.parse(decoded);
-      if (user && user.username && user.username.toLowerCase() !== 'guest') {
-        hasValidUser = true;
-      }
-    } catch {
-      if (typeof userCookie === 'string' && userCookie.trim().length > 0 && userCookie !== 'guest') {
-        hasValidUser = true;
-      }
-    }
+  // 2. Identity comes ONLY from the signed, httpOnly session cookie.
+  const session = getSession(request);
+  let hasValidUser = Boolean(session);
+  if (session && (await getBannedSet()).has(session.username)) {
+    hasValidUser = false;
+    const res = pathname.startsWith('/api')
+      ? NextResponse.json({ success: false, error: 'This account has been suspended.' }, { status: 403 })
+      : NextResponse.redirect(new URL('/login?banned=1', request.url));
+    clearSessionCookie(res);
+    return res;
   }
 
   const isLogout = request.nextUrl.searchParams.get('logout') === 'true';
@@ -109,27 +115,7 @@ export function proxy(request: NextRequest) {
 
   // 5. Strict server-side Admin Route Protection
   if (pathname.startsWith('/admin') && pathname !== '/admin/login') {
-    const adminSession = request.cookies.get('dpsbuzz_admin_session')?.value;
-    let isSuperAdmin = false;
-
-    if (adminSession) {
-      try {
-        const decoded = JSON.parse(Buffer.from(adminSession, 'base64').toString('utf8'));
-        if (decoded && decoded.username === 'shashwath71845' && decoded.role === 'admin') {
-          isSuperAdmin = true;
-        }
-      } catch {}
-    }
-
-    if (!isSuperAdmin && userCookie) {
-      try {
-        const decoded = decodeURIComponent(userCookie);
-        const user = JSON.parse(decoded);
-        if (user && user.username === 'shashwath71845' && user.role === 'admin') {
-          isSuperAdmin = true;
-        }
-      } catch {}
-    }
+    const isSuperAdmin = session?.role === 'admin';
 
     if (!isSuperAdmin) {
       const loginUrl = new URL('/admin/login', request.url);
@@ -141,13 +127,21 @@ export function proxy(request: NextRequest) {
   }
 
   // 6. Public API endpoints that don't require an active student session
+  const campusAction = request.nextUrl.searchParams.get('action') || '';
   const isPublicApi =
-    pathname.startsWith('/api/auth') ||
+    pathname === '/api/auth/login' ||
+    pathname === '/api/auth/logout' ||
+    pathname === '/api/auth/session' ||
+    (pathname === '/api/auth/profile' && (request.method === 'GET' || request.method === 'POST')) ||
     pathname.startsWith('/api/download') ||
     pathname === '/api/admin/login' ||
-    pathname === '/api/media/sign-read' ||
-    pathname.startsWith('/api/upload') ||
-    (pathname.startsWith('/api/campus') && (request.method === 'GET' || request.nextUrl.searchParams.get('action')?.includes('invite') || request.nextUrl.searchParams.get('action')?.includes('join')));
+    (pathname === '/api/cron/cleanup' && Boolean(process.env.CRON_SECRET)) ||
+    (pathname === '/api/campus' && request.method === 'GET' && campusAction === 'get_invite_link_details');
+
+  // Admin-only API namespace
+  if (pathname.startsWith('/api/admin') && pathname !== '/api/admin/login' && session?.role !== 'admin') {
+    return NextResponse.json({ success: false, error: 'Admin access required' }, { status: 403 });
+  }
 
   // 7. Strict Wall: ALL other routes in the app require a registered, logged-in student account!
   // Especially deep links (e.g. /u/[username], /reels, /chats, /leaderboard, /games, /notices, /post/new, /settings)

@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getSession } from '@/lib/auth/session';
+import { canAccessConversation } from '@/lib/auth/conversationAccess';
 import { createClient } from '@supabase/supabase-js';
 import { v2 as cloudinary } from 'cloudinary';
 import { sanitizeText, isValidMediaUrl } from '@/lib/security';
@@ -44,19 +46,17 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const conversationId = searchParams.get('conversationId');
-    const username = searchParams.get('username')?.toLowerCase().trim();
     const isGroupParam = searchParams.get('isGroup') === 'true';
 
-    const userCookie = req.cookies.get('dpsbuzz_user')?.value;
-    let authUser = '';
-    if (userCookie) {
-      try {
-        const parsed = JSON.parse(decodeURIComponent(userCookie));
-        authUser = (parsed?.username || '').toLowerCase().trim();
-      } catch {}
+    // Identity comes only from the signed session; ?username= is ignored.
+    const session = getSession(req);
+    if (!session) {
+      return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401, headers: NO_CACHE_HEADERS });
     }
-
-    const effectiveUser = username || authUser;
+    const username = session.username;
+    const authUser = session.username;
+    const effectiveUser = session.username;
+    const sessionIsAdmin = session.role === 'admin';
 
     // Specific conversation messages request
     if (conversationId) {
@@ -69,21 +69,20 @@ export async function GET(req: NextRequest) {
 
       let canonicalKey = conversationId;
       const isGroup =
-        isGroupParam ||
+        !conversationId.includes('__') &&
+        (isGroupParam ||
         conversationId.startsWith('conv-group-') ||
         conversationId.startsWith('group-') ||
         conversationId.includes('group') ||
         conversationId.includes('class-') ||
         conversationId.includes('house-') ||
-        conversationId.includes('club-');
+        conversationId.includes('club-'));
 
       if (!isGroup) {
         if (conversationId.includes('__')) {
           const participants = conversationId.split('__').map((p) => p.trim().toLowerCase());
           const isAllowed =
-            (username && participants.includes(username)) ||
-            (authUser && participants.includes(authUser)) ||
-            effectiveUser === 'shashwath71845';
+            participants.includes(authUser) || sessionIsAdmin;
 
           if (!isAllowed) {
             return NextResponse.json(
@@ -102,7 +101,7 @@ export async function GET(req: NextRequest) {
       } else if (conversationId.startsWith('conv-group-') || conversationId.startsWith('group-')) {
         const groupId = conversationId.replace(/^conv-/, '');
         const store = await getServerStore();
-        const isAdmin = username === 'shashwath71845';
+        const isAdmin = sessionIsAdmin;
         const groupMembers = (store.groupMembers?.[groupId] || []).map((m: string) => m.toLowerCase().trim());
         const group = (store.groups || []).find((g: any) => g.id === groupId);
         const membersFromGroup = Array.isArray(group?.members) ? group.members.map((m: string) => m.toLowerCase().trim()) : [];
@@ -229,7 +228,7 @@ export async function GET(req: NextRequest) {
     const BLOCKED_TEST_ACCOUNTS = new Set(['testaccount', 'testing', 'ab', 'test_insert_probe', 'test_uuid5_user']);
 
     const store = await getServerStore();
-    const isAdmin = username === 'shashwath71845';
+    const isAdmin = sessionIsAdmin;
     const userMessages: Record<string, any[]> = {};
     for (const [key, msgs] of Object.entries(store.chatMessages || {})) {
       if (key.includes('__')) {
@@ -293,7 +292,7 @@ export async function GET(req: NextRequest) {
             if (chatKey.includes('__')) {
               const parts = chatKey.split('__').map((p: string) => p.trim().toLowerCase());
               if (parts.some((p: string) => BLOCKED_TEST_ACCOUNTS.has(p))) continue;
-              if (!parts.includes(username) && username !== 'shashwath71845') continue; // STRICT PRIVACY: Never leak chats
+              if (!parts.includes(username) && !sessionIsAdmin) continue; // STRICT PRIVACY: Never leak chats
             }
             if (!userMessages[chatKey]) {
               userMessages[chatKey] = [];
@@ -342,14 +341,31 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const session = getSession(req);
+    if (!session) {
+      return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401, headers: NO_CACHE_HEADERS });
+    }
     const body = await req.json();
-    const { conversationId, message, senderUsername, action, messageId } = body;
+    const { conversationId, message, action, messageId } = body;
 
-    if (!conversationId) {
+    if (!conversationId || typeof conversationId !== 'string') {
       return NextResponse.json({ success: false, error: 'conversationId is required' }, { status: 400, headers: NO_CACHE_HEADERS });
     }
 
+    if (!(await canAccessConversation(conversationId, session))) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized: You are not a participant in this conversation' },
+        { status: 403, headers: NO_CACHE_HEADERS }
+      );
+    }
+
     if (action === 'unsend' && messageId) {
+      const existingMsgs: any[] = await getServerChatMessages(conversationId).catch(() => []);
+      const target = (existingMsgs || []).find((m: any) => m?.id === messageId);
+      const owner = String(target?.senderUsername || '').toLowerCase().trim();
+      if (target && owner && owner !== session.username && session.role !== 'admin') {
+        return NextResponse.json({ success: false, error: 'You can only unsend your own messages.' }, { status: 403, headers: NO_CACHE_HEADERS });
+      }
       await unsendServerChatMessage(conversationId, messageId);
       return NextResponse.json({ success: true, action: 'unsend', messageId }, { headers: NO_CACHE_HEADERS });
     }
@@ -360,7 +376,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (action === 'mark_read') {
-      const reader = (body.readerUsername || senderUsername || '').toLowerCase().trim();
+      const reader = session.username;
       if (reader) {
         await markServerChatMessagesRead(conversationId, reader);
         if (supabaseUrl && supabaseKey) {
@@ -394,7 +410,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (action === 'mark_delivered') {
-      const recipient = (body.recipientUsername || body.readerUsername || senderUsername || '').toLowerCase().trim();
+      const recipient = session.username;
       if (recipient && supabaseUrl && supabaseKey) {
         try {
           const sb = createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false } });
@@ -441,17 +457,9 @@ export async function POST(req: NextRequest) {
       message.audioUrl = undefined;
     }
 
-    // Verify sender belongs to this conversation
-    const userCookie = req.cookies.get('dpsbuzz_user')?.value;
-    let authUser = '';
-    if (userCookie) {
-      try {
-        const parsed = JSON.parse(decodeURIComponent(userCookie));
-        authUser = (parsed?.username || '').toLowerCase().trim();
-      } catch {}
-    }
-
-    const sender = (senderUsername || authUser || message.senderUsername || '').toLowerCase().trim();
+    // Sender is always the logged-in user.
+    const sender = session.username;
+    message.senderUsername = sender;
 
     if (conversationId.includes('__')) {
       if (!sender) {
@@ -461,7 +469,7 @@ export async function POST(req: NextRequest) {
         );
       }
       const participants = conversationId.split('__').map((p: string) => p.trim().toLowerCase());
-      if (!participants.includes(sender) && sender !== 'shashwath71845') {
+      if (!participants.includes(sender) && session.role !== 'admin') {
         return NextResponse.json(
           { success: false, error: 'Unauthorized: Sender is not a participant in this conversation' },
           { status: 403, headers: NO_CACHE_HEADERS }
@@ -476,7 +484,7 @@ export async function POST(req: NextRequest) {
       }
       const groupId = conversationId.replace(/^conv-/, '');
       const store = await getServerStore();
-      const isAdmin = sender === 'shashwath71845';
+      const isAdmin = session.role === 'admin';
       const groupMembers = (store.groupMembers?.[groupId] || []).map((m: string) => m.toLowerCase().trim());
       const group = (store.groups || []).find((g: any) => g.id === groupId);
       const membersFromGroup = Array.isArray(group?.members) ? group.members.map((m: string) => m.toLowerCase().trim()) : [];

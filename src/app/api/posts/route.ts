@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getSession } from '@/lib/auth/session';
 import { createClient } from '@supabase/supabase-js';
 import { getServerStore, addServerPost, deleteServerPost } from '@/lib/serverStore';
 import { d1Query, d1Execute, isD1Configured } from '@/lib/cloudflare/d1';
@@ -159,11 +160,23 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const session = getSession(req);
+    if (!session) {
+      return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+    }
     const body = await req.json();
-    const { post, requester } = body;
+    const { post } = body;
     // Allow empty caption if photo or repost is present
-    if (!post || !post.username) {
+    if (!post || !post.id) {
       return NextResponse.json({ success: false, error: 'Invalid post object' }, { status: 400 });
+    }
+    // The author is always the logged-in user (admins may post as the official account).
+    if (session.role !== 'admin' || !post.username) {
+      post.username = session.username;
+    }
+    if (session.role === 'student') {
+      post.isAnnouncement = false;
+      post.isPinned = false;
     }
 
     // Defensive Security: Sanitize text fields and enforce media URL domain whitelist
@@ -190,16 +203,28 @@ export async function POST(req: NextRequest) {
     // Security check: If this is an existing post update (e.g. changing soundtrack / trimming),
     // ensure that ONLY the original post author can modify it!
     const store = await getServerStore();
-    const existingPost = store.posts?.find((p) => p && p.id === post.id);
+    let existingPost: any = store.posts?.find((p) => p && p.id === post.id);
+    if (!existingPost && isD1Configured()) {
+      const rows = await d1Query<any>('SELECT author_username, likes_count, comments_count FROM posts WHERE id = ? LIMIT 1;', [post.id]);
+      if (rows[0]) existingPost = { username: rows[0].author_username, likes: rows[0].likes_count, comments: rows[0].comments_count };
+    }
     if (existingPost) {
       const origAuthor = (existingPost.username || '').toLowerCase().trim();
-      const cleanReq = (requester || post.username || '').toLowerCase().trim();
-      if (cleanReq !== origAuthor) {
+      post.username = existingPost.username;
+      post.likes = existingPost.likes || 0;
+      post.comments = existingPost.comments || 0;
+      if (session.username !== origAuthor && session.role !== 'admin') {
         return NextResponse.json(
           { success: false, error: 'Unauthorized: Only the original post author can modify this post.' },
           { status: 403, headers: NO_CACHE_HEADERS }
         );
       }
+    }
+
+    if (!existingPost) {
+      post.likes = 0;
+      post.comments = 0;
+      post.views = 0;
     }
 
     // 1. Persist to serverStore
@@ -272,6 +297,22 @@ export async function DELETE(req: NextRequest) {
     const id = searchParams.get('id');
     if (!id) {
       return NextResponse.json({ success: false, error: 'Missing post id' }, { status: 400 });
+    }
+
+    const session = getSession(req);
+    if (!session) {
+      return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+    }
+    if (session.role !== 'admin') {
+      const store = await getServerStore();
+      let author = store.posts?.find((p) => p && p.id === id)?.username || '';
+      if (!author && isD1Configured()) {
+        const rows = await d1Query<any>('SELECT author_username FROM posts WHERE id = ? LIMIT 1;', [id]);
+        author = rows[0]?.author_username || '';
+      }
+      if (!author || author.toLowerCase().trim() !== session.username) {
+        return NextResponse.json({ success: false, error: 'You can only delete your own posts.' }, { status: 403 });
+      }
     }
 
     const updated = await deleteServerPost(id);

@@ -4,6 +4,11 @@ import { v5 as uuidv5 } from 'uuid';
 import { v2 as cloudinary } from 'cloudinary';
 import { getServerStore, upsertServerProfile, recordServerNewUserAlert } from '@/lib/serverStore';
 import { getD1Profiles, getD1ProfileByUsername, upsertD1Profile, isD1Configured } from '@/lib/cloudflare/dbService';
+import { getSession, setSessionCookie, canActAs, isAdmin } from '@/lib/auth/session';
+import { hashPassword, validatePasswordStrength } from '@/lib/auth/password';
+import { credentialsAvailable, getCredential, setPassword } from '@/lib/auth/credentials';
+import { ADMIN_USERNAME, findStoredProfile, isValidUsername, normalizeUsername } from '@/lib/auth/profileLookup';
+import { checkRateLimit, getClientIp, isValidMediaUrl } from '@/lib/security';
 
 const UUID_NAMESPACE = '6ba7b810-9dad-11d1-80b4-00c04fd430c8';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
@@ -44,6 +49,16 @@ export async function GET(req: NextRequest) {
     const checkName = searchParams.get('checkName')?.toLowerCase().trim();
     const checkClass = searchParams.get('class');
     const checkSection = searchParams.get('section')?.toUpperCase();
+
+    // Logged-out visitors (sign-up page) may only ask "is this username taken?".
+    const viewerSession = getSession(req);
+    if (!viewerSession && !(checkName && checkClass)) {
+      if (!username) {
+        return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401, headers: NO_CACHE_HEADERS });
+      }
+      const exists = Boolean(await findStoredProfile(username)) || username === ADMIN_USERNAME;
+      return NextResponse.json({ success: true, exists }, { headers: NO_CACHE_HEADERS });
+    }
 
     // ------------------------------------------------------------------------
     // FAST PATH: Lookup single user in Cloudflare D1 first (<100ms)
@@ -89,7 +104,7 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({
               success: true,
               exists: true,
-              username: match.username,
+              username: viewerSession ? match.username : undefined,
               fullName: match.fullName || (match as any).full_name,
               class: match.class,
               section: match.section,
@@ -109,7 +124,7 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({
           success: true,
           exists: true,
-          username: storeMatch.username,
+          username: viewerSession ? storeMatch.username : undefined,
           fullName: storeMatch.fullName,
           class: storeMatch.class,
           section: storeMatch.section,
@@ -196,7 +211,9 @@ export async function GET(req: NextRequest) {
     if (supabase) {
       let query = supabase.from('profiles').select('*');
       if (username.length === 36 && username.includes('-')) {
-        query = query.or(`id.eq.${username},username.ilike.${username}`);
+        query = /^[0-9a-f-]{36}$/i.test(username)
+          ? query.eq('id', username)
+          : query.ilike('username', username.replace(/[%_\\]/g, '\\$&'));
       } else {
         query = query.ilike('username', username);
       }
@@ -270,12 +287,69 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { profile, isNewSignup } = body;
+    const { isNewSignup } = body;
+    const profile = body?.profile;
     if (!profile || !profile.username) {
       return NextResponse.json({ success: false, error: 'Invalid profile object' }, { status: 400 });
     }
 
-    const cleanUser = profile.username.toLowerCase().trim();
+    const cleanUser = normalizeUsername(profile.username);
+    const session = getSession(req);
+
+    if (isNewSignup) {
+      // ---- New account: validate on the server, store a hashed password, start a session ----
+      if (!isValidUsername(cleanUser)) {
+        return NextResponse.json(
+          { success: false, error: 'Username must be 3–30 characters: letters, numbers, dots or underscores.' },
+          { status: 400 }
+        );
+      }
+      const schoolCode = String(process.env.SCHOOL_INVITE_CODE || 'DPS71845').trim().toUpperCase();
+      if (String(body?.inviteCode || '').trim().toUpperCase() !== schoolCode) {
+        return NextResponse.json({ success: false, error: 'Invalid school code. Ask your class teacher for it.' }, { status: 403 });
+      }
+      const weak = validatePasswordStrength(body?.password);
+      if (weak) return NextResponse.json({ success: false, error: weak }, { status: 400 });
+      if (cleanUser === ADMIN_USERNAME || cleanUser.startsWith('teacher_') || cleanUser === 'madam_principal') {
+        return NextResponse.json({ success: false, error: 'This username is reserved.' }, { status: 400 });
+      }
+      if (!credentialsAvailable()) {
+        return NextResponse.json({ success: false, error: 'Sign-up is temporarily unavailable.' }, { status: 503 });
+      }
+      const ip = getClientIp(req);
+      if (!checkRateLimit(`signup:ip:${ip}`, 20, 60 * 60 * 1000).allowed) {
+        return NextResponse.json({ success: false, error: 'Too many sign-ups from this network. Try again later.' }, { status: 429 });
+      }
+      if (await findStoredProfile(cleanUser)) {
+        return NextResponse.json({ success: false, error: 'This username is already taken.' }, { status: 409 });
+      }
+      try {
+        if (await getCredential(cleanUser)) {
+          return NextResponse.json({ success: false, error: 'This username is already taken.' }, { status: 409 });
+        }
+        await setPassword(cleanUser, await hashPassword(body.password));
+      } catch (err) {
+        console.error('[auth/profile] signup credential error:', err);
+        return NextResponse.json({ success: false, error: 'Sign-up is temporarily unavailable.' }, { status: 503 });
+      }
+    } else if (!canActAs(session, cleanUser)) {
+      // ---- Profile update: only the owner (or an admin) may change it ----
+      return NextResponse.json({ success: false, error: 'You can only edit your own profile.' }, { status: 403 });
+    }
+
+    // Students can never grant themselves privileges or inflate their counters.
+    if (!isAdmin(session)) {
+      const existing = isNewSignup ? null : await findStoredProfile(cleanUser);
+      profile.role = existing ? (existing as any).role || 'student' : 'student';
+      profile.isVerified = existing ? Boolean((existing as any).isVerified) : true;
+      profile.isApproved = existing ? Boolean((existing as any).isApproved ?? true) : true;
+      profile.followerCount = existing ? existing.followerCount : 0;
+      profile.followingCount = existing ? existing.followingCount : 0;
+      profile.postCount = existing ? existing.postCount : 0;
+      profile.spiritPoints = existing ? existing.spiritPoints : 50;
+      if (existing?.id) profile.id = existing.id;
+    }
+    delete profile.password;
 
     // Guard: Convert any base64 avatar to Cloudinary CDN URL before saving
     let finalAvatar = profile.avatar || null;
@@ -289,12 +363,14 @@ export async function POST(req: NextRequest) {
           });
           finalAvatar = uploadRes.secure_url;
         } else {
-          finalAvatar = 'https://res.cloudinary.com/ogfaxmjw/image/upload/v1793467674/dpsbuzz/avatars/avatar_shashwath71845.jpg';
+          finalAvatar = null;
         }
       } catch (uploadErr) {
-        console.warn('[auth/profile] Base64 avatar upload failed, falling back to CDN avatar:', uploadErr);
-        finalAvatar = 'https://res.cloudinary.com/ogfaxmjw/image/upload/v1793467674/dpsbuzz/avatars/avatar_shashwath71845.jpg';
+        console.warn('[auth/profile] Base64 avatar upload failed:', uploadErr);
+        finalAvatar = null;
       }
+    } else if (finalAvatar && !isValidMediaUrl(finalAvatar)) {
+      finalAvatar = null;
     }
 
     const cleanProfile = { ...profile, username: cleanUser, avatar: finalAvatar };
@@ -342,13 +418,17 @@ export async function POST(req: NextRequest) {
     // Trigger new user signup alert safely
     if (isNewSignup) {
       try {
-        await recordServerNewUserAlert(profile);
+        await recordServerNewUserAlert(cleanProfile);
       } catch (alertError) {
         console.error('Non-blocking error triggering new user signup alert:', alertError);
       }
     }
 
-    return NextResponse.json({ success: true, profile, alertTriggered: Boolean(isNewSignup) });
+    const res = NextResponse.json({ success: true, profile: cleanProfile, alertTriggered: Boolean(isNewSignup) });
+    if (isNewSignup) {
+      setSessionCookie(res, { username: cleanUser, id: cleanProfile.id || `prof_${cleanUser}`, role: 'student' });
+    }
+    return res;
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }

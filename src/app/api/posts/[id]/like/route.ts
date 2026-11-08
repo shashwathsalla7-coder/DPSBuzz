@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getSession } from '@/lib/auth/session';
 import { toggleServerLike } from '@/lib/serverStore';
 import { createClient } from '@supabase/supabase-js';
 
@@ -17,14 +18,11 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
-    const body = await req.json();
-    const { username } = body;
-
-    if (!username) {
-      return NextResponse.json({ success: false, error: 'Username required' }, { status: 400 });
+    const session = getSession(req);
+    if (!session) {
+      return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
     }
-
-    const cleanUser = username.toLowerCase().trim();
+    const cleanUser = session.username;
     let isLiked = false;
     let likesCount = 0;
 

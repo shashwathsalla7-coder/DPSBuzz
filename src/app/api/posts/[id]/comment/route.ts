@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getSession } from '@/lib/auth/session';
 import { addServerComment, getServerStore } from '@/lib/serverStore';
 import { createClient } from '@supabase/supabase-js';
 import { sanitizeText, isValidMediaUrl } from '@/lib/security';
@@ -55,8 +56,13 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
+    const session = getSession(req);
+    if (!session) {
+      return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+    }
     const body = await req.json();
     const { comment } = body;
+    if (comment && typeof comment === 'object') comment.username = session.username;
 
     if (!comment || (!comment.text && !comment.image) || !comment.username) {
       return NextResponse.json({ success: false, error: 'Comment must contain text or an image' }, { status: 400 });

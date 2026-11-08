@@ -59,7 +59,7 @@ Before deploying any new chat features or code changes that touch database model
 ## 3. How to Wipe Test Data
 
 To reset the application to a clean live launch state:
-1. Log in to the Admin Console at `/admin/login` using the admin password (`admin123` or `admin`).
+1. Log in to the Admin Console at `/admin/login` with the password set in the `ADMIN_PASSWORD` environment variable.
 2. Go to the **System & Wipe** tab.
 3. Scroll to **Danger Zone** and tap **Wipe All Test Data**.
 4. Confirm the wipe modal.

@@ -42,6 +42,7 @@ import {
   Music,
 } from 'lucide-react';
 import { AdminMusicManager } from '@/components/admin/AdminMusicManager';
+import AdminPasswordTool from '@/components/admin/AdminPasswordTool';
 import {
   DataStore,
   type Profile,
@@ -804,6 +805,7 @@ export default function AdminPage() {
         {/* ========================================================================= */}
         {activeTab === 'users' && (
           <div className="space-y-4">
+            <AdminPasswordTool />
             <div className="bg-[var(--surface)] border border-[var(--line)] rounded-none p-4 space-y-3">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>

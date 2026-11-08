@@ -44,7 +44,7 @@ async function captureAllScreenshots() {
 
   // Fill in credentials
   await authPage.fill('input[type="text"]', 'shashwath71845');
-  await authPage.fill('input[type="password"]', '71845shashwath123');
+  await authPage.fill('input[type="password"]', process.env.ADMIN_PASSWORD || '');
   await authPage.click('button[type="submit"]');
 
   // Wait for redirect to /home

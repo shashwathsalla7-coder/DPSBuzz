@@ -1,82 +1,51 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { setSessionCookie } from '@/lib/auth/session';
+import { safeEqual } from '@/lib/auth/password';
+import { ADMIN_USERNAME, findStoredProfile } from '@/lib/auth/profileLookup';
+import { checkRateLimit, getClientIp } from '@/lib/security';
 
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '71845shashwath123';
-
+// Admin password comes ONLY from the ADMIN_PASSWORD environment variable.
 export async function POST(req: NextRequest) {
   try {
-    const { password } = await req.json();
-
+    const { password } = await req.json().catch(() => ({ password: '' }));
     if (!password || typeof password !== 'string') {
       return NextResponse.json({ success: false, error: 'Password is required' }, { status: 400 });
     }
 
-    // Explicitly reject common school invite codes
-    const trimmed = password.trim();
-    if (trimmed.toUpperCase() === 'DPS71845' || trimmed === '71845') {
-      return NextResponse.json(
-        { success: false, error: 'Access denied: The school invite code cannot be used as an administrator password.' },
-        { status: 403 }
-      );
+    const ip = getClientIp(req);
+    if (!checkRateLimit(`admin-login:${ip}`, 10, 15 * 60 * 1000).allowed) {
+      return NextResponse.json({ success: false, error: 'Too many attempts. Try again later.' }, { status: 429 });
     }
 
-    // Verify true admin password
-    if (trimmed !== ADMIN_PASSWORD) {
+    const adminPassword = process.env.ADMIN_PASSWORD || '';
+    if (adminPassword.length < 8) {
       return NextResponse.json(
-        { success: false, error: 'Incorrect administrator password. Access restricted to Admin ID: @shashwath71845.' },
-        { status: 401 }
+        { success: false, error: 'Admin login is disabled: ADMIN_PASSWORD is not configured on the server.' },
+        { status: 503 }
       );
     }
+    if (!safeEqual(password.trim(), adminPassword)) {
+      return NextResponse.json({ success: false, error: 'Incorrect administrator password.' }, { status: 401 });
+    }
 
+    const stored = await findStoredProfile(ADMIN_USERNAME).catch(() => null);
     const adminUser = {
-      id: 'admin-shashwath-id',
-      username: 'shashwath71845',
-      fullName: 'Shashwath Salla',
+      ...(stored || {}),
+      id: stored?.id || 'admin-shashwath-id',
+      username: ADMIN_USERNAME,
+      fullName: stored?.fullName || 'Administrator',
       role: 'admin',
-      avatar: null,
+      avatar: stored?.avatar || null,
       isVerified: true,
       isApproved: true,
       class: 'Staff',
       section: 'Admin',
     };
 
-    const res = NextResponse.json({
-      success: true,
-      user: adminUser,
-    });
-
-    // Set secure admin session cookie
-    const adminSessionToken = Buffer.from(
-      JSON.stringify({
-        id: adminUser.id,
-        username: adminUser.username,
-        role: 'admin',
-        issuedAt: Date.now(),
-      })
-    ).toString('base64');
-
-    res.cookies.set('dpsbuzz_admin_session', adminSessionToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 60 * 60 * 24 * 7, // 7 days
-    });
-
-    const publicAdminCookie = encodeURIComponent(
-      JSON.stringify({ id: adminUser.id, username: adminUser.username, role: 'admin' })
-    );
-    res.cookies.set('dpsbuzz_user', publicAdminCookie, {
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 60 * 60 * 24 * 7,
-    });
-
+    const res = NextResponse.json({ success: true, user: adminUser });
+    setSessionCookie(res, { username: ADMIN_USERNAME, id: adminUser.id, role: 'admin' });
     return res;
-  } catch (error: any) {
-    return NextResponse.json(
-      { success: false, error: error.message || 'Admin authentication failed' },
-      { status: 500 }
-    );
+  } catch {
+    return NextResponse.json({ success: false, error: 'Admin authentication failed' }, { status: 500 });
   }
 }

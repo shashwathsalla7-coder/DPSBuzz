@@ -3,21 +3,14 @@ import fs from 'node:fs';
 
 console.log('--- Running Admin Authentication & Capabilities Verification ---');
 
-// 1. Verify Admin Credentials Check in login/page.tsx
+// 1. Admin password must NEVER be in client code; login goes through the server.
 const loginPageContent = fs.readFileSync('src/app/(auth)/login/page.tsx', 'utf8');
-assert.ok(
-  loginPageContent.includes('shashwath71845'),
-  'Login page must check for admission number / username shashwath71845'
-);
-assert.ok(
-  loginPageContent.includes('71845shashwath123'),
-  'Login page must check for password 71845shashwath123'
-);
-assert.ok(
-  loginPageContent.includes("router.push('/home')") || loginPageContent.includes("router.push('/admin')"),
-  'Login page must route admin to /home or /admin'
-);
-console.log('✓ PASS: Admin credentials (shashwath71845 / 71845shashwath123) correctly validated and routed to feed with admin access');
+assert.ok(loginPageContent.includes('/api/auth/login'), 'Login page must authenticate via /api/auth/login');
+assert.ok(!/password === ['"]/.test(loginPageContent), 'Login page must not compare passwords in the browser');
+const adminRoute = fs.readFileSync('src/app/api/admin/login/route.ts', 'utf8');
+assert.ok(adminRoute.includes('process.env.ADMIN_PASSWORD'), 'Admin password must come from ADMIN_PASSWORD env');
+assert.ok(!/ADMIN_PASSWORD \|\| ['"][^'"]/.test(adminRoute), 'Admin password must have no hardcoded fallback');
+console.log('✓ PASS: Admin password is server-only (ADMIN_PASSWORD env) and checked by the server');
 
 // 2. Verify DataStore Admin Account & Capabilities in src/lib/dataStore.ts
 const dataStoreContent = fs.readFileSync('src/lib/dataStore.ts', 'utf8');

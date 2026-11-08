@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getSession } from '@/lib/auth/session';
 
 // ============================================================================
 // DPS BUZZ - ENTERPRISE DEFENSIVE SECURITY ENGINE
@@ -191,34 +192,10 @@ export interface AuthUserSession {
 }
 
 /**
- * Securely extracts authenticated user session from cookie
+ * Returns the logged-in user from the SIGNED session cookie.
+ * (The old unsigned dpsbuzz_user cookie is never trusted.)
  */
 export function getAuthenticatedUser(req: NextRequest): AuthUserSession | null {
-  const userCookie = req.cookies.get('dpsbuzz_user')?.value;
-  if (!userCookie) return null;
-
-  try {
-    const decoded = decodeURIComponent(userCookie);
-    const parsed = JSON.parse(decoded);
-    if (!parsed || !parsed.username || parsed.username.toLowerCase() === 'guest') {
-      return null;
-    }
-
-    const cleanUsername = String(parsed.username).toLowerCase().trim();
-    let role: 'student' | 'teacher' | 'admin' = 'student';
-
-    if (cleanUsername === 'shashwath71845' || cleanUsername === 'madam_principal' || parsed.role === 'admin') {
-      role = 'admin';
-    } else if (parsed.role === 'teacher' || cleanUsername.startsWith('teacher_')) {
-      role = 'teacher';
-    }
-
-    return {
-      username: cleanUsername,
-      role,
-      fullName: parsed.fullName || cleanUsername,
-    };
-  } catch {
-    return null;
-  }
+  const s = getSession(req);
+  return s ? { username: s.username, role: s.role, fullName: s.username } : null;
 }

@@ -1,9 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getSession } from '@/lib/auth/session';
 import crypto from 'crypto';
 
 const ZEGO_APP_ID = Number(process.env.NEXT_PUBLIC_ZEGO_APP_ID || 1507772247);
 // Server secret is kept strictly on server and never sent to browser
-const ZEGO_SERVER_SECRET = process.env.ZEGO_SERVER_SECRET || process.env.NEXT_PUBLIC_ZEGO_SERVER_SECRET || '';
+// Server-only secret. Never prefix with NEXT_PUBLIC_ and never hardcode it.
+const ZEGO_SERVER_SECRET = process.env.ZEGO_SERVER_SECRET || '';
+
+/** The Zego user id must belong to the logged-in user ("<username>_<role>"). */
+function userIdBelongsTo(userId: string, username: string): boolean {
+  const base = username.replace(/[^a-zA-Z0-9_]/g, '_');
+  return userId === base || userId.startsWith(base + '_');
+}
 
 /**
  * Server-side ZEGOCLOUD kitToken generator.
@@ -60,13 +68,23 @@ function generateServerZegoToken(
 
 export async function GET(req: NextRequest) {
   try {
+    const session = getSession(req);
+    if (!session) {
+      return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+    }
+    if (ZEGO_SERVER_SECRET.length !== 32) {
+      return NextResponse.json({ success: false, error: 'Calls are not configured on the server.' }, { status: 503 });
+    }
     const { searchParams } = new URL(req.url);
     const roomId = searchParams.get('roomId') || searchParams.get('roomID');
     const userId = searchParams.get('userId') || searchParams.get('userID');
-    const userName = searchParams.get('userName') || searchParams.get('username') || userId;
+    const userName = searchParams.get('userName') || session.username;
 
     if (!roomId || !userId) {
       return NextResponse.json({ success: false, error: 'roomId and userId are required' }, { status: 400 });
+    }
+    if (!userIdBelongsTo(userId, session.username)) {
+      return NextResponse.json({ success: false, error: 'userId does not match your account' }, { status: 403 });
     }
 
     const token = generateServerZegoToken(
@@ -93,11 +111,21 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const session = getSession(req);
+    if (!session) {
+      return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+    }
+    if (ZEGO_SERVER_SECRET.length !== 32) {
+      return NextResponse.json({ success: false, error: 'Calls are not configured on the server.' }, { status: 503 });
+    }
     const body = await req.json();
     const { roomId, userId, userName } = body;
 
     if (!roomId || !userId) {
       return NextResponse.json({ success: false, error: 'roomId and userId are required' }, { status: 400 });
+    }
+    if (!userIdBelongsTo(String(userId), session.username)) {
+      return NextResponse.json({ success: false, error: 'userId does not match your account' }, { status: 403 });
     }
 
     // Generate secure token on server
