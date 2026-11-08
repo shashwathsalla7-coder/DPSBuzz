@@ -77,21 +77,21 @@ export const TeacherNoticeModal: React.FC<TeacherNoticeModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 select-none animate-fadeIn">
-      <div className="w-full max-w-lg bg-[#111b21] rounded-2xl border border-[#222d34] flex flex-col shadow-2xl overflow-hidden">
+      <div className="w-full max-w-lg bg-[var(--bg)] rounded-2xl border border-[var(--line)] flex flex-col shadow-2xl overflow-hidden">
         {/* Header */}
-        <div className="px-5 py-4 bg-[#202c33] border-b border-[#222d34] flex items-center justify-between">
+        <div className="px-5 py-4 bg-[var(--surface)] border-b border-[var(--line)] flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-[#00a884]/20 text-[#00a884] flex items-center justify-center font-bold">
+            <div className="w-8 h-8 rounded-lg bg-[var(--primary)]/20 text-[var(--primary)] flex items-center justify-center font-bold">
               <Megaphone size={16} />
             </div>
             <div>
-              <h3 className="text-sm font-semibold text-[#e9edef]">Official Teacher Dispatch</h3>
-              <p className="text-[11px] text-[#8696a0]">{channelName}</p>
+              <h3 className="text-sm font-semibold text-[var(--text)]">Official Teacher Dispatch</h3>
+              <p className="text-[11px] text-[var(--text-muted)]">{channelName}</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-full text-[#8696a0] hover:text-[#e9edef] transition-colors cursor-pointer"
+            className="p-1.5 rounded-full text-[var(--text-muted)] hover:text-[var(--text)] transition-colors cursor-pointer"
           >
             <X size={18} />
           </button>
@@ -100,7 +100,7 @@ export const TeacherNoticeModal: React.FC<TeacherNoticeModalProps> = ({
         {/* Content Form */}
         <form onSubmit={handleSend} className="p-5 space-y-4">
           {/* Template Type Selector */}
-          <div className="grid grid-cols-4 gap-1.5 p-1 rounded-xl bg-[#202c33] border border-[#222d34]">
+          <div className="grid grid-cols-4 gap-1.5 p-1 rounded-xl bg-[var(--surface)] border border-[var(--line)]">
             {(['homework', 'attendance', 'exam', 'transport'] as const).map((t) => (
               <button
                 key={t}
@@ -108,8 +108,8 @@ export const TeacherNoticeModal: React.FC<TeacherNoticeModalProps> = ({
                 onClick={() => setSelectedType(t)}
                 className={`py-2 px-1 text-center rounded-lg text-xs font-semibold capitalize transition-all cursor-pointer ${
                   selectedType === t
-                    ? 'bg-[#00a884] text-[#111b21] shadow-md'
-                    : 'text-[#8696a0] hover:text-[#e9edef]'
+                    ? 'bg-[var(--primary)] text-[var(--bg)] shadow-md'
+                    : 'text-[var(--text-muted)] hover:text-[var(--text)]'
                 }`}
               >
                 {t === 'homework' && 'Homework'}
@@ -122,56 +122,56 @@ export const TeacherNoticeModal: React.FC<TeacherNoticeModalProps> = ({
 
           {/* Subject Field */}
           <div>
-            <label className="block text-xs font-medium text-[#8696a0] mb-1">Notice Headline / Subject</label>
+            <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">Notice Headline / Subject</label>
             <input
               type="text"
               placeholder={currentTemplate.defaultSubject}
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
-              className="w-full px-3 py-2 rounded-xl bg-[#202c33] text-sm text-[#e9edef] placeholder-[#8696a0] border border-[#222d34] outline-none focus:border-[#00a884]"
+              className="w-full px-3 py-2 rounded-xl bg-[var(--surface)] text-sm text-[var(--text)] placeholder-[var(--text-muted)] border border-[var(--line)] outline-none focus:border-[var(--primary)]"
             />
           </div>
 
           {/* Details Field */}
           <div>
-            <label className="block text-xs font-medium text-[#8696a0] mb-1">Details & Guidelines</label>
+            <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">Details & Guidelines</label>
             <textarea
               rows={3}
               placeholder={currentTemplate.defaultDetails}
               value={details}
               onChange={(e) => setDetails(e.target.value)}
-              className="w-full px-3 py-2 rounded-xl bg-[#202c33] text-xs text-[#e9edef] placeholder-[#8696a0] border border-[#222d34] outline-none focus:border-[#00a884] resize-none leading-relaxed"
+              className="w-full px-3 py-2 rounded-xl bg-[var(--surface)] text-xs text-[var(--text)] placeholder-[var(--text-muted)] border border-[var(--line)] outline-none focus:border-[var(--primary)] resize-none leading-relaxed"
             />
           </div>
 
           {/* Due date if homework */}
           {selectedType === 'homework' && (
             <div>
-              <label className="block text-xs font-medium text-[#8696a0] mb-1">Submission Deadline</label>
+              <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">Submission Deadline</label>
               <input
                 type="text"
                 placeholder="Tomorrow 8:30 AM"
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-[#202c33] text-sm text-[#e9edef] placeholder-[#8696a0] border border-[#222d34] outline-none"
+                className="w-full px-3 py-2 rounded-xl bg-[var(--surface)] text-sm text-[var(--text)] placeholder-[var(--text-muted)] border border-[var(--line)] outline-none"
               />
             </div>
           )}
 
           {/* Broadcast to All Classes toggle */}
-          <div className="flex items-center justify-between p-3 rounded-xl bg-[#182229] border border-[#222d34]">
+          <div className="flex items-center justify-between p-3 rounded-xl bg-[#182229] border border-[var(--line)]">
             <div className="flex items-center gap-2">
-              <ShieldCheck size={18} className="text-[#00a884]" />
+              <ShieldCheck size={18} className="text-[var(--primary)]" />
               <div>
-                <div className="text-xs font-semibold text-[#e9edef]">Broadcast to All 91 Classes</div>
-                <div className="text-[10px] text-[#8696a0]">Distribute simultaneously across Nursery to 12th</div>
+                <div className="text-xs font-semibold text-[var(--text)]">Broadcast to All 91 Classes</div>
+                <div className="text-[10px] text-[var(--text-muted)]">Distribute simultaneously across Nursery to 12th</div>
               </div>
             </div>
             <input
               type="checkbox"
               checked={broadcastToAll}
               onChange={(e) => setBroadcastToAll(e.target.checked)}
-              className="w-4 h-4 accent-[#00a884] cursor-pointer"
+              className="w-4 h-4 accent-[var(--primary)] cursor-pointer"
             />
           </div>
 
@@ -180,13 +180,13 @@ export const TeacherNoticeModal: React.FC<TeacherNoticeModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-xs font-medium text-[#8696a0] hover:text-white cursor-pointer"
+              className="px-4 py-2 text-xs font-medium text-[var(--text-muted)] hover:text-white cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-5 py-2.5 rounded-xl text-xs font-semibold bg-[#00a884] hover:bg-[#008f6f] text-white flex items-center gap-2 shadow-lg transition-all cursor-pointer active:scale-95"
+              className="px-5 py-2.5 rounded-xl text-xs font-semibold bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white flex items-center gap-2 shadow-lg transition-all cursor-pointer active:scale-95"
             >
               <Send size={14} />
               <span>Publish Notice</span>

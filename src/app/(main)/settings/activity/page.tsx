@@ -324,14 +324,14 @@ function YourActivityContent() {
               onClick={() => setActiveCategory('interactions')}
               className={`w-full text-left p-3.5 rounded-none flex items-start gap-3.5 transition-colors cursor-pointer shrink-0 md:shrink ${
                 activeCategory === 'interactions'
-                  ? 'bg-[var(--surface-sunken)] border-l-2 border-pink-500'
+                  ? 'bg-[var(--surface-sunken)] border-l-2 border-[var(--line-strong)]'
                   : 'hover:bg-[var(--surface-sunken)]/60 border-l-2 border-transparent'
               }`}
             >
               <ArrowLeftRight
                 size={22}
                 className={`shrink-0 mt-0.5 ${
-                  activeCategory === 'interactions' ? 'text-pink-500' : 'text-[var(--text-muted)]'
+                  activeCategory === 'interactions' ? 'text-[var(--primary)]' : 'text-[var(--text-muted)]'
                 }`}
               />
               <div className="min-w-0">
@@ -353,14 +353,14 @@ function YourActivityContent() {
               onClick={() => setActiveCategory('photos')}
               className={`w-full text-left p-3.5 rounded-none flex items-start gap-3.5 transition-colors cursor-pointer shrink-0 md:shrink ${
                 activeCategory === 'photos'
-                  ? 'bg-[var(--surface-sunken)] border-l-2 border-pink-500'
+                  ? 'bg-[var(--surface-sunken)] border-l-2 border-[var(--line-strong)]'
                   : 'hover:bg-[var(--surface-sunken)]/60 border-l-2 border-transparent'
               }`}
             >
               <ImageIcon
                 size={22}
                 className={`shrink-0 mt-0.5 ${
-                  activeCategory === 'photos' ? 'text-pink-500' : 'text-[var(--text-muted)]'
+                  activeCategory === 'photos' ? 'text-[var(--primary)]' : 'text-[var(--text-muted)]'
                 }`}
               />
               <div className="min-w-0">
@@ -382,14 +382,14 @@ function YourActivityContent() {
               onClick={() => setActiveCategory('history')}
               className={`w-full text-left p-3.5 rounded-none flex items-start gap-3.5 transition-colors cursor-pointer shrink-0 md:shrink ${
                 activeCategory === 'history'
-                  ? 'bg-[var(--surface-sunken)] border-l-2 border-pink-500'
+                  ? 'bg-[var(--surface-sunken)] border-l-2 border-[var(--line-strong)]'
                   : 'hover:bg-[var(--surface-sunken)]/60 border-l-2 border-transparent'
               }`}
             >
               <Calendar
                 size={22}
                 className={`shrink-0 mt-0.5 ${
-                  activeCategory === 'history' ? 'text-pink-500' : 'text-[var(--text-muted)]'
+                  activeCategory === 'history' ? 'text-[var(--primary)]' : 'text-[var(--text-muted)]'
                 }`}
               />
               <div className="min-w-0">
@@ -408,7 +408,7 @@ function YourActivityContent() {
               onClick={() => setActiveCategory('appeals')}
               className={`w-full text-left p-3.5 rounded-none flex items-start gap-3.5 transition-colors cursor-pointer shrink-0 md:shrink ${
                 activeCategory === 'appeals'
-                  ? 'bg-[var(--surface-sunken)] border-l-2 border-pink-500'
+                  ? 'bg-[var(--surface-sunken)] border-l-2 border-[var(--line-strong)]'
                   : 'hover:bg-[var(--surface-sunken)]/60 border-l-2 border-transparent'
               }`}
             >
@@ -418,9 +418,9 @@ function YourActivityContent() {
                   isBanned
                     ? 'text-red-500'
                     : userWarnings.length > 0
-                    ? 'text-amber-500'
+                    ? 'text-[var(--gold)]'
                     : activeCategory === 'appeals'
-                    ? 'text-pink-500'
+                    ? 'text-[var(--primary)]'
                     : 'text-[var(--text-muted)]'
                 }`}
               />
@@ -513,7 +513,7 @@ function YourActivityContent() {
                     <Filter size={12} />
                     <span>Sort & filter</span>
                     {dateRangeFilter !== 'all' && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-pink-500" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-cta)]" />
                     )}
                   </button>
 
@@ -524,7 +524,7 @@ function YourActivityContent() {
                         type="button"
                         onClick={() => setLikesSubFilter('posts')}
                         className={`px-2.5 py-0.5 rounded-full transition cursor-pointer ${
-                          likesSubFilter === 'posts' ? 'bg-pink-600 text-white font-bold' : 'text-neutral-400 hover:text-white'
+                          likesSubFilter === 'posts' ? 'bg-[var(--accent-cta)] text-white font-bold' : 'text-neutral-400 hover:text-white'
                         }`}
                       >
                         Posts ({likedPosts.length})
@@ -533,7 +533,7 @@ function YourActivityContent() {
                         type="button"
                         onClick={() => setLikesSubFilter('stories')}
                         className={`px-2.5 py-0.5 rounded-full transition cursor-pointer ${
-                          likesSubFilter === 'stories' ? 'bg-pink-600 text-white font-bold' : 'text-neutral-400 hover:text-white'
+                          likesSubFilter === 'stories' ? 'bg-[var(--accent-cta)] text-white font-bold' : 'text-neutral-400 hover:text-white'
                         }`}
                       >
                         Stories ({likedStories.length})
@@ -562,7 +562,7 @@ function YourActivityContent() {
                     type="button"
                     onClick={() => setLikesSubFilter('posts')}
                     className={`py-1 px-3 rounded-full cursor-pointer ${
-                      likesSubFilter === 'posts' ? 'bg-pink-600 text-white' : 'text-[var(--text-muted)]'
+                      likesSubFilter === 'posts' ? 'bg-[var(--accent-cta)] text-white' : 'text-[var(--text-muted)]'
                     }`}
                   >
                     Liked Posts ({likedPosts.length})
@@ -571,7 +571,7 @@ function YourActivityContent() {
                     type="button"
                     onClick={() => setLikesSubFilter('stories')}
                     className={`py-1 px-3 rounded-full cursor-pointer ${
-                      likesSubFilter === 'stories' ? 'bg-pink-600 text-white' : 'text-[var(--text-muted)]'
+                      likesSubFilter === 'stories' ? 'bg-[var(--accent-cta)] text-white' : 'text-[var(--text-muted)]'
                     }`}
                   >
                     Liked Stories ({likedStories.length})
@@ -616,7 +616,7 @@ function YourActivityContent() {
                                   loading="lazy"
                                 />
                               ) : (
-                                <div className="w-full h-full flex flex-col items-center justify-center p-2 bg-gradient-to-tr from-purple-900/40 to-pink-900/40 text-center">
+                                <div className="w-full h-full flex flex-col items-center justify-center p-2 bg-gradient-to-tr from-[var(--primary-tint)] to-[var(--primary-tint)] text-center">
                                   <ImageIcon size={24} className="text-white/40 mb-1" />
                                   <span className="text-[10px] text-white/70 line-clamp-2 px-1">
                                     {post.caption || `@${post.username}`}
@@ -691,7 +691,7 @@ function YourActivityContent() {
                               }`}
                             >
                               <div className="flex items-center gap-2.5 min-w-0">
-                                <div className="w-10 h-10 rounded-full border border-pink-500/50 p-0.5 shrink-0">
+                                <div className="w-10 h-10 rounded-full border border-[var(--line-strong)] p-0.5 shrink-0">
                                   <div className="w-full h-full rounded-full bg-neutral-800 flex items-center justify-center overflow-hidden">
                                     {story.avatar ? (
                                       <img src={story.avatar} alt={story.username} className="w-full h-full object-cover" />
@@ -892,13 +892,13 @@ function YourActivityContent() {
                               </button>
                             )}
 
-                            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-pink-500/20 to-purple-500/20 border border-pink-500/40 flex items-center justify-center text-pink-400 shrink-0">
+                            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[var(--primary-tint)] to-[var(--primary-tint)] border border-[var(--line-strong)] flex items-center justify-center text-[var(--primary)] shrink-0">
                               <CornerUpLeft size={16} />
                             </div>
 
                             <div className="min-w-0">
                               <p className="text-xs text-[var(--text)] font-semibold truncate">
-                                Replied to <span className="text-pink-400">@{reply.targetUsername}</span>&apos;s story
+                                Replied to <span className="text-[var(--primary)]">@{reply.targetUsername}</span>&apos;s story
                               </p>
                               <p className="text-xs text-[var(--text-muted)] truncate font-normal mt-0.5">
                                 &ldquo;{reply.replyText}&rdquo;
@@ -1008,7 +1008,7 @@ function YourActivityContent() {
                   </p>
                   <Link
                     href="/post/new"
-                    className="inline-block px-4 py-2 bg-pink-600 hover:bg-pink-500 text-white font-bold text-xs rounded-none transition"
+                    className="inline-block px-4 py-2 bg-[var(--accent-cta)] hover:bg-[var(--accent-cta)] text-white font-bold text-xs rounded-none transition"
                   >
                     + Create Post
                   </Link>
@@ -1042,7 +1042,7 @@ function YourActivityContent() {
                   return (
                     <div key={event.id} className="relative group">
                       {/* Milestone Dot */}
-                      <div className="absolute -left-[31px] top-0 w-8 h-8 rounded-full bg-[var(--surface)] border-2 border-pink-500 flex items-center justify-center text-pink-500 shadow-md">
+                      <div className="absolute -left-[31px] top-0 w-8 h-8 rounded-full bg-[var(--surface)] border-2 border-[var(--line-strong)] flex items-center justify-center text-[var(--primary)] shadow-md">
                         <IconComponent size={14} />
                       </div>
 
@@ -1097,16 +1097,16 @@ function YourActivityContent() {
                   </div>
                 </div>
               ) : userWarnings.length > 0 ? (
-                <div className="p-4 bg-amber-950/30 border-2 border-amber-500 rounded-none space-y-3">
-                  <div className="flex items-center gap-2.5 text-amber-400">
+                <div className="p-4 bg-[var(--gold-tint)] border-2 border-[var(--gold)] rounded-none space-y-3">
+                  <div className="flex items-center gap-2.5 text-[var(--gold)]">
                     <AlertTriangle size={20} />
                     <span className="text-sm font-black uppercase tracking-wider">
                       Active Disciplinary Warning ({userWarnings.length}) ⚠️
                     </span>
                   </div>
                   {userWarnings.map((warn) => (
-                    <div key={warn.id} className="p-3 bg-black/40 border border-amber-500/30 text-xs space-y-1">
-                      <div className="flex items-center justify-between text-[10px] text-amber-300 font-bold uppercase">
+                    <div key={warn.id} className="p-3 bg-black/40 border border-[var(--gold)] text-xs space-y-1">
+                      <div className="flex items-center justify-between text-[10px] text-[var(--gold)] font-bold uppercase">
                         <span>Issued by {warn.adminName}</span>
                         <span>{warn.date}</span>
                       </div>
@@ -1132,7 +1132,7 @@ function YourActivityContent() {
               <div className="p-5 bg-[var(--surface-sunken)] border border-[var(--line)] rounded-none space-y-4">
                 <div className="space-y-1">
                   <h3 className="text-sm font-bold text-[var(--text)] flex items-center gap-2">
-                    <Send size={15} className="text-pink-500" />
+                    <Send size={15} className="text-[var(--primary)]" />
                     <span>Submit Appeal to School Administration</span>
                   </h3>
                   <p className="text-xs text-[var(--text-muted)]">
@@ -1148,7 +1148,7 @@ function YourActivityContent() {
                     <select
                       value={appealType}
                       onChange={(e) => setAppealType(e.target.value as any)}
-                      className="w-full p-2.5 bg-[var(--surface)] border border-[var(--line)] text-xs text-[var(--text)] rounded-none focus:outline-none focus:border-pink-500"
+                      className="w-full p-2.5 bg-[var(--surface)] border border-[var(--line)] text-xs text-[var(--text)] rounded-none focus:outline-none focus:border-[var(--line-strong)]"
                     >
                       <option value="suspension">Account Suspension Appeal</option>
                       <option value="warning">Disciplinary Warning Dispute</option>
@@ -1166,7 +1166,7 @@ function YourActivityContent() {
                       onChange={(e) => setAppealReason(e.target.value)}
                       rows={4}
                       placeholder="Clearly explain the situation, why you believe the action should be reconsidered, and your commitment to school standards..."
-                      className="w-full p-3 bg-[var(--surface)] border border-[var(--line)] text-xs text-[var(--text)] rounded-none focus:outline-none focus:border-pink-500 placeholder:text-neutral-500"
+                      className="w-full p-3 bg-[var(--surface)] border border-[var(--line)] text-xs text-[var(--text)] rounded-none focus:outline-none focus:border-[var(--line-strong)] placeholder:text-neutral-500"
                       required
                     />
                   </div>
@@ -1180,14 +1180,14 @@ function YourActivityContent() {
                       value={appealContact}
                       onChange={(e) => setAppealContact(e.target.value)}
                       placeholder="e.g. 9876543210 or parent@email.com"
-                      className="w-full p-2.5 bg-[var(--surface)] border border-[var(--line)] text-xs text-[var(--text)] rounded-none focus:outline-none focus:border-pink-500 placeholder:text-neutral-500"
+                      className="w-full p-2.5 bg-[var(--surface)] border border-[var(--line)] text-xs text-[var(--text)] rounded-none focus:outline-none focus:border-[var(--line-strong)] placeholder:text-neutral-500"
                     />
                   </div>
 
                   <button
                     type="submit"
                     disabled={isSubmittingAppeal || !appealReason.trim()}
-                    className="w-full py-2.5 bg-pink-600 hover:bg-pink-500 disabled:opacity-50 text-white font-bold text-xs uppercase tracking-wider rounded-none transition cursor-pointer flex items-center justify-center gap-2"
+                    className="w-full py-2.5 bg-[var(--accent-cta)] hover:bg-[var(--accent-cta)] disabled:opacity-50 text-white font-bold text-xs uppercase tracking-wider rounded-none transition cursor-pointer flex items-center justify-center gap-2"
                   >
                     {isSubmittingAppeal ? (
                       <span>Submitting Appeal...</span>
@@ -1210,7 +1210,7 @@ function YourActivityContent() {
                   <div className="divide-y divide-[var(--line)] border border-[var(--line)] bg-[var(--surface-sunken)]">
                     {banAppeals.map((appeal) => {
                       const statusBadges = {
-                        pending: { text: 'Pending Review ⏳', color: 'bg-amber-500/20 text-amber-400 border-amber-500/40' },
+                        pending: { text: 'Pending Review ⏳', color: 'bg-[var(--gold-tint)] text-[var(--gold)] border-[var(--gold)]' },
                         under_review: { text: 'Under Review 🔍', color: 'bg-blue-500/20 text-blue-400 border-blue-500/40' },
                         approved: { text: 'Approved & Lifted ✅', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40' },
                         rejected: { text: 'Dismissed ❌', color: 'bg-red-500/20 text-red-400 border-red-500/40' },
@@ -1237,7 +1237,7 @@ function YourActivityContent() {
                             )}
                           </div>
                           {appeal.adminNotes && (
-                            <div className="p-2 bg-black/40 border-l-2 border-pink-500 text-[11px] text-pink-300">
+                            <div className="p-2 bg-black/40 border-l-2 border-[var(--line-strong)] text-[11px] text-[var(--primary)]">
                               <span className="font-bold">Admin note:</span> {appeal.adminNotes}
                             </div>
                           )}
@@ -1321,7 +1321,7 @@ function YourActivityContent() {
                   onClick={() => setSortOrder('newest')}
                   className={`w-full p-2.5 text-left text-xs font-semibold flex items-center justify-between border cursor-pointer ${
                     sortOrder === 'newest'
-                      ? 'border-pink-500 bg-pink-500/10 text-pink-400'
+                      ? 'border-[var(--line-strong)] bg-[var(--primary-tint)] text-[var(--primary)]'
                       : 'border-[var(--line)] text-[var(--text)]'
                   }`}
                 >
@@ -1333,7 +1333,7 @@ function YourActivityContent() {
                   onClick={() => setSortOrder('oldest')}
                   className={`w-full p-2.5 text-left text-xs font-semibold flex items-center justify-between border cursor-pointer ${
                     sortOrder === 'oldest'
-                      ? 'border-pink-500 bg-pink-500/10 text-pink-400'
+                      ? 'border-[var(--line-strong)] bg-[var(--primary-tint)] text-[var(--primary)]'
                       : 'border-[var(--line)] text-[var(--text)]'
                   }`}
                 >
@@ -1361,7 +1361,7 @@ function YourActivityContent() {
                     onClick={() => setDateRangeFilter(item.id as any)}
                     className={`p-2 text-center text-xs font-semibold border cursor-pointer ${
                       dateRangeFilter === item.id
-                        ? 'border-pink-500 bg-pink-500/10 text-pink-400'
+                        ? 'border-[var(--line-strong)] bg-[var(--primary-tint)] text-[var(--primary)]'
                         : 'border-[var(--line)] text-[var(--text)]'
                     }`}
                   >
@@ -1374,7 +1374,7 @@ function YourActivityContent() {
             <button
               type="button"
               onClick={() => setShowFilterModal(false)}
-              className="w-full py-2.5 bg-pink-600 hover:bg-pink-500 text-white font-bold text-xs uppercase rounded-none transition cursor-pointer"
+              className="w-full py-2.5 bg-[var(--accent-cta)] hover:bg-[var(--accent-cta)] text-white font-bold text-xs uppercase rounded-none transition cursor-pointer"
             >
               Apply
             </button>
@@ -1479,7 +1479,7 @@ export default function YourActivityPage() {
     <Suspense
       fallback={
         <div className="min-h-screen bg-[var(--bg)] flex items-center justify-center p-6">
-          <div className="w-8 h-8 rounded-full border-2 border-pink-500 border-t-transparent animate-spin" />
+          <div className="w-8 h-8 rounded-full border-2 border-[var(--line-strong)] border-t-transparent animate-spin" />
         </div>
       }
     >

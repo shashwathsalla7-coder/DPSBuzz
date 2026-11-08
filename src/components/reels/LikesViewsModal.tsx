@@ -108,7 +108,7 @@ export const LikesViewsModal: React.FC<LikesViewsModalProps> = ({
         {/* Modal Header */}
         <div className="flex items-center justify-between px-5 pt-3 pb-3 border-b border-white/10">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-rose-500/15 text-rose-500 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-full bg-[var(--primary-tint)] text-[var(--primary)] flex items-center justify-center">
               <Heart size={16} className="fill-current" />
             </div>
             <div>
@@ -141,7 +141,7 @@ export const LikesViewsModal: React.FC<LikesViewsModalProps> = ({
           </div>
 
           <div className="flex items-center gap-3 p-2.5 rounded-xl bg-white/5 border border-white/10">
-            <div className="w-9 h-9 rounded-lg bg-rose-500/15 text-rose-400 flex items-center justify-center shrink-0">
+            <div className="w-9 h-9 rounded-lg bg-[var(--primary-tint)] text-[var(--primary)] flex items-center justify-center shrink-0">
               <Heart size={18} className="fill-current" />
             </div>
             <div>
@@ -220,7 +220,7 @@ export const LikesViewsModal: React.FC<LikesViewsModalProps> = ({
                         <span className="text-xs font-bold text-white hover:underline truncate">
                           {user.fullName}
                         </span>
-                        <Heart size={11} className="fill-rose-500 text-rose-500 shrink-0" />
+                        <Heart size={11} className="fill-rose-500 text-[var(--primary)] shrink-0" />
                       </div>
                       <div className="text-[11px] text-white/50 truncate">
                         @{user.username}
@@ -241,8 +241,8 @@ export const LikesViewsModal: React.FC<LikesViewsModalProps> = ({
                         onClick={(e) => handleToggleFollow(user.username, e)}
                         className={`px-3 py-1 rounded-full text-xs font-bold border transition-all cursor-pointer flex items-center gap-1 active:scale-95 ${
                           isFollowing
-                            ? 'bg-white/10 border-white/20 text-white/90 hover:bg-rose-500/20 hover:border-rose-500/40 hover:text-rose-300'
-                            : 'bg-[var(--primary)] border-transparent text-white shadow-md shadow-pink-500/20 hover:opacity-90'
+                            ? 'bg-white/10 border-white/20 text-white/90 hover:bg-[var(--primary-tint)] hover:border-[var(--line-strong)] hover:text-[var(--primary)]'
+                            : 'bg-[var(--primary)] border-transparent text-white shadow-md  hover:opacity-90'
                         }`}
                       >
                         {isFollowing ? (

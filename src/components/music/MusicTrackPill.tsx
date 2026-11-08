@@ -57,14 +57,14 @@ export const MusicTrackPill: React.FC<MusicTrackPillProps> = ({
       onClick={handleToggle}
       className={`relative overflow-hidden group cursor-pointer transition-all active:scale-[0.98] select-none ${
         compact
-          ? 'inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-zinc-900/90 border border-zinc-800 hover:border-pink-500/50'
-          : 'flex items-center gap-3 p-2.5 rounded-2xl bg-zinc-900/90 border border-zinc-800 hover:border-pink-500/50 shadow-md'
+          ? 'inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-zinc-900/90 border border-zinc-800 hover:border-[var(--line-strong)]'
+          : 'flex items-center gap-3 p-2.5 rounded-2xl bg-zinc-900/90 border border-zinc-800 hover:border-[var(--line-strong)] shadow-md'
       }`}
     >
       {/* Progress bar background indicator when playing */}
       {isCurrentTrack && (
         <div
-          className="absolute left-0 bottom-0 top-0 bg-pink-500/10 pointer-events-none transition-all duration-200"
+          className="absolute left-0 bottom-0 top-0 bg-[var(--primary-tint)] pointer-events-none transition-all duration-200"
           style={{ width: `${progress * 100}%` }}
         />
       )}
@@ -101,9 +101,9 @@ export const MusicTrackPill: React.FC<MusicTrackPillProps> = ({
           {/* Equalizer Waveform bars when playing */}
           {isPlaying && (
             <div className="flex items-end gap-0.5 h-3 flex-shrink-0">
-              <span className="w-0.5 h-3 bg-pink-500 animate-pulse rounded-full" />
+              <span className="w-0.5 h-3 bg-[var(--accent-cta)] animate-pulse rounded-full" />
               <span className="w-0.5 h-2 bg-pink-400 animate-bounce rounded-full" />
-              <span className="w-0.5 h-3.5 bg-pink-500 animate-pulse rounded-full" />
+              <span className="w-0.5 h-3.5 bg-[var(--accent-cta)] animate-pulse rounded-full" />
             </div>
           )}
         </div>
@@ -111,8 +111,8 @@ export const MusicTrackPill: React.FC<MusicTrackPillProps> = ({
           <span className="truncate max-w-[100px] md:max-w-[140px]">
             {song.artist}
           </span>
-          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded bg-pink-500/20 text-pink-300 font-mono font-bold shrink-0 text-[9px]">
-            {isChorus && <Flame size={10} className="text-pink-400 fill-pink-400" />}
+          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded bg-[var(--primary-tint)] text-[var(--primary)] font-mono font-bold shrink-0 text-[9px]">
+            {isChorus && <Flame size={10} className="text-[var(--primary)] fill-pink-400" />}
             <span>
               {formatSec(startTime)} - {formatSec(startTime + clipDur)}
             </span>
@@ -128,7 +128,7 @@ export const MusicTrackPill: React.FC<MusicTrackPillProps> = ({
           onClick={handleToggle}
           className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 transition-transform ${
             isPlaying
-              ? 'gradient-bg text-white shadow-sm shadow-pink-500/30'
+              ? 'gradient-bg text-white shadow-sm '
               : 'bg-zinc-800 text-zinc-300 hover:text-white'
           }`}
           aria-label={isPlaying ? 'Pause song preview' : 'Play song preview'}
@@ -148,7 +148,7 @@ export const MusicTrackPill: React.FC<MusicTrackPillProps> = ({
               e.stopPropagation();
               onEditPart();
             }}
-            className="px-2 py-1 rounded-xl bg-pink-500/15 hover:bg-pink-500/25 text-pink-300 border border-pink-500/30 text-[10px] font-bold flex items-center gap-1 transition-all active:scale-95 cursor-pointer"
+            className="px-2 py-1 rounded-xl bg-[var(--primary-tint)] hover:bg-[var(--primary-tint)] text-[var(--primary)] border border-[var(--line-strong)] text-[10px] font-bold flex items-center gap-1 transition-all active:scale-95 cursor-pointer"
             title="Select main part or scrub whole song"
           >
             <Scissors size={11} />

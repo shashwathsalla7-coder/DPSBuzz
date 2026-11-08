@@ -179,7 +179,7 @@ export default function ReelsPage() {
             href="/reels"
             className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/50 backdrop-blur-md border border-white/15 text-white shadow-md active:scale-95 transition-transform"
           >
-            <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-pink-500 to-rose-500 flex items-center justify-center text-white">
+            <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-[var(--accent-cta)] to-[var(--accent-cta)] flex items-center justify-center text-white">
               <Film size={12} strokeWidth={2.5} />
             </div>
             <span className="text-sm font-extrabold tracking-tight">Reels</span>
@@ -233,7 +233,7 @@ export default function ReelsPage() {
       >
         {reels.length === 0 ? (
           <div className="w-full h-full flex flex-col items-center justify-center text-white text-center p-6 space-y-4">
-            <div className="w-16 h-16 rounded-full bg-pink-500/20 text-pink-400 flex items-center justify-center">
+            <div className="w-16 h-16 rounded-full bg-[var(--primary-tint)] text-[var(--primary)] flex items-center justify-center">
               <Film size={32} />
             </div>
             <div>

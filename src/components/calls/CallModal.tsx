@@ -247,7 +247,7 @@ export function CallModal({
       <header className="relative z-20 flex items-center justify-between gap-3 pt-2">
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-xs font-medium">
           <Shield size={13} className="text-emerald-400" />
-          <span className="tracking-wide">End-to-End Encrypted</span>
+          <span className="tracking-wide">Private call</span>
         </div>
 
         {/* Live Call Duration / Status Pill */}

@@ -38,15 +38,15 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-xl bg-[#111b21] rounded-2xl border border-[#222d34] overflow-hidden shadow-2xl flex flex-col"
+        className="w-full max-w-xl bg-[var(--bg)] rounded-2xl border border-[var(--line)] overflow-hidden shadow-2xl flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Top Header */}
-        <div className="h-12 px-4 flex items-center justify-between bg-[#202c33] border-b border-[#222d34]">
-          <span className="text-xs font-semibold text-[#e9edef] truncate">{title}</span>
+        <div className="h-12 px-4 flex items-center justify-between bg-[var(--surface)] border-b border-[var(--line)]">
+          <span className="text-xs font-semibold text-[var(--text)] truncate">{title}</span>
           <button
             onClick={onClose}
-            className="p-1 rounded-full text-[#8696a0] hover:text-white cursor-pointer"
+            className="p-1 rounded-full text-[var(--text-muted)] hover:text-white cursor-pointer"
           >
             <X size={18} />
           </button>
@@ -56,11 +56,11 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
         <div className="relative aspect-video w-full bg-gradient-to-br from-stone-900 via-black to-stone-950 flex flex-col items-center justify-center group">
           {/* Animated Video Canvas Art */}
           <div className="text-center p-4">
-            <div className="w-16 h-16 mx-auto rounded-full bg-[#00a884]/20 border border-[#00a884]/40 flex items-center justify-center text-[#00a884] mb-3">
+            <div className="w-16 h-16 mx-auto rounded-full bg-[var(--primary)]/20 border border-[var(--primary)]/40 flex items-center justify-center text-[var(--primary)] mb-3">
               <Play size={28} className={isPlaying ? 'animate-pulse' : ''} />
             </div>
             <div className="text-sm font-medium text-white">{title}</div>
-            <div className="text-xs text-[#8696a0] mt-1">DPS Campus Prime 2026 Footage</div>
+            <div className="text-xs text-[var(--text-muted)] mt-1">DPS Campus Prime 2026 Footage</div>
           </div>
 
           {/* Center Play/Pause button on tap */}
@@ -76,14 +76,14 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
           {/* Progress bar */}
           <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/20">
             <div
-              className="h-full bg-[#00a884] transition-all duration-150"
+              className="h-full bg-[var(--primary)] transition-all duration-150"
               style={{ width: `${progress}%` }}
             />
           </div>
         </div>
 
         {/* Video Controls Bar */}
-        <div className="h-12 px-4 flex items-center justify-between bg-[#202c33] text-[#8696a0]">
+        <div className="h-12 px-4 flex items-center justify-between bg-[var(--surface)] text-[var(--text-muted)]">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setIsPlaying(!isPlaying)}
@@ -104,14 +104,14 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
             >
               {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
             </button>
-            <span className="text-[11px] font-mono text-[#8696a0]">
+            <span className="text-[11px] font-mono text-[var(--text-muted)]">
               {Math.floor((progress / 100) * 140)}s / {duration}
             </span>
           </div>
 
           <button
             onClick={() => setProgress(100)}
-            className="text-xs text-[#00a884] hover:underline cursor-pointer"
+            className="text-xs text-[var(--primary)] hover:underline cursor-pointer"
           >
             Done
           </button>

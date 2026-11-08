@@ -635,7 +635,7 @@ export default function ProfileClient({ username }: { username: string }) {
       return b.habitPoints - a.habitPoints;
     });
     const idx = sorted.findIndex((s) => s.username.toLowerCase() === username.toLowerCase());
-    return idx !== -1 ? idx + 1 : 4;
+    return idx !== -1 ? idx + 1 : null; // not ranked yet
   }, [streaksList, username]);
 
   const handleHabitSubmit = (e: React.FormEvent) => {
@@ -662,14 +662,6 @@ export default function ProfileClient({ username }: { username: string }) {
     setHabitCaption('');
     setHabitPhoto(null);
   };
-
-  if (!profile) {
-    return (
-      <div className="p-8 text-center text-xs" style={{ color: 'var(--text-muted)' }}>
-        Loading profile...
-      </div>
-    );
-  }
 
   const pair = getAvatarColorPair(profile.username);
   const isOfficial =
@@ -1292,7 +1284,8 @@ export default function ProfileClient({ username }: { username: string }) {
             </div>
           )}
 
-          {/* Star Board Top Rank pill */}
+          {/* Star Board Top Rank pill (only for the real top 3) */}
+          {starBoardRank !== null && starBoardRank <= 3 && (
           <div className="pt-1">
             <Link
               href="/leaderboard"
@@ -1304,9 +1297,10 @@ export default function ProfileClient({ username }: { username: string }) {
               }}
             >
               <Trophy size={11} />
-              <span>Star Board Top Rank this week</span>
+              <span>Star Board #{starBoardRank} this week</span>
             </Link>
           </div>
+          )}
 
           {/* Profile Song (Instagram / MySpace Style) */}
           {profile.song ? (
@@ -1610,8 +1604,8 @@ export default function ProfileClient({ username }: { username: string }) {
           {/* 3 Metric Badges */}
           <div className="grid grid-cols-3 gap-2 text-center select-none">
             <div className="p-2 rounded-[12px] border bg-[var(--surface)]" style={{ borderColor: 'var(--line)' }}>
-              <div className="text-sm font-extrabold tabular-nums font-mono text-[#F2B705]">
-                #{starBoardRank}
+              <div className="text-sm font-extrabold tabular-nums font-mono text-[var(--gold)]">
+                {starBoardRank !== null ? `#${starBoardRank}` : '—'}
               </div>
               <div className="text-[10px] text-[var(--text-muted)] mt-0.5">School Rank</div>
             </div>

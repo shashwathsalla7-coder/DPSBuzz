@@ -344,7 +344,7 @@ export const SongPickerModal: React.FC<SongPickerModalProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-[#262626]">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-purple-600 to-pink-500 flex items-center justify-center text-white shadow-md">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[var(--accent-cta)] to-[var(--accent-cta)] flex items-center justify-center text-white shadow-md">
               <Music size={16} />
             </div>
             <div>
@@ -371,7 +371,7 @@ export const SongPickerModal: React.FC<SongPickerModalProps> = ({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search songs, artists, or genres..."
-              className="w-full bg-white/[0.06] border border-white/10 rounded-2xl pl-10 pr-9 py-2.5 text-xs text-white placeholder-white/40 focus:outline-none focus:border-pink-500 transition-colors"
+              className="w-full bg-white/[0.06] border border-white/10 rounded-2xl pl-10 pr-9 py-2.5 text-xs text-white placeholder-white/40 focus:outline-none focus:border-[var(--line-strong)] transition-colors"
             />
             {searchQuery && (
               <button
@@ -393,7 +393,7 @@ export const SongPickerModal: React.FC<SongPickerModalProps> = ({
               onClick={() => setActiveTab('popular')}
               className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer ${
                 activeTab === 'popular'
-                  ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow'
+                  ? 'bg-gradient-to-r from-[var(--accent-cta)] to-[var(--accent-cta)] text-white shadow'
                   : 'bg-white/[0.04] text-white/60 hover:text-white'
               }`}
             >
@@ -404,7 +404,7 @@ export const SongPickerModal: React.FC<SongPickerModalProps> = ({
               onClick={() => setActiveTab('itunes')}
               className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer ${
                 activeTab === 'itunes'
-                  ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow'
+                  ? 'bg-gradient-to-r from-[var(--accent-cta)] to-[var(--accent-cta)] text-white shadow'
                   : 'bg-white/[0.04] text-white/60 hover:text-white'
               }`}
             >
@@ -415,7 +415,7 @@ export const SongPickerModal: React.FC<SongPickerModalProps> = ({
               onClick={() => setActiveTab('genres')}
               className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer ${
                 activeTab === 'genres'
-                  ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow'
+                  ? 'bg-gradient-to-r from-[var(--accent-cta)] to-[var(--accent-cta)] text-white shadow'
                   : 'bg-white/[0.04] text-white/60 hover:text-white'
               }`}
             >
@@ -426,7 +426,7 @@ export const SongPickerModal: React.FC<SongPickerModalProps> = ({
               onClick={() => setActiveTab('library')}
               className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer ${
                 activeTab === 'library'
-                  ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow'
+                  ? 'bg-gradient-to-r from-[var(--accent-cta)] to-[var(--accent-cta)] text-white shadow'
                   : 'bg-white/[0.04] text-white/60 hover:text-white'
               }`}
             >
@@ -437,7 +437,7 @@ export const SongPickerModal: React.FC<SongPickerModalProps> = ({
               onClick={() => setActiveTab('recent')}
               className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer ${
                 activeTab === 'recent'
-                  ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow'
+                  ? 'bg-gradient-to-r from-[var(--accent-cta)] to-[var(--accent-cta)] text-white shadow'
                   : 'bg-white/[0.04] text-white/60 hover:text-white'
               }`}
             >
@@ -456,7 +456,7 @@ export const SongPickerModal: React.FC<SongPickerModalProps> = ({
                 onClick={() => setActiveGenre(g.id)}
                 className={`text-[11px] px-2.5 py-1 rounded-lg font-medium whitespace-nowrap transition-colors cursor-pointer ${
                   activeGenre === g.id
-                    ? 'bg-pink-500/20 text-pink-300 border border-pink-500/30 font-bold'
+                    ? 'bg-[var(--primary-tint)] text-[var(--primary)] border border-[var(--line-strong)] font-bold'
                     : 'text-white/50 hover:text-white/80'
                 }`}
               >
@@ -470,7 +470,7 @@ export const SongPickerModal: React.FC<SongPickerModalProps> = ({
         <div className="flex-1 overflow-y-auto px-5 py-3 space-y-2.5 divide-y divide-[#1e1e1e]">
           {loading ? (
             <div className="py-12 flex flex-col items-center justify-center gap-2 text-white/50">
-              <Loader2 size={24} className="animate-spin text-pink-400" />
+              <Loader2 size={24} className="animate-spin text-[var(--primary)]" />
               <span className="text-xs">Loading tracks...</span>
             </div>
           ) : displayedList.length === 0 ? (
@@ -504,7 +504,7 @@ export const SongPickerModal: React.FC<SongPickerModalProps> = ({
                       aria-label={isThisPlaying ? 'Pause preview' : 'Play preview'}
                     >
                       {isThisPlaying ? (
-                        <Pause size={16} className="text-pink-400" />
+                        <Pause size={16} className="text-[var(--primary)]" />
                       ) : (
                         <Play size={16} className="text-white ml-0.5" />
                       )}
@@ -517,7 +517,7 @@ export const SongPickerModal: React.FC<SongPickerModalProps> = ({
                     className="flex-1 min-w-0 cursor-pointer"
                   >
                     <div className="flex items-center gap-1.5">
-                      <p className="text-xs font-bold text-white truncate hover:text-pink-300 transition-colors">
+                      <p className="text-xs font-bold text-white truncate hover:text-[var(--primary)] transition-colors">
                         {track.title}
                       </p>
                       {track.provider === 'itunes' && (
@@ -526,7 +526,7 @@ export const SongPickerModal: React.FC<SongPickerModalProps> = ({
                         </span>
                       )}
                       {track.provider === 'library' && (
-                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 shrink-0 font-medium">
+                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-[var(--primary-tint)] text-[var(--primary)] shrink-0 font-medium">
                           School
                         </span>
                       )}
@@ -536,7 +536,7 @@ export const SongPickerModal: React.FC<SongPickerModalProps> = ({
                       <span className="text-[9px] text-white/40 font-mono">
                         {formatTime(track.duration)}
                       </span>
-                      <span className="text-[9px] text-pink-400/80 font-medium">
+                      <span className="text-[9px] text-[var(--primary)]/80 font-medium">
                         {track.license}
                       </span>
                     </div>
@@ -567,7 +567,7 @@ export const SongPickerModal: React.FC<SongPickerModalProps> = ({
                         <button
                           type="button"
                           onClick={() => handleSelectTrackForTrimming(track)}
-                          className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white text-xs font-bold shadow-md transition-transform active:scale-95 cursor-pointer"
+                          className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-[var(--accent-cta)] to-[var(--accent-cta)] hover:from-[var(--accent-cta)] hover:to-[var(--accent-cta)] text-white text-xs font-bold shadow-md transition-transform active:scale-95 cursor-pointer"
                           title="Trim custom clip"
                         >
                           <Scissors size={12} /> Trim
@@ -577,7 +577,7 @@ export const SongPickerModal: React.FC<SongPickerModalProps> = ({
                       <button
                         type="button"
                         onClick={() => handleSelectTrackForTrimming(track)}
-                        className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white text-xs font-bold shadow-md transition-transform active:scale-95 cursor-pointer"
+                        className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-gradient-to-r from-[var(--accent-cta)] to-[var(--accent-cta)] hover:from-[var(--accent-cta)] hover:to-[var(--accent-cta)] text-white text-xs font-bold shadow-md transition-transform active:scale-95 cursor-pointer"
                       >
                         <Scissors size={12} /> Trim
                       </button>

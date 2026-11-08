@@ -422,7 +422,7 @@ const ActiveChatHeader = React.memo(({
         <button
           type="button"
           onClick={onOpenBgSelector}
-          className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-[var(--surface-sunken)] cursor-pointer text-[var(--text-muted)] hover:text-pink-500 transition-colors"
+          className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-[var(--surface-sunken)] cursor-pointer text-[var(--text-muted)] hover:text-[var(--primary)] transition-colors"
           aria-label="Change Chat Background"
           title="Change Chat Background"
         >
@@ -4092,7 +4092,7 @@ function ChatsContent() {
 
         {/* Offline Status Warning Banner */}
         {isOffline && (
-          <div className="px-4 py-2 bg-amber-500/15 border-b border-amber-500/30 text-amber-300 text-xs font-semibold flex items-center gap-2 select-none shrink-0">
+          <div className="px-4 py-2 bg-[var(--gold-tint)] border-b border-[var(--gold)] text-[var(--gold)] text-xs font-semibold flex items-center gap-2 select-none shrink-0">
             <span>📡</span>
             <span>No internet connection. Messages will send automatically when connected.</span>
           </div>
@@ -4212,7 +4212,7 @@ function ChatsContent() {
                               e.stopPropagation();
                               handleUnsendMessage(msg.id);
                             }}
-                            className="pl-1.5 pr-2 py-0.5 border-l border-zinc-200 dark:border-zinc-700 text-rose-500 hover:text-rose-600 hover:bg-rose-500/10 rounded-full text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors"
+                            className="pl-1.5 pr-2 py-0.5 border-l border-zinc-200 dark:border-zinc-700 text-[var(--primary)] hover:text-[var(--primary)] hover:bg-[var(--primary-tint)] rounded-full text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors"
                             title="Unsend for everyone"
                           >
                             <Trash2 size={12} />
@@ -4648,14 +4648,14 @@ function ChatsContent() {
                                 e.stopPropagation();
                                 retrySupabaseMessage(msg.id);
                               }}
-                              className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-500 hover:text-rose-400 cursor-pointer active:scale-95 transition-all"
+                              className="inline-flex items-center gap-1 text-[10px] font-bold text-[var(--primary)] hover:text-[var(--primary)] cursor-pointer active:scale-95 transition-all"
                               title={msg.error_reason ? `Failed: ${msg.error_reason} — Tap to retry` : 'Failed to send — Tap to retry'}
                             >
                               <AlertCircle size={12} className="shrink-0" />
                               <span>Retry</span>
                             </button>
                             {msg.error_reason && (
-                              <span className="text-[9px] text-rose-400/90 font-medium max-w-[120px] truncate" title={msg.error_reason}>
+                              <span className="text-[9px] text-[var(--primary)]/90 font-medium max-w-[120px] truncate" title={msg.error_reason}>
                                 {msg.error_reason}
                               </span>
                             )}
@@ -4685,7 +4685,7 @@ function ChatsContent() {
 
         {/* Maintenance Notice Banner */}
         {isMaintenanceActive && (
-          <div className="px-4 py-2.5 bg-rose-500/15 border-b border-rose-500/30 text-rose-400 text-xs font-semibold flex items-center gap-2">
+          <div className="px-4 py-2.5 bg-[var(--primary-tint)] border-b border-[var(--line-strong)] text-[var(--primary)] text-xs font-semibold flex items-center gap-2">
             <span>🔒</span>
             <span>Maintenance mode is active today. Chat messaging is disabled.</span>
           </div>
@@ -4731,7 +4731,7 @@ function ChatsContent() {
           !messages.some((m) => (m.senderUsername || '').toLowerCase() === currentUsername) && (
             <div className="p-3 border-t border-[var(--line)] bg-[var(--surface)] space-y-2.5 shrink-0 relative z-20">
               <div className="flex items-center justify-center gap-1.5 text-xs text-[var(--text-muted)] text-center px-2">
-                <Shield size={14} className="text-amber-500 shrink-0" />
+                <Shield size={14} className="text-[var(--gold)] shrink-0" />
                 <span>
                   <strong>@{targetUser}</strong> sent you a message request.
                 </span>
@@ -4740,7 +4740,7 @@ function ChatsContent() {
                 <button
                   type="button"
                   onClick={() => handleBlockStranger(targetUser)}
-                  className="flex-1 py-2 rounded-full text-xs font-bold text-rose-500 bg-rose-500/10 hover:bg-rose-500/20 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1"
+                  className="flex-1 py-2 rounded-full text-xs font-bold text-[var(--primary)] bg-[var(--primary-tint)] hover:bg-[var(--primary-tint)] active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1"
                 >
                   <UserX size={13} />
                   <span>Block</span>
@@ -4875,7 +4875,7 @@ function ChatsContent() {
               type="button"
               disabled={isMaintenanceActive}
               onClick={handleSendHeart}
-              className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center cursor-pointer transition-transform active:scale-75 hover:scale-110 text-rose-500 shrink-0 disabled:opacity-40"
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center cursor-pointer transition-transform active:scale-75 hover:scale-110 text-[var(--primary)] shrink-0 disabled:opacity-40"
               aria-label="Send heart"
               title="Send heart ❤️"
             >
@@ -5098,7 +5098,7 @@ function ChatsContent() {
                                 ✓ Member
                               </span>
                             ) : isInvited ? (
-                              <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-500/15 text-amber-600 border border-amber-500/30 flex items-center gap-1">
+                              <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-[var(--gold-tint)] text-[var(--gold)] border border-[var(--gold)] flex items-center gap-1">
                                 <Clock size={11} /> Invited
                               </span>
                             ) : (
@@ -5295,7 +5295,7 @@ function ChatsContent() {
                   <div className="space-y-2 pt-2 border-t" style={{ borderColor: 'var(--line)' }}>
                     <div className="flex items-center justify-between text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">
                       <span>Pending Invitations ({pendingInvites.length})</span>
-                      <span className="text-[10px] text-amber-500 font-semibold lowercase">waiting for response</span>
+                      <span className="text-[10px] text-[var(--gold)] font-semibold lowercase">waiting for response</span>
                     </div>
 
                     <div className="max-h-36 overflow-y-auto space-y-1.5 pr-1">
@@ -5308,7 +5308,7 @@ function ChatsContent() {
                             <p className="text-xs font-semibold text-[var(--text)] truncate">@{inv.username}</p>
                             <p className="text-[10px] text-[var(--text-muted)]">Invited by @{inv.invitedBy}</p>
                           </div>
-                          <span className="text-[10px] text-amber-500 font-medium flex items-center gap-1">
+                          <span className="text-[10px] text-[var(--gold)] font-medium flex items-center gap-1">
                             <Clock size={10} /> Pending
                           </span>
                         </div>
@@ -5412,9 +5412,9 @@ function ChatsContent() {
                     <p className="text-xs font-bold text-[var(--text)]">Sent</p>
                     <p className="text-[11px] text-[var(--text-muted)] mt-0.5">
                       {selectedMessageInfo.status === 'sending' ? (
-                        <span className="text-amber-400 font-medium animate-pulse">Sending to server...</span>
+                        <span className="text-[var(--gold)] font-medium animate-pulse">Sending to server...</span>
                       ) : selectedMessageInfo.status === 'error' ? (
-                        <span className="text-rose-500 font-medium">Failed to send</span>
+                        <span className="text-[var(--primary)] font-medium">Failed to send</span>
                       ) : (
                         <span className="text-zinc-300">Saved to server</span>
                       )}
@@ -5509,7 +5509,7 @@ function ChatsContent() {
     >
       {/* Maintenance Mode Banner */}
       {isMaintenanceActive && (
-        <div className="mx-4 my-2 p-3 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-400 text-xs font-semibold flex items-center gap-2.5 animate-fade-in">
+        <div className="mx-4 my-2 p-3 rounded-2xl bg-[var(--primary-tint)] border border-[var(--line-strong)] text-[var(--primary)] text-xs font-semibold flex items-center gap-2.5 animate-fade-in">
           <span className="text-base shrink-0">🔒</span>
           <div>
             <p className="font-bold">Chat Messaging Locked for Scheduled Maintenance</p>
@@ -5713,7 +5713,7 @@ function ChatsContent() {
               className="mx-3.5 my-2.5 p-3 rounded-2xl bg-gradient-to-r from-blue-500/15 via-cyan-500/15 to-blue-600/15 border border-blue-500/30 flex items-center justify-between cursor-pointer hover:opacity-95 transition-all shadow-xs"
             >
               <div className="flex items-center gap-3 min-w-0">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] flex items-center justify-center text-white font-extrabold text-xs shadow-xs shrink-0">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#7B6CFF] via-[#6B5BF2] to-[#6B5BF2] flex items-center justify-center text-white font-extrabold text-xs shadow-xs shrink-0">
                   {computedRequests.length}
                 </div>
                 <div className="min-w-0">

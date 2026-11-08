@@ -32,8 +32,8 @@ export const PhotoAttachmentModal: React.FC<PhotoAttachmentModalProps> = ({
         >
           <X size={24} />
         </button>
-        <span className="text-sm font-semibold text-[#e9edef] flex items-center gap-1.5">
-          <ImageIcon size={18} className="text-[#00a884]" />
+        <span className="text-sm font-semibold text-[var(--text)] flex items-center gap-1.5">
+          <ImageIcon size={18} className="text-[var(--primary)]" />
           <span>Send Photo Attachment</span>
         </span>
         <div className="w-10" />
@@ -51,20 +51,20 @@ export const PhotoAttachmentModal: React.FC<PhotoAttachmentModalProps> = ({
 
       {/* Caption & Send Bar */}
       <form onSubmit={handleSubmit} className="max-w-2xl w-full mx-auto flex items-center gap-2 pt-3 z-10">
-        <div className="flex-1 rounded-2xl px-4 py-3 bg-[#2a3942] border border-[#222d34]">
+        <div className="flex-1 rounded-2xl px-4 py-3 bg-[var(--line)] border border-[var(--line)]">
           <input
             type="text"
             placeholder="Add a caption..."
             value={caption}
             onChange={(e) => setCaption(e.target.value)}
             autoFocus
-            className="w-full text-sm text-[#e9edef] bg-transparent focus:outline-none placeholder-[#8696a0]"
+            className="w-full text-sm text-[var(--text)] bg-transparent focus:outline-none placeholder-[var(--text-muted)]"
           />
         </div>
 
         <button
           type="submit"
-          className="w-12 h-12 rounded-full text-white bg-[#00a884] hover:bg-[#008f6f] transition-all cursor-pointer flex items-center justify-center shadow-xl active:scale-95 shrink-0"
+          className="w-12 h-12 rounded-full text-white bg-[var(--primary)] hover:bg-[var(--primary-hover)] transition-all cursor-pointer flex items-center justify-center shadow-xl active:scale-95 shrink-0"
           title="Send Photo"
         >
           <Send size={20} />

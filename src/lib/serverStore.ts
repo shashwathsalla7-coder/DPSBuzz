@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import type { Post, Story, Profile, ChatNote, Notice, NotificationItem, NotificationType, CallSession } from './dataStore';
+import { kvEnabled, kvLoadAll, kvSave, kvVersion, withTimeout } from './serverStoreKv';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const rawKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -133,7 +134,8 @@ function createInitialStore(): ServerStoreData {
 
 let memoryCache: ServerStoreData | null = null;
 let lastFetchTime = 0;
-const CACHE_TTL_MS = 1500; // 1.5 seconds TTL for rapid serverless polling
+const CACHE_TTL_MS = 5000; // re-check the D1 version at most every 5s per server instance
+let memoryVersion: number | null = null;
 
 function ensureDataDirectory(): void {
   try {
@@ -305,7 +307,7 @@ async function fetchCloudStore(): Promise<ServerStoreData | null> {
   if (Date.now() - lastCloudFetchFailure < 120000) {
     return null;
   }
-  if (!CLOUD_SYNC_ENABLED || !API_KEY || !API_SECRET) {
+  if (!API_KEY || !API_SECRET) {
     return null;
   }
   const tryFetch = async (url: string) => {
@@ -367,40 +369,58 @@ function scheduleCloudUpload(data: ServerStoreData): void {
   }, 3000);
 }
 
+/** Old storage chain (local file → cloud backup → empty). Used to seed D1 once. */
+async function loadLegacyStore(): Promise<ServerStoreData> {
+  // Prefer the cloud backup: in production it is newer than the file committed to git.
+  const cloudData = await fetchCloudStore();
+  if (cloudData) return cloudData;
+  const localData = readLocalStore();
+  if (localData) return localData;
+  return createInitialStore();
+}
+
 export async function getServerStore(options?: { forceRefresh?: boolean }): Promise<ServerStoreData> {
   const now = Date.now();
-  if (!options?.forceRefresh && memoryCache && (now - lastFetchTime < CACHE_TTL_MS)) {
+  if (!options?.forceRefresh && memoryCache && now - lastFetchTime < CACHE_TTL_MS) {
     return memoryCache;
   }
 
-  // 1. Check local file store FIRST (instant 0.1ms read, zero network lag)
-  const localData = readLocalStore();
-  if (localData) {
-    memoryCache = localData;
-    lastFetchTime = Date.now();
-    return memoryCache;
+  // 1. Durable D1 storage (shared by every server instance).
+  if (kvEnabled()) {
+    try {
+      const version = await withTimeout(kvVersion(), 3000);
+      if (version !== null) {
+        if (memoryCache && memoryVersion === version) {
+          lastFetchTime = Date.now();
+          return memoryCache;
+        }
+        const all = await withTimeout(kvLoadAll(), 5000);
+        if (all) {
+          memoryCache = normalizeStore(all);
+          memoryVersion = version;
+          lastFetchTime = Date.now();
+          return memoryCache;
+        }
+      }
+      // Nothing in D1 yet: seed it once from the old storage.
+      const seed = await loadLegacyStore();
+      memoryVersion = await withTimeout(kvSave(seed as unknown as Record<string, unknown>), 8000);
+      memoryCache = seed;
+      lastFetchTime = Date.now();
+      return memoryCache;
+    } catch (err) {
+      console.warn('[serverStore] D1 storage unavailable, using fallback:', err);
+      if (memoryCache) return memoryCache;
+    }
   }
 
-  // 2. Return memory cache if available
+  // 2. Fallback when D1 is not configured or unreachable.
   if (memoryCache) {
-    return memoryCache;
-  }
-
-  // 3. Fall back to cloud store on cold boot with tight timeout
-  const cloudData = await fetchCloudStore();
-  if (cloudData) {
-    memoryCache = cloudData;
     lastFetchTime = Date.now();
-    writeLocalStore(cloudData);
     return memoryCache;
   }
-
-  // 4. Fall back to fresh initial store
-  memoryCache = createInitialStore();
+  memoryCache = await loadLegacyStore();
   lastFetchTime = Date.now();
-  writeLocalStore(memoryCache);
-  scheduleCloudUpload(memoryCache);
-
   return memoryCache;
 }
 
@@ -426,8 +446,20 @@ export async function saveServerStore(data: Partial<ServerStoreData>): Promise<S
   memoryCache = updated;
   lastFetchTime = Date.now();
 
-  writeLocalStore(updated);
-  scheduleCloudUpload(updated); // Non-blocking background sync
+  // Durable write: only the collections that changed. Awaited, because a
+  // serverless function can be frozen right after it responds.
+  if (kvEnabled()) {
+    try {
+      const changed: Record<string, unknown> = {};
+      for (const key of Object.keys(data)) changed[key] = (updated as unknown as Record<string, unknown>)[key];
+      memoryVersion = await withTimeout(kvSave(changed), 8000);
+    } catch (err) {
+      console.error('[serverStore] D1 write failed:', err);
+    }
+  }
+
+  writeLocalStore(updated); // local cache (ignored on read-only hosts)
+  scheduleCloudUpload(updated); // best-effort backup (production only)
 
   return updated;
 }

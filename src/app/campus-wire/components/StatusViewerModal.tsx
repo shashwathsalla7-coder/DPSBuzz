@@ -20,7 +20,7 @@ export const StatusViewerModal: React.FC<StatusViewerModalProps> = ({
       id: 'default-status',
       type: 'text' as const,
       content: 'Hey there! I am using DPS Buzz',
-      backgroundColor: '#005c4b',
+      backgroundColor: 'var(--accent-cta)',
       time: status.time,
       viewCount: 15,
     },
@@ -152,7 +152,7 @@ export const StatusViewerModal: React.FC<StatusViewerModalProps> = ({
         {/* Story Card */}
         <div
           className="w-full max-w-md aspect-[9/16] rounded-2xl flex flex-col items-center justify-center p-8 text-center text-white shadow-2xl relative overflow-hidden transition-all duration-300"
-          style={{ backgroundColor: currentUpdate.backgroundColor || '#005c4b' }}
+          style={{ backgroundColor: currentUpdate.backgroundColor || 'var(--accent-cta)' }}
         >
           <div className="text-2xl font-bold leading-relaxed px-4 break-words">
             {currentUpdate.content}
@@ -179,7 +179,7 @@ export const StatusViewerModal: React.FC<StatusViewerModalProps> = ({
           <button
             type="submit"
             disabled={!replyText.trim()}
-            className="p-2.5 rounded-full bg-[#00a884] text-white hover:bg-[#008f6f] disabled:opacity-40 transition-colors cursor-pointer"
+            className="p-2.5 rounded-full bg-[var(--primary)] text-white hover:bg-[var(--primary-hover)] disabled:opacity-40 transition-colors cursor-pointer"
           >
             <Send size={16} />
           </button>

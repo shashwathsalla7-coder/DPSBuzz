@@ -31,14 +31,14 @@ export const CallsView: React.FC<CallsViewProps> = ({ onStartCall }) => {
   });
 
   return (
-    <div className="flex flex-col h-full bg-[#111b21] border-r border-[#222d34] overflow-hidden select-none">
+    <div className="flex flex-col h-full bg-[var(--bg)] border-r border-[var(--line)] overflow-hidden select-none">
       {/* Header */}
-      <div className="h-[60px] px-4 flex items-center justify-between bg-[#202c33] border-b border-[#222d34] shrink-0">
-        <h1 className="text-lg font-semibold text-[#e9edef]">Calls</h1>
+      <div className="h-[60px] px-4 flex items-center justify-between bg-[var(--surface)] border-b border-[var(--line)] shrink-0">
+        <h1 className="text-lg font-semibold text-[var(--text)]">Calls</h1>
         <div className="flex items-center gap-2">
           <button
             onClick={() => onStartCall('Himaksh', 'voice')}
-            className="p-1.5 rounded-full hover:bg-[#2a3942] text-[#8696a0] hover:text-[#e9edef] transition-colors cursor-pointer"
+            className="p-1.5 rounded-full hover:bg-[var(--line)] text-[var(--text-muted)] hover:text-[var(--text)] transition-colors cursor-pointer"
             title="New call"
           >
             <Plus size={20} />
@@ -47,15 +47,15 @@ export const CallsView: React.FC<CallsViewProps> = ({ onStartCall }) => {
       </div>
 
       {/* Search & Filter pills */}
-      <div className="p-2 border-b border-[#222d34] flex flex-col gap-2">
-        <div className="flex items-center px-3 py-1.5 rounded-[8px] bg-[#202c33]">
-          <Search size={15} className="text-[#8696a0] mr-3 shrink-0" />
+      <div className="p-2 border-b border-[var(--line)] flex flex-col gap-2">
+        <div className="flex items-center px-3 py-1.5 rounded-[8px] bg-[var(--surface)]">
+          <Search size={15} className="text-[var(--text-muted)] mr-3 shrink-0" />
           <input
             type="text"
             placeholder="Search call logs"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full text-xs text-[#e9edef] bg-transparent focus:outline-none placeholder-[#8696a0]"
+            className="w-full text-xs text-[var(--text)] bg-transparent focus:outline-none placeholder-[var(--text-muted)]"
           />
         </div>
 
@@ -64,8 +64,8 @@ export const CallsView: React.FC<CallsViewProps> = ({ onStartCall }) => {
             onClick={() => setFilter('all')}
             className={`px-3 py-1 rounded-full text-xs font-medium transition-all cursor-pointer ${
               filter === 'all'
-                ? 'bg-[#00a884] text-[#111b21] font-semibold'
-                : 'bg-[#202c33] text-[#8696a0] hover:text-white'
+                ? 'bg-[var(--primary)] text-[var(--bg)] font-semibold'
+                : 'bg-[var(--surface)] text-[var(--text-muted)] hover:text-white'
             }`}
           >
             All
@@ -74,8 +74,8 @@ export const CallsView: React.FC<CallsViewProps> = ({ onStartCall }) => {
             onClick={() => setFilter('missed')}
             className={`px-3 py-1 rounded-full text-xs font-medium transition-all cursor-pointer ${
               filter === 'missed'
-                ? 'bg-[#00a884] text-[#111b21] font-semibold'
-                : 'bg-[#202c33] text-[#8696a0] hover:text-white'
+                ? 'bg-[var(--primary)] text-[var(--bg)] font-semibold'
+                : 'bg-[var(--surface)] text-[var(--text-muted)] hover:text-white'
             }`}
           >
             Missed
@@ -84,14 +84,17 @@ export const CallsView: React.FC<CallsViewProps> = ({ onStartCall }) => {
       </div>
 
       {/* Call Items List */}
-      <div className="flex-1 overflow-y-auto divide-y divide-[#222d34]/40">
+      <div className="flex-1 overflow-y-auto divide-y divide-[var(--line)]/40">
+        {filteredCalls.length === 0 && (
+          <p className="px-6 py-10 text-center text-sm text-[var(--text-muted)]">No calls yet.</p>
+        )}
         {filteredCalls.map((call) => {
           const isMissed = call.direction === 'missed';
 
           return (
             <div
               key={call.id}
-              className="px-4 py-3 flex items-center justify-between hover:bg-[#202c33] transition-colors group cursor-pointer"
+              className="px-4 py-3 flex items-center justify-between hover:bg-[var(--surface)] transition-colors group cursor-pointer"
             >
               <div className="flex items-center gap-3.5 min-w-0">
                 <div
@@ -104,18 +107,18 @@ export const CallsView: React.FC<CallsViewProps> = ({ onStartCall }) => {
                 <div className="min-w-0">
                   <h2
                     className={`text-sm font-semibold truncate ${
-                      isMissed ? 'text-[#ea4335]' : 'text-[#e9edef]'
+                      isMissed ? 'text-[#ea4335]' : 'text-[var(--text)]'
                     }`}
                   >
                     {call.contactName}
                   </h2>
 
-                  <div className="flex items-center gap-1.5 text-xs text-[#8696a0] mt-0.5">
+                  <div className="flex items-center gap-1.5 text-xs text-[var(--text-muted)] mt-0.5">
                     {call.direction === 'incoming' && (
-                      <PhoneIncoming size={13} className="text-[#00a884]" />
+                      <PhoneIncoming size={13} className="text-[var(--primary)]" />
                     )}
                     {call.direction === 'outgoing' && (
-                      <PhoneOutgoing size={13} className="text-[#00a884]" />
+                      <PhoneOutgoing size={13} className="text-[var(--primary)]" />
                     )}
                     {call.direction === 'missed' && (
                       <PhoneMissed size={13} className="text-[#ea4335]" />
@@ -123,7 +126,7 @@ export const CallsView: React.FC<CallsViewProps> = ({ onStartCall }) => {
 
                     <span>{call.time}</span>
                     {call.duration && (
-                      <span className="text-[#8696a0]/70">• {call.duration}</span>
+                      <span className="text-[var(--text-muted)]/70">• {call.duration}</span>
                     )}
                   </div>
                 </div>
@@ -136,7 +139,7 @@ export const CallsView: React.FC<CallsViewProps> = ({ onStartCall }) => {
                     e.stopPropagation();
                     onStartCall(call.contactName, 'voice');
                   }}
-                  className="p-2 rounded-full text-[#00a884] hover:bg-[#2a3942] transition-colors cursor-pointer"
+                  className="p-2 rounded-full text-[var(--primary)] hover:bg-[var(--line)] transition-colors cursor-pointer"
                   title="Voice call"
                 >
                   <Phone size={18} />
@@ -146,7 +149,7 @@ export const CallsView: React.FC<CallsViewProps> = ({ onStartCall }) => {
                     e.stopPropagation();
                     onStartCall(call.contactName, 'video');
                   }}
-                  className="p-2 rounded-full text-[#00a884] hover:bg-[#2a3942] transition-colors cursor-pointer"
+                  className="p-2 rounded-full text-[var(--primary)] hover:bg-[var(--line)] transition-colors cursor-pointer"
                   title="Video call"
                 >
                   <Video size={18} />
@@ -158,9 +161,9 @@ export const CallsView: React.FC<CallsViewProps> = ({ onStartCall }) => {
       </div>
 
       {/* End-to-end encrypted call notice */}
-      <div className="p-3 text-center border-t border-[#222d34] flex items-center justify-center gap-1.5 text-xs text-[#8696a0]">
-        <ShieldCheck size={14} className="text-[#00a884]" />
-        <span>End-to-end encrypted audio and video calls</span>
+      <div className="p-3 text-center border-t border-[var(--line)] flex items-center justify-center gap-1.5 text-xs text-[var(--text-muted)]">
+        <ShieldCheck size={14} className="text-[var(--primary)]" />
+        <span>Only people in the call can join it</span>
       </div>
     </div>
   );

@@ -94,12 +94,12 @@ export const VoiceRecorderBar: React.FC<VoiceRecorderBarProps> = ({
   };
 
   return (
-    <div className="h-[62px] px-3 sm:px-4 flex items-center justify-between bg-[#202c33] border-t border-[#222d34] animate-fadeIn">
+    <div className="h-[62px] px-3 sm:px-4 flex items-center justify-between bg-[var(--surface)] border-t border-[var(--line)] animate-fadeIn">
       {/* Trash / Cancel Button */}
       <button
         type="button"
         onClick={handleDiscard}
-        className="w-10 h-10 rounded-full flex items-center justify-center text-[#ea4335] hover:bg-[#2a3942] transition-colors cursor-pointer active:scale-90 shrink-0"
+        className="w-10 h-10 rounded-full flex items-center justify-center text-[#ea4335] hover:bg-[var(--line)] transition-colors cursor-pointer active:scale-90 shrink-0"
         title="Discard voice recording"
       >
         <Trash2 size={20} />
@@ -110,7 +110,7 @@ export const VoiceRecorderBar: React.FC<VoiceRecorderBarProps> = ({
         {/* Blinking red recording dot */}
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 rounded-full bg-[#ea4335] animate-ping" />
-          <span className="font-mono text-sm font-semibold text-[#e9edef]">
+          <span className="font-mono text-sm font-semibold text-[var(--text)]">
             {formatTime(seconds)}
           </span>
         </div>
@@ -120,7 +120,7 @@ export const VoiceRecorderBar: React.FC<VoiceRecorderBarProps> = ({
           {[40, 75, 90, 60, 100, 70, 50, 85, 95, 60, 45, 80].map((h, i) => (
             <div
               key={i}
-              className="w-1 rounded-full bg-[#00a884] animate-pulse"
+              className="w-1 rounded-full bg-[var(--primary)] animate-pulse"
               style={{
                 height: `${Math.max(25, (h * (0.5 + Math.sin(seconds * 4 + i) * 0.5)))}%`,
                 animationDelay: `${i * 80}ms`,
@@ -129,7 +129,7 @@ export const VoiceRecorderBar: React.FC<VoiceRecorderBarProps> = ({
           ))}
         </div>
 
-        <span className="text-xs text-[#8696a0] font-medium hidden md:inline">
+        <span className="text-xs text-[var(--text-muted)] font-medium hidden md:inline">
           Recording voice note...
         </span>
       </div>
@@ -138,7 +138,7 @@ export const VoiceRecorderBar: React.FC<VoiceRecorderBarProps> = ({
       <button
         type="button"
         onClick={handleStopAndSend}
-        className="w-11 h-11 rounded-full text-white bg-[#00a884] hover:bg-[#008f6f] transition-all cursor-pointer flex items-center justify-center shadow-lg active:scale-95 shrink-0"
+        className="w-11 h-11 rounded-full text-white bg-[var(--primary)] hover:bg-[var(--primary-hover)] transition-all cursor-pointer flex items-center justify-center shadow-lg active:scale-95 shrink-0"
         title="Send voice note"
       >
         <Send size={18} />

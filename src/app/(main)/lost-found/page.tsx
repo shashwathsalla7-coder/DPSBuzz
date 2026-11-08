@@ -302,7 +302,7 @@ export default function LostFoundPage() {
 
             {/* School Brand Crest Logo */}
             <div className="flex items-center gap-2.5">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 via-indigo-600 to-emerald-600 text-white flex items-center justify-center font-black shadow-md border border-white/20">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 via-[var(--accent-cta)] to-emerald-600 text-white flex items-center justify-center font-black shadow-md border border-white/20">
                 <span className="text-xs tracking-tighter">DPS</span>
               </div>
               <div>
@@ -326,7 +326,7 @@ export default function LostFoundPage() {
             <button
               type="button"
               onClick={() => setIsReportModalOpen(true)}
-              className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs font-bold rounded-full flex items-center gap-1.5 hover:opacity-95 shadow-md active:scale-95 transition-all cursor-pointer"
+              className="px-4 py-2 bg-gradient-to-r from-blue-600 to-[var(--accent-cta)] text-white text-xs font-bold rounded-full flex items-center gap-1.5 hover:opacity-95 shadow-md active:scale-95 transition-all cursor-pointer"
             >
               <Plus size={15} />
               <span>Report Item</span>
@@ -363,12 +363,12 @@ export default function LostFoundPage() {
                 onClick={() => setStatusFilter(statusFilter === 'LOST' ? 'ALL' : 'LOST')}
                 className={`p-2.5 rounded-xl border transition-all cursor-pointer ${
                   statusFilter === 'LOST'
-                    ? 'bg-rose-500/15 border-rose-500/40'
+                    ? 'bg-[var(--primary-tint)] border-[var(--line-strong)]'
                     : 'bg-[var(--surface)] border-[var(--line)]'
                 }`}
               >
                 <div className="text-[10px] text-[var(--text-muted)] font-semibold">Missing</div>
-                <div className="text-lg font-bold text-rose-500">{stats.lost}</div>
+                <div className="text-lg font-bold text-[var(--primary)]">{stats.lost}</div>
               </button>
 
               <button
@@ -489,8 +489,8 @@ export default function LostFoundPage() {
 
                       {/* Status chip */}
                       {item.status === 'LOST' ? (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-500/10 text-rose-500 border border-rose-500/20">
-                          <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[var(--primary-tint)] text-[var(--primary)] border border-[var(--line-strong)]">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-cta)] animate-pulse" />
                           <span>MISSING</span>
                         </span>
                       ) : item.status === 'FOUND' ? (
@@ -785,7 +785,7 @@ export default function LostFoundPage() {
                     onClick={() => setReportStatus('LOST')}
                     className={`py-2 px-3 rounded-xl font-bold border text-xs flex items-center justify-center gap-1.5 cursor-pointer transition-all ${
                       reportStatus === 'LOST'
-                        ? 'bg-rose-500/15 border-rose-500 text-rose-500 shadow-xs'
+                        ? 'bg-[var(--primary-tint)] border-[var(--line-strong)] text-[var(--primary)] shadow-xs'
                         : 'bg-[var(--surface-sunken)] border-[var(--line)] text-[var(--text-muted)]'
                     }`}
                   >
@@ -899,7 +899,7 @@ export default function LostFoundPage() {
                         <p className="font-bold text-[var(--text)] truncate">{reportImage?.name || 'Selected photo'}</p>
                         <p className="text-[11px] text-[var(--text-muted)] mt-0.5">
                           {isUploadingPhoto ? (
-                            <span className="text-amber-500 flex items-center gap-1 font-semibold">
+                            <span className="text-[var(--gold)] flex items-center gap-1 font-semibold">
                               <Loader2 size={12} className="animate-spin" /> Uploading to cloud...
                             </span>
                           ) : uploadedImageUrl ? (
@@ -914,7 +914,7 @@ export default function LostFoundPage() {
                       <button
                         type="button"
                         onClick={handleRemovePhoto}
-                        className="p-1.5 rounded-lg bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 text-xs font-semibold cursor-pointer"
+                        className="p-1.5 rounded-lg bg-[var(--primary-tint)] text-[var(--primary)] hover:bg-[var(--primary-tint)] text-xs font-semibold cursor-pointer"
                       >
                         <X size={15} />
                       </button>

@@ -90,7 +90,7 @@ const TemplateRenderer: React.FC<{ story: Story }> = ({ story }) => {
         </h2>
 
         {/* Personal wish message */}
-        <p className="text-amber-200 text-sm mt-3 px-6 leading-relaxed font-medium">
+        <p className="text-[var(--gold)] text-sm mt-3 px-6 leading-relaxed font-medium">
           {wish || 'Wishing you the happiest birthday! Keep shining! 🎂🎉✨'}
         </p>
 
@@ -140,7 +140,7 @@ const TemplateRenderer: React.FC<{ story: Story }> = ({ story }) => {
       >
         <p className="text-6xl mb-2 select-none" aria-hidden>🏆</p>
         {photoUrl && (
-          <div className="w-24 h-24 overflow-hidden mb-3 border-2 border-amber-300 shadow-xl rounded-full shrink-0">
+          <div className="w-24 h-24 overflow-hidden mb-3 border-2 border-[var(--gold)] shadow-xl rounded-full shrink-0">
             <img src={photoUrl} alt={name} className="w-full h-full object-cover rounded-full" />
           </div>
         )}
@@ -178,7 +178,7 @@ const TemplateRenderer: React.FC<{ story: Story }> = ({ story }) => {
         <h2 className="text-white text-3xl font-black px-4" style={{ fontFamily: 'var(--font-display)' }}>
           {name}
         </h2>
-        <p className="text-yellow-100 text-sm mt-3 px-6 font-medium">
+        <p className="text-[var(--gold)] text-sm mt-3 px-6 font-medium">
           {wish || 'Highest marks in class! Absolute legend!'}
         </p>
       </div>
@@ -808,17 +808,17 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
                   className="flex items-center gap-2 px-3 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/20 text-white w-fit animate-fade-in shadow-md hover:bg-black/80 transition-colors cursor-pointer text-left"
                   title="View music credits & license"
                 >
-                  <div className="w-4 h-4 rounded-full overflow-hidden bg-pink-500/20 flex items-center justify-center shrink-0">
+                  <div className="w-4 h-4 rounded-full overflow-hidden bg-[var(--primary-tint)] flex items-center justify-center shrink-0">
                     {currentStory.song.artworkUrl ? (
                       <img src={currentStory.song.artworkUrl} alt={currentStory.song.title} className="w-full h-full object-cover" />
                     ) : (
-                      <Music size={10} className="text-pink-400" />
+                      <Music size={10} className="text-[var(--primary)]" />
                     )}
                   </div>
                   <span className="text-[11px] font-bold truncate max-w-[150px]">♪ {currentStory.song.title}</span>
                   <span className="text-[10px] text-white/70 truncate max-w-[90px]">• {currentStory.song.artist}</span>
                   {currentStory.song.startTime !== undefined && (
-                    <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-pink-500/30 text-pink-300 font-mono font-bold shrink-0">
+                    <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-[var(--primary-tint)] text-[var(--primary)] font-mono font-bold shrink-0">
                       0:{Math.floor(currentStory.song.startTime).toString().padStart(2, '0')}
                     </span>
                   )}
@@ -841,7 +841,7 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
                     globalAudio.unlockAudio();
                     globalAudio.playTrack(currentStory.song!);
                   }}
-                  className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-pink-600/90 hover:bg-pink-500 text-white text-[11px] font-bold shadow-lg animate-pulse cursor-pointer border border-white/30 transition-all active:scale-95"
+                  className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--primary-tint)] hover:bg-[var(--accent-cta)] text-white text-[11px] font-bold shadow-lg animate-pulse cursor-pointer border border-white/30 transition-all active:scale-95"
                 >
                   <Volume2 size={13} />
                   <span>Tap for sound 🔊</span>
@@ -853,7 +853,7 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
           {/* Repost Badge Pill if Story is a Repost */}
           {currentStory.isRepost && currentStory.repostedFrom && (
             <div className="mt-2 flex items-center gap-2 px-3 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/20 text-white w-fit animate-fade-in shadow-md">
-              <span className="text-pink-400 font-bold text-xs">🔄</span>
+              <span className="text-[var(--primary)] font-bold text-xs">🔄</span>
               <span className="text-[11px] font-bold">
                 Original post by @{currentStory.repostedFrom.username}
               </span>
@@ -1043,11 +1043,11 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
                   </div>
                   <span className="text-white/30">•</span>
                   <div className="flex items-center gap-1.5 text-xs font-bold text-white">
-                    <Heart size={15} className="text-rose-500 fill-rose-500" />
+                    <Heart size={15} className="text-[var(--primary)] fill-rose-500" />
                     <span>{currentLikesCount} {currentLikesCount === 1 ? 'like' : 'likes'}</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-1 text-[11px] font-extrabold text-amber-300">
+                <div className="flex items-center gap-1 text-[11px] font-extrabold text-[var(--gold)]">
                   <span>Activity</span>
                   <ChevronRight size={14} />
                 </div>
@@ -1079,7 +1079,7 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
                     <button
                       type="button"
                       onClick={handleSendStoryReply}
-                      className="absolute right-2.5 w-7 h-7 flex items-center justify-center text-white hover:text-amber-300 transition-colors cursor-pointer"
+                      className="absolute right-2.5 w-7 h-7 flex items-center justify-center text-white hover:text-[var(--gold)] transition-colors cursor-pointer"
                       aria-label="Send reply"
                     >
                       <Send size={15} />
@@ -1092,14 +1092,14 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
                   type="button"
                   onClick={handleToggleLike}
                   className={`h-11 min-w-[44px] px-3 flex items-center justify-center gap-1.5 bg-black/65 backdrop-blur-md border rounded-full cursor-pointer transition-all hover:scale-105 active:scale-90 shadow-lg shrink-0 ${
-                    isCurrentStoryLiked ? 'border-rose-500/80 bg-rose-950/40 text-rose-400' : 'border-white/30 text-white'
+                    isCurrentStoryLiked ? 'border-[var(--line-strong)] bg-[var(--primary-tint)] text-[var(--primary)]' : 'border-white/30 text-white'
                   }`}
                   aria-label="Like story"
                   title={isCurrentStoryLiked ? 'Unlike story' : 'Like story'}
                 >
                   <Heart
                     size={19}
-                    className={isCurrentStoryLiked ? 'text-rose-500 fill-rose-500 animate-[bounce_0.3s_ease-out]' : 'text-white'}
+                    className={isCurrentStoryLiked ? 'text-[var(--primary)] fill-rose-500 animate-[bounce_0.3s_ease-out]' : 'text-white'}
                   />
                   {currentLikesCount > 0 && (
                     <span className="text-xs font-bold">
@@ -1168,11 +1168,11 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
                   onClick={() => setActivityTab('likes')}
                   className={`flex-1 py-3 flex items-center justify-center gap-2 text-xs font-bold border-b-2 cursor-pointer transition-colors ${
                     activityTab === 'likes'
-                      ? 'border-rose-500 text-rose-400'
+                      ? 'border-[var(--line-strong)] text-[var(--primary)]'
                       : 'border-transparent text-white/60 hover:text-white'
                   }`}
                 >
-                  <Heart size={15} className={activityTab === 'likes' ? 'fill-rose-500 text-rose-500' : ''} />
+                  <Heart size={15} className={activityTab === 'likes' ? 'fill-rose-500 text-[var(--primary)]' : ''} />
                   <span>Liked ({currentLikesCount})</span>
                 </button>
               </div>
@@ -1208,7 +1208,7 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
                                   {prof?.fullName || viewerUser}
                                 </span>
                                 {hasLiked && (
-                                  <Heart size={12} className="text-rose-500 fill-rose-500 shrink-0" />
+                                  <Heart size={12} className="text-[var(--primary)] fill-rose-500 shrink-0" />
                                 )}
                               </div>
                               <p className="text-white/50 text-[11px]">
@@ -1261,8 +1261,8 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
                               </p>
                             </div>
                           </div>
-                          <div className="flex items-center gap-1 text-[11px] text-rose-300 font-semibold px-2.5 py-1 rounded-full bg-rose-500/20 border border-rose-500/30">
-                            <Heart size={12} className="fill-rose-500 text-rose-500" />
+                          <div className="flex items-center gap-1 text-[11px] text-[var(--primary)] font-semibold px-2.5 py-1 rounded-full bg-[var(--primary-tint)] border border-[var(--line-strong)]">
+                            <Heart size={12} className="fill-rose-500 text-[var(--primary)]" />
                             <span>Liked</span>
                           </div>
                         </div>
@@ -1287,7 +1287,7 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
             <div className="w-full max-w-xs bg-[#1a1a1a] border border-[#2e2e2e] rounded-3xl p-5 text-white shadow-2xl space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-bold flex items-center gap-2">
-                  <Music size={16} className="text-pink-400" /> Song Details
+                  <Music size={16} className="text-[var(--primary)]" /> Song Details
                 </h3>
                 <button
                   type="button"
@@ -1310,7 +1310,7 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
                 <div className="min-w-0">
                   <p className="text-sm font-bold truncate text-white">{currentStory.song.title}</p>
                   <p className="text-xs text-white/70 truncate">{currentStory.song.artist}</p>
-                  <span className="inline-block mt-1 text-[10px] px-2 py-0.5 rounded-md bg-pink-500/20 text-pink-300 font-mono">
+                  <span className="inline-block mt-1 text-[10px] px-2 py-0.5 rounded-md bg-[var(--primary-tint)] text-[var(--primary)] font-mono">
                     {currentStory.song.license || 'Creative Commons'}
                   </span>
                 </div>
@@ -1325,7 +1325,7 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
                     href={currentStory.song.sourcePageUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-[11px] text-pink-400 hover:underline pt-1"
+                    className="inline-flex items-center gap-1 text-[11px] text-[var(--primary)] hover:underline pt-1"
                   >
                     <span>
                       {currentStory.song.provider === 'itunes'
@@ -1378,7 +1378,7 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
                     setShowMusicCreditSheet(false);
                     setIsPaused(false);
                   }}
-                  className="flex-1 py-2 rounded-xl bg-pink-600 hover:bg-pink-500 text-white text-xs font-bold transition-colors cursor-pointer"
+                  className="flex-1 py-2 rounded-xl bg-[var(--accent-cta)] hover:bg-[var(--accent-cta)] text-white text-xs font-bold transition-colors cursor-pointer"
                 >
                   Close
                 </button>

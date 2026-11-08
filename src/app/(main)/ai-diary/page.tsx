@@ -225,7 +225,7 @@ function FormattedAiMessage({ text, isUser }: { text: string; isUser: boolean })
               className="p-3 rounded-xl bg-black/[0.02] dark:bg-white/[0.03] border border-[var(--line)] space-y-1.5 shadow-2xs"
             >
               <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/20">
+                <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-[var(--primary-tint)] text-[var(--primary)] dark:text-[var(--primary)] border border-[var(--line-strong)]">
                   {stepBadge}
                 </span>
               </div>
@@ -251,7 +251,7 @@ function FormattedAiMessage({ text, isUser }: { text: string; isUser: boolean })
               className={`p-2.5 rounded-xl border text-xs sm:text-sm leading-relaxed flex items-start gap-2 shadow-2xs ${
                 isCheck
                   ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-800 dark:text-emerald-200'
-                  : 'bg-amber-500/10 border-amber-500/25 text-amber-800 dark:text-amber-200'
+                  : 'bg-[var(--gold-tint)] border-[var(--gold)] text-[var(--gold)] dark:text-[var(--gold)]'
               }`}
             >
               <div className="mt-0.5 shrink-0 font-bold text-sm">
@@ -278,7 +278,7 @@ function FormattedAiMessage({ text, isUser }: { text: string; isUser: boolean })
           return (
             <div
               key={pIdx}
-              className="px-3 py-2 rounded-xl bg-black/[0.03] dark:bg-white/[0.04] border border-[var(--line)] font-mono text-xs sm:text-sm font-semibold tracking-wide text-indigo-600 dark:text-indigo-400 my-1"
+              className="px-3 py-2 rounded-xl bg-black/[0.03] dark:bg-white/[0.04] border border-[var(--line)] font-mono text-xs sm:text-sm font-semibold tracking-wide text-[var(--primary)] dark:text-[var(--primary)] my-1"
             >
               {renderInlineMarkdown(trimmed)}
             </div>
@@ -297,7 +297,7 @@ function FormattedAiMessage({ text, isUser }: { text: string; isUser: boolean })
               if (lTrim.startsWith('•') || lTrim.startsWith('-')) {
                 return (
                   <div key={lIdx} className="flex items-start gap-2 pl-1 text-xs sm:text-sm">
-                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0 mt-2" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-cta)] shrink-0 mt-2" />
                     <span className="flex-1 leading-relaxed">
                       {renderInlineMarkdown(lTrim.replace(/^[•\-]\s*/, ''))}
                     </span>
@@ -784,7 +784,7 @@ export default function AiDiaryPage() {
             <ArrowLeft size={20} />
           </Link>
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-violet-600 via-indigo-600 to-cyan-500 flex items-center justify-center text-white shadow-sm font-bold">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[var(--accent-cta)] via-[var(--accent-cta)] to-cyan-500 flex items-center justify-center text-white shadow-sm font-bold">
               <Bot size={20} />
             </div>
             <div>
@@ -844,7 +844,7 @@ export default function AiDiaryPage() {
             }`}
             style={{ borderColor: activeTab === 'chat' ? 'var(--line)' : 'transparent' }}
           >
-            <Bot size={14} className="text-violet-500" />
+            <Bot size={14} className="text-[var(--primary)]" />
             <span>AI Assistant</span>
           </button>
 
@@ -858,10 +858,10 @@ export default function AiDiaryPage() {
             }`}
             style={{ borderColor: activeTab === 'diary_wall' ? 'var(--line)' : 'transparent' }}
           >
-            <Camera size={14} className="text-amber-500" />
+            <Camera size={14} className="text-[var(--gold)]" />
             <span>Class Diary Wall</span>
             {diaryEntries.length > 0 && (
-              <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-amber-500/10 text-amber-500 font-bold">
+              <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-[var(--gold-tint)] text-[var(--gold)] font-bold">
                 {diaryEntries.length}
               </span>
             )}
@@ -896,7 +896,7 @@ export default function AiDiaryPage() {
             <button
               type="button"
               onClick={() => handleSend("Show today's diary image")}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--surface)] border border-amber-500/40 text-amber-600 dark:text-amber-400 font-bold shrink-0 hover:border-amber-500 transition-colors shadow-2xs cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--surface)] border border-[var(--gold)] text-[var(--gold)] dark:text-[var(--gold)] font-bold shrink-0 hover:border-[var(--gold)] transition-colors shadow-2xs cursor-pointer"
             >
               <Camera size={13} />
               <span>📸 Class {userClass} Diary Image</span>
@@ -904,7 +904,7 @@ export default function AiDiaryPage() {
             <button
               type="button"
               onClick={() => handleSend('Plan my daily study schedule')}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--surface)] border border-violet-500/40 text-violet-600 dark:text-violet-400 font-bold shrink-0 hover:border-violet-500 transition-colors shadow-2xs cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--surface)] border border-[var(--line-strong)] text-[var(--primary)] dark:text-[var(--primary)] font-bold shrink-0 hover:border-[var(--line-strong)] transition-colors shadow-2xs cursor-pointer"
             >
               <Sparkles size={13} />
               <span>📅 Plan Study Schedule</span>
@@ -912,9 +912,9 @@ export default function AiDiaryPage() {
             <button
               type="button"
               onClick={() => handleSend("What is today's homework?")}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--surface)] border border-[var(--line)] font-semibold shrink-0 hover:border-amber-500/50 transition-colors shadow-2xs cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--surface)] border border-[var(--line)] font-semibold shrink-0 hover:border-[var(--gold)] transition-colors shadow-2xs cursor-pointer"
             >
-              <BookOpen size={13} className="text-amber-500" />
+              <BookOpen size={13} className="text-[var(--gold)]" />
               <span>Homework Tasks</span>
             </button>
             <button
@@ -928,9 +928,9 @@ export default function AiDiaryPage() {
             <button
               type="button"
               onClick={() => handleSend('Upcoming examination schedule')}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--surface)] border border-[var(--line)] font-semibold shrink-0 hover:border-purple-500/50 transition-colors shadow-2xs cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--surface)] border border-[var(--line)] font-semibold shrink-0 hover:border-[var(--line-strong)] transition-colors shadow-2xs cursor-pointer"
             >
-              <Calendar size={13} className="text-purple-500" />
+              <Calendar size={13} className="text-[var(--primary)]" />
               <span>Exam Timetable</span>
             </button>
             <button
@@ -953,7 +953,7 @@ export default function AiDiaryPage() {
                 }`}
               >
                 {msg.sender === 'ai' && (
-                  <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-violet-600 via-indigo-600 to-cyan-500 text-white flex items-center justify-center shrink-0 shadow-xs mt-0.5">
+                  <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[var(--accent-cta)] via-[var(--accent-cta)] to-cyan-500 text-white flex items-center justify-center shrink-0 shadow-xs mt-0.5">
                     <Sparkles size={15} />
                   </div>
                 )}
@@ -978,7 +978,7 @@ export default function AiDiaryPage() {
                             <span>Class {msg.diaryEntry?.classGrade || userClass} Diary Page</span>
                           </span>
                           {msg.diaryEntry?.isFirstSubmission && (
-                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 border border-amber-500/20 font-extrabold flex items-center gap-1">
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--gold-tint)] text-[var(--gold)] border border-[var(--gold)] font-extrabold flex items-center gap-1">
                               <Trophy size={11} />
                               <span>+50 First Submission</span>
                             </span>
@@ -1016,7 +1016,7 @@ export default function AiDiaryPage() {
                     {/* Inline Upload Prompt if Diary not uploaded yet */}
                     {msg.canUploadDiary && (
                       <div className="mt-2.5 pt-2 border-t border-[var(--line)] flex items-center justify-between gap-2 flex-wrap">
-                        <span className="text-[11px] font-semibold text-amber-500 flex items-center gap-1">
+                        <span className="text-[11px] font-semibold text-[var(--gold)] flex items-center gap-1">
                           <Flame size={12} className="fill-amber-500" />
                           <span>+50 Speed Points Available</span>
                         </span>
@@ -1037,12 +1037,12 @@ export default function AiDiaryPage() {
                     {/* Inline Interactive Schedule Card */}
                     {msg.scheduleData && (
                       <div className="mt-3 p-3 rounded-xl bg-[var(--surface)] border border-[var(--line)] space-y-2">
-                        <div className="flex items-center justify-between text-xs font-bold text-violet-600 dark:text-violet-400">
+                        <div className="flex items-center justify-between text-xs font-bold text-[var(--primary)] dark:text-[var(--primary)]">
                           <span className="flex items-center gap-1">
                             <Clock size={13} />
                             <span>{msg.scheduleData.grade} Daily Focus Plan</span>
                           </span>
-                          <span className="text-[10px] px-2 py-0.5 rounded bg-violet-500/10">
+                          <span className="text-[10px] px-2 py-0.5 rounded bg-[var(--primary-tint)]">
                             {msg.scheduleData.totalDurationMin} mins
                           </span>
                         </div>
@@ -1054,13 +1054,13 @@ export default function AiDiaryPage() {
                               className="p-2 rounded-lg bg-[var(--surface-sunken)] border border-[var(--line)] flex items-center justify-between gap-2 text-[11px]"
                             >
                               <div className="flex items-center gap-2">
-                                <span className="font-bold text-amber-500 shrink-0">{item.timeBlock}</span>
+                                <span className="font-bold text-[var(--gold)] shrink-0">{item.timeBlock}</span>
                                 <span className="truncate">{item.task}</span>
                               </div>
                               <span
                                 className={`text-[9px] uppercase font-bold px-1.5 py-0.2 rounded shrink-0 ${
                                   item.priority === 'urgent'
-                                    ? 'bg-rose-500/10 text-rose-500'
+                                    ? 'bg-[var(--primary-tint)] text-[var(--primary)]'
                                     : 'bg-blue-500/10 text-blue-500'
                                 }`}
                               >
@@ -1081,7 +1081,7 @@ export default function AiDiaryPage() {
                           key={i}
                           type="button"
                           onClick={() => handleSend(s)}
-                          className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-[var(--surface)] border border-[var(--line)] hover:border-violet-500/50 hover:text-violet-600 transition-colors shadow-2xs cursor-pointer"
+                          className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-[var(--surface)] border border-[var(--line)] hover:border-[var(--line-strong)] hover:text-[var(--primary)] transition-colors shadow-2xs cursor-pointer"
                         >
                           {s} &rarr;
                         </button>
@@ -1094,7 +1094,7 @@ export default function AiDiaryPage() {
 
             {isTyping && (
               <div className="flex items-center gap-2 text-xs text-[var(--text-muted)] animate-pulse">
-                <div className="w-8 h-8 rounded-xl bg-violet-500/10 text-violet-500 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-xl bg-[var(--primary-tint)] text-[var(--primary)] flex items-center justify-center">
                   <Sparkles size={15} />
                 </div>
                 <span>AI searching diary registry and curriculum...</span>
@@ -1139,7 +1139,7 @@ export default function AiDiaryPage() {
         <div className="flex-1 flex flex-col overflow-y-auto p-4 space-y-4 animate-fade-in">
           {/* Security & Class Isolation Banner */}
           <div
-            className="p-4 rounded-2xl border bg-gradient-to-br from-amber-500/10 via-[var(--surface)] to-emerald-500/5 shadow-xs space-y-3"
+            className="p-4 rounded-2xl border bg-gradient-to-br from-[var(--gold-tint)] via-[var(--surface)] to-emerald-500/5 shadow-xs space-y-3"
             style={{ borderColor: 'var(--line)' }}
           >
             <div className="flex items-start justify-between gap-3">
@@ -1225,7 +1225,7 @@ export default function AiDiaryPage() {
                   onClick={() => setSelectedDiarySection(sec)}
                   className={`px-2.5 py-0.5 rounded-md text-[11px] font-medium border transition-all cursor-pointer whitespace-nowrap active:scale-95 ${
                     selectedDiarySection === sec
-                      ? 'bg-amber-500 text-black border-amber-500 font-bold'
+                      ? 'bg-amber-500 text-black border-[var(--gold)] font-bold'
                       : 'bg-[var(--surface-sunken)] text-[var(--text-muted)] border-[var(--line)] hover:text-[var(--text)]'
                   }`}
                 >
@@ -1240,7 +1240,7 @@ export default function AiDiaryPage() {
           {/* ================================================================ */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-amber-500 flex items-center gap-1.5">
+              <span className="text-xs font-bold uppercase tracking-wider text-[var(--gold)] flex items-center gap-1.5">
                 <Sparkles size={13} />
                 Today&apos;s Verified Diary
               </span>
@@ -1273,8 +1273,8 @@ export default function AiDiaryPage() {
                   </div>
 
                   {todayDiaryEntry.isFirstSubmission && (
-                    <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 flex items-center gap-1.5 shadow-2xs shrink-0">
-                      <Trophy size={13} className="text-amber-500" />
+                    <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-[var(--gold-tint)] text-[var(--gold)] dark:text-[var(--gold)] border border-[var(--gold)] flex items-center gap-1.5 shadow-2xs shrink-0">
+                      <Trophy size={13} className="text-[var(--gold)]" />
                       <span>First Submitter (+{todayDiaryEntry.pointsAwarded} pts)</span>
                     </span>
                   )}
@@ -1325,7 +1325,7 @@ export default function AiDiaryPage() {
                       setSelectedSection(todayDiaryEntry.section);
                       setIsUploadOpen(true);
                     }}
-                    className="px-3 py-1.5 rounded-lg text-xs font-semibold text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 transition-colors cursor-pointer flex items-center gap-1.5"
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold text-[var(--gold)] dark:text-[var(--gold)] hover:bg-[var(--gold-tint)] transition-colors cursor-pointer flex items-center gap-1.5"
                   >
                     <Camera size={13} />
                     <span>Upload Clearer Photo</span>
@@ -1335,10 +1335,10 @@ export default function AiDiaryPage() {
             ) : (
               /* EMPTY STATE FOR TODAY */
               <div
-                className="p-6 rounded-2xl border-2 border-dashed border-amber-500/40 text-center space-y-3 bg-amber-500/5"
+                className="p-6 rounded-2xl border-2 border-dashed border-[var(--gold)] text-center space-y-3 bg-[var(--gold-tint)]"
                 style={{ borderColor: 'var(--line)' }}
               >
-                <div className="w-12 h-12 rounded-full mx-auto bg-amber-500/20 text-amber-600 flex items-center justify-center animate-pulse">
+                <div className="w-12 h-12 rounded-full mx-auto bg-[var(--gold-tint)] text-[var(--gold)] flex items-center justify-center animate-pulse">
                   <Camera size={24} />
                 </div>
                 <div>
@@ -1401,7 +1401,7 @@ export default function AiDiaryPage() {
                       </div>
 
                       {entry.isFirstSubmission && (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20 flex items-center gap-1">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[var(--gold-tint)] text-[var(--gold)] dark:text-[var(--gold)] border border-[var(--gold)] flex items-center gap-1">
                           <Trophy size={10} />
                           <span>+{entry.pointsAwarded} pts</span>
                         </span>
@@ -1465,11 +1465,11 @@ export default function AiDiaryPage() {
         <div className="flex-1 overflow-y-auto p-4 space-y-4 animate-fade-in">
           {/* Header Card */}
           <div
-            className="p-4 rounded-2xl border bg-gradient-to-br from-violet-600/10 via-[var(--surface)] to-indigo-600/5 shadow-xs space-y-3"
+            className="p-4 rounded-2xl border bg-gradient-to-br from-[var(--primary-tint)] via-[var(--surface)] to-[var(--primary-tint)] shadow-xs space-y-3"
             style={{ borderColor: 'var(--line)' }}
           >
             <div className="flex items-center gap-2.5">
-              <div className="w-10 h-10 rounded-xl bg-violet-600 text-white flex items-center justify-center font-bold shadow-xs">
+              <div className="w-10 h-10 rounded-xl bg-[var(--accent-cta)] text-white flex items-center justify-center font-bold shadow-xs">
                 <BrainCircuit size={20} />
               </div>
               <div>
@@ -1484,7 +1484,7 @@ export default function AiDiaryPage() {
             <div>
               <div className="flex items-center justify-between text-xs font-bold mb-1.5">
                 <span className="text-[var(--text-muted)]">Target Study Duration:</span>
-                <span className="text-violet-600 dark:text-violet-400 tabular-nums font-black">{targetHours} Hours</span>
+                <span className="text-[var(--primary)] dark:text-[var(--primary)] tabular-nums font-black">{targetHours} Hours</span>
               </div>
               <input
                 type="range"
@@ -1512,8 +1512,8 @@ export default function AiDiaryPage() {
                       onClick={() => toggleSubjectFilter(sub)}
                       className={`px-3 py-1 rounded-full text-xs font-bold border transition-all cursor-pointer ${
                         isPicked
-                          ? 'bg-violet-600 text-white border-violet-600 shadow-2xs'
-                          : 'bg-[var(--surface-sunken)] text-[var(--text)] border-[var(--line)] hover:border-violet-500'
+                          ? 'bg-[var(--accent-cta)] text-white border-[var(--line-strong)] shadow-2xs'
+                          : 'bg-[var(--surface-sunken)] text-[var(--text)] border-[var(--line)] hover:border-[var(--line-strong)]'
                       }`}
                     >
                       {sub}
@@ -1527,7 +1527,7 @@ export default function AiDiaryPage() {
               type="button"
               onClick={handleGenerateManualSchedule}
               disabled={isGeneratingSchedule}
-              className="w-full py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs hover:opacity-95 cursor-pointer disabled:opacity-50"
+              className="w-full py-2.5 rounded-xl bg-gradient-to-r from-[var(--accent-cta)] to-[var(--accent-cta)] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs hover:opacity-95 cursor-pointer disabled:opacity-50"
             >
               <Sparkles size={14} />
               <span>{isGeneratingSchedule ? 'Calculating Optimal Schedule...' : 'Generate AI Focus Plan'}</span>
@@ -1545,10 +1545,10 @@ export default function AiDiaryPage() {
             >
               <div className="flex items-center justify-between border-b pb-2" style={{ borderColor: 'var(--line)' }}>
                 <div className="flex items-center gap-2">
-                  <Clock size={16} className="text-violet-600" />
+                  <Clock size={16} className="text-[var(--primary)]" />
                   <h3 className="text-xs font-bold text-[var(--text)]">{currentSchedule.grade} Today&apos;s Routine</h3>
                 </div>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-600">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[var(--primary-tint)] text-[var(--primary)]">
                   {currentSchedule.totalDurationMin} Mins Focus
                 </span>
               </div>
@@ -1563,7 +1563,7 @@ export default function AiDiaryPage() {
                       className={`p-3 rounded-xl border flex items-center justify-between gap-3 cursor-pointer transition-all ${
                         done
                           ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-700 dark:text-emerald-300 line-through opacity-75'
-                          : 'bg-[var(--surface-sunken)] border-[var(--line)] text-[var(--text)] hover:border-violet-500/40'
+                          : 'bg-[var(--surface-sunken)] border-[var(--line)] text-[var(--text)] hover:border-[var(--line-strong)]'
                       }`}
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
@@ -1583,7 +1583,7 @@ export default function AiDiaryPage() {
                       <span
                         className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase shrink-0 ${
                           item.priority === 'urgent'
-                            ? 'bg-rose-500/15 text-rose-600'
+                            ? 'bg-[var(--primary-tint)] text-[var(--primary)]'
                             : 'bg-blue-500/15 text-blue-600'
                         }`}
                       >

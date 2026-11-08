@@ -145,8 +145,8 @@ export const VoiceAudioPlayer: React.FC<VoiceAudioPlayerProps> = ({
         }}
         className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 shadow-md cursor-pointer transition-transform active:scale-95 ${
           isMe
-            ? 'bg-[#e9edef] text-[#005c4b] hover:bg-white'
-            : 'bg-[#00a884] text-white hover:bg-[#008f6f]'
+            ? 'bg-[var(--text)] text-[var(--accent-cta)] hover:bg-white'
+            : 'bg-[var(--primary)] text-white hover:bg-[var(--primary-hover)]'
         }`}
         title={isPlaying ? 'Pause' : 'Play voice note'}
       >
@@ -172,7 +172,7 @@ export const VoiceAudioPlayer: React.FC<VoiceAudioPlayerProps> = ({
                   backgroundColor: isFilled
                     ? isMe
                       ? '#53bdeb'
-                      : '#00a884'
+                      : 'var(--primary)'
                     : isMe
                     ? 'rgba(255, 255, 255, 0.3)'
                     : 'rgba(255, 255, 255, 0.2)',
@@ -183,7 +183,7 @@ export const VoiceAudioPlayer: React.FC<VoiceAudioPlayerProps> = ({
         </div>
 
         {/* Timestamps */}
-        <div className="flex items-center justify-between text-[10px] font-mono mt-0.5 text-[#8696a0]">
+        <div className="flex items-center justify-between text-[10px] font-mono mt-0.5 text-[var(--text-muted)]">
           <span>{isPlaying ? formatSec(currentTime) : duration}</span>
           <span className="text-[9px] uppercase tracking-wider font-semibold">Voice Note</span>
         </div>

@@ -65,12 +65,12 @@ export const UniqueLikeOverlay: React.FC<UniqueLikeOverlayProps> = ({ isVisible,
   return (
     <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-30 overflow-hidden select-none">
       {/* 1. Outer Shockwave Aura */}
-      <div className="absolute w-36 h-36 rounded-full border-rose-400 bg-rose-500/15 animate-unique-shockwave" />
+      <div className="absolute w-36 h-36 rounded-full border-[var(--line-strong)] bg-[var(--primary-tint)] animate-unique-shockwave" />
 
       {/* 2. Floating +1 Badge */}
       <div className="absolute -translate-y-8 animate-plus-one z-40">
-        <div className="px-3 py-1 rounded-full bg-gradient-to-r from-rose-500 via-pink-500 to-amber-400 text-white font-black text-sm shadow-xl shadow-rose-500/50 flex items-center gap-1 border border-white/40">
-          <Sparkles size={13} className="text-amber-200 animate-pulse" />
+        <div className="px-3 py-1 rounded-full bg-gradient-to-r from-[var(--accent-cta)] via-[var(--accent-cta)] to-[var(--gold)] text-white font-black text-sm shadow-xl  flex items-center gap-1 border border-white/40">
+          <Sparkles size={13} className="text-[var(--gold)] animate-pulse" />
           <span>+1</span>
         </div>
       </div>

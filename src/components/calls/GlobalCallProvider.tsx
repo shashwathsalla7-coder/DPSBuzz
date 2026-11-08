@@ -770,9 +770,12 @@ export function GlobalCallProvider() {
     } catch {}
 
     pollCallStatus();
+    // Fast polling only while a call is ringing or live; otherwise check every 10s.
+    let idleTicks = 0;
     const interval = setInterval(() => {
       const hasCall = Boolean(activeCallRef.current || incomingCallRef.current);
       if (!hasCall && typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+      if (!hasCall && ++idleTicks % 4 !== 0) return;
       pollCallStatus();
     }, 2500);
 

@@ -157,7 +157,7 @@ export default function QuestionBoxPage() {
           </Link>
           <div className="flex items-center gap-2">
             <h1 className="text-base font-bold tracking-tight text-[var(--text)]">Question Box</h1>
-            <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded-full bg-violet-500/10 text-violet-500 border border-violet-500/20 flex items-center gap-1">
+            <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded-full bg-[var(--primary-tint)] text-[var(--primary)] border border-[var(--line-strong)] flex items-center gap-1">
               <Sparkles size={11} />
               <span>AI Arena</span>
             </span>
@@ -166,7 +166,7 @@ export default function QuestionBoxPage() {
 
         {/* Streak & Points Pill */}
         <div className="flex items-center gap-2 text-xs font-bold">
-          <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/20">
+          <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-[var(--gold-tint)] text-[var(--gold)] border border-[var(--gold)]">
             <Flame size={14} className="fill-amber-500" />
             <span>{progress.currentStreak || 0}d Streak</span>
           </div>
@@ -191,7 +191,7 @@ export default function QuestionBoxPage() {
             onClick={() => setActiveTab('daily')}
             className={`flex-1 py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               activeTab === 'daily'
-                ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-xs'
+                ? 'bg-gradient-to-r from-[var(--accent-cta)] to-[var(--accent-cta)] text-white shadow-xs'
                 : 'text-[var(--text-muted)] hover:text-[var(--text)]'
             }`}
           >
@@ -204,7 +204,7 @@ export default function QuestionBoxPage() {
             onClick={() => setActiveTab('submit')}
             className={`flex-1 py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               activeTab === 'submit'
-                ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-xs'
+                ? 'bg-gradient-to-r from-[var(--accent-cta)] to-[var(--accent-cta)] text-white shadow-xs'
                 : 'text-[var(--text-muted)] hover:text-[var(--text)]'
             }`}
           >
@@ -217,7 +217,7 @@ export default function QuestionBoxPage() {
             onClick={() => setActiveTab('pool')}
             className={`flex-1 py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               activeTab === 'pool'
-                ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-xs'
+                ? 'bg-gradient-to-r from-[var(--accent-cta)] to-[var(--accent-cta)] text-white shadow-xs'
                 : 'text-[var(--text-muted)] hover:text-[var(--text)]'
             }`}
           >
@@ -236,12 +236,12 @@ export default function QuestionBoxPage() {
             className="p-5 rounded-3xl border bg-[var(--surface)] shadow-md space-y-4 relative overflow-hidden backdrop-blur-xs"
             style={{ borderColor: 'var(--line)' }}
           >
-            <div className="absolute top-0 right-0 w-48 h-48 bg-violet-500/10 rounded-full blur-2xl pointer-events-none" />
+            <div className="absolute top-0 right-0 w-48 h-48 bg-[var(--primary-tint)] rounded-full blur-2xl pointer-events-none" />
 
             {/* Question Header */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-extrabold uppercase px-2.5 py-1 rounded-full bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/20">
+                <span className="text-xs font-extrabold uppercase px-2.5 py-1 rounded-full bg-[var(--primary-tint)] text-[var(--primary)] dark:text-[var(--primary)] border border-[var(--line-strong)]">
                   {todayQ.subject}
                 </span>
                 {todayQ.aiRankScore && (
@@ -251,7 +251,7 @@ export default function QuestionBoxPage() {
                 )}
               </div>
 
-              <div className="flex items-center gap-1.5 text-xs font-bold text-amber-500">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-[var(--gold)]">
                 <Award size={15} />
                 <span>+{todayQ.points} House Points</span>
               </div>
@@ -268,7 +268,7 @@ export default function QuestionBoxPage() {
                 const isSelected = activeSelected === idx;
                 const isCorrectAnswer = idx === todayQ.correctIndex;
 
-                let btnCls = 'bg-[var(--surface-sunken)] border-[var(--line)] hover:border-violet-500/50 text-[var(--text)]';
+                let btnCls = 'bg-[var(--surface-sunken)] border-[var(--line)] hover:border-[var(--line-strong)] text-[var(--text)]';
                 let indicatorCls = 'bg-[var(--surface)] border-[var(--line)] text-[var(--text-muted)]';
 
                 if (isAnswered) {
@@ -276,8 +276,8 @@ export default function QuestionBoxPage() {
                     btnCls = 'bg-emerald-500/15 border-emerald-500 text-emerald-600 dark:text-emerald-400 font-bold';
                     indicatorCls = 'bg-emerald-500 text-white border-emerald-500';
                   } else if (isSelected && !isCorrectAnswer) {
-                    btnCls = 'bg-rose-500/15 border-rose-500 text-rose-600 dark:text-rose-400 line-through';
-                    indicatorCls = 'bg-rose-500 text-white border-rose-500';
+                    btnCls = 'bg-[var(--primary-tint)] border-[var(--line-strong)] text-[var(--primary)] dark:text-[var(--primary)] line-through';
+                    indicatorCls = 'bg-[var(--accent-cta)] text-white border-[var(--line-strong)]';
                   } else {
                     btnCls = 'opacity-40 border-[var(--line)] text-[var(--text-muted)]';
                   }
@@ -302,7 +302,7 @@ export default function QuestionBoxPage() {
                       <CheckCircle2 size={18} className="text-emerald-500 shrink-0" />
                     )}
                     {isAnswered && isSelected && !isCorrectAnswer && (
-                      <XCircle size={18} className="text-rose-500 shrink-0" />
+                      <XCircle size={18} className="text-[var(--primary)] shrink-0" />
                     )}
                   </button>
                 );
@@ -316,7 +316,7 @@ export default function QuestionBoxPage() {
                   className={`p-4 rounded-2xl border ${
                     isCorrect
                       ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
-                      : 'bg-rose-500/10 border-rose-500/30 text-rose-600 dark:text-rose-400'
+                      : 'bg-[var(--primary-tint)] border-[var(--line-strong)] text-[var(--primary)] dark:text-[var(--primary)]'
                   }`}
                 >
                   <div className="flex items-center gap-2 font-bold text-xs mb-1">
@@ -339,7 +339,7 @@ export default function QuestionBoxPage() {
 
                 {todayQ.funFact && (
                   <div className="p-3.5 rounded-2xl bg-[var(--surface-sunken)] border border-[var(--line)] text-xs text-[var(--text-muted)] space-y-1">
-                    <span className="font-bold text-amber-500 flex items-center gap-1.5">
+                    <span className="font-bold text-[var(--gold)] flex items-center gap-1.5">
                       💡 Did You Know?
                     </span>
                     <p className="leading-relaxed text-[var(--text)]">{todayQ.funFact}</p>
@@ -358,15 +358,15 @@ export default function QuestionBoxPage() {
         <div className="px-4 space-y-4 animate-fade-in">
           {/* AI Rank Result Showcase */}
           {aiEvalResult && (
-            <div className="p-4 rounded-2xl border bg-gradient-to-br from-violet-600/15 via-indigo-600/10 to-emerald-500/10 border-violet-500/40 shadow-md space-y-3 animate-fade-in">
+            <div className="p-4 rounded-2xl border bg-gradient-to-br from-[var(--primary-tint)] via-[var(--primary-tint)] to-emerald-500/10 border-[var(--line-strong)] shadow-md space-y-3 animate-fade-in">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Sparkles size={18} className="text-violet-500" />
+                  <Sparkles size={18} className="text-[var(--primary)]" />
                   <h3 className="text-sm font-bold text-[var(--text)]">
                     AI Evaluation & Algorithmic Ranking Report
                   </h3>
                 </div>
-                <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-violet-600 text-white">
+                <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-[var(--accent-cta)] text-white">
                   Score: {aiEvalResult.aiRankScore}%
                 </span>
               </div>
@@ -374,7 +374,7 @@ export default function QuestionBoxPage() {
               <div className="grid grid-cols-3 gap-2 text-center text-xs">
                 <div className="p-2.5 rounded-xl bg-[var(--surface)] border border-[var(--line)]">
                   <span className="text-[10px] text-[var(--text-muted)] block">Difficulty</span>
-                  <strong className="uppercase font-extrabold text-amber-500">{aiEvalResult.difficulty}</strong>
+                  <strong className="uppercase font-extrabold text-[var(--gold)]">{aiEvalResult.difficulty}</strong>
                 </div>
                 <div className="p-2.5 rounded-xl bg-[var(--surface)] border border-[var(--line)]">
                   <span className="text-[10px] text-[var(--text-muted)] block">Bloom Level</span>
@@ -401,7 +401,7 @@ export default function QuestionBoxPage() {
           >
             <div className="space-y-1">
               <h2 className="text-sm font-bold text-[var(--text)] flex items-center gap-1.5">
-                <BrainCircuit size={16} className="text-violet-500" />
+                <BrainCircuit size={16} className="text-[var(--primary)]" />
                 <span>Submit an Academic Challenge to the AI Ranker</span>
               </h2>
               <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
@@ -435,7 +435,7 @@ export default function QuestionBoxPage() {
                   value={subQuestion}
                   onChange={(e) => setSubQuestion(e.target.value)}
                   placeholder="e.g. Which layer of the Earth's atmosphere contains the ozone layer that protects us from ultraviolet rays?"
-                  className="w-full p-3 rounded-xl border bg-[var(--surface-sunken)] text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-violet-500/30 leading-relaxed"
+                  className="w-full p-3 rounded-xl border bg-[var(--surface-sunken)] text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--line-strong)] leading-relaxed"
                   style={{ borderColor: 'var(--line)' }}
                 />
               </div>
@@ -451,7 +451,7 @@ export default function QuestionBoxPage() {
                       name="correctOption"
                       checked={subCorrectIdx === i}
                       onChange={() => setSubCorrectIdx(i)}
-                      className="w-4 h-4 text-violet-600 focus:ring-violet-500 cursor-pointer"
+                      className="w-4 h-4 text-[var(--primary)] focus:ring-[var(--line-strong)] cursor-pointer"
                     />
                     <span className="w-5 text-[11px] font-bold text-[var(--text-muted)]">
                       {String.fromCharCode(65 + i)}:
@@ -462,7 +462,7 @@ export default function QuestionBoxPage() {
                       value={opt}
                       onChange={(e) => handleOptionChange(i, e.target.value)}
                       placeholder={`Option ${String.fromCharCode(65 + i)}`}
-                      className="flex-1 h-9 px-3 rounded-xl border bg-[var(--surface-sunken)] text-[var(--text)] focus:outline-none focus:ring-1 focus:ring-violet-500/30"
+                      className="flex-1 h-9 px-3 rounded-xl border bg-[var(--surface-sunken)] text-[var(--text)] focus:outline-none focus:ring-1 focus:ring-[var(--line-strong)]"
                       style={{ borderColor: 'var(--line)' }}
                     />
                   </div>
@@ -477,7 +477,7 @@ export default function QuestionBoxPage() {
                   value={subExplanation}
                   onChange={(e) => setSubExplanation(e.target.value)}
                   placeholder="Explain why the selected option is correct so students learn from it..."
-                  className="w-full p-3 rounded-xl border bg-[var(--surface-sunken)] text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-violet-500/30 leading-relaxed"
+                  className="w-full p-3 rounded-xl border bg-[var(--surface-sunken)] text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--line-strong)] leading-relaxed"
                   style={{ borderColor: 'var(--line)' }}
                 />
               </div>
@@ -498,7 +498,7 @@ export default function QuestionBoxPage() {
             <button
               type="submit"
               disabled={isSubmittingQuestion}
-              className="w-full py-3 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-bold text-xs hover:opacity-95 shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 transition-all"
+              className="w-full py-3 rounded-xl bg-gradient-to-r from-[var(--accent-cta)] to-[var(--accent-cta)] text-white font-bold text-xs hover:opacity-95 shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 transition-all"
             >
               <Sparkles size={15} />
               <span>{isSubmittingQuestion ? 'AI Evaluating & Storing...' : 'Run AI Ranking & Publish to Cloud Database'}</span>
@@ -523,16 +523,16 @@ export default function QuestionBoxPage() {
             {questionsPool.map((q) => (
               <div
                 key={q.id}
-                className="p-4 rounded-2xl border bg-[var(--surface)] shadow-2xs space-y-2.5 hover:border-violet-500/40 transition-all"
+                className="p-4 rounded-2xl border bg-[var(--surface)] shadow-2xs space-y-2.5 hover:border-[var(--line-strong)] transition-all"
                 style={{ borderColor: 'var(--line)' }}
               >
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-violet-500/10 text-violet-600 dark:text-violet-400">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[var(--primary-tint)] text-[var(--primary)] dark:text-[var(--primary)]">
                       {q.subject}
                     </span>
                     {q.difficulty && (
-                      <span className="text-[9px] uppercase font-extrabold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                      <span className="text-[9px] uppercase font-extrabold px-1.5 py-0.5 rounded bg-[var(--gold-tint)] text-[var(--gold)] dark:text-[var(--gold)]">
                         {q.difficulty}
                       </span>
                     )}
@@ -564,7 +564,7 @@ export default function QuestionBoxPage() {
 
                 <div className="flex items-center justify-between pt-1 border-t border-[var(--line)] text-[11px] text-[var(--text-muted)]">
                   <span>Author: <strong className="text-[var(--text)]">@{q.authorUsername || 'academic'}</strong></span>
-                  <span className="font-bold text-amber-500">+{q.points || 10} pts</span>
+                  <span className="font-bold text-[var(--gold)]">+{q.points || 10} pts</span>
                 </div>
               </div>
             ))}

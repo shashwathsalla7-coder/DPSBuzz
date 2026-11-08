@@ -36,8 +36,8 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
 }) => {
   return (
     <aside
-      className="hidden md:flex w-16 h-full flex-col items-center justify-between py-3 border-r border-[#222d34] shrink-0 select-none z-20"
-      style={{ backgroundColor: '#202c33' }}
+      className="hidden md:flex w-16 h-full flex-col items-center justify-between py-3 border-r border-[var(--line)] shrink-0 select-none z-20"
+      style={{ backgroundColor: 'var(--surface)' }}
     >
       {/* Top action icons */}
       <div className="flex flex-col items-center gap-2 w-full">
@@ -46,14 +46,14 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
           onClick={() => onTabChange('chats')}
           className={`relative w-11 h-11 rounded-lg flex items-center justify-center transition-all cursor-pointer ${
             activeTab === 'chats'
-              ? 'bg-[#374248] text-[#00a884]'
-              : 'text-[#8696a0] hover:text-[#e9edef] hover:bg-[#2a3942]'
+              ? 'bg-[#374248] text-[var(--primary)]'
+              : 'text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--line)]'
           }`}
           title="Chats"
         >
           <MessageSquare size={20} />
           {unreadCount > 0 && (
-            <span className="absolute top-1.5 right-1.5 min-w-[16px] h-4 px-1 rounded-full bg-[#00a884] text-[#111b21] font-bold text-[10px] flex items-center justify-center">
+            <span className="absolute top-1.5 right-1.5 min-w-[16px] h-4 px-1 rounded-full bg-[var(--primary)] text-[var(--bg)] font-bold text-[10px] flex items-center justify-center">
               {unreadCount}
             </span>
           )}
@@ -64,14 +64,14 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
           onClick={() => onTabChange('status')}
           className={`relative w-11 h-11 rounded-lg flex items-center justify-center transition-all cursor-pointer ${
             activeTab === 'status'
-              ? 'bg-[#374248] text-[#00a884]'
-              : 'text-[#8696a0] hover:text-[#e9edef] hover:bg-[#2a3942]'
+              ? 'bg-[#374248] text-[var(--primary)]'
+              : 'text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--line)]'
           }`}
           title="Status"
         >
           <Circle size={20} />
           {hasUnreadStatus && (
-            <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-[#00a884]" />
+            <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-[var(--primary)]" />
           )}
         </button>
 
@@ -80,8 +80,8 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
           onClick={() => onTabChange('calls')}
           className={`relative w-11 h-11 rounded-lg flex items-center justify-center transition-all cursor-pointer ${
             activeTab === 'calls'
-              ? 'bg-[#374248] text-[#00a884]'
-              : 'text-[#8696a0] hover:text-[#e9edef] hover:bg-[#2a3942]'
+              ? 'bg-[#374248] text-[var(--primary)]'
+              : 'text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--line)]'
           }`}
           title="Calls"
         >
@@ -98,8 +98,8 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
           onClick={() => onTabChange('communities')}
           className={`w-11 h-11 rounded-lg flex items-center justify-center transition-all cursor-pointer ${
             activeTab === 'communities'
-              ? 'bg-[#374248] text-[#00a884]'
-              : 'text-[#8696a0] hover:text-[#e9edef] hover:bg-[#2a3942]'
+              ? 'bg-[#374248] text-[var(--primary)]'
+              : 'text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--line)]'
           }`}
           title="Communities"
         >
@@ -112,7 +112,7 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
         {/* Starred Messages */}
         <button
           onClick={onOpenStarred}
-          className="w-11 h-11 rounded-lg flex items-center justify-center text-[#8696a0] hover:text-[#e9edef] hover:bg-[#2a3942] transition-all cursor-pointer"
+          className="w-11 h-11 rounded-lg flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--line)] transition-all cursor-pointer"
           title="Starred Messages"
         >
           <Star size={20} />
@@ -121,18 +121,18 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
         {/* Settings */}
         <button
           onClick={onOpenSettings}
-          className="w-11 h-11 rounded-lg flex items-center justify-center text-[#8696a0] hover:text-[#e9edef] hover:bg-[#2a3942] transition-all cursor-pointer"
+          className="w-11 h-11 rounded-lg flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--line)] transition-all cursor-pointer"
           title="Settings"
         >
           <Settings size={20} />
         </button>
 
-        <div className="w-8 h-px bg-[#222d34] my-1" />
+        <div className="w-8 h-px bg-[var(--line)] my-1" />
 
         {/* User Profile Avatar */}
         <button
           onClick={onOpenProfile}
-          className="w-9 h-9 rounded-full bg-[#00a884] text-white font-semibold text-sm flex items-center justify-center hover:ring-2 hover:ring-[#00a884] hover:ring-offset-2 hover:ring-offset-[#111b21] transition-all cursor-pointer shadow-xs"
+          className="w-9 h-9 rounded-full bg-[var(--primary)] text-white font-semibold text-sm flex items-center justify-center hover:ring-2 hover:ring-[var(--primary)] hover:ring-offset-2 hover:ring-offset-[var(--bg)] transition-all cursor-pointer shadow-xs"
           title="Profile"
         >
           S

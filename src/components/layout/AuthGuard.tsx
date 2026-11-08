@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, Suspense } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { DataStore } from '@/lib/dataStore';
 
 function AuthGuardInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -24,58 +23,60 @@ function AuthGuardInner({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    const verifySession = () => {
+    const toLogin = () => {
+      const currentPath =
+        typeof window !== 'undefined' ? window.location.pathname + window.location.search : '';
+      const loginRedirect =
+        currentPath && currentPath !== '/login' && currentPath !== '/signup'
+          ? `/login?redirect=${encodeURIComponent(currentPath)}&logout=true`
+          : '/login?logout=true';
+      setIsAuthorized(false);
       try {
-        const currentPath =
-          typeof window !== 'undefined' ? window.location.pathname + window.location.search : '';
-        const loginRedirect =
-          currentPath && currentPath !== '/login' && currentPath !== '/signup'
-            ? `/login?redirect=${encodeURIComponent(currentPath)}`
-            : '/login';
+        localStorage.removeItem('dpsbuzz_user');
+        localStorage.removeItem('dpsbuzz_shashwath_authenticated');
+      } catch {}
+      router.replace(loginRedirect);
+    };
 
-        const stored = localStorage.getItem('dpsbuzz_user');
-        if (!stored) {
-          setIsAuthorized(false);
-          router.replace(loginRedirect);
+    // The signed server session is the source of truth. The copy of the profile in
+    // localStorage is only a cache, rebuilt from the server when missing or stale.
+    const verifySession = async () => {
+      try {
+        const res = await fetch('/api/auth/session', { cache: 'no-store' });
+        const session = res.ok ? await res.json() : null;
+        if (!session?.authenticated) {
+          toLogin();
           return;
         }
 
-        const u = JSON.parse(stored);
-        if (!u || !u.username || u.username.toLowerCase() === 'guest') {
-          setIsAuthorized(false);
-          router.replace(loginRedirect);
-          return;
-        }
-
-        if (u.username.toLowerCase() === 'shashwath71845') {
-          const isAuth = localStorage.getItem('dpsbuzz_shashwath_authenticated');
-          if (isAuth !== 'true') {
-            setIsAuthorized(false);
-            localStorage.removeItem('dpsbuzz_user');
-            document.cookie = 'dpsbuzz_user=; path=/; max-age=0; SameSite=Lax';
-            router.replace(loginRedirect);
-            return;
-          }
-        }
-
-        // Keep session cookie synchronized with localStorage for server middleware
+        let cached: { username?: string } | null = null;
         try {
-          const sessionPayload = encodeURIComponent(
-            JSON.stringify({ id: u.id, username: u.username, role: u.role || 'student' })
-          );
-          document.cookie = `dpsbuzz_user=${sessionPayload}; path=/; max-age=31536000; SameSite=Lax`;
+          cached = JSON.parse(localStorage.getItem('dpsbuzz_user') || 'null');
         } catch {}
+
+        if (!cached?.username || cached.username.toLowerCase() !== session.username) {
+          const pr = await fetch(`/api/auth/profile?username=${encodeURIComponent(session.username)}`, {
+            cache: 'no-store',
+          });
+          const pd = pr.ok ? await pr.json() : null;
+          const profile = pd?.profile || { id: session.id, username: session.username, fullName: session.username };
+          localStorage.setItem('dpsbuzz_user', JSON.stringify({ ...profile, role: session.role }));
+        }
+
+        if (session.role === 'admin') {
+          localStorage.setItem('dpsbuzz_shashwath_authenticated', 'true');
+        } else {
+          localStorage.removeItem('dpsbuzz_shashwath_authenticated');
+        }
 
         setIsAuthorized(true);
       } catch {
-        const currentPath =
-          typeof window !== 'undefined' ? window.location.pathname + window.location.search : '';
-        const loginRedirect =
-          currentPath && currentPath !== '/login' && currentPath !== '/signup'
-            ? `/login?redirect=${encodeURIComponent(currentPath)}`
-            : '/login';
-        setIsAuthorized(false);
-        router.replace(loginRedirect);
+        // Network hiccup: keep showing the app if we already have a cached profile.
+        if (localStorage.getItem('dpsbuzz_user')) {
+          setIsAuthorized(true);
+        } else {
+          toLogin();
+        }
       }
     };
 

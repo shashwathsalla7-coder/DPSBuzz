@@ -129,9 +129,9 @@ export const AppleHelloSplash: React.FC = () => {
       aria-label="Welcome to DPS Buzz"
     >
       {/* Background ambient lighting orbs (Apple glass glow) */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 rounded-full bg-violet-600/15 blur-[100px] pointer-events-none" />
-      <div className="absolute bottom-1/3 left-1/3 w-72 h-72 rounded-full bg-amber-500/10 blur-[90px] pointer-events-none" />
-      <div className="absolute top-1/2 right-1/4 w-64 h-64 rounded-full bg-pink-500/12 blur-[90px] pointer-events-none" />
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 rounded-full bg-[var(--primary-tint)] blur-[100px] pointer-events-none" />
+      <div className="absolute bottom-1/3 left-1/3 w-72 h-72 rounded-full bg-[var(--gold-tint)] blur-[90px] pointer-events-none" />
+      <div className="absolute top-1/2 right-1/4 w-64 h-64 rounded-full bg-[var(--primary-tint)] blur-[90px] pointer-events-none" />
 
       {/* Top Bar: subtle school pill */}
       <div className="pt-4 flex items-center gap-2 animate-apple-fade-up">

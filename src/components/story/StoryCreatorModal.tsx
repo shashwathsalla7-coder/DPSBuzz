@@ -130,11 +130,11 @@ interface FilterOption {
 
 const INSTAGRAM_FILTERS: FilterOption[] = [
   { id: 'none', name: 'Normal', cssFilter: 'none', previewClass: 'bg-zinc-800' },
-  { id: 'golden', name: 'Golden Hour', cssFilter: 'saturate(1.4) sepia(0.25) contrast(1.05)', previewClass: 'bg-gradient-to-tr from-amber-600 to-yellow-500' },
-  { id: 'vintage', name: '90s Vintage', cssFilter: 'sepia(0.4) contrast(1.15) brightness(0.95)', previewClass: 'bg-gradient-to-tr from-amber-800 to-orange-700' },
+  { id: 'golden', name: 'Golden Hour', cssFilter: 'saturate(1.4) sepia(0.25) contrast(1.05)', previewClass: 'bg-gradient-to-tr from-[var(--gold)] to-[var(--gold)]' },
+  { id: 'vintage', name: '90s Vintage', cssFilter: 'sepia(0.4) contrast(1.15) brightness(0.95)', previewClass: 'bg-gradient-to-tr from-[var(--gold)] to-[var(--accent-cta)]' },
   { id: 'tokyo', name: 'Tokyo B&W', cssFilter: 'grayscale(1) contrast(1.25)', previewClass: 'bg-gradient-to-tr from-neutral-800 to-zinc-600' },
-  { id: 'cyber', name: 'Cyber Neon', cssFilter: 'contrast(1.3) saturate(1.8) hue-rotate(35deg)', previewClass: 'bg-gradient-to-tr from-fuchsia-600 to-cyan-500' },
-  { id: 'drama', name: 'Soft Drama', cssFilter: 'contrast(1.2) brightness(0.9) saturate(1.2)', previewClass: 'bg-gradient-to-tr from-rose-700 to-purple-800' },
+  { id: 'cyber', name: 'Cyber Neon', cssFilter: 'contrast(1.3) saturate(1.8) hue-rotate(35deg)', previewClass: 'bg-gradient-to-tr from-[var(--accent-cta)] to-cyan-500' },
+  { id: 'drama', name: 'Soft Drama', cssFilter: 'contrast(1.2) brightness(0.9) saturate(1.2)', previewClass: 'bg-gradient-to-tr from-[var(--accent-cta)] to-[var(--accent-cta)]' },
   { id: 'emerald', name: 'Cool Emerald', cssFilter: 'hue-rotate(60deg) saturate(1.2)', previewClass: 'bg-gradient-to-tr from-emerald-600 to-teal-500' },
 ];
 
@@ -154,7 +154,7 @@ const USEFUL_STUDENT_STICKERS: UsefulSticker[] = [
     type: 'countdown',
     title: '⏰ Mid-Term Exams',
     subtitle: '5 Days Left • Revision Mode',
-    badgeClass: 'bg-rose-500/90 text-white shadow-md border border-white/20',
+    badgeClass: 'bg-[var(--primary-tint)] text-white shadow-md border border-white/20',
     icon: '⏰',
   },
   {
@@ -162,7 +162,7 @@ const USEFUL_STUDENT_STICKERS: UsefulSticker[] = [
     type: 'countdown',
     title: '🏆 Sports Day Finals',
     subtitle: 'Tomorrow at 9:00 AM',
-    badgeClass: 'bg-amber-500/90 text-white shadow-md border border-white/20',
+    badgeClass: 'bg-[var(--gold-tint)] text-white shadow-md border border-white/20',
     icon: '🏆',
   },
   {
@@ -170,7 +170,7 @@ const USEFUL_STUDENT_STICKERS: UsefulSticker[] = [
     type: 'doubt',
     title: '❓ Physics Doubt (Class 8)',
     subtitle: 'Can anyone explain Q4 formula?',
-    badgeClass: 'bg-indigo-600/90 text-white shadow-md border border-white/20',
+    badgeClass: 'bg-[var(--primary-tint)] text-white shadow-md border border-white/20',
     icon: '❓',
   },
   {
@@ -186,7 +186,7 @@ const USEFUL_STUDENT_STICKERS: UsefulSticker[] = [
     type: 'streak',
     title: '🔥 7-Day Study Streak',
     subtitle: 'DPS Star Board Contender',
-    badgeClass: 'bg-orange-600/90 text-white shadow-md border border-white/20',
+    badgeClass: 'bg-[var(--primary-tint)] text-white shadow-md border border-white/20',
     icon: '🔥',
   },
   {
@@ -210,7 +210,7 @@ const USEFUL_STUDENT_STICKERS: UsefulSticker[] = [
     type: 'location',
     title: '📍 School Sports Ground',
     subtitle: 'Cheetahs House Practice',
-    badgeClass: 'bg-yellow-600/90 text-white shadow-md border border-white/20',
+    badgeClass: 'bg-[var(--gold-tint)] text-white shadow-md border border-white/20',
     icon: '📍',
   },
 ];
@@ -822,7 +822,7 @@ export const StoryCreatorModal: React.FC<StoryCreatorModalProps> = ({
                   onClick={() => setShowSongPicker(true)}
                   className={`px-2.5 py-1.5 rounded-full backdrop-blur-md border text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-md transition ${
                     selectedSong
-                      ? 'bg-pink-600/90 border-pink-400 text-white'
+                      ? 'bg-[var(--primary-tint)] border-[var(--line-strong)] text-white'
                       : 'bg-black/60 border-white/20 text-white hover:bg-white/20'
                   }`}
                   aria-label="Add music track"
@@ -837,7 +837,7 @@ export const StoryCreatorModal: React.FC<StoryCreatorModalProps> = ({
                   onClick={() => setShowFiltersBar((p) => !p)}
                   className={`p-2 rounded-full backdrop-blur-md border text-white cursor-pointer shadow-md transition ${
                     activeFilterId !== 'none' || showFiltersBar
-                      ? 'bg-amber-500/90 border-amber-300'
+                      ? 'bg-[var(--gold-tint)] border-[var(--gold)]'
                       : 'bg-black/60 border-white/20 hover:bg-white/20'
                   }`}
                   title="Photo Filters"
@@ -852,7 +852,7 @@ export const StoryCreatorModal: React.FC<StoryCreatorModalProps> = ({
                   onClick={() => setShowStickersSheet((p) => !p)}
                   className={`p-2 rounded-full backdrop-blur-md border text-white cursor-pointer shadow-md transition ${
                     activeSticker || showStickersSheet
-                      ? 'bg-indigo-600/90 border-indigo-300'
+                      ? 'bg-[var(--primary-tint)] border-[var(--line-strong)]'
                       : 'bg-black/60 border-white/20 hover:bg-white/20'
                   }`}
                   title="Useful Student Stickers"
@@ -868,17 +868,17 @@ export const StoryCreatorModal: React.FC<StoryCreatorModalProps> = ({
                 <div className="pt-24 space-y-2">
                   {selectedSong && (
                     <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/75 backdrop-blur-md border border-white/25 text-white shadow-xl animate-fade-in pointer-events-auto">
-                      <div className="w-5 h-5 rounded-full overflow-hidden bg-pink-500/20 flex items-center justify-center shrink-0">
+                      <div className="w-5 h-5 rounded-full overflow-hidden bg-[var(--primary-tint)] flex items-center justify-center shrink-0">
                         {selectedSong.artworkUrl ? (
                           <img src={selectedSong.artworkUrl} alt={selectedSong.title} className="w-full h-full object-cover" />
                         ) : (
-                          <Music size={11} className="text-pink-400" />
+                          <Music size={11} className="text-[var(--primary)]" />
                         )}
                       </div>
                       <span className="text-xs font-bold truncate max-w-[130px]">{selectedSong.title}</span>
                       <span className="text-[10px] text-white/70 truncate max-w-[80px]">• {selectedSong.artist}</span>
                       {selectedSong.startTime !== undefined && (
-                        <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-pink-500/30 text-pink-300 font-mono font-bold shrink-0">
+                        <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-[var(--primary-tint)] text-[var(--primary)] font-mono font-bold shrink-0">
                           {Math.floor(selectedSong.startTime / 60)}:{Math.floor(selectedSong.startTime % 60).toString().padStart(2, '0')}
                         </span>
                       )}
@@ -890,7 +890,7 @@ export const StoryCreatorModal: React.FC<StoryCreatorModalProps> = ({
                       <button
                         type="button"
                         onClick={() => setShowSongPicker(true)}
-                        className="ml-1 text-pink-300 hover:text-white cursor-pointer p-0.5"
+                        className="ml-1 text-[var(--primary)] hover:text-white cursor-pointer p-0.5"
                         title="Choose Part / Main Chorus"
                         aria-label="Choose song part"
                       >
@@ -1223,7 +1223,7 @@ export const StoryCreatorModal: React.FC<StoryCreatorModalProps> = ({
 
         {/* Error Banner */}
         {error && (
-          <div className="absolute bottom-20 inset-x-4 z-40 p-3 rounded-2xl bg-rose-600/90 text-white text-xs font-bold text-center shadow-2xl animate-fade-in">
+          <div className="absolute bottom-20 inset-x-4 z-40 p-3 rounded-2xl bg-[var(--primary-tint)] text-white text-xs font-bold text-center shadow-2xl animate-fade-in">
             {error}
           </div>
         )}
@@ -1323,7 +1323,7 @@ export const StoryCreatorModal: React.FC<StoryCreatorModalProps> = ({
           >
             <div className="flex items-center justify-between pb-2 border-b border-white/10 text-white">
               <div className="flex items-center gap-2">
-                <Smile size={18} className="text-indigo-400" />
+                <Smile size={18} className="text-[var(--primary)]" />
                 <h3 className="text-sm font-bold">Useful Student Stickers</h3>
               </div>
               <button

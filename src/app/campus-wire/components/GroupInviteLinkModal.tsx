@@ -218,7 +218,7 @@ export const GroupInviteLinkModal: React.FC<GroupInviteLinkModalProps> = ({
                     className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
                       activeLink.roleGranted === 'admin'
                         ? 'bg-[#fbbf24]/20 text-[#fbbf24] border border-[#fbbf24]/30'
-                        : 'bg-[#00a884]/20 text-[#00a884] border border-[#00a884]/30'
+                        : 'bg-[var(--primary)]/20 text-[var(--primary)] border border-[var(--primary)]/30'
                     }`}
                   >
                     {activeLink.roleGranted === 'admin' ? 'Grants Classroom Admin ⭐️' : 'Grants Member Role'}
@@ -286,21 +286,21 @@ export const GroupInviteLinkModal: React.FC<GroupInviteLinkModalProps> = ({
                 <div className="grid grid-cols-3 gap-2">
                   <button
                     onClick={() => shareToApp('chat_app')}
-                    className="flex items-center justify-center gap-1.5 p-2 rounded-lg bg-[#202c33] hover:bg-[#2a3942] text-xs text-[#e9edef] border border-white/5 transition-colors cursor-pointer"
+                    className="flex items-center justify-center gap-1.5 p-2 rounded-lg bg-[var(--surface)] hover:bg-[var(--line)] text-xs text-[var(--text)] border border-white/5 transition-colors cursor-pointer"
                   >
                     <MessageCircle size={14} className="text-[#10b981]" />
                     <span>Direct Chat</span>
                   </button>
                   <button
                     onClick={() => shareToApp('sms')}
-                    className="flex items-center justify-center gap-1.5 p-2 rounded-lg bg-[#202c33] hover:bg-[#2a3942] text-xs text-[#e9edef] border border-white/5 transition-colors cursor-pointer"
+                    className="flex items-center justify-center gap-1.5 p-2 rounded-lg bg-[var(--surface)] hover:bg-[var(--line)] text-xs text-[var(--text)] border border-white/5 transition-colors cursor-pointer"
                   >
                     <Send size={14} className="text-[#38bdf8]" />
                     <span>SMS</span>
                   </button>
                   <button
                     onClick={() => shareToApp('email')}
-                    className="flex items-center justify-center gap-1.5 p-2 rounded-lg bg-[#202c33] hover:bg-[#2a3942] text-xs text-[#e9edef] border border-white/5 transition-colors cursor-pointer"
+                    className="flex items-center justify-center gap-1.5 p-2 rounded-lg bg-[var(--surface)] hover:bg-[var(--line)] text-xs text-[var(--text)] border border-white/5 transition-colors cursor-pointer"
                   >
                     <Mail size={14} className="text-[#f59e0b]" />
                     <span>Email</span>

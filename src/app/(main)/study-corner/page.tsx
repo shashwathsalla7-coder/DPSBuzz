@@ -238,7 +238,7 @@ export default function StudyCornerPage() {
         <button
           type="button"
           onClick={() => setIsUploadOpen(true)}
-          className="px-3.5 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs font-bold rounded-full flex items-center gap-1.5 hover:opacity-95 shadow-sm active:scale-95 transition-all cursor-pointer"
+          className="px-3.5 py-1.5 bg-gradient-to-r from-blue-600 to-[var(--accent-cta)] text-white text-xs font-bold rounded-full flex items-center gap-1.5 hover:opacity-95 shadow-sm active:scale-95 transition-all cursor-pointer"
         >
           <Plus size={15} />
           <span>Upload Notes</span>
@@ -312,7 +312,7 @@ export default function StudyCornerPage() {
             <button
               type="button"
               onClick={() => setIsUploadOpen(true)}
-              className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold rounded-full text-xs hover:opacity-95 shadow-xs inline-flex items-center gap-1.5 transition-all cursor-pointer"
+              className="px-4 py-2 bg-gradient-to-r from-blue-600 to-[var(--accent-cta)] text-white font-bold rounded-full text-xs hover:opacity-95 shadow-xs inline-flex items-center gap-1.5 transition-all cursor-pointer"
             >
               <Plus size={14} />
               <span>Upload Notes</span>
@@ -339,7 +339,7 @@ export default function StudyCornerPage() {
                     </div>
 
                     {note.badge && (
-                      <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                      <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-[var(--gold-tint)] text-[var(--gold)] dark:text-[var(--gold)] border border-[var(--gold)]">
                         {note.badge}
                       </span>
                     )}
@@ -396,7 +396,7 @@ export default function StudyCornerPage() {
                       onClick={() => handleLike(note.id)}
                       className={`flex items-center gap-1 px-2.5 py-1 rounded-full border transition-all cursor-pointer text-xs font-semibold ${
                         isLiked
-                          ? 'bg-rose-500/10 border-rose-500/30 text-rose-500'
+                          ? 'bg-[var(--primary-tint)] border-[var(--line-strong)] text-[var(--primary)]'
                           : 'border-[var(--line)] hover:bg-[var(--surface-sunken)]'
                       }`}
                     >
@@ -486,7 +486,7 @@ export default function StudyCornerPage() {
                 onClick={() => handleLike(activePreviewNote.id)}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[var(--line)] text-xs font-semibold hover:bg-[var(--surface-sunken)] cursor-pointer"
               >
-                <Heart size={14} className={activePreviewNote.likedBy?.includes(username) ? 'fill-rose-500 text-rose-500' : ''} />
+                <Heart size={14} className={activePreviewNote.likedBy?.includes(username) ? 'fill-rose-500 text-[var(--primary)]' : ''} />
                 <span>{activePreviewNote.likes} Likes</span>
               </button>
 
@@ -630,7 +630,7 @@ export default function StudyCornerPage() {
                         <p className="font-bold text-[var(--text)] truncate">{noteImage?.name || 'Selected photo'}</p>
                         <p className="text-[11px] text-[var(--text-muted)] mt-0.5">
                           {isUploadingImage ? (
-                            <span className="text-amber-500 flex items-center gap-1 font-semibold">
+                            <span className="text-[var(--gold)] flex items-center gap-1 font-semibold">
                               <Loader2 size={12} className="animate-spin" /> Uploading to cloud...
                             </span>
                           ) : uploadedImageUrl ? (
@@ -645,7 +645,7 @@ export default function StudyCornerPage() {
                       <button
                         type="button"
                         onClick={handleRemoveImage}
-                        className="p-1.5 rounded-lg bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 text-xs font-semibold cursor-pointer"
+                        className="p-1.5 rounded-lg bg-[var(--primary-tint)] text-[var(--primary)] hover:bg-[var(--primary-tint)] text-xs font-semibold cursor-pointer"
                         title="Remove image"
                       >
                         <X size={15} />

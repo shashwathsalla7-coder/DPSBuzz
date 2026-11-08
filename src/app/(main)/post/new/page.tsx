@@ -225,7 +225,7 @@ export default function NewPostPage() {
         {/* 2. Streak message (one short line with link) */}
         <div className="px-3.5 py-2.5 rounded-[12px] bg-[var(--surface-sunken)] border border-[var(--line)] flex items-center justify-between text-xs">
           <div className="flex items-center gap-1.5 font-medium text-[var(--text)] truncate">
-            <Flame size={15} className="text-orange-500 shrink-0" />
+            <Flame size={15} className="text-[var(--primary)] shrink-0" />
             <span className="truncate">Post today to earn +25 points and keep your streak</span>
           </div>
           <button
@@ -501,7 +501,7 @@ export default function NewPostPage() {
           <div className="w-full max-w-sm rounded-[16px] bg-[var(--surface)] border border-[var(--line)] p-5 space-y-3 text-[var(--text)] shadow-xl">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 font-semibold text-sm">
-                <Flame size={18} className="text-orange-500" />
+                <Flame size={18} className="text-[var(--primary)]" />
                 <span>Daily Streak & Points Rule</span>
               </div>
               <button

@@ -97,7 +97,7 @@ const BASELINE_CHAT_ROOMS: ChatRoom[] = [
     subtitle: 'Anita Sharma (Faculty) • 39 enrolled students',
     grade: 'Class 8',
     section: 'G',
-    avatarColor: '#00a884',
+    avatarColor: 'var(--primary)',
     initials: '8G',
     lastMessage: 'Anita Sharma: English Homework uploaded for Chapter 4.',
     lastTime: '7:40 pm',
@@ -478,7 +478,7 @@ export default function CampusWireDesktopPage() {
                 subtitle: `${ch.grade || 'Official'} ${ch.section ? `• Section ${ch.section}` : ''} • ${ch.memberCount || 40} members`,
                 grade: ch.grade,
                 section: ch.section,
-                avatarColor: ch.id.includes('8g') ? '#00a884' : ch.id.includes('nursery') ? '#ff9f00' : '#7c5ce0',
+                avatarColor: ch.id.includes('8g') ? 'var(--primary)' : ch.id.includes('nursery') ? '#ff9f00' : '#7c5ce0',
                 initials: ch.grade ? ch.grade.replace(/[^0-9]/g, '') || ch.name.slice(0, 2).toUpperCase() : 'DP',
                 lastMessage: ch.lastMessage || 'Channel created',
                 lastTime: ch.lastMessageTime || 'Just now',
@@ -584,6 +584,7 @@ export default function CampusWireDesktopPage() {
     if (!activeChatId) return;
 
     const pollInterval = setInterval(async () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
       try {
         const curList = messagesMap[activeChatId] || [];
         const highestTs = curList.length > 0 ? Math.max(...curList.map((m) => m.timestamp || 0)) : 0;
@@ -647,7 +648,7 @@ export default function CampusWireDesktopPage() {
       } catch {
         // Polling notice
       }
-    }, 2500);
+    }, 4000);
 
     return () => clearInterval(pollInterval);
   }, [activeChatId, currentUser, userName, messagesMap]);
@@ -1179,7 +1180,7 @@ export default function CampusWireDesktopPage() {
 
   return (
     <div
-      className="flex flex-col h-screen w-screen overflow-hidden select-none bg-[#0b141a] text-[#e9edef]"
+      className="flex flex-col h-screen w-screen overflow-hidden select-none bg-[var(--surface-sunken)] text-[var(--text)]"
       style={{
         fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", "Helvetica Neue", Arial, sans-serif',
       }}
@@ -1198,36 +1199,36 @@ export default function CampusWireDesktopPage() {
       {/* 1. TOP BAR: RESPONSIVE (APPLE HIG TRANSLUCENT NAVIGATION)            */}
       {/* ==================================================================== */}
       {/* Desktop macOS / Windows Glass Topbar */}
-      <div className="hidden md:flex h-9 w-full items-center justify-between px-3 shrink-0 border-b border-[#222d34] bg-[#111b21]/95 backdrop-blur-xl">
+      <div className="hidden md:flex h-9 w-full items-center justify-between px-3 shrink-0 border-b border-[var(--line)] bg-[var(--bg)]/95 backdrop-blur-xl">
         <div className="flex items-center gap-2">
           <Link
             href="/home"
-            className="flex items-center gap-1.5 text-xs text-[#8696a0] hover:text-white transition-colors"
+            className="flex items-center gap-1.5 text-xs text-[var(--text-muted)] hover:text-white transition-colors"
             title="Return to DPS Buzz Main Portal"
           >
             <ArrowLeft size={13} />
             <span className="font-medium text-[11px]">Back to DPS Buzz</span>
           </Link>
-          <span className="text-[#8696a0] text-xs">|</span>
-          <span className="text-xs font-semibold text-[#e9edef] flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-[#00a884] animate-pulse" />
+          <span className="text-[var(--text-muted)] text-xs">|</span>
+          <span className="text-xs font-semibold text-[var(--text)] flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-[var(--primary)] animate-pulse" />
             DPS Buzz Campus Wire Core
           </span>
-          <span className="text-[10px] px-1.5 py-0.2 rounded bg-white/10 text-[#8696a0]">
+          <span className="text-[10px] px-1.5 py-0.2 rounded bg-white/10 text-[var(--text-muted)]">
             91 Classes Active
           </span>
         </div>
 
         {/* Current User Role Pill */}
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5 text-xs text-[#8696a0]">
+          <div className="flex items-center gap-1.5 text-xs text-[var(--text-muted)]">
             <span>Active as:</span>
             <span className="font-semibold text-white flex items-center gap-1">
               {userName}
               {isAdmin ? (
                 <span className="text-[10px] px-1.5 rounded bg-[#ea4335]/20 text-[#ea4335] font-bold">Admin</span>
               ) : isTeacher ? (
-                <span className="text-[10px] px-1.5 rounded bg-[#00a884]/20 text-[#00a884] font-bold">Faculty</span>
+                <span className="text-[10px] px-1.5 rounded bg-[var(--primary)]/20 text-[var(--primary)] font-bold">Faculty</span>
               ) : isParent ? (
                 <span className="text-[10px] px-1.5 rounded bg-[#ff9f00]/20 text-[#ff9f00] font-bold">Parent</span>
               ) : (
@@ -1237,15 +1238,15 @@ export default function CampusWireDesktopPage() {
           </div>
 
           <div className="flex items-center">
-            <button className="w-8 h-7 flex items-center justify-center text-[#8696a0] hover:bg-[#202c33] transition-colors cursor-pointer rounded">
+            <button className="w-8 h-7 flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--surface)] transition-colors cursor-pointer rounded">
               <Minus size={12} />
             </button>
-            <button className="w-8 h-7 flex items-center justify-center text-[#8696a0] hover:bg-[#202c33] transition-colors cursor-pointer rounded">
+            <button className="w-8 h-7 flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--surface)] transition-colors cursor-pointer rounded">
               <Square size={10} />
             </button>
             <Link
               href="/home"
-              className="w-8 h-7 flex items-center justify-center text-[#8696a0] hover:bg-[#ea4335] hover:text-white transition-colors cursor-pointer rounded"
+              className="w-8 h-7 flex items-center justify-center text-[var(--text-muted)] hover:bg-[#ea4335] hover:text-white transition-colors cursor-pointer rounded"
               title="Close"
             >
               <X size={13} />
@@ -1256,26 +1257,26 @@ export default function CampusWireDesktopPage() {
 
       {/* Mobile Top App Bar (Only when chat is not open) */}
       {!isMobileChatOpen && (
-        <header className="md:hidden h-14 px-4 flex items-center justify-between border-b border-[#222d34] bg-[#111b21] shrink-0 z-30">
+        <header className="md:hidden h-14 px-4 flex items-center justify-between border-b border-[var(--line)] bg-[var(--bg)] shrink-0 z-30">
           <div className="flex items-center gap-2">
             <Link
               href="/home"
-              className="p-1 -ml-1 text-[#8696a0] hover:text-white"
+              className="p-1 -ml-1 text-[var(--text-muted)] hover:text-white"
               title="Back to DPS Buzz"
             >
               <ArrowLeft size={20} />
             </Link>
             <div className="flex items-center gap-1.5">
-              <span className="text-lg font-bold tracking-tight text-[#e9edef]">Campus Wire</span>
+              <span className="text-lg font-bold tracking-tight text-[var(--text)]">Campus Wire</span>
               {isTeacher ? (
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#00a884]/20 text-[#00a884] font-bold">Faculty</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--primary)]/20 text-[var(--primary)] font-bold">Faculty</span>
               ) : isParent ? (
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#ff9f00]/20 text-[#ff9f00] font-bold">Parent</span>
               ) : null}
             </div>
           </div>
 
-          <div className="flex items-center gap-1 text-[#8696a0] relative">
+          <div className="flex items-center gap-1 text-[var(--text-muted)] relative">
             <button
               onClick={() => fileInputRef.current?.click()}
               className="p-2.5 rounded-full hover:text-white cursor-pointer active:scale-95"
@@ -1304,7 +1305,7 @@ export default function CampusWireDesktopPage() {
             {/* Mobile 3-Dot Overflow Menu Dropdown */}
             {showMobileOverflowMenu && (
               <div
-                className="absolute right-0 top-12 w-52 py-2 rounded-xl bg-[#202c33] border border-[#222d34] shadow-2xl z-50 animate-fadeIn"
+                className="absolute right-0 top-12 w-52 py-2 rounded-xl bg-[var(--surface)] border border-[var(--line)] shadow-2xl z-50 animate-fadeIn"
                 onClick={() => setShowMobileOverflowMenu(false)}
               >
                 {isTeacher && (
@@ -1313,7 +1314,7 @@ export default function CampusWireDesktopPage() {
                       setTeacherNoticeDefaultType('homework');
                       setIsTeacherNoticeModalOpen(true);
                     }}
-                    className="w-full px-4 py-2.5 text-left text-xs font-semibold text-[#00a884] hover:bg-[#2a3942] cursor-pointer flex items-center gap-2"
+                    className="w-full px-4 py-2.5 text-left text-xs font-semibold text-[var(--primary)] hover:bg-[var(--line)] cursor-pointer flex items-center gap-2"
                   >
                     <Megaphone size={14} />
                     <span>Publish Faculty Notice</span>
@@ -1321,32 +1322,32 @@ export default function CampusWireDesktopPage() {
                 )}
                 <button
                   onClick={() => setIsNewChatModalOpen(true)}
-                  className="w-full px-4 py-2.5 text-left text-xs text-[#e9edef] hover:bg-[#2a3942] cursor-pointer"
+                  className="w-full px-4 py-2.5 text-left text-xs text-[var(--text)] hover:bg-[var(--line)] cursor-pointer"
                 >
                   New Classroom / Group
                 </button>
                 <button
                   onClick={() => setRightPanel('starred')}
-                  className="w-full px-4 py-2.5 text-left text-xs text-[#e9edef] hover:bg-[#2a3942] cursor-pointer"
+                  className="w-full px-4 py-2.5 text-left text-xs text-[var(--text)] hover:bg-[var(--line)] cursor-pointer"
                 >
                   Starred circulars
                 </button>
                 <button
                   onClick={() => setRightPanel('settings')}
-                  className="w-full px-4 py-2.5 text-left text-xs text-[#e9edef] hover:bg-[#2a3942] cursor-pointer"
+                  className="w-full px-4 py-2.5 text-left text-xs text-[var(--text)] hover:bg-[var(--line)] cursor-pointer"
                 >
                   Settings
                 </button>
                 <button
                   onClick={() => setIsProfileModalOpen(true)}
-                  className="w-full px-4 py-2.5 text-left text-xs text-[#e9edef] hover:bg-[#2a3942] cursor-pointer"
+                  className="w-full px-4 py-2.5 text-left text-xs text-[var(--text)] hover:bg-[var(--line)] cursor-pointer"
                 >
                   Profile & Status
                 </button>
-                <div className="h-px bg-[#222d34] my-1" />
+                <div className="h-px bg-[var(--line)] my-1" />
                 <Link
                   href="/home"
-                  className="block w-full px-4 py-2.5 text-left text-xs text-[#00a884] hover:bg-[#2a3942]"
+                  className="block w-full px-4 py-2.5 text-left text-xs text-[var(--primary)] hover:bg-[var(--line)]"
                 >
                   Exit to DPS Buzz Home
                 </Link>
@@ -1383,23 +1384,23 @@ export default function CampusWireDesktopPage() {
         >
           {/* TAB 1: CHATS LIST */}
           {activeTab === 'chats' && (
-            <div className="flex flex-col h-full bg-[#111b21] border-r border-[#222d34]">
+            <div className="flex flex-col h-full bg-[var(--bg)] border-r border-[var(--line)]">
               {/* Desktop Header */}
-              <div className="hidden md:flex h-[60px] px-4 items-center justify-between bg-[#202c33] border-b border-[#222d34] shrink-0">
+              <div className="hidden md:flex h-[60px] px-4 items-center justify-between bg-[var(--surface)] border-b border-[var(--line)] shrink-0">
                 <div className="flex items-center gap-2">
-                  <h1 className="text-lg font-semibold text-[#e9edef]">Chats</h1>
-                  <span className="text-[11px] font-medium text-[#8696a0] bg-[#2a3942] px-2 py-0.5 rounded-full">
+                  <h1 className="text-lg font-semibold text-[var(--text)]">Chats</h1>
+                  <span className="text-[11px] font-medium text-[var(--text-muted)] bg-[var(--line)] px-2 py-0.5 rounded-full">
                     {filteredRooms.length}
                   </span>
                 </div>
-                <div className="flex items-center gap-2 text-[#8696a0]">
+                <div className="flex items-center gap-2 text-[var(--text-muted)]">
                   {isTeacher && (
                     <button
                       onClick={() => {
                         setTeacherNoticeDefaultType('homework');
                         setIsTeacherNoticeModalOpen(true);
                       }}
-                      className="px-2.5 py-1 rounded-lg bg-[#00a884]/20 hover:bg-[#00a884]/30 text-[#00a884] text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+                      className="px-2.5 py-1 rounded-lg bg-[var(--primary)]/20 hover:bg-[var(--primary)]/30 text-[var(--primary)] text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
                       title="Quick Faculty Notice"
                     >
                       <Megaphone size={13} />
@@ -1408,14 +1409,14 @@ export default function CampusWireDesktopPage() {
                   )}
                   <button
                     onClick={() => setIsNewChatModalOpen(true)}
-                    className="p-1.5 rounded-full hover:bg-[#2a3942] hover:text-white transition-colors cursor-pointer"
+                    className="p-1.5 rounded-full hover:bg-[var(--line)] hover:text-white transition-colors cursor-pointer"
                     title="New Chat / Group"
                   >
                     <MessageSquare size={19} />
                   </button>
                   <button
                     onClick={() => setRightPanel('settings')}
-                    className="p-1.5 rounded-full hover:bg-[#2a3942] hover:text-white transition-colors cursor-pointer"
+                    className="p-1.5 rounded-full hover:bg-[var(--line)] hover:text-white transition-colors cursor-pointer"
                     title="Menu"
                   >
                     <MoreVertical size={19} />
@@ -1424,21 +1425,21 @@ export default function CampusWireDesktopPage() {
               </div>
 
               {/* Search Box & Apple HIG Segmented Controls */}
-              <div className="p-2 border-b border-[#222d34] flex flex-col gap-2 bg-[#111b21]">
-                <div className="flex items-center px-3 py-2 rounded-xl bg-[#202c33]">
-                  <Search size={16} className="text-[#8696a0] mr-3 shrink-0" />
+              <div className="p-2 border-b border-[var(--line)] flex flex-col gap-2 bg-[var(--bg)]">
+                <div className="flex items-center px-3 py-2 rounded-xl bg-[var(--surface)]">
+                  <Search size={16} className="text-[var(--text-muted)] mr-3 shrink-0" />
                   <input
                     id="chat-search-input"
                     type="text"
                     placeholder="Search 91 classrooms, notices or peers"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full text-xs text-[#e9edef] bg-transparent focus:outline-none placeholder-[#8696a0]"
+                    className="w-full text-xs text-[var(--text)] bg-transparent focus:outline-none placeholder-[var(--text-muted)]"
                   />
                   {searchQuery && (
                     <button
                       onClick={() => setSearchQuery('')}
-                      className="text-xs text-[#8696a0] hover:text-white cursor-pointer p-1"
+                      className="text-xs text-[var(--text-muted)] hover:text-white cursor-pointer p-1"
                     >
                       <X size={14} />
                     </button>
@@ -1459,8 +1460,8 @@ export default function CampusWireDesktopPage() {
                       onClick={() => setActiveFilter(tab.key as any)}
                       className={`px-3 py-1.2 rounded-full text-xs font-medium transition-all cursor-pointer shrink-0 active:scale-95 ${
                         activeFilter === tab.key
-                          ? 'bg-[#00a884] text-[#111b21] font-bold shadow-xs'
-                          : 'bg-[#202c33] text-[#8696a0] hover:text-white'
+                          ? 'bg-[var(--primary)] text-[var(--bg)] font-bold shadow-xs'
+                          : 'bg-[var(--surface)] text-[var(--text-muted)] hover:text-white'
                       }`}
                     >
                       {tab.label}
@@ -1471,10 +1472,10 @@ export default function CampusWireDesktopPage() {
 
               {/* Parent Mode Callout Banner */}
               {activeFilter === 'parents' && (
-                <div className="p-3 bg-[#182229] border-b border-[#222d34] flex items-center justify-between text-xs">
+                <div className="p-3 bg-[#182229] border-b border-[var(--line)] flex items-center justify-between text-xs">
                   <div className="flex items-center gap-2">
                     <ShieldCheck size={16} className="text-[#ff9f00]" />
-                    <span className="text-[#e9edef] font-medium">Official Parent Direct Line</span>
+                    <span className="text-[var(--text)] font-medium">Official Parent Direct Line</span>
                   </div>
                   <button
                     onClick={() => {
@@ -1484,7 +1485,7 @@ export default function CampusWireDesktopPage() {
                         setIsMobileChatOpen(true);
                       }
                     }}
-                    className="text-[11px] font-semibold text-[#00a884] hover:underline cursor-pointer"
+                    className="text-[11px] font-semibold text-[var(--primary)] hover:underline cursor-pointer"
                   >
                     Contact Faculty
                   </button>
@@ -1492,7 +1493,7 @@ export default function CampusWireDesktopPage() {
               )}
 
               {/* Chat Rooms List Items */}
-              <div className="flex-1 overflow-y-auto divide-y divide-[#222d34]/40">
+              <div className="flex-1 overflow-y-auto divide-y divide-[var(--line)]/40">
                 {filteredRooms.map((room) => {
                   const isActive = room.id === activeChatId;
                   return (
@@ -1503,8 +1504,8 @@ export default function CampusWireDesktopPage() {
                         setIsMobileChatOpen(true);
                         setSelectedMessageId(null);
                       }}
-                      className={`w-full text-left px-4 py-3.5 flex items-center gap-3.5 transition-colors cursor-pointer active:bg-[#202c33] ${
-                        isActive ? 'md:bg-[#2a3942] bg-[#202c33]' : 'hover:bg-[#202c33]'
+                      className={`w-full text-left px-4 py-3.5 flex items-center gap-3.5 transition-colors cursor-pointer active:bg-[var(--surface)] ${
+                        isActive ? 'md:bg-[var(--line)] bg-[var(--surface)]' : 'hover:bg-[var(--surface)]'
                       }`}
                     >
                       <div
@@ -1513,7 +1514,7 @@ export default function CampusWireDesktopPage() {
                       >
                         {room.initials}
                         {room.isLocked && (
-                          <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-[#111b21] flex items-center justify-center text-[#00a884] border border-[#222d34]">
+                          <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-[var(--bg)] flex items-center justify-center text-[var(--primary)] border border-[var(--line)]">
                             <Lock size={9} />
                           </span>
                         )}
@@ -1521,7 +1522,7 @@ export default function CampusWireDesktopPage() {
 
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
-                          <span className="text-sm font-semibold truncate text-[#e9edef] flex items-center gap-1.5">
+                          <span className="text-sm font-semibold truncate text-[var(--text)] flex items-center gap-1.5">
                             {room.name}
                             {room.isSchoolBroadcast && (
                               <span className="text-[10px] px-1.5 py-0.2 rounded bg-[#ea4335]/20 text-[#ea4335] font-bold">
@@ -1529,19 +1530,19 @@ export default function CampusWireDesktopPage() {
                               </span>
                             )}
                           </span>
-                          <span className="text-[11px] text-[#8696a0] shrink-0 ml-1">
+                          <span className="text-[11px] text-[var(--text-muted)] shrink-0 ml-1">
                             {room.lastTime}
                           </span>
                         </div>
 
                         <div className="flex items-center justify-between mt-1">
-                          <p className="text-xs truncate max-w-[210px] text-[#8696a0]">
+                          <p className="text-xs truncate max-w-[210px] text-[var(--text-muted)]">
                             {room.lastMessage}
                           </p>
                           <div className="flex items-center gap-1.5 shrink-0 ml-1">
-                            {room.isPinned && <Pin size={12} className="text-[#8696a0]" />}
+                            {room.isPinned && <Pin size={12} className="text-[var(--text-muted)]" />}
                             {room.unreadCount && room.unreadCount > 0 ? (
-                              <span className="min-w-[16px] h-4 px-1 rounded-full bg-[#00a884] text-[#111b21] font-bold text-[10px] flex items-center justify-center">
+                              <span className="min-w-[16px] h-4 px-1 rounded-full bg-[var(--primary)] text-[var(--bg)] font-bold text-[10px] flex items-center justify-center">
                                 {room.unreadCount}
                               </span>
                             ) : null}
@@ -1556,7 +1557,7 @@ export default function CampusWireDesktopPage() {
               {/* Mobile Floating Action Button (FAB) for New Chat */}
               <button
                 onClick={() => setIsNewChatModalOpen(true)}
-                className="md:hidden absolute bottom-5 right-5 w-14 h-14 rounded-full bg-[#00a884] text-[#111b21] shadow-2xl flex items-center justify-center cursor-pointer active:scale-90 transition-transform z-30"
+                className="md:hidden absolute bottom-5 right-5 w-14 h-14 rounded-full bg-[var(--primary)] text-[var(--bg)] shadow-2xl flex items-center justify-center cursor-pointer active:scale-90 transition-transform z-30"
                 title="New Chat"
               >
                 <MessageSquarePlus size={24} />
@@ -1578,14 +1579,14 @@ export default function CampusWireDesktopPage() {
                     const mySt = DEMO_STATUSES[0];
                     setViewingStatus(mySt);
                   }}
-                  className="w-10 h-10 rounded-full bg-[#202c33] text-white shadow-lg flex items-center justify-center cursor-pointer active:scale-90 transition-transform mx-auto"
+                  className="w-10 h-10 rounded-full bg-[var(--surface)] text-white shadow-lg flex items-center justify-center cursor-pointer active:scale-90 transition-transform mx-auto"
                   title="Pencil / Text Status"
                 >
                   <Edit2 size={16} />
                 </button>
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="w-14 h-14 rounded-full bg-[#00a884] text-[#111b21] shadow-2xl flex items-center justify-center cursor-pointer active:scale-90 transition-transform"
+                  className="w-14 h-14 rounded-full bg-[var(--primary)] text-[var(--bg)] shadow-2xl flex items-center justify-center cursor-pointer active:scale-90 transition-transform"
                   title="Camera Status"
                 >
                   <Camera size={24} />
@@ -1605,7 +1606,7 @@ export default function CampusWireDesktopPage() {
               {/* Mobile FAB for Call */}
               <button
                 onClick={() => setActiveCall({ contactName: 'Himaksh', type: 'voice' })}
-                className="md:hidden absolute bottom-5 right-5 w-14 h-14 rounded-full bg-[#00a884] text-[#111b21] shadow-2xl flex items-center justify-center cursor-pointer active:scale-90 transition-transform z-30"
+                className="md:hidden absolute bottom-5 right-5 w-14 h-14 rounded-full bg-[var(--primary)] text-[var(--bg)] shadow-2xl flex items-center justify-center cursor-pointer active:scale-90 transition-transform z-30"
                 title="New Call"
               >
                 <PhoneCall size={24} />
@@ -1627,7 +1628,7 @@ export default function CampusWireDesktopPage() {
                     id: `chat-${Date.now()}`,
                     name: grpName,
                     subtitle: 'DPS Community Group',
-                    avatarColor: '#00a884',
+                    avatarColor: 'var(--primary)',
                     initials: grpName.slice(0, 2).toUpperCase(),
                     lastMessage: 'Welcome to ' + grpName,
                     lastTime: 'Now',
@@ -1662,10 +1663,10 @@ export default function CampusWireDesktopPage() {
           className={`flex-1 flex flex-col relative w-full h-full ${
             isMobileChatOpen ? 'flex' : 'hidden md:flex'
           }`}
-          style={{ backgroundColor: '#0b141a' }}
+          style={{ backgroundColor: 'var(--surface-sunken)' }}
         >
           {/* Campus Wire Header (Apple HIG Frosted Bar) */}
-          <div className="h-[60px] px-2 sm:px-4 flex items-center justify-between z-10 shrink-0 border-b border-[#222d34] bg-[#202c33]/95 backdrop-blur-xl">
+          <div className="h-[60px] px-2 sm:px-4 flex items-center justify-between z-10 shrink-0 border-b border-[var(--line)] bg-[var(--surface)]/95 backdrop-blur-xl">
             {/* Group Identity & Member Subtitle */}
             <div
               onClick={() => setRightPanel(rightPanel === 'group-info' ? 'none' : 'group-info')}
@@ -1676,7 +1677,7 @@ export default function CampusWireDesktopPage() {
                   e.stopPropagation();
                   setIsMobileChatOpen(false);
                 }}
-                className="p-2 -ml-1 text-[#8696a0] hover:text-white md:hidden shrink-0 cursor-pointer active:scale-95 min-w-[40px] min-h-[40px] flex items-center justify-center"
+                className="p-2 -ml-1 text-[var(--text-muted)] hover:text-white md:hidden shrink-0 cursor-pointer active:scale-95 min-w-[40px] min-h-[40px] flex items-center justify-center"
                 title="Back to Chats"
               >
                 <ChevronLeft size={24} />
@@ -1688,29 +1689,29 @@ export default function CampusWireDesktopPage() {
               >
                 {activeRoom.initials}
                 {activeRoom.isLocked && (
-                  <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-[#111b21] flex items-center justify-center text-[#00a884] border border-[#222d34]">
+                  <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-[var(--bg)] flex items-center justify-center text-[var(--primary)] border border-[var(--line)]">
                     <Lock size={8} />
                   </span>
                 )}
               </div>
 
               <div className="min-w-0 flex-1">
-                <h2 className="text-sm font-semibold truncate leading-tight text-[#e9edef] flex items-center gap-1.5">
+                <h2 className="text-sm font-semibold truncate leading-tight text-[var(--text)] flex items-center gap-1.5">
                   {activeRoom.name}
                   {activeRoom.isLocked && (
-                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-[#00a884]/20 text-[#00a884] font-semibold">
+                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-[var(--primary)]/20 text-[var(--primary)] font-semibold">
                       Broadcast Only
                     </span>
                   )}
                 </h2>
-                <p className="text-xs truncate leading-tight mt-0.5 text-[#8696a0]">
+                <p className="text-xs truncate leading-tight mt-0.5 text-[var(--text-muted)]">
                   {activeRoom.subtitle}
                 </p>
               </div>
             </div>
 
             {/* Right Action Icons (Teacher Lock Toggle & Calling) */}
-            <div className="flex items-center gap-1 sm:gap-2 text-[#8696a0] shrink-0">
+            <div className="flex items-center gap-1 sm:gap-2 text-[var(--text-muted)] shrink-0">
               {/* Teacher 1-Click Lock Toggle Button in Header */}
               {(isTeacher || isAdmin) && activeRoom.isGroup && (
                 <button
@@ -1718,8 +1719,8 @@ export default function CampusWireDesktopPage() {
                   onClick={() => handleToggleChannelLock(!activeRoom.isLocked)}
                   className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
                     activeRoom.isLocked
-                      ? 'bg-[#00a884]/20 text-[#00a884] hover:bg-[#00a884]/30'
-                      : 'bg-[#2a3942] text-[#8696a0] hover:text-white'
+                      ? 'bg-[var(--primary)]/20 text-[var(--primary)] hover:bg-[var(--primary)]/30'
+                      : 'bg-[var(--line)] text-[var(--text-muted)] hover:text-white'
                   }`}
                   title={activeRoom.isLocked ? 'Unlock Channel (Allow Student Messages)' : 'Lock Channel (Broadcast Only)'}
                 >
@@ -1738,16 +1739,16 @@ export default function CampusWireDesktopPage() {
                     setTeacherNoticeDefaultType('homework');
                     setIsTeacherNoticeModalOpen(true);
                   }}
-                  className="w-9 h-9 flex items-center justify-center rounded-full hover:text-white hover:bg-[#2a3942] transition-colors cursor-pointer active:scale-90"
+                  className="w-9 h-9 flex items-center justify-center rounded-full hover:text-white hover:bg-[var(--line)] transition-colors cursor-pointer active:scale-90"
                   title="Publish Notice / Homework"
                 >
-                  <Megaphone size={18} className="text-[#00a884]" />
+                  <Megaphone size={18} className="text-[var(--primary)]" />
                 </button>
               )}
 
               <button
                 onClick={() => setIsInviteModalOpen(true)}
-                className="w-9 h-9 flex items-center justify-center rounded-full hover:text-white hover:bg-[#2a3942] text-[#38bdf8] transition-colors cursor-pointer active:scale-90"
+                className="w-9 h-9 flex items-center justify-center rounded-full hover:text-white hover:bg-[var(--line)] text-[#38bdf8] transition-colors cursor-pointer active:scale-90"
                 title="Group Invite Link (Generate, Password, Admin Rights)"
               >
                 <Link2 size={18} />
@@ -1755,7 +1756,7 @@ export default function CampusWireDesktopPage() {
 
               <button
                 onClick={() => setActiveCall({ contactName: activeRoom.name, type: 'video' })}
-                className="w-9 h-9 flex items-center justify-center rounded-full hover:text-white hover:bg-[#2a3942] transition-colors cursor-pointer active:scale-90"
+                className="w-9 h-9 flex items-center justify-center rounded-full hover:text-white hover:bg-[var(--line)] transition-colors cursor-pointer active:scale-90"
                 title="Video Call"
               >
                 <Video size={18} />
@@ -1763,7 +1764,7 @@ export default function CampusWireDesktopPage() {
 
               <button
                 onClick={() => setActiveCall({ contactName: activeRoom.name, type: 'voice' })}
-                className="w-9 h-9 flex items-center justify-center rounded-full hover:text-white hover:bg-[#2a3942] transition-colors cursor-pointer active:scale-90"
+                className="w-9 h-9 flex items-center justify-center rounded-full hover:text-white hover:bg-[var(--line)] transition-colors cursor-pointer active:scale-90"
                 title="Voice Call"
               >
                 <Phone size={17} />
@@ -1771,7 +1772,7 @@ export default function CampusWireDesktopPage() {
 
               <button
                 onClick={() => setRightPanel('media-gallery')}
-                className="w-9 h-9 flex items-center justify-center rounded-full hover:text-white hover:bg-[#2a3942] transition-colors cursor-pointer active:scale-90"
+                className="w-9 h-9 flex items-center justify-center rounded-full hover:text-white hover:bg-[var(--line)] transition-colors cursor-pointer active:scale-90"
                 title="Media and Docs"
               >
                 <Search size={18} />
@@ -1779,7 +1780,7 @@ export default function CampusWireDesktopPage() {
 
               <button
                 onClick={() => setRightPanel(rightPanel === 'group-info' ? 'none' : 'group-info')}
-                className="w-9 h-9 flex items-center justify-center rounded-full hover:text-white hover:bg-[#2a3942] transition-colors cursor-pointer active:scale-90"
+                className="w-9 h-9 flex items-center justify-center rounded-full hover:text-white hover:bg-[var(--line)] transition-colors cursor-pointer active:scale-90"
                 title="Chat info"
               >
                 <MoreVertical size={18} />
@@ -1806,7 +1807,7 @@ export default function CampusWireDesktopPage() {
             onClick={() => setSelectedMessageId(null)}
             className="flex-1 overflow-y-auto px-3 sm:px-6 md:px-10 py-4 space-y-1 relative"
             style={{
-              backgroundColor: '#0b141a',
+              backgroundColor: 'var(--surface-sunken)',
               backgroundImage: doodleWallpaperEnabled ? `url("${CAMPUS_DOODLE_DARK}")` : 'none',
               backgroundRepeat: 'repeat',
               backgroundSize: '440px 440px',
@@ -1814,7 +1815,7 @@ export default function CampusWireDesktopPage() {
           >
             {/* Campus Wire Date Separator Pill */}
             <div className="flex justify-center my-3">
-              <span className="px-3 py-1 rounded-[7.5px] text-xs font-medium uppercase tracking-wider bg-[#182229] text-[#8696a0] shadow-2xs">
+              <span className="px-3 py-1 rounded-[7.5px] text-xs font-medium uppercase tracking-wider bg-[#182229] text-[var(--text-muted)] shadow-2xs">
                 Today
               </span>
             </div>
@@ -1840,7 +1841,7 @@ export default function CampusWireDesktopPage() {
               if (msg.templateType === 'system') {
                 return (
                   <div key={msg.id} className="flex justify-center my-2">
-                    <div className="px-4 py-1.5 rounded-xl bg-[#182229]/90 border border-white/10 text-xs text-[#e9edef] max-w-md text-center shadow-xs">
+                    <div className="px-4 py-1.5 rounded-xl bg-[#182229]/90 border border-white/10 text-xs text-[var(--text)] max-w-md text-center shadow-xs">
                       {msg.text}
                     </div>
                   </div>
@@ -1877,8 +1878,8 @@ export default function CampusWireDesktopPage() {
                         setSelectedMessageId(isSelected ? null : msg.id);
                       }}
                       className={`px-3 py-1.5 text-sm transition-all relative rounded-2xl cursor-pointer ${
-                        isMe ? 'bg-[#005c4b] text-[#e9edef] rounded-tr-xs' : 'bg-[#202c33] text-[#e9edef] rounded-tl-xs border border-white/5'
-                      } ${isSelected ? 'ring-2 ring-[#00a884]' : ''}`}
+                        isMe ? 'bg-[var(--accent-cta)] text-[var(--text)] rounded-tr-xs' : 'bg-[var(--surface)] text-[var(--text)] rounded-tl-xs border border-white/5'
+                      } ${isSelected ? 'ring-2 ring-[var(--primary)]' : ''}`}
                       style={{ boxShadow: '0 1px 0.5px rgba(11,20,26,0.25)' }}
                     >
                       {/* Sender Name & Role Badges Header */}
@@ -1891,7 +1892,7 @@ export default function CampusWireDesktopPage() {
                             {msg.senderName}
                           </span>
                           {msg.senderRole === 'teacher' && (
-                            <span className="text-[9px] px-1.5 py-0.2 rounded bg-[#00a884]/20 text-[#00a884] font-bold">
+                            <span className="text-[9px] px-1.5 py-0.2 rounded bg-[var(--primary)]/20 text-[var(--primary)] font-bold">
                               Faculty
                             </span>
                           )}
@@ -1909,7 +1910,7 @@ export default function CampusWireDesktopPage() {
                           <div className="font-semibold text-[11px] text-[#53bdeb]">
                             {msg.quotedAuthor}
                           </div>
-                          <div className="text-[11px] truncate text-[#8696a0]">
+                          <div className="text-[11px] truncate text-[var(--text-muted)]">
                             {msg.quotedText}
                           </div>
                         </div>
@@ -1972,9 +1973,9 @@ export default function CampusWireDesktopPage() {
                       </div>
 
                       {/* Timestamp, Star & Blue Checks */}
-                      <div className="flex items-center justify-end gap-1 mt-0.5 float-right ml-2 text-[11px] text-[#8696a0]">
+                      <div className="flex items-center justify-end gap-1 mt-0.5 float-right ml-2 text-[11px] text-[var(--text-muted)]">
                         {msg.isStarred && (
-                          <Star size={11} className="text-[#8696a0] fill-[#8696a0]" />
+                          <Star size={11} className="text-[var(--text-muted)] fill-[var(--text-muted)]" />
                         )}
                         <span>{msg.time}</span>
                         {isMe && <CheckCheck size={14} className="text-[#53bdeb] ml-0.5" />}
@@ -1984,7 +1985,7 @@ export default function CampusWireDesktopPage() {
                       <div
                         className={`absolute top-1 ${
                           isSelected ? 'flex' : 'hidden group-hover:flex'
-                        } items-center gap-1 px-2 py-1 rounded-xl shadow-xl z-20 bg-[#202c33] border border-[#222d34] ${
+                        } items-center gap-1 px-2 py-1 rounded-xl shadow-xl z-20 bg-[var(--surface)] border border-[var(--line)] ${
                           isMe ? '-left-32 sm:-left-36' : '-right-32 sm:-right-36'
                         } animate-fadeIn`}
                         onClick={(e) => e.stopPropagation()}
@@ -2005,15 +2006,15 @@ export default function CampusWireDesktopPage() {
                         </button>
                         <button
                           onClick={() => handleToggleStar(msg.id)}
-                          className="p-1 hover:text-[#00a884] text-[#8696a0] cursor-pointer"
+                          className="p-1 hover:text-[var(--primary)] text-[var(--text-muted)] cursor-pointer"
                           title={msg.isStarred ? 'Unstar' : 'Star message'}
                         >
-                          <Star size={13} className={msg.isStarred ? 'fill-[#00a884] text-[#00a884]' : ''} />
+                          <Star size={13} className={msg.isStarred ? 'fill-[var(--primary)] text-[var(--primary)]' : ''} />
                         </button>
                         {(isTeacher || isAdmin) && (
                           <button
                             onClick={() => handlePinMessage(msg)}
-                            className="p-1 hover:text-[#00a884] text-[#8696a0] cursor-pointer"
+                            className="p-1 hover:text-[var(--primary)] text-[var(--text-muted)] cursor-pointer"
                             title="Pin as Circular"
                           >
                             <Pin size={13} />
@@ -2025,13 +2026,13 @@ export default function CampusWireDesktopPage() {
                             setSelectedMessageId(null);
                             inputRef.current?.focus();
                           }}
-                          className="text-[11px] font-medium text-[#8696a0] hover:text-white px-1 cursor-pointer"
+                          className="text-[11px] font-medium text-[var(--text-muted)] hover:text-white px-1 cursor-pointer"
                         >
                           Reply
                         </button>
                         <button
                           onClick={() => handleDeleteMessage(msg.id)}
-                          className="p-1 hover:text-[#ea4335] text-[#8696a0] cursor-pointer"
+                          className="p-1 hover:text-[#ea4335] text-[var(--text-muted)] cursor-pointer"
                           title="Delete message"
                         >
                           <Trash2 size={13} />
@@ -2049,10 +2050,10 @@ export default function CampusWireDesktopPage() {
                               e.stopPropagation();
                               handleToggleReaction(msg.id, r.emoji);
                             }}
-                            className="px-2 py-0.5 rounded-full text-[11px] border border-[#222d34] bg-[#202c33] text-[#e9edef] flex items-center gap-1 shadow-xs cursor-pointer hover:scale-105 active:scale-95 transition-transform"
+                            className="px-2 py-0.5 rounded-full text-[11px] border border-[var(--line)] bg-[var(--surface)] text-[var(--text)] flex items-center gap-1 shadow-xs cursor-pointer hover:scale-105 active:scale-95 transition-transform"
                           >
                             <span>{r.emoji}</span>
-                            <span className="font-semibold text-[10px] text-[#8696a0]">
+                            <span className="font-semibold text-[10px] text-[var(--text-muted)]">
                               {r.count}
                             </span>
                           </button>
@@ -2076,22 +2077,22 @@ export default function CampusWireDesktopPage() {
             />
           ) : activeRoom.isLocked && !isTeacher && !isAdmin ? (
             /* Student Lock Banner: Apple Frosted Pill */
-            <div className="h-[62px] px-4 flex items-center justify-center bg-[#182229] border-t border-[#222d34]">
-              <div className="flex items-center gap-2 text-xs text-[#8696a0] bg-[#202c33] px-4 py-2 rounded-2xl border border-white/5">
-                <Lock size={15} className="text-[#00a884] shrink-0" />
+            <div className="h-[62px] px-4 flex items-center justify-center bg-[#182229] border-t border-[var(--line)]">
+              <div className="flex items-center gap-2 text-xs text-[var(--text-muted)] bg-[var(--surface)] px-4 py-2 rounded-2xl border border-white/5">
+                <Lock size={15} className="text-[var(--primary)] shrink-0" />
                 <span>Only teachers and school administration can send messages in this channel.</span>
               </div>
             </div>
           ) : (
             /* Normal Input Bar */
-            <div className="flex flex-col shrink-0 border-t border-[#222d34] bg-[#202c33] relative">
+            <div className="flex flex-col shrink-0 border-t border-[var(--line)] bg-[var(--surface)] relative">
               {/* Attachment Drawer Popover */}
               {showAttachMenu && (
-                <div className="absolute bottom-16 left-3 p-2 rounded-2xl shadow-2xl flex flex-col gap-1 z-50 border border-[#222d34] bg-[#202c33] min-w-[220px] animate-fadeIn">
+                <div className="absolute bottom-16 left-3 p-2 rounded-2xl shadow-2xl flex flex-col gap-1 z-50 border border-[var(--line)] bg-[var(--surface)] min-w-[220px] animate-fadeIn">
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs hover:bg-[#2a3942] transition-colors cursor-pointer text-left text-[#e9edef] active:scale-95"
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs hover:bg-[var(--line)] transition-colors cursor-pointer text-left text-[var(--text)] active:scale-95"
                   >
                     <Camera size={18} className="text-[#53bdeb]" />
                     <span>Photos & Camera</span>
@@ -2102,7 +2103,7 @@ export default function CampusWireDesktopPage() {
                       setShowAttachMenu(false);
                       setMessageText((prev) => `${prev} [Document: Class Homework PDF]`);
                     }}
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs hover:bg-[#2a3942] transition-colors cursor-pointer text-left text-[#e9edef] active:scale-95"
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs hover:bg-[var(--line)] transition-colors cursor-pointer text-left text-[var(--text)] active:scale-95"
                   >
                     <FileText size={18} className="text-[#9c27b0]" />
                     <span>Document / Circular</span>
@@ -2113,7 +2114,7 @@ export default function CampusWireDesktopPage() {
                       setShowAttachMenu(false);
                       setMessageText((prev) => `${prev} [Student Diary Submission]`);
                     }}
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs hover:bg-[#2a3942] transition-colors cursor-pointer text-left text-[#e9edef] active:scale-95"
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs hover:bg-[var(--line)] transition-colors cursor-pointer text-left text-[var(--text)] active:scale-95"
                   >
                     <Award size={18} className="text-[#ff9f00]" />
                     <span>Class Diary Photo</span>
@@ -2123,7 +2124,7 @@ export default function CampusWireDesktopPage() {
 
               {/* Quick Emoji Tray */}
               {showEmojiTray && (
-                <div className="px-3 py-2 border-b border-[#222d34] flex items-center gap-3 bg-[#111b21] overflow-x-auto no-scrollbar">
+                <div className="px-3 py-2 border-b border-[var(--line)] flex items-center gap-3 bg-[var(--bg)] overflow-x-auto no-scrollbar">
                   {['😀', '😂', '💀', '❤️', '👍', '🔥', '🎉', '📚', '👏', '🚀', '🙏', '💯'].map((em) => (
                     <button
                       key={em}
@@ -2142,21 +2143,21 @@ export default function CampusWireDesktopPage() {
 
               {/* Quoted Message Preview Bar */}
               {replyingTo && (
-                <div className="px-4 py-2 border-b border-[#222d34] flex items-center justify-between bg-[#182229]">
+                <div className="px-4 py-2 border-b border-[var(--line)] flex items-center justify-between bg-[#182229]">
                   <div className="flex items-center gap-2 min-w-0">
                     <div className="w-1 h-8 rounded-full bg-[#53bdeb]" />
                     <div className="min-w-0">
                       <div className="text-xs font-semibold text-[#53bdeb]">
                         Replying to {replyingTo.senderName}
                       </div>
-                      <div className="text-xs truncate text-[#8696a0]">
+                      <div className="text-xs truncate text-[var(--text-muted)]">
                         {replyingTo.text}
                       </div>
                     </div>
                   </div>
                   <button
                     onClick={() => setReplyingTo(null)}
-                    className="p-1.5 rounded-full text-[#8696a0] hover:text-white cursor-pointer"
+                    className="p-1.5 rounded-full text-[var(--text-muted)] hover:text-white cursor-pointer"
                   >
                     <X size={16} />
                   </button>
@@ -2168,7 +2169,7 @@ export default function CampusWireDesktopPage() {
                 <button
                   type="button"
                   onClick={() => setShowAttachMenu(!showAttachMenu)}
-                  className="w-10 h-10 flex items-center justify-center rounded-full text-[#8696a0] hover:text-white transition-colors cursor-pointer shrink-0 active:scale-95"
+                  className="w-10 h-10 flex items-center justify-center rounded-full text-[var(--text-muted)] hover:text-white transition-colors cursor-pointer shrink-0 active:scale-95"
                   title="Attach File or Photo"
                 >
                   <Paperclip size={20} />
@@ -2177,13 +2178,13 @@ export default function CampusWireDesktopPage() {
                 <button
                   type="button"
                   onClick={() => setShowEmojiTray(!showEmojiTray)}
-                  className="w-10 h-10 flex items-center justify-center rounded-full text-[#8696a0] hover:text-white transition-colors cursor-pointer shrink-0 active:scale-95"
+                  className="w-10 h-10 flex items-center justify-center rounded-full text-[var(--text-muted)] hover:text-white transition-colors cursor-pointer shrink-0 active:scale-95"
                   title="Emoji"
                 >
                   <Smile size={20} />
                 </button>
 
-                <div className="flex-1 flex items-center rounded-2xl px-3 py-2 bg-[#2a3942]">
+                <div className="flex-1 flex items-center rounded-2xl px-3 py-2 bg-[var(--line)]">
                   <input
                     ref={inputRef}
                     type="text"
@@ -2194,14 +2195,14 @@ export default function CampusWireDesktopPage() {
                     }
                     value={messageText}
                     onChange={(e) => setMessageText(e.target.value)}
-                    className="w-full text-sm text-[#e9edef] bg-transparent focus:outline-none placeholder-[#8696a0]"
+                    className="w-full text-sm text-[var(--text)] bg-transparent focus:outline-none placeholder-[var(--text-muted)]"
                   />
                 </div>
 
                 {messageText.trim() ? (
                   <button
                     type="submit"
-                    className="w-11 h-11 rounded-full text-white bg-[#00a884] hover:bg-[#008f6f] transition-all cursor-pointer hover:scale-105 active:scale-95 shrink-0 flex items-center justify-center shadow-md"
+                    className="w-11 h-11 rounded-full text-white bg-[var(--primary)] hover:bg-[var(--primary-hover)] transition-all cursor-pointer hover:scale-105 active:scale-95 shrink-0 flex items-center justify-center shadow-md"
                     aria-label="Send message"
                   >
                     <Send size={18} />
@@ -2210,7 +2211,7 @@ export default function CampusWireDesktopPage() {
                   <button
                     type="button"
                     onClick={() => setIsRecordingVoice(true)}
-                    className="w-11 h-11 rounded-full text-[#8696a0] hover:text-white hover:bg-[#2a3942] transition-colors cursor-pointer shrink-0 flex items-center justify-center active:scale-95"
+                    className="w-11 h-11 rounded-full text-[var(--text-muted)] hover:text-white hover:bg-[var(--line)] transition-colors cursor-pointer shrink-0 flex items-center justify-center active:scale-95"
                     title="Record Voice Note"
                   >
                     <Mic size={20} />
@@ -2334,7 +2335,7 @@ export default function CampusWireDesktopPage() {
                 <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
                   inviteModalData.roleGranted === 'admin'
                     ? 'bg-[#fbbf24]/20 text-[#fbbf24] border border-[#fbbf24]/30'
-                    : 'bg-[#00a884]/20 text-[#00a884] border border-[#00a884]/30'
+                    : 'bg-[var(--primary)]/20 text-[var(--primary)] border border-[var(--primary)]/30'
                 }`}>
                   {inviteModalData.roleGranted === 'admin' ? 'Classroom Admin Invitation ⭐️' : 'Student Member Invitation'}
                 </span>
@@ -2460,7 +2461,7 @@ export default function CampusWireDesktopPage() {
               id: `group-${Date.now()}`,
               name: groupName,
               subtitle: selectedMembers.map((m) => m.name).join(', '),
-              avatarColor: '#00a884',
+              avatarColor: 'var(--primary)',
               initials: groupName.slice(0, 2).toUpperCase(),
               lastMessage: 'Group created',
               lastTime: 'Now',
@@ -2509,52 +2510,52 @@ export default function CampusWireDesktopPage() {
       {/* User Profile Editor Modal */}
       {isProfileModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn select-none">
-          <div className="w-full max-w-sm bg-[#111b21] rounded-2xl border border-[#222d34] flex flex-col p-6 shadow-2xl">
-            <div className="flex items-center justify-between pb-4 border-b border-[#222d34]">
-              <h3 className="text-base font-semibold text-[#e9edef]">Profile & Status</h3>
+          <div className="w-full max-w-sm bg-[var(--bg)] rounded-2xl border border-[var(--line)] flex flex-col p-6 shadow-2xl">
+            <div className="flex items-center justify-between pb-4 border-b border-[var(--line)]">
+              <h3 className="text-base font-semibold text-[var(--text)]">Profile & Status</h3>
               <button
                 onClick={() => setIsProfileModalOpen(false)}
-                className="text-[#8696a0] hover:text-white cursor-pointer"
+                className="text-[var(--text-muted)] hover:text-white cursor-pointer"
               >
                 <X size={18} />
               </button>
             </div>
 
             <div className="flex flex-col items-center my-6">
-              <div className="w-24 h-24 rounded-full bg-[#00a884] text-white font-bold text-3xl flex items-center justify-center shadow-lg relative ring-4 ring-[#00a884]/20">
+              <div className="w-24 h-24 rounded-full bg-[var(--primary)] text-white font-bold text-3xl flex items-center justify-center shadow-lg relative ring-4 ring-[var(--primary)]/20">
                 {userName.slice(0, 2).toUpperCase()}
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-[#202c33] text-white flex items-center justify-center shadow-md cursor-pointer border border-[#222d34]"
+                  className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-[var(--surface)] text-white flex items-center justify-center shadow-md cursor-pointer border border-[var(--line)]"
                   title="Change avatar"
                 >
                   <Camera size={14} />
                 </button>
               </div>
-              <span className="text-xs font-semibold text-[#00a884] mt-2 capitalize">
+              <span className="text-xs font-semibold text-[var(--primary)] mt-2 capitalize">
                 {userRole} Account
               </span>
             </div>
 
             <div className="space-y-4">
               <div>
-                <label className="text-xs text-[#8696a0] font-medium block mb-1">Your Name</label>
+                <label className="text-xs text-[var(--text-muted)] font-medium block mb-1">Your Name</label>
                 <input
                   type="text"
                   value={userName}
                   onChange={(e) => setUserName(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-[#202c33] text-sm text-[#e9edef] border border-[#222d34] outline-none"
+                  className="w-full px-3 py-2 rounded-xl bg-[var(--surface)] text-sm text-[var(--text)] border border-[var(--line)] outline-none"
                 />
               </div>
 
               <div>
-                <label className="text-xs text-[#8696a0] font-medium block mb-1">About / Status</label>
+                <label className="text-xs text-[var(--text-muted)] font-medium block mb-1">About / Status</label>
                 <input
                   type="text"
                   value={userAbout}
                   onChange={(e) => setUserAbout(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-[#202c33] text-sm text-[#e9edef] border border-[#222d34] outline-none"
+                  className="w-full px-3 py-2 rounded-xl bg-[var(--surface)] text-sm text-[var(--text)] border border-[var(--line)] outline-none"
                 />
               </div>
             </div>
@@ -2562,7 +2563,7 @@ export default function CampusWireDesktopPage() {
             <div className="mt-6 flex justify-end">
               <button
                 onClick={() => setIsProfileModalOpen(false)}
-                className="px-5 py-2 rounded-xl bg-[#00a884] hover:bg-[#008f6f] text-white text-xs font-semibold transition-colors cursor-pointer"
+                className="px-5 py-2 rounded-xl bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white text-xs font-semibold transition-colors cursor-pointer"
               >
                 Save
               </button>

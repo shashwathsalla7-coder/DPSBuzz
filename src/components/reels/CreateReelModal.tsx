@@ -330,7 +330,7 @@ export const CreateReelModal: React.FC<CreateReelModalProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--line)]">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-pink-500 via-rose-500 to-amber-500 flex items-center justify-center text-white shadow-sm">
+            <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-[var(--accent-cta)] via-[var(--accent-cta)] to-[var(--gold)] flex items-center justify-center text-white shadow-sm">
               <Film size={18} strokeWidth={2.4} />
             </div>
             <div>
@@ -358,7 +358,7 @@ export const CreateReelModal: React.FC<CreateReelModalProps> = ({
           </div>
           <span
             className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-              quota.remaining > 0 ? 'bg-emerald-500/15 text-emerald-400' : 'bg-rose-500/15 text-rose-400'
+              quota.remaining > 0 ? 'bg-emerald-500/15 text-emerald-400' : 'bg-[var(--primary-tint)] text-[var(--primary)]'
             }`}
           >
             {currentUser?.username?.toLowerCase() === 'shashwath71845'
@@ -404,7 +404,7 @@ export const CreateReelModal: React.FC<CreateReelModalProps> = ({
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 space-y-4">
           {error && (
-            <div className="p-3 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-400 text-xs font-semibold flex items-center gap-2 animate-shake">
+            <div className="p-3 rounded-2xl bg-[var(--primary-tint)] border border-[var(--line-strong)] text-[var(--primary)] text-xs font-semibold flex items-center gap-2 animate-shake">
               <AlertCircle size={16} className="shrink-0" />
               <span>{error}</span>
             </div>
@@ -446,14 +446,14 @@ export const CreateReelModal: React.FC<CreateReelModalProps> = ({
                 <button
                   type="button"
                   onClick={() => window.open('https://catbox.moe', '_blank')}
-                  className="px-2 py-0.5 rounded bg-white/5 border border-white/10 hover:border-pink-400 hover:text-pink-300 transition-colors"
+                  className="px-2 py-0.5 rounded bg-white/5 border border-white/10 hover:border-[var(--line-strong)] hover:text-[var(--primary)] transition-colors"
                 >
                   Catbox.moe (200MB) ↗
                 </button>
                 <button
                   type="button"
                   onClick={() => window.open('https://streamable.com', '_blank')}
-                  className="px-2 py-0.5 rounded bg-white/5 border border-white/10 hover:border-pink-400 hover:text-pink-300 transition-colors"
+                  className="px-2 py-0.5 rounded bg-white/5 border border-white/10 hover:border-[var(--line-strong)] hover:text-[var(--primary)] transition-colors"
                 >
                   Streamable ↗
                 </button>
@@ -521,7 +521,7 @@ export const CreateReelModal: React.FC<CreateReelModalProps> = ({
                     setPreviewUrl(null);
                     setExternalVideoUrl('');
                   }}
-                  className="w-7 h-7 rounded-full bg-black/70 text-white flex items-center justify-center hover:bg-rose-600 transition-colors cursor-pointer"
+                  className="w-7 h-7 rounded-full bg-black/70 text-white flex items-center justify-center hover:bg-[var(--accent-cta)] transition-colors cursor-pointer"
                   title="Remove video"
                 >
                   <X size={14} />
@@ -563,7 +563,7 @@ export const CreateReelModal: React.FC<CreateReelModalProps> = ({
           {/* Music Track Selector */}
           <div className="p-3 rounded-2xl bg-[var(--surface-sunken)] border border-[var(--line)] flex items-center justify-between">
             <div className="flex items-center gap-2.5 truncate">
-              <div className="w-8 h-8 rounded-xl bg-pink-500/15 text-pink-500 flex items-center justify-center shrink-0">
+              <div className="w-8 h-8 rounded-xl bg-[var(--primary-tint)] text-[var(--primary)] flex items-center justify-center shrink-0">
                 <Music size={16} />
               </div>
               <div className="truncate">
@@ -622,7 +622,7 @@ export const CreateReelModal: React.FC<CreateReelModalProps> = ({
               </div>
               <div className="w-full h-2 rounded-full bg-[var(--line)] overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-r from-pink-500 via-rose-500 to-blue-600 transition-all duration-300 rounded-full"
+                  className="h-full bg-gradient-to-r from-[var(--accent-cta)] via-[var(--accent-cta)] to-blue-600 transition-all duration-300 rounded-full"
                   style={{ width: `${uploadProgress}%` }}
                 />
               </div>
@@ -632,7 +632,7 @@ export const CreateReelModal: React.FC<CreateReelModalProps> = ({
           {/* Storage Provider Transparency Notice */}
           <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/10 text-[11px] text-[var(--text-muted)] space-y-1">
             <div className="flex items-center gap-1.5 font-bold text-[var(--text)]">
-              <Sparkles size={13} className="text-pink-400" />
+              <Sparkles size={13} className="text-[var(--primary)]" />
               <span>Free Hosting Infrastructure</span>
             </div>
             <p className="leading-relaxed">
@@ -644,7 +644,7 @@ export const CreateReelModal: React.FC<CreateReelModalProps> = ({
           <button
             type="submit"
             disabled={(!selectedFile && !externalVideoUrl.trim()) || isUploading || (!quota.allowed && currentUser?.username?.toLowerCase() !== 'shashwath71845')}
-            className="w-full h-12 rounded-2xl bg-gradient-to-r from-pink-600 via-rose-600 to-blue-600 hover:opacity-95 active:scale-[0.99] text-white font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full h-12 rounded-2xl bg-gradient-to-r from-[var(--accent-cta)] via-[var(--accent-cta)] to-blue-600 hover:opacity-95 active:scale-[0.99] text-white font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isUploading ? (
               <>

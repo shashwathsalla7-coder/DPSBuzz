@@ -194,14 +194,14 @@ export const ClipTrimSelector: React.FC<ClipTrimSelectorProps> = ({
           </button>
           <div className="text-center">
             <h2 className="text-base font-bold flex items-center justify-center gap-1.5">
-              <Scissors size={16} className="text-pink-400" /> Choose Your Clip
+              <Scissors size={16} className="text-[var(--primary)]" /> Choose Your Clip
             </h2>
             <p className="text-xs text-white/60">Drag the window to pick the best part</p>
           </div>
           <button
             type="button"
             onClick={() => onConfirm({ startSeconds, lengthSeconds: clipLength })}
-            className="flex items-center gap-1 px-3.5 py-1.5 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white text-xs font-bold shadow-lg transition-transform active:scale-95 cursor-pointer"
+            className="flex items-center gap-1 px-3.5 py-1.5 rounded-full bg-gradient-to-r from-[var(--accent-cta)] to-[var(--accent-cta)] hover:from-[var(--accent-cta)] hover:to-[var(--accent-cta)] text-white text-xs font-bold shadow-lg transition-transform active:scale-95 cursor-pointer"
           >
             <Check size={14} /> Done
           </button>
@@ -219,7 +219,7 @@ export const ClipTrimSelector: React.FC<ClipTrimSelectorProps> = ({
               <h3 className="text-sm font-bold truncate text-white">{track.title}</h3>
               <p className="text-xs text-white/60 truncate">{track.artist}</p>
               <div className="flex items-center gap-2 mt-1">
-                <span className="text-[10px] px-2 py-0.5 rounded-md bg-pink-500/15 text-pink-300 font-mono font-medium">
+                <span className="text-[10px] px-2 py-0.5 rounded-md bg-[var(--primary-tint)] text-[var(--primary)] font-mono font-medium">
                   {track.license}
                 </span>
                 <span className="text-[10px] text-white/40 font-mono">
@@ -230,7 +230,7 @@ export const ClipTrimSelector: React.FC<ClipTrimSelectorProps> = ({
             <button
               type="button"
               onClick={togglePlayPause}
-              className="w-11 h-11 rounded-full bg-gradient-to-tr from-purple-600 to-pink-500 hover:scale-105 flex items-center justify-center text-white shadow-lg shrink-0 transition-transform active:scale-95 cursor-pointer"
+              className="w-11 h-11 rounded-full bg-gradient-to-tr from-[var(--accent-cta)] to-[var(--accent-cta)] hover:scale-105 flex items-center justify-center text-white shadow-lg shrink-0 transition-transform active:scale-95 cursor-pointer"
               aria-label={isPlaying ? 'Pause preview' : 'Play preview'}
             >
               {isPlaying ? <Pause size={18} /> : <Play size={18} className="ml-0.5" />}
@@ -241,7 +241,7 @@ export const ClipTrimSelector: React.FC<ClipTrimSelectorProps> = ({
         {/* Clip Duration Selector (15s vs 30s) */}
         <div className="px-5 py-3 flex items-center justify-between">
           <span className="text-xs text-white/70 font-medium flex items-center gap-1">
-            <Clock size={13} className="text-pink-400" /> Clip Length:
+            <Clock size={13} className="text-[var(--primary)]" /> Clip Length:
           </span>
           <div className="flex items-center gap-1.5 p-1 rounded-xl bg-white/[0.05] border border-white/10">
             <button
@@ -249,7 +249,7 @@ export const ClipTrimSelector: React.FC<ClipTrimSelectorProps> = ({
               onClick={() => handleDurationChange(15)}
               className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 clipLength === 15
-                  ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow'
+                  ? 'bg-gradient-to-r from-[var(--accent-cta)] to-[var(--accent-cta)] text-white shadow'
                   : 'text-white/60 hover:text-white'
               }`}
             >
@@ -261,7 +261,7 @@ export const ClipTrimSelector: React.FC<ClipTrimSelectorProps> = ({
               disabled={fullDuration < 30}
               className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 clipLength === 30
-                  ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow'
+                  ? 'bg-gradient-to-r from-[var(--accent-cta)] to-[var(--accent-cta)] text-white shadow'
                   : fullDuration < 30
                   ? 'opacity-30 cursor-not-allowed text-white/40'
                   : 'text-white/60 hover:text-white'
@@ -275,7 +275,7 @@ export const ClipTrimSelector: React.FC<ClipTrimSelectorProps> = ({
         {/* Timeline & Waveform View */}
         <div className="px-5 py-4 space-y-2">
           <div className="flex items-center justify-between text-xs font-mono font-medium text-white/80">
-            <span className="text-pink-300 font-bold">
+            <span className="text-[var(--primary)] font-bold">
               {formatTime(startSeconds)} – {formatTime(startSeconds + clipLength)}
             </span>
             <span className="text-white/40">Total: {formatTime(fullDuration)}</span>
@@ -302,7 +302,7 @@ export const ClipTrimSelector: React.FC<ClipTrimSelectorProps> = ({
 
             {/* Draggable Highlight Selection Window */}
             <div
-              className="absolute top-1 bottom-1 rounded-xl bg-pink-500/20 border-2 border-pink-400 backdrop-brightness-125 transition-[left,width] duration-75 shadow-[0_0_15px_rgba(236,72,153,0.3)] pointer-events-none flex flex-col justify-between"
+              className="absolute top-1 bottom-1 rounded-xl bg-[var(--primary-tint)] border-2 border-[var(--line-strong)] backdrop-brightness-125 transition-[left,width] duration-75 shadow-[0_0_15px_rgba(236,72,153,0.3)] pointer-events-none flex flex-col justify-between"
               style={{
                 left: `${windowLeftPercent}%`,
                 width: `${windowWidthPercent}%`,
@@ -336,7 +336,7 @@ export const ClipTrimSelector: React.FC<ClipTrimSelectorProps> = ({
               href={track.sourcePageUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-pink-400 hover:underline"
+              className="text-[var(--primary)] hover:underline"
             >
               View track license on Jamendo ↗
             </a>

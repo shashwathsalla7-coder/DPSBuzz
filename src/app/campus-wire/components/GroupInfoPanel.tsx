@@ -101,18 +101,18 @@ export const GroupInfoPanel: React.FC<GroupInfoPanelProps> = ({
   );
 
   return (
-    <div className="fixed inset-0 z-40 md:relative md:inset-auto w-full md:w-[360px] lg:w-[400px] h-full flex flex-col bg-[#111b21] border-l border-[#222d34] shrink-0 select-none overflow-hidden animate-slideLeft">
+    <div className="fixed inset-0 z-40 md:relative md:inset-auto w-full md:w-[360px] lg:w-[400px] h-full flex flex-col bg-[var(--bg)] border-l border-[var(--line)] shrink-0 select-none overflow-hidden animate-slideLeft">
       {/* Header */}
-      <div className="h-[60px] px-4 flex items-center justify-between bg-[#202c33] border-b border-[#222d34] shrink-0">
+      <div className="h-[60px] px-4 flex items-center justify-between bg-[var(--surface)] border-b border-[var(--line)] shrink-0">
         <div className="flex items-center gap-3">
           <button
             onClick={onClose}
-            className="p-1 rounded-full text-[#8696a0] hover:text-[#e9edef] transition-colors cursor-pointer"
+            className="p-1 rounded-full text-[var(--text-muted)] hover:text-[var(--text)] transition-colors cursor-pointer"
             title="Close"
           >
             <X size={19} />
           </button>
-          <h2 className="text-sm font-semibold text-[#e9edef]">
+          <h2 className="text-sm font-semibold text-[var(--text)]">
             {chat.isGroup ? 'Group info' : 'Contact info'}
           </h2>
         </div>
@@ -120,15 +120,15 @@ export const GroupInfoPanel: React.FC<GroupInfoPanelProps> = ({
 
       <div className="flex-1 overflow-y-auto space-y-2 pb-6">
         {/* Top Hero: Avatar & Title */}
-        <div className="p-6 bg-[#111b21] flex flex-col items-center text-center border-b border-[#222d34]/60">
+        <div className="p-6 bg-[var(--bg)] flex flex-col items-center text-center border-b border-[var(--line)]/60">
           <div
             className="w-24 h-24 rounded-full flex items-center justify-center font-bold text-white text-3xl shadow-md mb-3"
             style={{ backgroundColor: chat.avatarColor }}
           >
             {chat.initials}
           </div>
-          <h3 className="text-lg font-semibold text-[#e9edef] leading-snug">{chat.name}</h3>
-          <p className="text-xs text-[#8696a0] mt-1">
+          <h3 className="text-lg font-semibold text-[var(--text)] leading-snug">{chat.name}</h3>
+          <p className="text-xs text-[var(--text-muted)] mt-1">
             {chat.isGroup ? `Group • ${members.length} participants` : chat.subtitle}
           </p>
 
@@ -136,18 +136,18 @@ export const GroupInfoPanel: React.FC<GroupInfoPanelProps> = ({
           <div className="flex items-center gap-6 mt-4">
             <button
               onClick={() => onStartCall('voice')}
-              className="flex flex-col items-center gap-1 text-[#00a884] hover:text-[#008f6f] cursor-pointer"
+              className="flex flex-col items-center gap-1 text-[var(--primary)] hover:text-[var(--primary-hover)] cursor-pointer"
             >
-              <div className="w-10 h-10 rounded-full bg-[#202c33] flex items-center justify-center">
+              <div className="w-10 h-10 rounded-full bg-[var(--surface)] flex items-center justify-center">
                 <Phone size={18} />
               </div>
               <span className="text-[11px] font-medium">Audio</span>
             </button>
             <button
               onClick={() => onStartCall('video')}
-              className="flex flex-col items-center gap-1 text-[#00a884] hover:text-[#008f6f] cursor-pointer"
+              className="flex flex-col items-center gap-1 text-[var(--primary)] hover:text-[var(--primary-hover)] cursor-pointer"
             >
-              <div className="w-10 h-10 rounded-full bg-[#202c33] flex items-center justify-center">
+              <div className="w-10 h-10 rounded-full bg-[var(--surface)] flex items-center justify-center">
                 <Video size={18} />
               </div>
               <span className="text-[11px] font-medium">Video</span>
@@ -157,10 +157,10 @@ export const GroupInfoPanel: React.FC<GroupInfoPanelProps> = ({
 
         {/* Description Section */}
         {chat.description && (
-          <div className="p-4 bg-[#111b21] border-b border-[#222d34]/60">
-            <div className="text-xs text-[#8696a0] font-medium mb-1">Description</div>
-            <div className="text-xs text-[#e9edef] leading-relaxed">{chat.description}</div>
-            <div className="text-[11px] text-[#8696a0] mt-2">
+          <div className="p-4 bg-[var(--bg)] border-b border-[var(--line)]/60">
+            <div className="text-xs text-[var(--text-muted)] font-medium mb-1">Description</div>
+            <div className="text-xs text-[var(--text)] leading-relaxed">{chat.description}</div>
+            <div className="text-[11px] text-[var(--text-muted)] mt-2">
               Created by {chat.createdBy || 'Anita Madam'} • {chat.createdAt || '2026-08-15'}
             </div>
           </div>
@@ -169,49 +169,49 @@ export const GroupInfoPanel: React.FC<GroupInfoPanelProps> = ({
         {/* Media, Links & Docs Shortcut */}
         <div
           onClick={onOpenMediaGallery}
-          className="p-4 bg-[#111b21] hover:bg-[#202c33] transition-colors cursor-pointer border-b border-[#222d34]/60 flex items-center justify-between"
+          className="p-4 bg-[var(--bg)] hover:bg-[var(--surface)] transition-colors cursor-pointer border-b border-[var(--line)]/60 flex items-center justify-between"
         >
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1 text-[#8696a0]">
+            <div className="flex items-center gap-1 text-[var(--text-muted)]">
               <ImageIcon size={18} />
               <FileText size={18} />
               <Link2 size={18} />
             </div>
             <div>
-              <div className="text-xs font-semibold text-[#e9edef]">Media, links and docs</div>
-              <div className="text-[11px] text-[#8696a0]">{chat.mediaCount || 24} items shared</div>
+              <div className="text-xs font-semibold text-[var(--text)]">Media, links and docs</div>
+              <div className="text-[11px] text-[var(--text-muted)]">{chat.mediaCount || 24} items shared</div>
             </div>
           </div>
-          <ChevronRight size={16} className="text-[#8696a0]" />
+          <ChevronRight size={16} className="text-[var(--text-muted)]" />
         </div>
 
         {/* Mute Notifications Toggle */}
-        <div className="p-4 bg-[#111b21] border-b border-[#222d34]/60 flex items-center justify-between">
-          <div className="flex items-center gap-3 text-[#e9edef]">
-            <Bell size={18} className="text-[#8696a0]" />
+        <div className="p-4 bg-[var(--bg)] border-b border-[var(--line)]/60 flex items-center justify-between">
+          <div className="flex items-center gap-3 text-[var(--text)]">
+            <Bell size={18} className="text-[var(--text-muted)]" />
             <span className="text-xs">Mute notifications</span>
           </div>
           <input
             type="checkbox"
             checked={isMuted}
             onChange={(e) => setIsMuted(e.target.checked)}
-            className="accent-[#00a884] w-4 h-4 cursor-pointer"
+            className="accent-[var(--primary)] w-4 h-4 cursor-pointer"
           />
         </div>
 
         {/* Disappearing Messages Duration */}
-        <div className="p-4 bg-[#111b21] border-b border-[#222d34]/60 flex items-center justify-between">
-          <div className="flex items-center gap-3 text-[#e9edef]">
-            <Clock size={18} className="text-[#8696a0]" />
+        <div className="p-4 bg-[var(--bg)] border-b border-[var(--line)]/60 flex items-center justify-between">
+          <div className="flex items-center gap-3 text-[var(--text)]">
+            <Clock size={18} className="text-[var(--text-muted)]" />
             <div>
               <span className="text-xs block">Disappearing messages</span>
-              <span className="text-[11px] text-[#8696a0]">{disappearingDuration}</span>
+              <span className="text-[11px] text-[var(--text-muted)]">{disappearingDuration}</span>
             </div>
           </div>
           <select
             value={disappearingDuration}
             onChange={(e) => setDisappearingDuration(e.target.value)}
-            className="bg-[#202c33] text-xs text-[#e9edef] rounded px-2 py-1 outline-none"
+            className="bg-[var(--surface)] text-xs text-[var(--text)] rounded px-2 py-1 outline-none"
           >
             <option value="Off">Off</option>
             <option value="24 hours">24 hours</option>
@@ -221,41 +221,41 @@ export const GroupInfoPanel: React.FC<GroupInfoPanelProps> = ({
         </div>
 
         {/* Encryption Notice */}
-        <div className="p-4 bg-[#111b21] border-b border-[#222d34]/60 flex items-start gap-3">
-          <Lock size={18} className="text-[#8696a0] shrink-0 mt-0.5" />
+        <div className="p-4 bg-[var(--bg)] border-b border-[var(--line)]/60 flex items-start gap-3">
+          <Lock size={18} className="text-[var(--text-muted)] shrink-0 mt-0.5" />
           <div>
-            <div className="text-xs font-semibold text-[#e9edef]">Encryption</div>
-            <div className="text-[11px] text-[#8696a0] mt-0.5 leading-relaxed">
-              Messages and calls are end-to-end encrypted. No one outside of this chat, not even Campus Wire, can read or listen to them.
+            <div className="text-xs font-semibold text-[var(--text)]">Encryption</div>
+            <div className="text-[11px] text-[var(--text-muted)] mt-0.5 leading-relaxed">
+              Only members of this group can read its messages. School admins can review messages for safety.
             </div>
           </div>
         </div>
 
         {/* Teacher / Admin Controls Section */}
         {chat.isGroup && (
-          <div className="p-4 bg-[#182229]/70 border-b border-[#222d34] space-y-3">
-            <div className="text-[11px] font-bold uppercase tracking-wider text-[#00a884]">
+          <div className="p-4 bg-[#182229]/70 border-b border-[var(--line)] space-y-3">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-[var(--primary)]">
               Classroom Administration
             </div>
 
             {/* Broadcast Mode Lock Switch */}
-            <div className="flex items-center justify-between p-3 rounded-xl bg-[#202c33] border border-[#222d34]">
+            <div className="flex items-center justify-between p-3 rounded-xl bg-[var(--surface)] border border-[var(--line)]">
               <div className="flex items-start gap-2.5">
-                <Lock size={16} className={chat.isLocked ? 'text-[#00a884]' : 'text-[#8696a0]'} />
+                <Lock size={16} className={chat.isLocked ? 'text-[var(--primary)]' : 'text-[var(--text-muted)]'} />
                 <div>
-                  <div className="text-xs font-semibold text-[#e9edef] flex items-center gap-1.5">
+                  <div className="text-xs font-semibold text-[var(--text)] flex items-center gap-1.5">
                     Broadcast Lock
                     {chat.isLocked ? (
-                      <span className="text-[10px] px-1.5 py-0.2 rounded bg-[#00a884]/20 text-[#00a884] font-bold">
+                      <span className="text-[10px] px-1.5 py-0.2 rounded bg-[var(--primary)]/20 text-[var(--primary)] font-bold">
                         LOCKED
                       </span>
                     ) : (
-                      <span className="text-[10px] px-1.5 py-0.2 rounded bg-white/10 text-[#8696a0] font-bold">
+                      <span className="text-[10px] px-1.5 py-0.2 rounded bg-white/10 text-[var(--text-muted)] font-bold">
                         OPEN
                       </span>
                     )}
                   </div>
-                  <div className="text-[10px] text-[#8696a0] mt-0.5">
+                  <div className="text-[10px] text-[var(--text-muted)] mt-0.5">
                     {chat.isLocked
                       ? 'Only verified faculty & admins can send messages.'
                       : 'All enrolled students can send messages and doubts.'}
@@ -268,7 +268,7 @@ export const GroupInfoPanel: React.FC<GroupInfoPanelProps> = ({
                   type="button"
                   onClick={() => onToggleLock && onToggleLock(!chat.isLocked)}
                   className={`w-11 h-6 flex items-center rounded-full p-0.5 cursor-pointer transition-colors shrink-0 ${
-                    chat.isLocked ? 'bg-[#00a884]' : 'bg-[#2a3942]'
+                    chat.isLocked ? 'bg-[var(--primary)]' : 'bg-[var(--line)]'
                   }`}
                   title="Toggle Broadcast Lock"
                 >
@@ -279,7 +279,7 @@ export const GroupInfoPanel: React.FC<GroupInfoPanelProps> = ({
                   />
                 </button>
               ) : (
-                <span className="text-[10px] text-[#8696a0] font-medium shrink-0">
+                <span className="text-[10px] text-[var(--text-muted)] font-medium shrink-0">
                   {chat.isLocked ? 'Locked' : 'Open'}
                 </span>
               )}
@@ -288,23 +288,23 @@ export const GroupInfoPanel: React.FC<GroupInfoPanelProps> = ({
             {/* Teacher Quick Dispatcher */}
             {(isTeacher || isAdmin) && onQuickDispatch && (
               <div className="space-y-1.5">
-                <div className="text-[11px] font-semibold text-[#8696a0]">Quick Faculty Dispatches</div>
+                <div className="text-[11px] font-semibold text-[var(--text-muted)]">Quick Faculty Dispatches</div>
                 <div className="grid grid-cols-3 gap-1.5">
                   <button
                     onClick={() => onQuickDispatch('homework')}
-                    className="p-2 rounded-lg bg-[#202c33] hover:bg-[#2a3942] text-[11px] font-medium text-[#e9edef] text-center border border-[#222d34] transition-colors cursor-pointer"
+                    className="p-2 rounded-lg bg-[var(--surface)] hover:bg-[var(--line)] text-[11px] font-medium text-[var(--text)] text-center border border-[var(--line)] transition-colors cursor-pointer"
                   >
                     📝 Homework
                   </button>
                   <button
                     onClick={() => onQuickDispatch('attendance')}
-                    className="p-2 rounded-lg bg-[#202c33] hover:bg-[#2a3942] text-[11px] font-medium text-[#e9edef] text-center border border-[#222d34] transition-colors cursor-pointer"
+                    className="p-2 rounded-lg bg-[var(--surface)] hover:bg-[var(--line)] text-[11px] font-medium text-[var(--text)] text-center border border-[var(--line)] transition-colors cursor-pointer"
                   >
                     ⚠️ Roll Call
                   </button>
                   <button
                     onClick={() => onQuickDispatch('exam')}
-                    className="p-2 rounded-lg bg-[#202c33] hover:bg-[#2a3942] text-[11px] font-medium text-[#e9edef] text-center border border-[#222d34] transition-colors cursor-pointer"
+                    className="p-2 rounded-lg bg-[var(--surface)] hover:bg-[var(--line)] text-[11px] font-medium text-[var(--text)] text-center border border-[var(--line)] transition-colors cursor-pointer"
                   >
                     📋 Exam Notice
                   </button>
@@ -316,14 +316,14 @@ export const GroupInfoPanel: React.FC<GroupInfoPanelProps> = ({
 
         {/* Participants Section */}
         {chat.isGroup && (
-          <div className="p-4 bg-[#111b21]">
+          <div className="p-4 bg-[var(--bg)]">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-semibold text-[#8696a0] uppercase tracking-wider">
+              <span className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">
                 {members.length} participants
               </span>
               <button
                 onClick={onAddMember}
-                className="flex items-center gap-1.5 text-xs text-[#00a884] hover:text-[#008f6f] cursor-pointer"
+                className="flex items-center gap-1.5 text-xs text-[var(--primary)] hover:text-[var(--primary-hover)] cursor-pointer"
               >
                 <UserPlus size={14} />
                 <span>Add participant</span>
@@ -333,18 +333,18 @@ export const GroupInfoPanel: React.FC<GroupInfoPanelProps> = ({
             {/* Invite via Link Button */}
             <button
               onClick={onOpenInviteModal}
-              className="w-full mb-3 p-2.5 rounded-xl bg-[#202c33] hover:bg-[#2a3942] border border-white/5 flex items-center justify-between text-left transition-colors cursor-pointer group"
+              className="w-full mb-3 p-2.5 rounded-xl bg-[var(--surface)] hover:bg-[var(--line)] border border-white/5 flex items-center justify-between text-left transition-colors cursor-pointer group"
             >
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full bg-[#4f46e5]/20 text-[#6366f1] flex items-center justify-center shrink-0">
                   <Link2 size={16} />
                 </div>
                 <div>
-                  <div className="text-xs font-semibold text-[#e9edef] group-hover:text-white">Invite to group via link</div>
-                  <div className="text-[10px] text-[#8696a0]">Shareable link, password & admin rights</div>
+                  <div className="text-xs font-semibold text-[var(--text)] group-hover:text-white">Invite to group via link</div>
+                  <div className="text-[10px] text-[var(--text-muted)]">Shareable link, password & admin rights</div>
                 </div>
               </div>
-              <ChevronRight size={15} className="text-[#8696a0]" />
+              <ChevronRight size={15} className="text-[var(--text-muted)]" />
             </button>
 
             {/* Pending Join Requests for Admins */}
@@ -372,7 +372,7 @@ export const GroupInfoPanel: React.FC<GroupInfoPanelProps> = ({
                         <button
                           onClick={() => handleRequestDecision(req.id, 'approved')}
                           disabled={requestActionLoading === req.id}
-                          className="px-2 py-1 rounded-md bg-[#00a884] hover:bg-[#008f6f] text-white text-[11px] font-semibold transition-colors cursor-pointer"
+                          className="px-2 py-1 rounded-md bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white text-[11px] font-semibold transition-colors cursor-pointer"
                         >
                           Approve
                         </button>
@@ -391,14 +391,14 @@ export const GroupInfoPanel: React.FC<GroupInfoPanelProps> = ({
             )}
 
             {/* Member search bar */}
-            <div className="flex items-center px-2.5 py-1.5 rounded-lg bg-[#202c33] mb-3">
-              <Search size={13} className="text-[#8696a0] mr-2 shrink-0" />
+            <div className="flex items-center px-2.5 py-1.5 rounded-lg bg-[var(--surface)] mb-3">
+              <Search size={13} className="text-[var(--text-muted)] mr-2 shrink-0" />
               <input
                 type="text"
                 placeholder="Search participants"
                 value={memberSearch}
                 onChange={(e) => setMemberSearch(e.target.value)}
-                className="w-full text-xs text-[#e9edef] bg-transparent outline-none placeholder-[#8696a0]"
+                className="w-full text-xs text-[var(--text)] bg-transparent outline-none placeholder-[var(--text-muted)]"
               />
             </div>
 
@@ -407,7 +407,7 @@ export const GroupInfoPanel: React.FC<GroupInfoPanelProps> = ({
               {filteredMembers.map((m) => (
                 <div
                   key={m.id}
-                  className="flex items-center justify-between p-2 rounded-lg hover:bg-[#202c33] transition-colors"
+                  className="flex items-center justify-between p-2 rounded-lg hover:bg-[var(--surface)] transition-colors"
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <div
@@ -417,13 +417,13 @@ export const GroupInfoPanel: React.FC<GroupInfoPanelProps> = ({
                       {m.initials}
                     </div>
                     <div className="min-w-0">
-                      <div className="text-xs font-medium text-[#e9edef] truncate">{m.name}</div>
-                      <div className="text-[11px] text-[#8696a0] truncate">{m.about || m.phone}</div>
+                      <div className="text-xs font-medium text-[var(--text)] truncate">{m.name}</div>
+                      <div className="text-[11px] text-[var(--text-muted)] truncate">{m.about || m.phone}</div>
                     </div>
                   </div>
 
                   {m.isAdmin && (
-                    <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#00a884]/20 text-[#00a884] shrink-0">
+                    <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[var(--primary)]/20 text-[var(--primary)] shrink-0">
                       Group Admin
                     </span>
                   )}
@@ -435,11 +435,11 @@ export const GroupInfoPanel: React.FC<GroupInfoPanelProps> = ({
 
         {/* Exit & Report Actions */}
         <div className="p-4 space-y-1">
-          <button className="w-full px-3 py-2.5 flex items-center gap-3 text-xs text-[#ea4335] hover:bg-[#202c33] rounded-lg transition-colors cursor-pointer text-left">
+          <button className="w-full px-3 py-2.5 flex items-center gap-3 text-xs text-[#ea4335] hover:bg-[var(--surface)] rounded-lg transition-colors cursor-pointer text-left">
             <LogOut size={16} />
             <span>Exit group</span>
           </button>
-          <button className="w-full px-3 py-2.5 flex items-center gap-3 text-xs text-[#ea4335] hover:bg-[#202c33] rounded-lg transition-colors cursor-pointer text-left">
+          <button className="w-full px-3 py-2.5 flex items-center gap-3 text-xs text-[#ea4335] hover:bg-[var(--surface)] rounded-lg transition-colors cursor-pointer text-left">
             <ThumbsDown size={16} />
             <span>Report group</span>
           </button>

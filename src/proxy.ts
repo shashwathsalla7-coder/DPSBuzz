@@ -24,6 +24,9 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith('/_next') ||
     pathname.startsWith('/icons') ||
     pathname.startsWith('/manifest.json') ||
+    pathname === '/sw.js' ||
+    pathname.startsWith('/fonts') ||
+    pathname.startsWith('/downloads') ||
     pathname.startsWith('/robots.txt') ||
     pathname.startsWith('/sitemap.xml') ||
     pathname.startsWith('/favicon.ico') ||
@@ -111,6 +114,11 @@ export async function proxy(request: NextRequest) {
 
   if (isAuthRoute || isAdminLoginRoute) {
     return NextResponse.next();
+  }
+
+  // 4b. Internal design/test pages: admins only
+  if ((pathname.startsWith('/preview') || pathname.startsWith('/styleguide')) && session?.role !== 'admin') {
+    return NextResponse.redirect(new URL(hasValidUser ? '/home' : '/login', request.url));
   }
 
   // 5. Strict server-side Admin Route Protection

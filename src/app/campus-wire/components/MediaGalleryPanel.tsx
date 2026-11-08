@@ -37,36 +37,36 @@ export const MediaGalleryPanel: React.FC<MediaGalleryPanelProps> = ({
   ];
 
   return (
-    <div className="fixed inset-0 z-40 md:relative md:inset-auto w-full md:w-[360px] lg:w-[400px] h-full flex flex-col bg-[#111b21] border-l border-[#222d34] shrink-0 select-none overflow-hidden animate-slideLeft">
+    <div className="fixed inset-0 z-40 md:relative md:inset-auto w-full md:w-[360px] lg:w-[400px] h-full flex flex-col bg-[var(--bg)] border-l border-[var(--line)] shrink-0 select-none overflow-hidden animate-slideLeft">
       {/* Header */}
-      <div className="h-[60px] px-4 flex items-center justify-between bg-[#202c33] border-b border-[#222d34] shrink-0">
+      <div className="h-[60px] px-4 flex items-center justify-between bg-[var(--surface)] border-b border-[var(--line)] shrink-0">
         <div className="flex items-center gap-3">
           <button
             onClick={onClose}
-            className="p-1 rounded-full text-[#8696a0] hover:text-[#e9edef] transition-colors cursor-pointer"
+            className="p-1 rounded-full text-[var(--text-muted)] hover:text-[var(--text)] transition-colors cursor-pointer"
             title="Close"
           >
             <X size={19} />
           </button>
-          <h2 className="text-sm font-semibold text-[#e9edef] truncate max-w-[240px]">
+          <h2 className="text-sm font-semibold text-[var(--text)] truncate max-w-[240px]">
             {chatName}
           </h2>
         </div>
       </div>
 
       {/* Tabs: Media / Docs / Links */}
-      <div className="flex border-b border-[#222d34] bg-[#111b21]">
+      <div className="flex border-b border-[var(--line)] bg-[var(--bg)]">
         {(['media', 'docs', 'links'] as const).map((t) => (
           <button
             key={t}
             onClick={() => setActiveTab(t)}
             className={`flex-1 py-3 text-xs font-semibold capitalize tracking-wide transition-colors relative cursor-pointer ${
-              activeTab === t ? 'text-[#00a884]' : 'text-[#8696a0] hover:text-white'
+              activeTab === t ? 'text-[var(--primary)]' : 'text-[var(--text-muted)] hover:text-white'
             }`}
           >
             {t}
             {activeTab === t && (
-              <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#00a884]" />
+              <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-[var(--primary)]" />
             )}
           </button>
         ))}
@@ -80,7 +80,7 @@ export const MediaGalleryPanel: React.FC<MediaGalleryPanelProps> = ({
             {demoMedia.map((m) => (
               <div
                 key={m.id}
-                className="aspect-square rounded-md overflow-hidden bg-gradient-to-br from-[#202c33] to-[#2a3942] relative group cursor-pointer border border-white/5"
+                className="aspect-square rounded-md overflow-hidden bg-gradient-to-br from-[var(--surface)] to-[var(--line)] relative group cursor-pointer border border-white/5"
               >
                 <div className="w-full h-full flex items-center justify-center text-white/50 group-hover:scale-105 transition-transform">
                   {m.type === 'video' ? (
@@ -110,22 +110,22 @@ export const MediaGalleryPanel: React.FC<MediaGalleryPanelProps> = ({
             {demoDocs.map((doc) => (
               <div
                 key={doc.id}
-                className="p-3 rounded-lg bg-[#202c33] hover:bg-[#2a3942] transition-colors flex items-center justify-between group cursor-pointer"
+                className="p-3 rounded-lg bg-[var(--surface)] hover:bg-[var(--line)] transition-colors flex items-center justify-between group cursor-pointer"
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="w-9 h-9 rounded bg-[#ea4335]/20 text-[#ea4335] flex items-center justify-center shrink-0">
                     <FileText size={18} />
                   </div>
                   <div className="min-w-0">
-                    <div className="text-xs font-medium text-[#e9edef] truncate">{doc.name}</div>
-                    <div className="text-[11px] text-[#8696a0] mt-0.5">
+                    <div className="text-xs font-medium text-[var(--text)] truncate">{doc.name}</div>
+                    <div className="text-[11px] text-[var(--text-muted)] mt-0.5">
                       {doc.size} • {doc.date}
                     </div>
                   </div>
                 </div>
 
                 <button
-                  className="p-1.5 rounded text-[#8696a0] hover:text-[#00a884] transition-colors"
+                  className="p-1.5 rounded text-[var(--text-muted)] hover:text-[var(--primary)] transition-colors"
                   title="Download"
                 >
                   <Download size={15} />
@@ -144,15 +144,15 @@ export const MediaGalleryPanel: React.FC<MediaGalleryPanelProps> = ({
                 href={link.url}
                 target="_blank"
                 rel="noreferrer"
-                className="p-3 rounded-lg bg-[#202c33] hover:bg-[#2a3942] transition-colors block group cursor-pointer"
+                className="p-3 rounded-lg bg-[var(--surface)] hover:bg-[var(--line)] transition-colors block group cursor-pointer"
               >
                 <div className="flex items-center justify-between">
                   <div className="text-xs font-medium text-[#53bdeb] group-hover:underline truncate">
                     {link.title}
                   </div>
-                  <ExternalLink size={13} className="text-[#8696a0] shrink-0 ml-2" />
+                  <ExternalLink size={13} className="text-[var(--text-muted)] shrink-0 ml-2" />
                 </div>
-                <div className="text-[11px] text-[#8696a0] mt-1 truncate">{link.url}</div>
+                <div className="text-[11px] text-[var(--text-muted)] mt-1 truncate">{link.url}</div>
               </a>
             ))}
           </div>

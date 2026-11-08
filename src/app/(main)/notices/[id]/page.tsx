@@ -90,7 +90,7 @@ function NoticeDetailContent({ params }: { params: Promise<{ id: string }> }) {
           </div>
         </div>
         <main className="p-8 max-w-[480px] mx-auto text-center space-y-4">
-          <div className="w-14 h-14 rounded-full bg-[var(--surface-sunken)] border border-[var(--line)] flex items-center justify-center mx-auto text-amber-500">
+          <div className="w-14 h-14 rounded-full bg-[var(--surface-sunken)] border border-[var(--line)] flex items-center justify-center mx-auto text-[var(--gold)]">
             <FileQuestion size={28} />
           </div>
           <h1 className="text-base font-bold" style={{ color: 'var(--text)' }}>

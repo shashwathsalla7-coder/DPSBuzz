@@ -141,7 +141,7 @@ function DownloadContent() {
       {/* Header */}
       <div className="text-center space-y-3">
         <div className="inline-block relative">
-          <div className="w-20 h-20 mx-auto rounded-3xl bg-zinc-900 border-2 border-pink-500/50 p-2 flex items-center justify-center shadow-xl shadow-pink-500/20">
+          <div className="w-20 h-20 mx-auto rounded-3xl bg-zinc-900 border-2 border-[var(--line-strong)] p-2 flex items-center justify-center shadow-xl ">
             <img
               src="/icons/icon-192.png"
               alt="DPS Buzz App"
@@ -184,7 +184,7 @@ function DownloadContent() {
           onClick={() => setActiveTab('desktop')}
           className={`flex items-center justify-center gap-1.5 py-2.5 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
             activeTab === 'desktop'
-              ? 'gradient-bg text-white shadow-md shadow-pink-500/25'
+              ? 'gradient-bg text-white shadow-md '
               : 'text-zinc-400 hover:text-white hover:bg-zinc-800/60'
           }`}
         >
@@ -196,7 +196,7 @@ function DownloadContent() {
           onClick={() => setActiveTab('android')}
           className={`flex items-center justify-center gap-1.5 py-2.5 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
             activeTab === 'android'
-              ? 'gradient-bg text-white shadow-md shadow-pink-500/25'
+              ? 'gradient-bg text-white shadow-md '
               : 'text-zinc-400 hover:text-white hover:bg-zinc-800/60'
           }`}
         >
@@ -208,7 +208,7 @@ function DownloadContent() {
           onClick={() => setActiveTab('ios')}
           className={`flex items-center justify-center gap-1.5 py-2.5 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
             activeTab === 'ios'
-              ? 'gradient-bg text-white shadow-md shadow-pink-500/25'
+              ? 'gradient-bg text-white shadow-md '
               : 'text-zinc-400 hover:text-white hover:bg-zinc-800/60'
           }`}
         >
@@ -220,14 +220,14 @@ function DownloadContent() {
       {/* TAB 1: LAPTOP / DESKTOP (Windows, Mac, Chromebook) */}
       {activeTab === 'desktop' && (
         <div className="space-y-6">
-          <div className="bg-zinc-900 border-2 border-pink-500/60 rounded-3xl p-5 md:p-6 shadow-2xl relative overflow-hidden">
-            <div className="absolute top-0 right-0 px-3 py-1 bg-pink-500 text-white text-[10px] font-black uppercase tracking-wider rounded-bl-2xl">
+          <div className="bg-zinc-900 border-2 border-[var(--line-strong)] rounded-3xl p-5 md:p-6 shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 px-3 py-1 bg-[var(--accent-cta)] text-white text-[10px] font-black uppercase tracking-wider rounded-bl-2xl">
               Desktop PWA App
             </div>
 
             <div className="space-y-4">
               <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-pink-500/10 border border-pink-500/30 flex items-center justify-center text-pink-400 shrink-0">
+                <div className="w-10 h-10 rounded-2xl bg-[var(--primary-tint)] border border-[var(--line-strong)] flex items-center justify-center text-[var(--primary)] shrink-0">
                   <Laptop size={22} />
                 </div>
                 <div>
@@ -263,7 +263,7 @@ function DownloadContent() {
               {/* Install Button */}
               <button
                 onClick={handleInstallClick}
-                className="w-full min-h-[48px] rounded-2xl gradient-bg text-white text-sm font-bold flex items-center justify-center gap-2 shadow-lg shadow-pink-500/25 active:scale-95 transition-all hover:opacity-95 cursor-pointer"
+                className="w-full min-h-[48px] rounded-2xl gradient-bg text-white text-sm font-bold flex items-center justify-center gap-2 shadow-lg  active:scale-95 transition-all hover:opacity-95 cursor-pointer"
               >
                 <Laptop size={18} />
                 <span>
@@ -278,7 +278,7 @@ function DownloadContent() {
               {/* Step-by-Step Desktop Guide (Shows automatically if no prompt or toggle) */}
               <div className="mt-4 p-4 rounded-2xl bg-zinc-950 border border-zinc-800 space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-pink-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <span className="text-xs font-bold text-[var(--primary)] uppercase tracking-wider flex items-center gap-1.5">
                     <Monitor size={14} /> Desktop Install Steps (Chrome, Edge & Brave)
                   </span>
                   <button
@@ -292,7 +292,7 @@ function DownloadContent() {
                 {showDesktopHelp && (
                   <div className="space-y-2 text-xs text-zinc-300 animate-fade-in">
                     <div className="flex items-start gap-2.5 bg-zinc-900/80 p-2.5 rounded-xl border border-zinc-800/80">
-                      <span className="w-5 h-5 rounded-full bg-pink-500/20 text-pink-300 font-bold flex items-center justify-center shrink-0 text-[11px]">
+                      <span className="w-5 h-5 rounded-full bg-[var(--primary-tint)] text-[var(--primary)] font-bold flex items-center justify-center shrink-0 text-[11px]">
                         1
                       </span>
                       <div>
@@ -304,7 +304,7 @@ function DownloadContent() {
                     </div>
 
                     <div className="flex items-start gap-2.5 bg-zinc-900/80 p-2.5 rounded-xl border border-zinc-800/80">
-                      <span className="w-5 h-5 rounded-full bg-pink-500/20 text-pink-300 font-bold flex items-center justify-center shrink-0 text-[11px]">
+                      <span className="w-5 h-5 rounded-full bg-[var(--primary-tint)] text-[var(--primary)] font-bold flex items-center justify-center shrink-0 text-[11px]">
                         2
                       </span>
                       <div>
@@ -316,7 +316,7 @@ function DownloadContent() {
                     </div>
 
                     <div className="flex items-start gap-2.5 bg-zinc-900/80 p-2.5 rounded-xl border border-zinc-800/80">
-                      <span className="w-5 h-5 rounded-full bg-pink-500/20 text-pink-300 font-bold flex items-center justify-center shrink-0 text-[11px]">
+                      <span className="w-5 h-5 rounded-full bg-[var(--primary-tint)] text-[var(--primary)] font-bold flex items-center justify-center shrink-0 text-[11px]">
                         3
                       </span>
                       <div>
@@ -338,14 +338,14 @@ function DownloadContent() {
       {activeTab === 'android' && (
         <div className="space-y-6">
           {/* Method 1: Instant PWA */}
-          <div className="bg-zinc-900 border-2 border-pink-500/60 rounded-3xl p-5 md:p-6 shadow-2xl relative overflow-hidden">
-            <div className="absolute top-0 right-0 px-3 py-1 bg-pink-500 text-white text-[10px] font-black uppercase tracking-wider rounded-bl-2xl">
+          <div className="bg-zinc-900 border-2 border-[var(--line-strong)] rounded-3xl p-5 md:p-6 shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 px-3 py-1 bg-[var(--accent-cta)] text-white text-[10px] font-black uppercase tracking-wider rounded-bl-2xl">
               Recommended
             </div>
 
             <div className="space-y-4">
               <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-pink-500/10 border border-pink-500/30 flex items-center justify-center text-pink-400 shrink-0">
+                <div className="w-10 h-10 rounded-2xl bg-[var(--primary-tint)] border border-[var(--line-strong)] flex items-center justify-center text-[var(--primary)] shrink-0">
                   <Zap size={22} />
                 </div>
                 <div>
@@ -377,14 +377,14 @@ function DownloadContent() {
 
               <button
                 onClick={handleInstallClick}
-                className="w-full min-h-[46px] rounded-2xl gradient-bg text-white text-sm font-bold flex items-center justify-center gap-2 shadow-lg shadow-pink-500/25 active:scale-95 transition-all hover:opacity-95 cursor-pointer"
+                className="w-full min-h-[46px] rounded-2xl gradient-bg text-white text-sm font-bold flex items-center justify-center gap-2 shadow-lg  active:scale-95 transition-all hover:opacity-95 cursor-pointer"
               >
                 <Smartphone size={18} />
                 <span>{installed ? '✓ App Already Installed!' : 'Install App to Home Screen'}</span>
               </button>
 
               <div className="flex items-center justify-between pt-2">
-                <span className="text-xs font-bold text-pink-400 uppercase tracking-wider flex items-center gap-1.5">
+                <span className="text-xs font-bold text-[var(--primary)] uppercase tracking-wider flex items-center gap-1.5">
                   <Smartphone size={14} /> Android Chrome Steps
                 </span>
                 <button
@@ -398,7 +398,7 @@ function DownloadContent() {
               {showAndroidHelp && (
                 <div className="p-3.5 bg-zinc-950 border border-zinc-800 rounded-xl text-xs text-zinc-300 space-y-1.5 animate-fade-in">
                   <p className="font-bold text-white flex items-center gap-1.5">
-                    <Info size={14} className="text-pink-400" /> In Android Chrome:
+                    <Info size={14} className="text-[var(--primary)]" /> In Android Chrome:
                   </p>
                   <p className="text-[11px] text-zinc-400 leading-relaxed">
                     Tap the <strong>Three Dots menu (⋮)</strong> in the top-right corner of Chrome &rarr; Select <strong>&quot;Install app&quot;</strong> (or <em>&quot;Add to Home screen&quot;</em>). The app icon will appear instantly on your phone!
@@ -446,7 +446,7 @@ function DownloadContent() {
                 <a
                   href="/downloads/DPS_Buzz.apk"
                   download="DPS_Buzz.apk"
-                  className="text-[11px] text-pink-400 hover:underline font-semibold"
+                  className="text-[11px] text-[var(--primary)] hover:underline font-semibold"
                 >
                   Direct link: Tap here if download didn&apos;t start automatically
                 </a>
@@ -484,7 +484,7 @@ function DownloadContent() {
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2.5">
-                        <span className="w-5 h-5 rounded-full bg-pink-500/20 text-pink-300 text-xs font-bold flex items-center justify-center">
+                        <span className="w-5 h-5 rounded-full bg-[var(--primary-tint)] text-[var(--primary)] text-xs font-bold flex items-center justify-center">
                           {item.step}
                         </span>
                         <span className="text-xs font-bold text-white">{item.title}</span>
@@ -511,7 +511,7 @@ function DownloadContent() {
       {/* TAB 3: IPHONE / IPAD (Safari Home Screen) */}
       {activeTab === 'ios' && (
         <div className="space-y-6">
-          <div className="bg-zinc-900 border-2 border-pink-500/60 rounded-3xl p-5 md:p-6 shadow-2xl space-y-5">
+          <div className="bg-zinc-900 border-2 border-[var(--line-strong)] rounded-3xl p-5 md:p-6 shadow-2xl space-y-5">
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-2xl bg-zinc-800 border border-zinc-700 flex items-center justify-center text-zinc-200 shrink-0">
                 <Apple size={22} />
@@ -540,7 +540,7 @@ function DownloadContent() {
               </div>
 
               <div className="flex items-start gap-3 p-3.5 rounded-2xl bg-zinc-950 border border-zinc-800">
-                <div className="w-7 h-7 rounded-full bg-pink-500/20 text-pink-400 font-bold text-xs flex items-center justify-center shrink-0">
+                <div className="w-7 h-7 rounded-full bg-[var(--primary-tint)] text-[var(--primary)] font-bold text-xs flex items-center justify-center shrink-0">
                   2
                 </div>
                 <div className="text-xs space-y-1">
@@ -565,25 +565,25 @@ function DownloadContent() {
       {/* Strict Privacy & Confidentiality Guarantee Box */}
       <div className="bg-zinc-900 border border-zinc-700 rounded-3xl p-5 space-y-3">
         <div className="flex items-center gap-2 text-white font-bold text-xs uppercase tracking-wider">
-          <Lock size={15} className="text-amber-400" />
+          <Lock size={15} className="text-[var(--gold)]" />
           <span className="text-white">Strict Privacy & Confidentiality</span>
         </div>
 
         <ul className="text-xs text-zinc-300 space-y-2.5 leading-relaxed font-medium">
           <li className="flex items-start gap-2">
-            <span className="text-amber-400">🤫</span>
+            <span className="text-[var(--gold)]">🤫</span>
             <span>
               <strong className="text-white">Zero Public Store Listing:</strong> We deliberately avoid the public Play Store and App Store so no external parties or public reviewers index the app.
             </span>
           </li>
           <li className="flex items-start gap-2">
-            <span className="text-amber-400">🚫</span>
+            <span className="text-[var(--gold)]">🚫</span>
             <span>
               <strong className="text-white">No Search Engine Indexing:</strong> The platform is strictly shielded with <code>noindex</code> headers. Search engines will never index student pages.
             </span>
           </li>
           <li className="flex items-start gap-2">
-            <span className="text-amber-400">🔑</span>
+            <span className="text-[var(--gold)]">🔑</span>
             <span>
               <strong className="text-white">Private School Invite Code:</strong> Accounts can only be created with your valid school admission number and secret invite code.
             </span>
@@ -595,7 +595,7 @@ function DownloadContent() {
       <div className="text-center pt-2">
         <Link
           href="/home"
-          className="inline-flex items-center gap-2 text-xs font-semibold text-pink-400 hover:text-pink-300 transition-colors"
+          className="inline-flex items-center gap-2 text-xs font-semibold text-[var(--primary)] hover:text-[var(--primary)] transition-colors"
         >
           <span>Go to DPS Buzz Web Feed</span>
           <ArrowRight size={14} />
@@ -611,7 +611,7 @@ export default function DownloadPage() {
       fallback={
         <div className="min-h-screen px-4 py-12 flex items-center justify-center text-center">
           <div className="space-y-3">
-            <div className="w-10 h-10 border-2 border-pink-500 border-t-transparent rounded-full animate-spin mx-auto" />
+            <div className="w-10 h-10 border-2 border-[var(--line-strong)] border-t-transparent rounded-full animate-spin mx-auto" />
             <p className="text-xs text-zinc-400">Loading installation options...</p>
           </div>
         </div>

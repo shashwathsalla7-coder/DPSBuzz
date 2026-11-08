@@ -1060,7 +1060,7 @@ const MessageBubbleItem = memo(function MessageBubbleItem({
                   <span>Principal</span>
                 </span>
               ) : isFaculty ? (
-                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] font-bold border border-amber-500/20">
+                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-full bg-[var(--gold-tint)] text-[var(--gold)] dark:text-[var(--gold)] text-[10px] font-bold border border-[var(--gold)]">
                   <ShieldCheck size={10} />
                   <span>Faculty</span>
                 </span>
@@ -2185,7 +2185,7 @@ export default function GroupsPage() {
 
       {/* Offline Toast Banner */}
       {!isOnline && (
-        <div className="fixed top-14 left-0 right-0 z-50 bg-amber-500/90 text-white text-xs py-1.5 px-4 text-center font-medium flex items-center justify-center gap-2 backdrop-blur-md shadow-md">
+        <div className="fixed top-14 left-0 right-0 z-50 bg-[var(--gold-tint)] text-white text-xs py-1.5 px-4 text-center font-medium flex items-center justify-center gap-2 backdrop-blur-md shadow-md">
           <WifiOff size={14} />
           <span>Offline Mode: Outgoing messages will auto-send when connection is restored.</span>
         </div>
@@ -2225,7 +2225,7 @@ export default function GroupsPage() {
             <button
               type="button"
               onClick={() => setClientViewMode(clientViewMode === 'teacher' ? 'student' : 'teacher')}
-              className="px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer bg-[#F3E8FF] dark:bg-purple-950/40 text-[#7E22CE] dark:text-purple-300 border border-purple-200 dark:border-purple-800/40 hover:scale-105 active:scale-95 shadow-2xs"
+              className="px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer bg-[#F3E8FF] dark:bg-[var(--primary-tint)] text-[#7E22CE] dark:text-[var(--primary)] border border-[var(--line-strong)] dark:border-[var(--line-strong)] hover:scale-105 active:scale-95 shadow-2xs"
               title="Toggle Faculty / Student Mode"
             >
               <GraduationCap size={15} />
@@ -2237,7 +2237,7 @@ export default function GroupsPage() {
                 <button
                   type="button"
                   onClick={() => setShowPrincipalBroadcastModal(true)}
-                  className="px-2.5 py-1.5 rounded-full bg-linear-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white flex items-center gap-1.5 text-xs font-semibold shadow-xs hover:scale-105 active:scale-95 transition-all cursor-pointer shrink-0"
+                  className="px-2.5 py-1.5 rounded-full bg-linear-to-r from-red-600 to-[var(--accent-cta)] hover:from-red-500 hover:to-[var(--accent-cta)] text-white flex items-center gap-1.5 text-xs font-semibold shadow-xs hover:scale-105 active:scale-95 transition-all cursor-pointer shrink-0"
                   title="Broadcast Text or Image to All School Groups"
                 >
                   <Megaphone size={14} className="animate-pulse" />
@@ -2275,9 +2275,9 @@ export default function GroupsPage() {
 
         {/* FACULTY BOARD • PRINCIPAL BROADCAST HUB BANNER */}
         {clientViewMode === 'teacher' && (
-          <div className="mb-3 p-3.5 rounded-3xl bg-linear-to-r from-red-500/10 via-rose-500/10 to-purple-500/10 border border-red-500/25 dark:border-red-500/20 shadow-xs flex items-center justify-between gap-3">
+          <div className="mb-3 p-3.5 rounded-3xl bg-linear-to-r from-red-500/10 via-[var(--primary-tint)] to-[var(--primary-tint)] border border-red-500/25 dark:border-red-500/20 shadow-xs flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
-              <div className="w-10 h-10 rounded-2xl bg-linear-to-br from-red-600 to-rose-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+              <div className="w-10 h-10 rounded-2xl bg-linear-to-br from-red-600 to-[var(--accent-cta)] text-white flex items-center justify-center shrink-0 shadow-xs">
                 <Megaphone size={19} className="animate-pulse" />
               </div>
               <div className="min-w-0">
@@ -2309,13 +2309,13 @@ export default function GroupsPage() {
           <button
             type="button"
             onClick={() => setShow91SectionsDemo(true)}
-            className="w-full mb-3 px-3.5 py-2.5 rounded-2xl bg-linear-to-r from-purple-600 via-indigo-600 to-[#007AFF] text-white text-xs font-semibold shadow-md flex items-center justify-between hover:opacity-95 transition-all cursor-pointer"
+            className="w-full mb-3 px-3.5 py-2.5 rounded-2xl bg-linear-to-r from-[var(--accent-cta)] via-[var(--accent-cta)] to-[#007AFF] text-white text-xs font-semibold shadow-md flex items-center justify-between hover:opacity-95 transition-all cursor-pointer"
           >
             <div className="flex items-center gap-2">
-              <Building size={16} className="text-yellow-300 shrink-0" />
+              <Building size={16} className="text-[var(--gold)] shrink-0" />
               <div className="text-left">
                 <div className="font-bold">91 Sections Scalability Engine</div>
-                <div className="text-[10px] text-purple-100">Click to show Madam full school implementation demo</div>
+                <div className="text-[10px] text-[var(--primary)]">Click to show Madam full school implementation demo</div>
               </div>
             </div>
             <span className="text-[10.5px] bg-white/20 px-2.5 py-0.5 rounded-full font-bold shrink-0">
@@ -2336,7 +2336,7 @@ export default function GroupsPage() {
                 if (targetChannel) setSelectedChannelId(targetChannel.id);
                 setToastMessage(`Showing ONLY ${g}-${s} classroom and student roster!`);
               }}
-              className="bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800/40 rounded-xl px-2.5 py-1 text-xs text-[#7E22CE] dark:text-purple-300 font-bold focus:outline-none cursor-pointer"
+              className="bg-purple-50 dark:bg-[var(--primary-tint)] border border-[var(--line-strong)] dark:border-[var(--line-strong)] rounded-xl px-2.5 py-1 text-xs text-[#7E22CE] dark:text-[var(--primary)] font-bold focus:outline-none cursor-pointer"
             >
               <option value="Class 9-B" className="bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white">Class 9-B (Grade 9 Section B)</option>
               <option value="Class 8-G" className="bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white">Class 8-G (Grade 8 Section G)</option>
@@ -2591,9 +2591,9 @@ export default function GroupsPage() {
 
         {/* Pinned Classroom Announcement Bar */}
         {!isPinnedNoticeDismissed && (
-          <div className="px-4 py-2 bg-amber-500/10 dark:bg-amber-400/10 border-b border-amber-500/20 backdrop-blur-md flex items-center justify-between gap-3 text-xs shrink-0 animate-fadeIn">
-            <div className="flex items-center gap-2 text-amber-700 dark:text-amber-300 min-w-0">
-              <Pin size={14} className="shrink-0 text-amber-500" />
+          <div className="px-4 py-2 bg-[var(--gold-tint)] dark:bg-[var(--gold-tint)] border-b border-[var(--gold)] backdrop-blur-md flex items-center justify-between gap-3 text-xs shrink-0 animate-fadeIn">
+            <div className="flex items-center gap-2 text-[var(--gold)] dark:text-[var(--gold)] min-w-0">
+              <Pin size={14} className="shrink-0 text-[var(--gold)]" />
               <span className="font-semibold shrink-0">Class Notice:</span>
               <span className="truncate">
                 {activeChannel.id === 'channel-class-9b'
@@ -2604,7 +2604,7 @@ export default function GroupsPage() {
             <button
               type="button"
               onClick={() => setIsPinnedNoticeDismissed(true)}
-              className="text-amber-600 dark:text-amber-400 hover:opacity-70 p-1 cursor-pointer shrink-0"
+              className="text-[var(--gold)] dark:text-[var(--gold)] hover:opacity-70 p-1 cursor-pointer shrink-0"
               title="Dismiss Notice"
             >
               <X size={13} />
@@ -2718,7 +2718,7 @@ export default function GroupsPage() {
             {!canSendMessage ? (
               <div className="w-full py-2.5 px-4 rounded-xl bg-black/5 dark:bg-white/10 flex items-center justify-between text-xs font-medium gap-3">
                 <div className="flex items-center gap-2 text-zinc-500 dark:text-zinc-400">
-                  <Lock size={14} className="text-amber-500 shrink-0" />
+                  <Lock size={14} className="text-[var(--gold)] shrink-0" />
                   <span>Principal Dispatches Channel (Read-Only). Switch to your classroom to chat.</span>
                 </div>
                 <button
@@ -2829,14 +2829,14 @@ export default function GroupsPage() {
       {show91SectionsDemo && (
         <div className="fixed inset-0 z-50 bg-black/65 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 animate-fadeIn">
           <div className="w-full max-w-2xl max-h-[90vh] rounded-[30px] overflow-hidden shadow-2xl bg-white dark:bg-[#1C1C1E] border border-black/10 dark:border-white/15 flex flex-col animate-scale-in">
-            <div className="p-4 sm:p-5 bg-gradient-to-r from-purple-700 via-indigo-700 to-[#007AFF] text-white flex items-center justify-between shrink-0">
+            <div className="p-4 sm:p-5 bg-gradient-to-r from-[var(--accent-cta)] via-[var(--accent-cta)] to-[#007AFF] text-white flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2.5">
                 <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-xs">
-                  <Building size={22} className="text-yellow-300" />
+                  <Building size={22} className="text-[var(--gold)]" />
                 </div>
                 <div>
                   <h3 className="text-base font-bold leading-tight">DPS 91 Sections Scalability Architecture</h3>
-                  <p className="text-[11px] text-purple-100 mt-0.5">Automated Multi-Classroom Deployment for 5,500 Students & 350 Faculty</p>
+                  <p className="text-[11px] text-[var(--primary)] mt-0.5">Automated Multi-Classroom Deployment for 5,500 Students & 350 Faculty</p>
                 </div>
               </div>
               <button
@@ -2850,8 +2850,8 @@ export default function GroupsPage() {
 
             <div className="p-5 overflow-y-auto space-y-5 flex-1">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                <div className="p-3 rounded-2xl bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/40 text-center">
-                  <div className="text-xl font-black text-purple-600 dark:text-purple-400">91</div>
+                <div className="p-3 rounded-2xl bg-purple-50 dark:bg-[var(--primary-tint)] border border-[var(--line-strong)] dark:border-[var(--line-strong)] text-center">
+                  <div className="text-xl font-black text-[var(--primary)] dark:text-[var(--primary)]">91</div>
                   <div className="text-[10px] text-zinc-500 font-bold uppercase mt-0.5">Isolated Classrooms</div>
                 </div>
 
@@ -2860,8 +2860,8 @@ export default function GroupsPage() {
                   <div className="text-[10px] text-zinc-500 font-bold uppercase mt-0.5">Verified Students</div>
                 </div>
 
-                <div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 text-center">
-                  <div className="text-xl font-black text-amber-600">350</div>
+                <div className="p-3 rounded-2xl bg-amber-50 dark:bg-[var(--gold-tint)] border border-[var(--gold)] dark:border-[var(--gold)] text-center">
+                  <div className="text-xl font-black text-[var(--gold)]">350</div>
                   <div className="text-[10px] text-zinc-500 font-bold uppercase mt-0.5">Subject Faculty</div>
                 </div>
 
@@ -2890,7 +2890,7 @@ export default function GroupsPage() {
                   <button
                     type="button"
                     onClick={handleSimulateClass9BStudent}
-                    className="p-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-semibold text-xs flex items-center justify-between transition-colors shadow-xs cursor-pointer"
+                    className="p-3 rounded-xl bg-[var(--accent-cta)] hover:bg-[var(--accent-cta)] text-white font-semibold text-xs flex items-center justify-between transition-colors shadow-xs cursor-pointer"
                   >
                     <span>Simulate Class 9-B Student View</span>
                     <span className="text-[10px] opacity-80">(Grade 9 Section B)</span>
@@ -2936,16 +2936,16 @@ export default function GroupsPage() {
                     <div className="text-[10px] text-emerald-600 font-semibold mt-1">440 Students</div>
                   </div>
 
-                  <div className="p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20">
-                    <div className="font-bold text-purple-700 dark:text-purple-300">Class 9</div>
+                  <div className="p-2.5 rounded-xl bg-[var(--primary-tint)] border border-[var(--line-strong)]">
+                    <div className="font-bold text-[var(--primary)] dark:text-[var(--primary)]">Class 9</div>
                     <div className="text-[11px] text-zinc-500">13 Secs (9-A to 9-M)</div>
-                    <div className="text-[10px] text-purple-600 font-semibold mt-1">520 Students</div>
+                    <div className="text-[10px] text-[var(--primary)] font-semibold mt-1">520 Students</div>
                   </div>
 
-                  <div className="p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20">
-                    <div className="font-bold text-purple-700 dark:text-purple-300">Class 10</div>
+                  <div className="p-2.5 rounded-xl bg-[var(--primary-tint)] border border-[var(--line-strong)]">
+                    <div className="font-bold text-[var(--primary)] dark:text-[var(--primary)]">Class 10</div>
                     <div className="text-[11px] text-zinc-500">13 Secs (10-A to 10-M)</div>
-                    <div className="text-[10px] text-purple-600 font-semibold mt-1">520 Students</div>
+                    <div className="text-[10px] text-[var(--primary)] font-semibold mt-1">520 Students</div>
                   </div>
 
                   <div className="p-2.5 rounded-xl bg-black/5 dark:bg-white/5 border border-black/5">
@@ -3023,7 +3023,7 @@ export default function GroupsPage() {
             {/* Modal Header */}
             <div className="p-4 border-b border-black/[0.08] dark:border-white/[0.08] flex items-center justify-between sticky top-0 bg-white/95 dark:bg-[#1C1C1E]/95 backdrop-blur-md z-10">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-full bg-linear-to-br from-red-600 to-rose-600 text-white flex items-center justify-center font-bold text-sm shadow-xs shrink-0">
+                <div className="w-9 h-9 rounded-full bg-linear-to-br from-red-600 to-[var(--accent-cta)] text-white flex items-center justify-center font-bold text-sm shadow-xs shrink-0">
                   <Megaphone size={17} />
                 </div>
                 <div>
@@ -3053,7 +3053,7 @@ export default function GroupsPage() {
             {/* Modal Body */}
             <form onSubmit={handleExecutePrincipalBroadcast} className="p-5 space-y-4">
               {/* Target Audience Scope Banner */}
-              <div className="p-3 rounded-2xl bg-linear-to-r from-red-500/10 via-rose-500/10 to-purple-500/10 border border-red-500/20 text-xs">
+              <div className="p-3 rounded-2xl bg-linear-to-r from-red-500/10 via-[var(--primary-tint)] to-[var(--primary-tint)] border border-red-500/20 text-xs">
                 <div className="font-bold text-red-600 dark:text-red-400 flex items-center gap-1.5 mb-1">
                   <ShieldCheck size={14} />
                   <span>Authorized Principal Multi-Group Transmission</span>
@@ -3255,7 +3255,7 @@ export default function GroupsPage() {
                 <button
                   type="submit"
                   disabled={isSendingBroadcast || (!broadcastText.trim() && !broadcastImageUrl)}
-                  className="flex-2 py-2.5 rounded-2xl bg-linear-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 disabled:opacity-50 text-white text-xs font-bold shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
+                  className="flex-2 py-2.5 rounded-2xl bg-linear-to-r from-red-600 to-[var(--accent-cta)] hover:from-red-500 hover:to-[var(--accent-cta)] disabled:opacity-50 text-white text-xs font-bold shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
                 >
                   <Megaphone size={15} />
                   <span>{isSendingBroadcast ? 'Broadcasting...' : 'Broadcast to All Groups'}</span>
@@ -3643,7 +3643,7 @@ export default function GroupsPage() {
                               member.role === 'principal'
                                 ? 'bg-red-500/10 border-red-500/30 text-red-600'
                                 : member.role === 'faculty'
-                                ? 'bg-amber-500/10 border-amber-500/30 text-amber-600'
+                                ? 'bg-[var(--gold-tint)] border-[var(--gold)] text-[var(--gold)]'
                                 : member.role === 'rep'
                                 ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600'
                                 : 'bg-blue-500/10 border-blue-500/30 text-[#007AFF]'
