@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@/lib/db/d1Supabase';
 import { v5 as uuidv5 } from 'uuid';
 import { v2 as cloudinary } from 'cloudinary';
 import { getServerStore, upsertServerProfile, recordServerNewUserAlert } from '@/lib/serverStore';
@@ -11,9 +11,8 @@ import { ADMIN_USERNAME, findStoredProfile, isValidUsername, normalizeUsername }
 import { checkRateLimit, getClientIp, isValidMediaUrl } from '@/lib/security';
 
 const UUID_NAMESPACE = '6ba7b810-9dad-11d1-80b4-00c04fd430c8';
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const rawKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const supabaseKey = (rawKey && !rawKey.includes('your-service')) ? rawKey : (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '');
+const supabaseUrl = 'd1'; // data lives in Cloudflare D1
+const supabaseKey = 'd1';
 
 const CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME || 'ogfaxmjw';
 const API_KEY = process.env.CLOUDINARY_API_KEY || '';

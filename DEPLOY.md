@@ -13,15 +13,13 @@ Project → Settings → Environment Variables (Production).
 | `ADMIN_USERNAME` | `shashwath71845` |
 | `ADMIN_PASSWORD` | The admin login password (8+ characters). |
 | `SCHOOL_INVITE_CODE` | The code students type to sign up. Pick a new one; `DPS71845` is public. |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Project Settings → API → `service_role` key. **Required.** |
-| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Unchanged. |
-| `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_D1_DATABASE_ID`, `CLOUDFLARE_API_TOKEN` | Unchanged. D1 now also stores passwords and the app's shared data. |
+| `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_D1_DATABASE_ID`, `CLOUDFLARE_API_TOKEN` | Cloudflare D1 is the only database (Supabase is no longer used). |
 | `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` | Unchanged. |
 | `GEMINI_API_KEY` | Server-only Gemini key for AI Diary. |
 | `ZEGO_SERVER_SECRET`, `NEXT_PUBLIC_ZEGO_APP_ID` | Voice/video calls (optional while calls are switched off). |
 | `CRON_SECRET` | Random string. Vercel sends it to the daily cleanup job. |
 
-**Delete** these if they exist: `NEXT_PUBLIC_ZEGO_SERVER_SECRET`, `NEXT_PUBLIC_GEMINI_API_KEY`.
+**Delete** these if they exist: `NEXT_PUBLIC_ZEGO_SERVER_SECRET`, `NEXT_PUBLIC_GEMINI_API_KEY`, and the old Supabase ones (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`).
 Anything starting with `NEXT_PUBLIC_` is sent to every browser.
 
 Check your values before deploying:
@@ -55,11 +53,25 @@ deploys `main` automatically.
 
 ## 5. After the deploy works
 
-1. **Lock down Supabase:** run `supabase/migrations/013_lock_down_public_key.sql`
-   in the Supabase SQL editor. Only do this once the deployed site works with
-   the `service_role` key, otherwise chats stop loading.
+1. **Copy the last Supabase rows into D1.** The old site kept writing to Supabase
+   until the deploy. Run this once from the project folder (safe to repeat):
+   ```bash
+   node scripts/migrate_supabase_to_d1.mjs
+   ```
+   After that, Supabase is no longer used. You can pause or delete the Supabase
+   project.
 2. **Delete the old public backup** on Cloudinary: Media Library → raw files →
    `dpsbuzz_store.json` (the new one is `dpsbuzz_store_private.json`).
+
+## Backups
+
+Every night (21:00 UTC) the cleanup job saves the whole D1 database as a
+private, compressed file in Cloudinary: `dpsbuzz/backups/d1-YYYY-MM-DD.json.gz`.
+The last 14 days are kept. To make one right now, log in as admin and run in
+the browser console:
+```js
+fetch('/api/cron/cleanup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'backup' }) }).then(r => r.json()).then(console.log)
+```
 
 ## Running locally
 

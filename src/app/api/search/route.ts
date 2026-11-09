@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@/lib/db/d1Supabase';
 import { getServerStore } from '@/lib/serverStore';
 import { getD1Profiles, isD1Configured } from '@/lib/cloudflare/dbService';
 import { d1Query } from '@/lib/cloudflare/d1';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const rawKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const supabaseKey = (rawKey && !rawKey.includes('your-service')) ? rawKey : (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '');
+const supabaseUrl = 'd1'; // data lives in Cloudflare D1
+const supabaseKey = 'd1';
 
 const NO_CACHE_HEADERS = {
   'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',

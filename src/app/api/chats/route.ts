@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth/session';
 import { canAccessConversation } from '@/lib/auth/conversationAccess';
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@/lib/db/d1Supabase';
 import { v2 as cloudinary } from 'cloudinary';
 import { sanitizeText, isValidMediaUrl } from '@/lib/security';
 import {
@@ -14,9 +14,8 @@ import {
 } from '@/lib/serverStore';
 import { getD1MessagesForUser, getD1MessagesForConversation, insertD1Message, isD1Configured } from '@/lib/cloudflare/dbService';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const rawKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const supabaseKey = (rawKey && !rawKey.includes('your-service')) ? rawKey : (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '');
+const supabaseUrl = 'd1'; // data lives in Cloudflare D1
+const supabaseKey = 'd1';
 
 function ensureCloudinary() {
   const cloud_name = process.env.CLOUDINARY_CLOUD_NAME || '';

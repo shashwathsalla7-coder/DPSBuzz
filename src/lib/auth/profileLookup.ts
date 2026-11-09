@@ -1,12 +1,11 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@/lib/db/d1Supabase';
 import { getD1ProfileByUsername, isD1Configured } from '@/lib/cloudflare/dbService';
 import { getServerStore } from '@/lib/serverStore';
 import type { Profile } from '@/lib/dataStore';
 import type { SessionRole } from './session';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const rawKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const supabaseKey = rawKey && !rawKey.includes('your-service') ? rawKey : '';
+const supabaseUrl = 'd1'; // data lives in Cloudflare D1
+const supabaseKey = 'd1';
 
 const USERNAME_RE = /^[a-z0-9._]{3,30}$/;
 

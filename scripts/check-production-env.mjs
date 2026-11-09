@@ -40,9 +40,6 @@ const checks = [
   ['ADMIN_PASSWORD', (v) => (v.length >= 8 && v !== '71845shashwath123') || 'must be 8+ characters and not the old leaked password'],
   ['ADMIN_USERNAME', (v) => v.length > 0 || 'missing'],
   ['SCHOOL_INVITE_CODE', (v) => (v.length >= 4 ? (v.toUpperCase() === 'DPS71845' ? 'WARN: still the old public code' : true) : 'missing')],
-  ['NEXT_PUBLIC_SUPABASE_URL', (v) => /^https:\/\/.+\.supabase\.co$/.test(v) || 'must look like https://<id>.supabase.co'],
-  ['NEXT_PUBLIC_SUPABASE_ANON_KEY', (v) => jwtRole(v) === 'anon' || 'must be the anon (public) key'],
-  ['SUPABASE_SERVICE_ROLE_KEY', (v) => jwtRole(v) === 'service_role' || 'must be the service_role key (Supabase → Settings → API)'],
   ['CLOUDFLARE_ACCOUNT_ID', (v) => /^[0-9a-f]{32}$/i.test(v) || 'must be a 32-character account id'],
   ['CLOUDFLARE_D1_DATABASE_ID', (v) => /^[0-9a-f-]{36}$/i.test(v) || 'must be the D1 database UUID'],
   ['CLOUDFLARE_API_TOKEN', (v) => v.length >= 30 || 'missing or too short'],
@@ -56,6 +53,7 @@ const checks = [
 ];
 
 const mustNotExist = ['NEXT_PUBLIC_ZEGO_SERVER_SECRET', 'NEXT_PUBLIC_GEMINI_API_KEY'];
+const noLongerUsed = ['NEXT_PUBLIC_SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_ROLE_KEY'];
 
 let failures = 0;
 let warnings = 0;
@@ -78,6 +76,12 @@ for (const name of mustNotExist) {
   if (env[name]) {
     failures++;
     console.log(`  FAIL  ${name}: remove it, NEXT_PUBLIC_ values are sent to every browser`);
+  }
+}
+for (const name of noLongerUsed) {
+  if (env[name]) {
+    warnings++;
+    console.log(`  warn  ${name}: no longer used (Supabase was replaced by D1); you can delete it`);
   }
 }
 console.log(`\n${failures} problem(s), ${warnings} warning(s).`);

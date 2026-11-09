@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@/lib/db/d1Supabase';
 import { deleteR2Object, deleteR2Objects } from '@/lib/r2';
 import { pruneExpiredServerChatPhotos, pruneExpiredServerStories } from '@/lib/serverStore';
 import { getSession, isAdmin } from '@/lib/auth/session';
+import { runDatabaseBackup } from '@/lib/backup';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const rawKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const supabaseKey = (rawKey && !rawKey.includes('your-service')) ? rawKey : (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '');
+// The nightly backup reads every table; allow up to 60s.
+export const maxDuration = 60;
+
+const supabaseUrl = 'd1'; // data lives in Cloudflare D1
+const supabaseKey = 'd1';
 
 /**
  * Cleanup job endpoint for free schedulers (GitHub Actions, Vercel Cron, or Admin trigger)
@@ -35,6 +38,15 @@ export async function POST(req: NextRequest) {
       orphanFilesRemoved: 0,
       oldPhotosArchived: 0,
     };
+
+    // 0. Nightly database backup (runs before any pruning)
+    if (!action || action === 'all' || action === 'backup') {
+      try {
+        results.backup = await runDatabaseBackup();
+      } catch (err) {
+        results.backup = { error: err instanceof Error ? err.message : String(err) };
+      }
+    }
 
     // Specific maintenance actions or full daily sweep
     if (!action || action === 'all' || action === 'prune_chats') {

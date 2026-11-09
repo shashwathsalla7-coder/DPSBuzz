@@ -1,20 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@/lib/db/d1Supabase';
 import { getSession } from '@/lib/auth/session';
 import { canAccessConversation } from '@/lib/auth/conversationAccess';
 import { sanitizeText } from '@/lib/security';
 
-// Server-side replacement for the browser's direct Supabase `messages` reads/inserts.
-// The browser no longer needs (and after the RLS lock-down, no longer has) table access.
+// Chat history and sending for the browser, stored in Cloudflare D1 (sb_messages).
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const rawServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-// Same fallback as the rest of the server code. After migration 013 the anon key has no
-// table access, so a real service_role key MUST be configured before running it.
-const dbKey =
-  rawServiceKey && !rawServiceKey.includes('your-service')
-    ? rawServiceKey
-    : process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const supabaseUrl = 'd1'; // data lives in Cloudflare D1
+const dbKey = 'd1';
 const NO_CACHE = { 'Cache-Control': 'no-store' };
 
 function db() {

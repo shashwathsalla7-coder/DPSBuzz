@@ -67,31 +67,18 @@ export async function POST(req: NextRequest) {
     );
     let lockThresholdGB = defaultLockThresholdGB;
 
-    // Optional Supabase DB live check if configured
-    if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-      try {
-        const { createClient } = await import('@/lib/supabase/server');
-        const supabase = await createClient();
-        const { data: lockRow } = await supabase
-          .from('app_settings')
-          .select('value')
-          .eq('key', 'media_storage_lock_gb')
-          .maybeSingle();
-
-        if (lockRow?.value) {
-          const parsed = Number(lockRow.value);
-          if (!isNaN(parsed) && parsed > 0) {
-            lockThresholdGB = parsed;
-          }
-        }
-
-        const { data: stats } = await supabase.rpc('admin_get_storage_analytics');
-        if (stats && stats.photos_bytes) {
-          reportedStorageGB = Number(stats.photos_bytes) / (1024 * 1024 * 1024);
-        }
-      } catch {
-        // Fall back to reportedStorageGB / defaultLockThresholdGB
-      }
+    // Admin-adjustable lock threshold (stored in D1 app settings)
+    try {
+      const { createClient } = await import('@/lib/db/d1Supabase');
+      const { data: lockRow } = await createClient()
+        .from('app_settings')
+        .select('value')
+        .eq('key', 'media_storage_lock_gb')
+        .maybeSingle();
+      const parsed = Number((lockRow as { value?: unknown } | null)?.value);
+      if (!isNaN(parsed) && parsed > 0) lockThresholdGB = parsed;
+    } catch {
+      // keep the default threshold
     }
 
     if (reportedStorageGB !== undefined && reportedStorageGB >= lockThresholdGB) {

@@ -1,13 +1,12 @@
 import { v2 as cloudinary } from 'cloudinary';
 import fs from 'fs';
 import path from 'path';
-import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+import { createClient as createSupabaseClient } from '@/lib/db/d1Supabase';
 import type { Post, Story, Profile, ChatNote, Notice, NotificationItem, NotificationType, CallSession } from './dataStore';
 import { kvEnabled, kvLoadAll, kvSave, kvVersion, withTimeout } from './serverStoreKv';
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const rawKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const SUPABASE_KEY = (rawKey && !rawKey.includes('your-service')) ? rawKey : (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '');
+const SUPABASE_URL = 'd1'; // data lives in Cloudflare D1
+const SUPABASE_KEY = 'd1';
 
 function getSupabase() {
   return createSupabaseClient(

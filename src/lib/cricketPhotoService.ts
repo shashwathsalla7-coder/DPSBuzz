@@ -1,4 +1,4 @@
-import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+import { createClient as createSupabaseClient } from '@/lib/db/d1Supabase';
 
 export interface CricketerImageMeta {
   imageUrl: string | null;
@@ -10,11 +10,9 @@ export interface CricketerImageMeta {
   isVerifiedFreeLicense: boolean;
 }
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://xdvoeddebquguuqgyscl.supabase.co';
+const SUPABASE_URL = 'd1'; // data lives in Cloudflare D1
 const SUPABASE_KEY =
-  process.env.SUPABASE_SERVICE_ROLE_KEY ||
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-  '';
+  'd1';
 
 function getSupabase() {
   return createSupabaseClient(SUPABASE_URL, SUPABASE_KEY, {
