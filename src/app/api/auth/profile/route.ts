@@ -317,7 +317,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: false, error: 'Sign-up is temporarily unavailable.' }, { status: 503 });
       }
       const ip = getClientIp(req);
-      if (!checkRateLimit(`signup:ip:${ip}`, 20, 60 * 60 * 1000).allowed) {
+      if (!checkRateLimit(`signup:ip:${ip}`, 500, 60 * 60 * 1000).allowed) {
         return NextResponse.json({ success: false, error: 'Too many sign-ups from this network. Try again later.' }, { status: 429 });
       }
       if (await findStoredProfile(cleanUser)) {

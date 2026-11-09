@@ -52,7 +52,7 @@ export async function proxy(request: NextRequest) {
     const bucket = sessionForLimit ? `u:${sessionForLimit.username}` : `ip:${getClientIp(request)}`;
     const isMutation = request.method !== 'GET' && request.method !== 'HEAD';
     // Logged-in users get their own bucket (a whole school shares one Wi-Fi IP).
-    const maxReq = sessionForLimit ? (isMutation ? 120 : 300) : isMutation ? 30 : 600;
+    const maxReq = sessionForLimit ? (isMutation ? 120 : 300) : isMutation ? 300 : 1200;
     const rateCheck = checkRateLimit(`edge:${bucket}:${isMutation ? 'm' : 'r'}`, maxReq, 60000);
     if (!rateCheck.allowed) {
       return createRateLimitResponse(rateCheck.retryAfterSec);

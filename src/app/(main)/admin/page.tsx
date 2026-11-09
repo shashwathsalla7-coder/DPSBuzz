@@ -699,7 +699,7 @@ export default function AdminPage() {
       {/* Sticky Operational Header (Zero Rounded Corners) */}
       <div className="sticky top-0 z-20 bg-[var(--surface)] border-b border-[var(--line)] px-4 py-3">
         <div className="max-w-4xl mx-auto flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 min-w-0">
             <Link
               href="/home"
               className="px-3 h-9 bg-[var(--surface-sunken)] border border-[var(--line)] rounded-none text-xs font-semibold text-[var(--text)] hover:bg-[var(--line)] transition-colors flex items-center gap-1.5"
@@ -712,14 +712,14 @@ export default function AdminPage() {
               <div className="flex items-center gap-2">
                 <Shield size={16} style={{ color: 'var(--primary)' }} />
                 <h1 className="text-sm font-bold font-display uppercase tracking-wider text-[var(--text)]">
-                  Super Admin Panel
+                  Admin
                 </h1>
-                <span className="font-mono text-[10px] px-1.5 py-0.5 bg-[var(--surface-sunken)] border border-[var(--line)] text-[var(--primary)] font-bold">
+                <span className="hidden sm:inline font-mono text-[10px] px-1.5 py-0.5 bg-[var(--surface-sunken)] border border-[var(--line)] text-[var(--primary)] font-bold">
                   @shashwath71845
                 </span>
               </div>
               <p className="text-[11px] text-[var(--text-muted)]">
-                {schoolConfig.schoolName} • Central Control Hub
+                {schoolConfig.schoolName}
               </p>
             </div>
           </div>

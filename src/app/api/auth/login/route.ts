@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
   // Brute-force protection: per account and per IP.
   const ip = getClientIp(req);
   const perUser = checkRateLimit(`login:u:${username}`, 10, 15 * 60 * 1000);
-  const perIp = checkRateLimit(`login:ip:${ip}`, 60, 15 * 60 * 1000);
+  const perIp = checkRateLimit(`login:ip:${ip}`, 1000, 15 * 60 * 1000) // high: a whole school shares one IP;
   if (!perUser.allowed || !perIp.allowed) {
     return NextResponse.json(
       { success: false, error: 'Too many login attempts. Please wait a few minutes and try again.' },

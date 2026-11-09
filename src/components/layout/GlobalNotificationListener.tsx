@@ -1,5 +1,6 @@
 'use client';
 
+import { safeVibrate } from '@/lib/utils';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { ChevronRight, X, MessageCircle, Bell, Gamepad2 } from 'lucide-react';
@@ -576,8 +577,8 @@ export function GlobalNotificationListener() {
 
               // Sound & physical vibration
               playNotificationChime();
-              if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
-                try { navigator.vibrate([200, 100, 200]); } catch {}
+              if (typeof navigator !== 'undefined') {
+                try { safeVibrate([200, 100, 200]); } catch {}
               }
 
               // System OS push notification on device

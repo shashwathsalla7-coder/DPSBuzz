@@ -1,5 +1,6 @@
 'use client';
 
+import { safeVibrate } from '@/lib/utils';
 import React, { useEffect } from 'react';
 import { Heart, Sparkles } from 'lucide-react';
 
@@ -42,8 +43,8 @@ export const playLikeChime = () => {
 
 export const triggerLikeVibration = () => {
   try {
-    if (typeof window !== 'undefined' && 'navigator' in window && 'vibrate' in navigator) {
-      navigator.vibrate([35, 25, 55]);
+    if (typeof window !== 'undefined' && 'navigator' in window) {
+      safeVibrate([35, 25, 55]);
     }
   } catch {}
 };

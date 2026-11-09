@@ -1,3 +1,4 @@
+import { safeVibrate } from '@/lib/utils';
 // Push & Background Notification Helper for DPS Buzz
 // Enables system notifications even when the browser tab is minimized or in background
 
@@ -48,7 +49,7 @@ export async function showBackgroundNotification(
   // Hardware vibration on mobile devices
   if ('vibrate' in navigator) {
     try {
-      navigator.vibrate(options.vibrate || [200, 100, 200]);
+      safeVibrate(options.vibrate || [200, 100, 200]);
     } catch {}
   }
 

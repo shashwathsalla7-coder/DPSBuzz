@@ -1,5 +1,6 @@
 'use client';
 
+import { safeVibrate } from '@/lib/utils';
 import React, { useState, useMemo, useEffect, useRef, Suspense, useCallback, startTransition } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -362,7 +363,7 @@ const ActiveChatHeader = React.memo(({
             </h2>
             {!isGroup && (
               <span title="Verified DPS Student / Faculty" className="inline-flex items-center shrink-0">
-                <CheckCircle2 size={13} className="text-[#007AFF] fill-[#007AFF]/20" />
+                <CheckCircle2 size={13} className="text-[var(--primary)] fill-[var(--primary)]/20" />
               </span>
             )}
           </div>
@@ -395,7 +396,7 @@ const ActiveChatHeader = React.memo(({
                   <span>·</span>
                   <span>{finalClass}</span>
                   <span>·</span>
-                  <span className="text-[#007AFF] font-medium">Verified DPS</span>
+                  <span className="text-[var(--primary)] font-medium">Verified DPS</span>
                 </span>
               );
             })()}
@@ -452,7 +453,7 @@ const ActiveChatHeader = React.memo(({
             <button
               type="button"
               onClick={() => handleStartCall(false)}
-              className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-[var(--surface-sunken)] cursor-pointer text-[var(--text-muted)] hover:text-[#007AFF] transition-colors relative z-10"
+              className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-[var(--surface-sunken)] cursor-pointer text-[var(--text-muted)] hover:text-[var(--primary)] transition-colors relative z-10"
               aria-label="Voice Call"
               title="Voice Call"
             >
@@ -463,7 +464,7 @@ const ActiveChatHeader = React.memo(({
             <button
               type="button"
               onClick={() => handleStartCall(true)}
-              className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-[var(--surface-sunken)] cursor-pointer text-[var(--text-muted)] hover:text-[#007AFF] transition-colors relative z-10"
+              className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-[var(--surface-sunken)] cursor-pointer text-[var(--text-muted)] hover:text-[var(--primary)] transition-colors relative z-10"
               aria-label="Video Call"
               title="Video Call"
             >
@@ -2660,8 +2661,8 @@ function ChatsContent() {
     vanishTouchStartYRef.current = null;
 
     if (vanishPullDistance >= 45) {
-      if (typeof navigator !== 'undefined' && navigator.vibrate) {
-        try { navigator.vibrate(40); } catch {}
+      if (typeof navigator !== 'undefined') {
+        try { safeVibrate(40); } catch {}
       }
       handleToggleVanishMode();
     }
@@ -4327,19 +4328,16 @@ function ChatsContent() {
                           );
                         })()}
                     <div
-                      className={`px-4 py-2.5 rounded-[var(--r-bubble,14px)] text-[15px] leading-[1.4] tracking-[-0.015em] font-semibold chat-bubble-text font-sf-display ${
+                      className={`px-4 py-2.5 rounded-[var(--r-bubble,14px)] text-[15px] leading-[1.45] font-medium chat-bubble-text ${
                         isMe
                           ? isVanishMode || msg.is_vanish_mode_message || msg.isVanishMode
                             ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-br-[5px] shadow-xs ring-1 ring-cyan-400/30'
-                            : 'bg-[#007AFF] text-white rounded-br-[5px] shadow-xs'
+                            : 'bg-[var(--accent-cta)] text-[var(--on-accent-cta)] rounded-br-[5px]'
                           : isVanishMode || msg.is_vanish_mode_message || msg.isVanishMode
                             ? 'bg-[#0B1526] text-cyan-100 border border-cyan-500/30 rounded-bl-[5px] shadow-xs'
-                            : 'bg-[#FFFFFF] text-slate-900 border border-black/10 dark:border-white/15 rounded-bl-[5px] shadow-xs'
+                            : 'bg-[var(--surface)] text-[var(--text)] border border-[var(--line)] rounded-bl-[5px]'
                       }`}
-                      style={{
-                        fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF UI Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif',
-                        fontWeight: 600,
-                      }}
+                      style={{ fontFamily: "var(--font-satoshi), 'Satoshi', system-ui, sans-serif" }}
                     >
                       {(() => {
                         let shared = msg.sharedPost || msg.post_preview || null;
@@ -4797,7 +4795,7 @@ function ChatsContent() {
             }}
             disabled={isMaintenanceActive}
             className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center hover:bg-[var(--surface-sunken)] cursor-pointer transition-colors shrink-0 disabled:opacity-40 ${
-              isVanishMode ? 'text-cyan-400 hover:text-cyan-200' : 'text-[var(--text-muted)] hover:text-[#007AFF]'
+              isVanishMode ? 'text-cyan-400 hover:text-cyan-200' : 'text-[var(--text-muted)] hover:text-[var(--primary)]'
             }`}
             aria-label="Attach photo"
             title="Send photo"
@@ -4811,7 +4809,7 @@ function ChatsContent() {
             onClick={() => setIsEmojiPickerOpen(true)}
             disabled={isMaintenanceActive}
             className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center hover:bg-[var(--surface-sunken)] cursor-pointer transition-colors shrink-0 disabled:opacity-40 ${
-              isVanishMode ? 'text-cyan-400 hover:text-cyan-200' : 'text-[var(--text-muted)] hover:text-[#007AFF]'
+              isVanishMode ? 'text-cyan-400 hover:text-cyan-200' : 'text-[var(--text-muted)] hover:text-[var(--primary)]'
             }`}
             aria-label="Pick emoji"
             title="Emoji picker"
@@ -4861,7 +4859,7 @@ function ChatsContent() {
             className={`flex-1 h-10 sm:h-11 px-3.5 sm:px-4 rounded-full text-[14px] sm:text-[14.5px] outline-none border focus:ring-1 disabled:opacity-50 transition-all font-semibold font-sf-display ${
               isVanishMode
                 ? 'bg-[#0F1E33] text-cyan-100 placeholder:text-cyan-400/50 border-cyan-500/40 focus:border-cyan-400 focus:ring-cyan-400'
-                : 'bg-[var(--surface-sunken)] text-[var(--text)] border-[var(--line)] focus:border-[#007AFF] focus:ring-[#007AFF] placeholder:text-[var(--text-muted)]'
+                : 'bg-[var(--surface-sunken)] text-[var(--text)] border-[var(--line)] focus:border-[var(--primary)] focus:ring-[var(--primary)] placeholder:text-[var(--text-muted)]'
             }`}
             style={{
               fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF UI Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif',
@@ -4891,7 +4889,7 @@ function ChatsContent() {
               messageInput.trim()
                 ? isVanishMode
                   ? 'bg-gradient-to-r from-blue-600 to-cyan-600 shadow-cyan-900/40 cursor-pointer opacity-100'
-                  : 'bg-[#007AFF] hover:bg-blue-600 cursor-pointer opacity-100'
+                  : 'bg-[var(--accent-cta)] hover:bg-[var(--accent-cta-hover)] cursor-pointer opacity-100'
                 : 'bg-zinc-700/40 text-zinc-400 opacity-40 cursor-not-allowed'
             }`}
             aria-label="Send message"

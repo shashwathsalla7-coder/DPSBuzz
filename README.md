@@ -50,9 +50,8 @@ Before deploying any new chat features or code changes that touch database model
 
 ## 2. School Invite Code & Verification
 
-- **Default School Invite Code:** `DPS71845`
-- Can be viewed and modified anytime in the Admin Console under `/admin` → **System & Wipe**.
-- Student sign-up strictly validates the student's admission number and full name against page 1 of their physical school diary.
+- The sign-up code is set by the `SCHOOL_INVITE_CODE` environment variable and checked on the server. Don't publish it; give it to class teachers.
+- Passwords are stored hashed (scrypt) in the D1 `auth_credentials` table. Admins can set or reset a password in Admin → Users.
 
 ---
 
@@ -81,6 +80,9 @@ To reset the application to a clean live launch state:
 ---
 
 ## 5. Deployment Guide (Vercel)
+
+See **[DEPLOY.md](DEPLOY.md)** for the full production checklist (environment variables, first-start behavior, Supabase lock-down).
+
 
 1. Push this repository to GitHub or GitLab.
 2. In the Vercel dashboard, click **Add New Project** and select the repository.

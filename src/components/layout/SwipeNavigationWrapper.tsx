@@ -1,5 +1,6 @@
 'use client';
 
+import { safeVibrate } from '@/lib/utils';
 import React, { useRef, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 
@@ -78,8 +79,8 @@ export const SwipeNavigationWrapper: React.FC = () => {
 
       // Optional light haptic tick
       try {
-        if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
-          navigator.vibrate(20);
+        if (typeof navigator !== 'undefined') {
+          safeVibrate(20);
         }
       } catch {}
 

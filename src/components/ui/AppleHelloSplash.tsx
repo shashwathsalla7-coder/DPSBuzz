@@ -75,11 +75,13 @@ export const AppleHelloSplash: React.FC = () => {
 
     window.addEventListener('dpsbuzz_replay_apple_hello', handleReplay);
     window.addEventListener('storage', updateActiveUser);
-    window.addEventListener('dpsbuzz:content_updated', updateActiveUser);
+    // Events can fire while another component is rendering; update on the next tick.
+    const deferredUpdate = () => setTimeout(updateActiveUser, 0);
+    window.addEventListener('dpsbuzz:content_updated', deferredUpdate);
     return () => {
       window.removeEventListener('dpsbuzz_replay_apple_hello', handleReplay);
       window.removeEventListener('storage', updateActiveUser);
-      window.removeEventListener('dpsbuzz:content_updated', updateActiveUser);
+      window.removeEventListener('dpsbuzz:content_updated', deferredUpdate);
     };
   }, []);
 

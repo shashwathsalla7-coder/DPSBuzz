@@ -1,5 +1,6 @@
 'use client';
 
+import { safeVibrate } from '@/lib/utils';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import {
   ArrowLeft,
@@ -261,9 +262,9 @@ export default function ProfileClient({ username }: { username: string }) {
     longPressTimerRef.current = setTimeout(() => {
       isLongPressActiveRef.current = true;
       justLongPressedRef.current = true;
-      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      if (typeof navigator !== 'undefined') {
         try {
-          navigator.vibrate(45);
+          safeVibrate(45);
         } catch {}
       }
       setPeekPost(post);

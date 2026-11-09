@@ -4,6 +4,18 @@
 // roster CSV upload, class group auto-generation, and test data wipe.
 // =====================================================
 
+
+/**
+ * Sends DataStore events after the current call stack. DataStore getters can run
+ * while React renders; dispatching synchronously there makes listeners call
+ * setState during another component's render.
+ */
+function emitLater(event: Event): boolean {
+  if (typeof window === 'undefined') return true;
+  setTimeout(() => window.dispatchEvent(event), 0);
+  return true;
+}
+
 export interface Profile {
   id: string;
   username: string;
@@ -1381,7 +1393,7 @@ export const DataStore = {
       }
 
       if (changed) {
-        window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated'));
+        emitLater(new CustomEvent('dpsbuzz:content_updated'));
       }
         return true;
       } catch (e) {
@@ -1511,7 +1523,7 @@ export const DataStore = {
   saveProfiles(profiles: Profile[]): void {
     setStorage(STORAGE_KEYS.PROFILES, profiles);
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(
+      emitLater(
         new CustomEvent('dpsbuzz:content_updated', {
           detail: { type: 'profiles_updated' },
         })
@@ -1809,12 +1821,12 @@ export const DataStore = {
             }
           }
         } catch {}
-        window.dispatchEvent(
+        emitLater(
           new CustomEvent('dpsbuzz:content_updated', {
             detail: { type: 'profile_updated', username: clean, updates },
           })
         );
-        window.dispatchEvent(new CustomEvent('storage'));
+        emitLater(new CustomEvent('storage'));
         fetch('/api/auth/profile', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -2113,7 +2125,7 @@ export const DataStore = {
         keepalive: true,
       }).catch((e) => console.warn('Failed to sync post to server:', e));
 
-      window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated', { detail: { type: 'post', post: newPost, habitResult } }));
+      emitLater(new CustomEvent('dpsbuzz:content_updated', { detail: { type: 'post', post: newPost, habitResult } }));
     }
     return newPost;
   },
@@ -2160,7 +2172,7 @@ export const DataStore = {
 
     setStorage(STORAGE_KEYS.POSTS, merged);
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(
+      emitLater(
         new CustomEvent('dpsbuzz:content_updated', {
           detail: { type: 'posts_synced' },
         })
@@ -2201,7 +2213,7 @@ export const DataStore = {
         setStorage(STORAGE_KEYS.POSTS, nextPosts);
       }
       if (typeof window !== 'undefined') {
-        window.dispatchEvent(
+        emitLater(
           new CustomEvent('dpsbuzz:content_updated', {
             detail: { type: 'post_views', postId, views: count },
           })
@@ -2312,7 +2324,7 @@ export const DataStore = {
         keepalive: true,
       }).catch((e) => console.warn('Failed to sync repost to server:', e));
 
-      window.dispatchEvent(
+      emitLater(
         new CustomEvent('dpsbuzz:content_updated', {
           detail: { type: 'repost_feed', post: repostedPost, originalPostId: postId },
         })
@@ -2392,7 +2404,7 @@ export const DataStore = {
         keepalive: true,
       }).catch((e) => console.warn('Failed to sync repost story to server:', e));
 
-      window.dispatchEvent(
+      emitLater(
         new CustomEvent('dpsbuzz:content_updated', {
           detail: { type: 'repost_story', story: newStory, originalPostId: postId },
         })
@@ -2460,7 +2472,7 @@ export const DataStore = {
         }
       } catch {}
 
-      window.dispatchEvent(
+      emitLater(
         new CustomEvent('dpsbuzz:content_updated', {
           detail: { type: 'unrepost_feed', repostId: repostPost.id, originalPostId },
         })
@@ -2516,7 +2528,7 @@ export const DataStore = {
     map[clean] = currentList;
     setStorage(STORAGE_KEYS.PINNED_POSTS, map);
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated'));
+      emitLater(new CustomEvent('dpsbuzz:content_updated'));
     }
     return { isPinned, pinnedIds: currentList };
   },
@@ -2535,7 +2547,7 @@ export const DataStore = {
     map[clean] = orderedIds;
     setStorage(STORAGE_KEYS.GRID_ORDER, map);
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated'));
+      emitLater(new CustomEvent('dpsbuzz:content_updated'));
     }
   },
 
@@ -2634,7 +2646,7 @@ export const DataStore = {
     map[clean] = currentList;
     setStorage(STORAGE_KEYS.TAGGED_GRID_POSTS, map);
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated'));
+      emitLater(new CustomEvent('dpsbuzz:content_updated'));
     }
     return isOnGrid;
   },
@@ -2685,7 +2697,7 @@ export const DataStore = {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ post: updatedPost, requester: cleanRequester }),
         }).catch((err) => console.warn('Failed to sync updated post song:', err));
-        window.dispatchEvent(
+        emitLater(
           new CustomEvent('dpsbuzz:content_updated', {
             detail: { type: 'post_song_updated', postId, song, username: cleanAuthor },
           })
@@ -2714,7 +2726,7 @@ export const DataStore = {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ post: updatedPost }),
         }).catch(() => {});
-        window.dispatchEvent(
+        emitLater(
           new CustomEvent('dpsbuzz:content_updated', {
             detail: { type: 'post_slide_captions_updated', postId, slideCaptions },
           })
@@ -2786,7 +2798,7 @@ export const DataStore = {
         keepalive: true,
       }).catch((e) => console.warn('Failed to sync story to server:', e));
 
-      window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated', { detail: { type: 'story', story: created } }));
+      emitLater(new CustomEvent('dpsbuzz:content_updated', { detail: { type: 'story', story: created } }));
     }
     return created;
   },
@@ -2822,7 +2834,7 @@ export const DataStore = {
           body: JSON.stringify({ story: target }),
         }).catch((e) => console.warn('Failed to sync story view:', e));
       }
-      window.dispatchEvent(
+      emitLater(
         new CustomEvent('dpsbuzz:content_updated', { detail: { type: 'story_seen', storyId } })
       );
     }
@@ -2883,7 +2895,7 @@ export const DataStore = {
           body: JSON.stringify({ story: target }),
         }).catch((e) => console.warn('Failed to sync story like:', e));
       }
-      window.dispatchEvent(
+      emitLater(
         new CustomEvent('dpsbuzz:content_updated', {
           detail: { type: 'story_liked', storyId, liked: isLikedNow },
         })
@@ -3038,7 +3050,7 @@ export const DataStore = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ note: newNote }),
       }).catch(() => {});
-      window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated'));
+      emitLater(new CustomEvent('dpsbuzz:content_updated'));
     }
     return newNote;
   },
@@ -3057,7 +3069,7 @@ export const DataStore = {
       fetch(`/api/notes?username=${encodeURIComponent(clean)}`, {
         method: 'DELETE',
       }).catch(() => {});
-      window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated'));
+      emitLater(new CustomEvent('dpsbuzz:content_updated'));
     }
   },
 
@@ -3109,7 +3121,7 @@ export const DataStore = {
     all.push(newHighlight);
     setStorage(STORAGE_KEYS.HIGHLIGHTS, all);
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated'));
+      emitLater(new CustomEvent('dpsbuzz:content_updated'));
     }
     return newHighlight;
   },
@@ -3127,7 +3139,7 @@ export const DataStore = {
     const wasDeleted = filtered.length < all.length;
     setStorage(STORAGE_KEYS.HIGHLIGHTS, filtered);
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated'));
+      emitLater(new CustomEvent('dpsbuzz:content_updated'));
     }
     return wasDeleted;
   },
@@ -3204,7 +3216,7 @@ export const DataStore = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ notice: created }),
       }).catch(() => {});
-      window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated', { detail: { type: 'notice', notice: created } }));
+      emitLater(new CustomEvent('dpsbuzz:content_updated', { detail: { type: 'notice', notice: created } }));
     }
     return created;
   },
@@ -3217,7 +3229,7 @@ export const DataStore = {
       fetch(`/api/notices?id=${encodeURIComponent(id)}`, {
         method: 'DELETE',
       }).catch(() => {});
-      window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated', { detail: { type: 'notice', deletedId: id } }));
+      emitLater(new CustomEvent('dpsbuzz:content_updated', { detail: { type: 'notice', deletedId: id } }));
     }
   },
 
@@ -3231,7 +3243,7 @@ export const DataStore = {
       list.push(noticeId);
       setStorage(STORAGE_KEYS.READ_NOTICES, list);
       if (typeof window !== 'undefined') {
-        window.dispatchEvent(
+        emitLater(
           new CustomEvent('dpsbuzz:content_updated', {
             detail: { type: 'notice_read', noticeId },
           })
@@ -3250,7 +3262,7 @@ export const DataStore = {
     const ids = notices.map((n) => n.id);
     setStorage(STORAGE_KEYS.READ_NOTICES, ids);
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(
+      emitLater(
         new CustomEvent('dpsbuzz:content_updated', {
           detail: { type: 'notices_all_read', ids },
         })
@@ -3274,7 +3286,7 @@ export const DataStore = {
     list.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     setStorage(STORAGE_KEYS.CALENDAR, list);
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated', { detail: { type: 'calendar', event: created } }));
+      emitLater(new CustomEvent('dpsbuzz:content_updated', { detail: { type: 'calendar', event: created } }));
     }
     return created;
   },
@@ -3284,7 +3296,7 @@ export const DataStore = {
     const filtered = list.filter((e) => e.id !== id);
     setStorage(STORAGE_KEYS.CALENDAR, filtered);
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated', { detail: { type: 'calendar', deletedId: id } }));
+      emitLater(new CustomEvent('dpsbuzz:content_updated', { detail: { type: 'calendar', deletedId: id } }));
     }
   },
 
@@ -3328,7 +3340,7 @@ export const DataStore = {
     }
 
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(
+      emitLater(
         new CustomEvent('dpsbuzz:content_updated', {
           detail: { type: 'ban', username: clean, isBanned: true, reason },
         })
@@ -3355,7 +3367,7 @@ export const DataStore = {
     }
 
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(
+      emitLater(
         new CustomEvent('dpsbuzz:content_updated', {
           detail: { type: 'ban', username: clean, isBanned: false },
         })
@@ -3435,7 +3447,7 @@ export const DataStore = {
     }
 
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(
+      emitLater(
         new CustomEvent('dpsbuzz:content_updated', {
           detail: { type: 'user_warned', username: clean, warning },
         })
@@ -3450,7 +3462,7 @@ export const DataStore = {
     );
     setStorage(STORAGE_KEYS.WARNINGS, list);
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(
+      emitLater(
         new CustomEvent('dpsbuzz:content_updated', {
           detail: { type: 'warning_acknowledged', warningId },
         })
@@ -3478,7 +3490,7 @@ export const DataStore = {
       setStorage(STORAGE_KEYS.BROADCAST_ALERT, data);
     }
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(
+      emitLater(
         new CustomEvent('dpsbuzz:content_updated', { detail: { type: 'broadcast_alert' } })
       );
     }
@@ -3761,7 +3773,7 @@ export const DataStore = {
         body: JSON.stringify({ username: clean }),
       }).catch(() => {});
 
-      window.dispatchEvent(
+      emitLater(
         new CustomEvent('dpsbuzz:content_updated', { detail: { type: 'user_deleted', username: clean } })
       );
     }
@@ -3874,7 +3886,7 @@ export const DataStore = {
         method: 'DELETE',
       }).catch((e) => console.warn('Failed to delete post on server:', e));
 
-      window.dispatchEvent(
+      emitLater(
         new CustomEvent('dpsbuzz:content_updated', { detail: { type: 'post_deleted', postId } })
       );
     }
@@ -3904,7 +3916,7 @@ export const DataStore = {
     setStorage(STORAGE_KEYS.SAVED_POSTS, map);
 
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(
+      emitLater(
         new CustomEvent('dpsbuzz:content_updated', {
           detail: { type: isSaved ? 'post_unsaved' : 'post_saved', postId, isSaved: !isSaved },
         })
@@ -3922,7 +3934,7 @@ export const DataStore = {
       setStorage(STORAGE_KEYS.SAVED_POSTS, map);
 
       if (typeof window !== 'undefined') {
-        window.dispatchEvent(
+        emitLater(
           new CustomEvent('dpsbuzz:content_updated', {
             detail: { type: 'post_unsaved', postId, isSaved: false },
           })
@@ -3988,7 +4000,7 @@ export const DataStore = {
       if (muted) set.add(convId);
       else set.delete(convId);
       localStorage.setItem('dpsbuzz_muted_convs', JSON.stringify(Array.from(set)));
-      window.dispatchEvent(new CustomEvent('dpsbuzz:conv_mute_changed', { detail: { convId, muted } }));
+      emitLater(new CustomEvent('dpsbuzz:conv_mute_changed', { detail: { convId, muted } }));
     } catch {}
   },
 
@@ -4010,7 +4022,7 @@ export const DataStore = {
       const u = (username || this.getCurrentUser()?.username || '').toLowerCase().trim();
       if (!u) return;
       localStorage.setItem(`dpsbuzz_read_receipts_${u}`, String(enabled));
-      window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated'));
+      emitLater(new CustomEvent('dpsbuzz:content_updated'));
     } catch {}
   },
 
@@ -4023,7 +4035,7 @@ export const DataStore = {
     const stories = allStories.filter((s) => s.id !== storyId);
     setStorage(STORAGE_KEYS.STORIES, stories);
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated', { detail: { type: 'story_deleted', storyId } }));
+      emitLater(new CustomEvent('dpsbuzz:content_updated', { detail: { type: 'story_deleted', storyId } }));
     }
   },
 
@@ -4088,7 +4100,7 @@ export const DataStore = {
     );
     setStorage(STORAGE_KEYS.NOTIFICATIONS, updated);
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated', { detail: { type: 'notifications_read' } }));
+      emitLater(new CustomEvent('dpsbuzz:content_updated', { detail: { type: 'notifications_read' } }));
     }
   },
 
@@ -4097,7 +4109,7 @@ export const DataStore = {
     const updated = raw.map((n) => (n.id === id ? { ...n, isRead: true } : n));
     setStorage(STORAGE_KEYS.NOTIFICATIONS, updated);
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated', { detail: { type: 'notification_read', id } }));
+      emitLater(new CustomEvent('dpsbuzz:content_updated', { detail: { type: 'notification_read', id } }));
     }
   },
 
@@ -4124,7 +4136,7 @@ export const DataStore = {
     setStorage(STORAGE_KEYS.NOTIFICATIONS, notifs);
 
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated', { detail: { type: 'notification_added' } }));
+      emitLater(new CustomEvent('dpsbuzz:content_updated', { detail: { type: 'notification_added' } }));
       try {
         fetch('/api/sync', {
           method: 'POST',
@@ -4259,7 +4271,7 @@ export const DataStore = {
         }),
       }).catch(() => {});
 
-      window.dispatchEvent(
+      emitLater(
         new CustomEvent('dpsbuzz:content_updated', {
           detail: { type: 'group_created', group: newGroup },
         })
@@ -4353,7 +4365,7 @@ export const DataStore = {
     setStorage(STORAGE_KEYS.NOTIFICATIONS, notifs);
 
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(
+      emitLater(
         new CustomEvent('dpsbuzz:content_updated', {
           detail: { type: 'group_invite_sent', request: newReq },
         })
@@ -4514,7 +4526,7 @@ export const DataStore = {
     }
 
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(
+      emitLater(
         new CustomEvent('dpsbuzz:content_updated', {
           detail: { type: 'group_invite_accepted', request: req },
         })
@@ -4598,7 +4610,7 @@ export const DataStore = {
     }
 
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(
+      emitLater(
         new CustomEvent('dpsbuzz:content_updated', {
           detail: { type: 'group_invite_declined', requestId },
         })
@@ -4649,7 +4661,7 @@ export const DataStore = {
     } catch {}
 
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(
+      emitLater(
         new CustomEvent('dpsbuzz:content_updated', {
           detail: { type: 'group_member_added', groupId, username: cleanUser },
         })
@@ -4701,7 +4713,7 @@ export const DataStore = {
     setStorage(STORAGE_KEYS.GROUPS, groups);
 
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(
+      emitLater(
         new CustomEvent('dpsbuzz:content_updated', {
           detail: { type: 'group_left', groupId, username: cleanUser },
         })
@@ -4749,7 +4761,7 @@ export const DataStore = {
     setStorage(STORAGE_KEYS.GROUPS, groups);
 
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(
+      emitLater(
         new CustomEvent('dpsbuzz:content_updated', {
           detail: { type: 'group_member_removed', groupId, username: cleanTar },
         })
@@ -4860,7 +4872,7 @@ export const DataStore = {
     setStorage(STORAGE_KEYS.NOTIFICATIONS, notifs);
 
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(
+      emitLater(
         new CustomEvent('dpsbuzz:content_updated', {
           detail: { type: 'group_join_requested', request: newReq },
         })
@@ -4961,7 +4973,7 @@ export const DataStore = {
     setStorage(STORAGE_KEYS.NOTIFICATIONS, notifications);
 
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(
+      emitLater(
         new CustomEvent('dpsbuzz:content_updated', {
           detail: { type: 'group_join_accepted', request: req },
         })
@@ -4979,7 +4991,7 @@ export const DataStore = {
     setStorage(STORAGE_KEYS.GROUP_JOIN_REQUESTS, list);
 
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(
+      emitLater(
         new CustomEvent('dpsbuzz:content_updated', {
           detail: { type: 'group_join_declined', requestId },
         })
@@ -5228,12 +5240,12 @@ export const DataStore = {
       document.cookie = `dpsbuzz_user=${sessionCookie}; path=/; max-age=31536000; SameSite=Lax`;
 
       try {
-        window.dispatchEvent(
+        emitLater(
           new CustomEvent('dpsbuzz:new_user_alert', {
             detail: { profile: newProfile },
           })
         );
-        window.dispatchEvent(
+        emitLater(
           new CustomEvent('dpsbuzz:content_updated', {
             detail: { type: 'new_user_registered', profile: newProfile },
           })
@@ -5310,7 +5322,7 @@ export const DataStore = {
     localStorage.removeItem('dpsbuzz_chat_conversations_v1');
     localStorage.removeItem('dpsbuzz_chat_messages_v1');
 
-    window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated', { detail: { type: 'test_data_cleaned' } }));
+    emitLater(new CustomEvent('dpsbuzz:content_updated', { detail: { type: 'test_data_cleaned' } }));
 
     return {
       success: true,
@@ -5370,7 +5382,7 @@ export const DataStore = {
       body: JSON.stringify({ posts: [], stories: [], comments: {}, likes: {} }),
     }).catch(() => {});
 
-    window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated', { detail: { type: 'test_data_wiped' } }));
+    emitLater(new CustomEvent('dpsbuzz:content_updated', { detail: { type: 'test_data_wiped' } }));
 
     return {
       success: true,
@@ -5581,7 +5593,7 @@ export const DataStore = {
     }
 
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(
+      emitLater(
         new CustomEvent('dpsbuzz:content_updated', {
           detail: {
             type: 'follow',
@@ -5688,7 +5700,7 @@ export const DataStore = {
       } catch {}
 
       if (typeof window !== 'undefined') {
-        window.dispatchEvent(
+        emitLater(
           new CustomEvent('dpsbuzz:content_updated', {
             detail: { type: 'follow_requested', requester: cleanReq, target: cleanTar },
           })
@@ -5722,7 +5734,7 @@ export const DataStore = {
       setStorage(STORAGE_KEYS.FOLLOW_REQUESTS, list);
 
       if (typeof window !== 'undefined') {
-        window.dispatchEvent(
+        emitLater(
           new CustomEvent('dpsbuzz:content_updated', {
             detail: { type: 'follow_request_cancelled', requester: cleanReq, target: cleanTar },
           })
@@ -5798,7 +5810,7 @@ export const DataStore = {
 
     // 5. Fire content updated event with mutual flag
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(
+      emitLater(
         new CustomEvent('dpsbuzz:content_updated', {
           detail: {
             type: 'follow_accepted',
@@ -5833,7 +5845,7 @@ export const DataStore = {
   declineFollowRequest(target: string, requester: string): void {
     this.cancelFollowRequest(requester, target);
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(
+      emitLater(
         new CustomEvent('dpsbuzz:content_updated', {
           detail: { type: 'follow_declined', target, requester },
         })
@@ -5870,7 +5882,7 @@ export const DataStore = {
     setStorage(STORAGE_KEYS.PROFILES, profiles);
 
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(
+      emitLater(
         new CustomEvent('dpsbuzz:content_updated', {
           detail: { type: 'unfriended', user1: cleanU1, user2: cleanU2 },
         })
@@ -5919,7 +5931,7 @@ export const DataStore = {
       setStorage(STORAGE_KEYS.BLOCKS, allBlocks);
     }
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(
+      emitLater(
         new CustomEvent('dpsbuzz:content_updated', {
           detail: { type: 'user_blocked', blocker: cleanB, target: cleanT },
         })
@@ -5936,7 +5948,7 @@ export const DataStore = {
       setStorage(STORAGE_KEYS.BLOCKS, allBlocks);
     }
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(
+      emitLater(
         new CustomEvent('dpsbuzz:content_updated', {
           detail: { type: 'user_unblocked', blocker: cleanB, target: cleanT },
         })
@@ -5969,7 +5981,7 @@ export const DataStore = {
     this.followUser(cleanSend, cleanRec);
 
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(
+      emitLater(
         new CustomEvent('dpsbuzz:content_updated', {
           detail: { type: 'message_request_accepted', recipient: cleanRec, sender: cleanSend },
         })
@@ -6065,7 +6077,7 @@ export const DataStore = {
         channel.postMessage(payload);
         channel.close();
       }
-      window.dispatchEvent(new CustomEvent('dpsbuzz:chat_event', { detail: payload }));
+      emitLater(new CustomEvent('dpsbuzz:chat_event', { detail: payload }));
     } catch {}
   },
 
@@ -6168,7 +6180,7 @@ export const DataStore = {
     });
 
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(
+      emitLater(
         new CustomEvent('dpsbuzz:content_updated', {
           detail: { type: 'message_unsend', conversationId: canonicalId, messageId },
         })
@@ -6205,7 +6217,7 @@ export const DataStore = {
     });
 
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(
+      emitLater(
         new CustomEvent('dpsbuzz:content_updated', {
           detail: { type: 'vanish_mode_toggled', conversationId: canonicalId, enabled },
         })
@@ -6277,7 +6289,7 @@ export const DataStore = {
         }),
       }).catch(() => {});
 
-      window.dispatchEvent(
+      emitLater(
         new CustomEvent('dpsbuzz:content_updated', {
           detail: { type: 'vanish_messages_purged', conversationId: canonicalId },
         })
@@ -7083,7 +7095,7 @@ export const DataStore = {
       }
 
       if (typeof window !== 'undefined') {
-        window.dispatchEvent(
+        emitLater(
           new CustomEvent('dpsbuzz:content_updated', {
             detail: {
               type: 'streak_updated',
@@ -7128,7 +7140,7 @@ export const DataStore = {
       }
 
       if (typeof window !== 'undefined') {
-        window.dispatchEvent(
+        emitLater(
           new CustomEvent('dpsbuzz:content_updated', {
             detail: {
               type: 'streak_updated',
@@ -7215,7 +7227,7 @@ export const DataStore = {
     }
     setStorage(STORAGE_KEYS.STORAGE_SETTINGS, next);
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(
+      emitLater(
         new CustomEvent('dpsbuzz:content_updated', {
           detail: { type: 'storage_settings_updated', settings: next },
         })
@@ -7311,7 +7323,7 @@ export const DataStore = {
     setStorage(STORAGE_KEYS.CHAT_MESSAGES, remaining);
 
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(
+      emitLater(
         new CustomEvent('dpsbuzz:content_updated', {
           detail: { type: 'chat_messages_pruned', deletedCount, days },
         })
@@ -7333,7 +7345,7 @@ export const DataStore = {
   setMaintenanceDates(dates: string[]): void {
     setStorage(STORAGE_KEYS.MAINTENANCE_DATES, dates);
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(
+      emitLater(
         new CustomEvent('dpsbuzz:content_updated', { detail: { type: 'maintenance_updated' } })
       );
     }
@@ -7361,7 +7373,7 @@ export const DataStore = {
   setGlobalMaintenanceEnabled(enabled: boolean): void {
     setStorage(STORAGE_KEYS.MAINTENANCE_MODE, enabled);
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(
+      emitLater(
         new CustomEvent('dpsbuzz:content_updated', { detail: { type: 'maintenance_updated' } })
       );
     }
@@ -7577,7 +7589,7 @@ export const DataStore = {
         localStorage.setItem(`dpsbuzz_chat_messages_${cur}_v3`, JSON.stringify(storedMsgs));
       }
 
-      window.dispatchEvent(
+      emitLater(
         new CustomEvent('dpsbuzz:content_updated', { detail: { type: 'post_shared_to_chat' } })
       );
 
@@ -7677,7 +7689,7 @@ export const DataStore = {
         this.addStoryReply(story.id, replyText, authorUsername, cur);
       } catch {}
 
-      window.dispatchEvent(
+      emitLater(
         new CustomEvent('dpsbuzz:content_updated', { detail: { type: 'story_reply_sent' } })
       );
     } catch (e) {
@@ -7781,7 +7793,7 @@ export const DataStore = {
         body: JSON.stringify({ username: cur, liked }),
       }).catch(() => {});
 
-      window.dispatchEvent(
+      emitLater(
         new CustomEvent('dpsbuzz:content_updated', {
           detail: { type: 'like_post', postId, username: cur, liked, count: newCount },
         })
@@ -7868,7 +7880,7 @@ export const DataStore = {
     setStorage(STORAGE_KEYS.POSTS, posts);
 
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('dpsbuzz:content_updated', { detail: { type: 'comment', postId } }));
+      emitLater(new CustomEvent('dpsbuzz:content_updated', { detail: { type: 'comment', postId } }));
       fetch(`/api/posts/${postId}/comment`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -7924,7 +7936,7 @@ export const DataStore = {
     setStorage(STORAGE_KEYS.POSTS, updated);
 
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(
+      emitLater(
         new CustomEvent('dpsbuzz:content_updated', {
           detail: { type: 'comment_deleted', postId, commentId },
         })
@@ -8094,7 +8106,7 @@ export const DataStore = {
     setStorage(STORAGE_KEYS.BAN_APPEALS, list);
 
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(
+      emitLater(
         new CustomEvent('dpsbuzz:content_updated', {
           detail: { type: 'ban_appeal_submitted', appeal: newAppeal },
         })
@@ -8130,7 +8142,7 @@ export const DataStore = {
     }
 
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(
+      emitLater(
         new CustomEvent('dpsbuzz:content_updated', {
           detail: { type: 'ban_appeal_updated', appealId, status, adminNotes },
         })

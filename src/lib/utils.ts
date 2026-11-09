@@ -45,3 +45,15 @@ export function isValidUsername(username: string): boolean {
 export function cn(...classes: (string | boolean | undefined | null)[]): string {
   return classes.filter(Boolean).join(' ');
 }
+
+/** Vibrates only when the browser allows it (after the user has tapped the page). */
+export function safeVibrate(pattern: number | number[]): void {
+  try {
+    if (typeof navigator === 'undefined' || typeof navigator.vibrate !== 'function') return;
+    const activation = (navigator as Navigator & { userActivation?: { hasBeenActive: boolean } }).userActivation;
+    if (activation && !activation.hasBeenActive) return;
+    navigator.vibrate(pattern);
+  } catch {
+    // ignore
+  }
+}
