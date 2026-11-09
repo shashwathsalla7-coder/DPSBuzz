@@ -10,6 +10,14 @@
 import fs from 'node:fs';
 
 const file = process.argv[2] || '.env.local';
+if (process.argv[2] && !fs.existsSync(file)) {
+  console.error(`File not found: ${file}`);
+  console.error('Run this from the project folder. To download your Vercel settings first:');
+  console.error('  npx vercel login');
+  console.error('  npx vercel link');
+  console.error(`  npx vercel env pull ${file}`);
+  process.exit(2);
+}
 const env = { ...process.env };
 if (fs.existsSync(file)) {
   for (const line of fs.readFileSync(file, 'utf8').split(/\r?\n/)) {
