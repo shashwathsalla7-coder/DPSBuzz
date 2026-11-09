@@ -140,6 +140,7 @@ export async function proxy(request: NextRequest) {
     pathname === '/api/auth/login' ||
     pathname === '/api/auth/logout' ||
     pathname === '/api/auth/session' ||
+    pathname === '/api/health' ||
     (pathname === '/api/auth/profile' && (request.method === 'GET' || request.method === 'POST')) ||
     pathname.startsWith('/api/download') ||
     pathname === '/api/admin/login' ||

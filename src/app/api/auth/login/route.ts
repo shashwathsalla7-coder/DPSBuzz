@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { setSessionCookie } from '@/lib/auth/session';
+import { setSessionCookie, sessionConfigured, SESSION_NOT_CONFIGURED } from '@/lib/auth/session';
 import { hashPassword, verifyPassword, safeEqual, validatePasswordStrength } from '@/lib/auth/password';
 import { claimPassword, credentialsAvailable, getCredential } from '@/lib/auth/credentials';
 import { ADMIN_USERNAME, findStoredProfile, normalizeUsername, roleOf } from '@/lib/auth/profileLookup';
@@ -8,6 +8,9 @@ import { checkRateLimit, getClientIp } from '@/lib/security';
 const GENERIC_FAIL = 'Incorrect username or password.';
 
 export async function POST(req: NextRequest) {
+  if (!sessionConfigured()) {
+    return NextResponse.json({ success: false, error: SESSION_NOT_CONFIGURED }, { status: 503 });
+  }
   const body = await req.json().catch(() => ({}));
   const username = normalizeUsername(body?.username);
   const password = typeof body?.password === 'string' ? body.password : '';

@@ -4,7 +4,7 @@ import { v5 as uuidv5 } from 'uuid';
 import { v2 as cloudinary } from 'cloudinary';
 import { getServerStore, upsertServerProfile, recordServerNewUserAlert } from '@/lib/serverStore';
 import { getD1Profiles, getD1ProfileByUsername, upsertD1Profile, isD1Configured } from '@/lib/cloudflare/dbService';
-import { getSession, setSessionCookie, canActAs, isAdmin } from '@/lib/auth/session';
+import { getSession, setSessionCookie, canActAs, isAdmin, sessionConfigured, SESSION_NOT_CONFIGURED } from '@/lib/auth/session';
 import { hashPassword, validatePasswordStrength } from '@/lib/auth/password';
 import { credentialsAvailable, getCredential, setPassword } from '@/lib/auth/credentials';
 import { ADMIN_USERNAME, findStoredProfile, isValidUsername, normalizeUsername } from '@/lib/auth/profileLookup';
@@ -295,6 +295,9 @@ export async function POST(req: NextRequest) {
     const cleanUser = normalizeUsername(profile.username);
     const session = getSession(req);
 
+    if (isNewSignup && !sessionConfigured()) {
+      return NextResponse.json({ success: false, error: SESSION_NOT_CONFIGURED }, { status: 503 });
+    }
     if (isNewSignup) {
       // ---- New account: validate on the server, store a hashed password, start a session ----
       if (!isValidUsername(cleanUser)) {

@@ -20,6 +20,14 @@ export interface Session {
   exp: number;
 }
 
+/** True when SESSION_SECRET is set on the server (needed to log anyone in). */
+export function sessionConfigured(): boolean {
+  return (process.env.SESSION_SECRET || '').length >= 32;
+}
+
+export const SESSION_NOT_CONFIGURED =
+  'Login is not set up on the server yet: the SESSION_SECRET setting is missing. Ask the site admin to add it in the hosting settings.';
+
 function getSecret(): string {
   const secret = process.env.SESSION_SECRET || '';
   if (secret.length < 32) {

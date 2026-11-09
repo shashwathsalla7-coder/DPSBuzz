@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { setSessionCookie } from '@/lib/auth/session';
+import { setSessionCookie, sessionConfigured, SESSION_NOT_CONFIGURED } from '@/lib/auth/session';
 import { safeEqual } from '@/lib/auth/password';
 import { ADMIN_USERNAME, findStoredProfile } from '@/lib/auth/profileLookup';
 import { checkRateLimit, getClientIp } from '@/lib/security';
 
 // Admin password comes ONLY from the ADMIN_PASSWORD environment variable.
 export async function POST(req: NextRequest) {
+  if (!sessionConfigured()) {
+    return NextResponse.json({ success: false, error: SESSION_NOT_CONFIGURED }, { status: 503 });
+  }
   try {
     const { password } = await req.json().catch(() => ({ password: '' }));
     if (!password || typeof password !== 'string') {
