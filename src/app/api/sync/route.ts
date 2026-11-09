@@ -74,9 +74,9 @@ export async function GET(req: NextRequest) {
           .from('messages')
           .select('*')
           .or(`sender_id.eq.${username},chat_id.ilike.%${username}%`)
-          .order('created_at', { ascending: true })
+          .order('created_at', { ascending: false })
           .limit(300);
-        return Array.isArray(data) ? data : [];
+        return Array.isArray(data) ? [...data].reverse() : []; // newest 300, in time order
       } catch (e: any) {
         console.warn('Supabase sync messages error:', e);
         return [];

@@ -1,11 +1,12 @@
-# Deploying DPS Buzz to production
+# Deploying DPS Buzz (Netlify)
 
-Follow these steps in order. Steps 1–3 happen before the new code goes live;
-step 5 must happen after.
+Data lives in **Cloudflare D1** (the only database). Photos, videos and the
+nightly backups live in **Cloudinary**. Supabase is no longer used.
 
-## 1. Set environment variables on Vercel
+## 1. Environment variables on Netlify
 
-Project → Settings → Environment Variables (Production).
+Site configuration → Environment variables → Add a variable → **Import from a .env file**,
+then paste the contents of `.env.vercel` (same list works for Netlify).
 
 | Variable | What it is |
 |---|---|
@@ -13,26 +14,26 @@ Project → Settings → Environment Variables (Production).
 | `ADMIN_USERNAME` | `shashwath71845` |
 | `ADMIN_PASSWORD` | The admin login password (8+ characters). |
 | `SCHOOL_INVITE_CODE` | The code students type to sign up. Pick a new one; `DPS71845` is public. |
-| `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_D1_DATABASE_ID`, `CLOUDFLARE_API_TOKEN` | Cloudflare D1 is the only database (Supabase is no longer used). |
-| `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` | Unchanged. |
+| `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_D1_DATABASE_ID`, `CLOUDFLARE_API_TOKEN` | The database. |
+| `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` | Photos, videos, backups. |
 | `GEMINI_API_KEY` | Server-only Gemini key for AI Diary. |
 | `ZEGO_SERVER_SECRET`, `NEXT_PUBLIC_ZEGO_APP_ID` | Voice/video calls (optional while calls are switched off). |
-| `CRON_SECRET` | Random string. Vercel sends it to the daily cleanup job. |
+| `CRON_SECRET` | Random string used by the nightly cleanup job. |
+| `MEDIA_STORAGE_LOCK_GB` | Upload limit for Cloudinary storage (default 20). |
 
-**Delete** these if they exist: `NEXT_PUBLIC_ZEGO_SERVER_SECRET`, `NEXT_PUBLIC_GEMINI_API_KEY`, and the old Supabase ones (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`).
-Anything starting with `NEXT_PUBLIC_` is sent to every browser.
+**Don't add**: `NEXT_PUBLIC_ZEGO_SERVER_SECRET`, `NEXT_PUBLIC_GEMINI_API_KEY`, or any
+`SUPABASE` variables. Anything starting with `NEXT_PUBLIC_` is sent to every browser.
 
-Check your values before deploying:
+Check a copy of your settings before deploying:
 
 ```bash
-vercel env pull .env.production.local
-node scripts/check-production-env.mjs .env.production.local
+node scripts/check-production-env.mjs .env.vercel
 ```
 
-## 2. Merge and deploy
+## 2. Deploy
 
-Merge the `security/real-auth` pull request into `main`. Vercel builds and
-deploys `main` automatically.
+Netlify builds the branch you connected (usually `main`) on every push.
+`netlify.toml` already sets the build command and the Next.js plugin.
 
 ## 3. What happens on first start
 
@@ -51,27 +52,35 @@ deploys `main` automatically.
 4. Log in as a student on another browser, open Home, Chats and Notices.
 5. Try a wrong password: you see "Incorrect username or password."
 
-## 5. After the deploy works
+## 5. Nightly backup and cleanup (GitHub Actions, free)
 
-1. **Copy the last Supabase rows into D1.** The old site kept writing to Supabase
-   until the deploy. Run this once from the project folder (safe to repeat):
+`.github/workflows/nightly.yml` runs every night at 02:30 IST. It:
+
+1. Saves the whole D1 database as a private, compressed file in Cloudinary
+   (`dpsbuzz/backups/d1-YYYY-MM-DD.json.gz`), keeping the last 14 days.
+2. Calls the site's cleanup job (expired stories, old chat photos).
+
+Add these in GitHub → repository → Settings → Secrets and variables → Actions →
+New repository secret:
+
+`CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_D1_DATABASE_ID`, `CLOUDFLARE_API_TOKEN`,
+`CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`,
+`CRON_SECRET` (same value as on Netlify), and `SITE_URL` (your site address,
+for example `https://dpsbuzz.netlify.app`, no trailing slash).
+
+To run it right away: GitHub → Actions → "Nightly backup and cleanup" → Run workflow.
+To back up from your computer instead: `node scripts/backup-d1.mjs`.
+
+## 6. After the first deploy
+
+1. **Copy the last Supabase rows into D1** (anything posted on the old site
+   before it went down). Run once from the project folder; safe to repeat:
    ```bash
    node scripts/migrate_supabase_to_d1.mjs
    ```
-   After that, Supabase is no longer used. You can pause or delete the Supabase
-   project.
+   Then you can pause or delete the Supabase project.
 2. **Delete the old public backup** on Cloudinary: Media Library → raw files →
    `dpsbuzz_store.json` (the new one is `dpsbuzz_store_private.json`).
-
-## Backups
-
-Every night (21:00 UTC) the cleanup job saves the whole D1 database as a
-private, compressed file in Cloudinary: `dpsbuzz/backups/d1-YYYY-MM-DD.json.gz`.
-The last 14 days are kept. To make one right now, log in as admin and run in
-the browser console:
-```js
-fetch('/api/cron/cleanup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'backup' }) }).then(r => r.json()).then(console.log)
-```
 
 ## Running locally
 
@@ -80,6 +89,6 @@ npm install
 npm run dev
 ```
 
-Local development reads and writes the same live databases, but the shared
-data store uses separate `dev:` rows in D1 and never uploads the Cloudinary
-backup, so it can't overwrite production data.
+Local development uses the same live D1 database, but the shared data store
+uses separate `dev:` rows and never uploads the Cloudinary backup, so it can't
+overwrite production data.

@@ -60,7 +60,9 @@ export const AppleHelloSplash: React.FC = () => {
 
     updateActiveUser();
 
-    if (!hasGreeted) {
+    // No automatic splash: it covered the app for ~3s on every launch.
+    // It still plays when replayed on purpose (dpsbuzz_replay_apple_hello event).
+    if (!hasGreeted && false) {
       setIsVisible(true);
       sessionStorage.setItem('dpsbuzz_greeted_v2', 'true');
     }

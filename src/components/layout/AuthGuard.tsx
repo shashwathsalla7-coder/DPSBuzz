@@ -38,6 +38,16 @@ function AuthGuardInner({ children }: { children: React.ReactNode }) {
       router.replace(loginRedirect);
     };
 
+    // Show the app immediately when this browser already has a saved login.
+    // The server (proxy) has already let this page through with a valid session;
+    // verifySession below still double-checks in the background.
+    try {
+      const cachedUser = JSON.parse(localStorage.getItem('dpsbuzz_user') || 'null');
+      if (cachedUser?.username && document.cookie.includes('dpsbuzz_user=')) {
+        setIsAuthorized(true);
+      }
+    } catch {}
+
     // The signed server session is the source of truth. The copy of the profile in
     // localStorage is only a cache, rebuilt from the server when missing or stale.
     const verifySession = async () => {

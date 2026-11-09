@@ -152,8 +152,9 @@ export async function GET(req: NextRequest) {
             .from('messages')
             .select('*')
             .or(`chat_id.eq.${canonicalKey},chat_id.eq.${altKey}`)
-            .order('created_at', { ascending: true })
+            .order('created_at', { ascending: false })
             .limit(500);
+          if (Array.isArray(dbRows)) dbRows.reverse(); // newest 500, in time order
 
           if (!dbErr && Array.isArray(dbRows) && dbRows.length > 0) {
             const seenIds = new Set<string>();
@@ -226,6 +227,17 @@ export async function GET(req: NextRequest) {
 
     const BLOCKED_TEST_ACCOUNTS = new Set(['testaccount', 'testing', 'ab', 'test_insert_probe', 'test_uuid5_user']);
 
+    // Start every lookup at once; each is a network round trip.
+    const d1MsgsPre: Promise<Record<string, any[]>> =
+      isD1Configured() && effectiveUser ? getD1MessagesForUser(effectiveUser).catch(() => ({})) : Promise.resolve({});
+    const sbMsgsPre = Promise.resolve(
+      createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false } })
+        .from('messages')
+        .select('*')
+        .or(`sender_id.eq.${username},chat_id.ilike.%${username}%`)
+        .order('created_at', { ascending: false })
+        .limit(1000)
+    );
     const store = await getServerStore();
     const isAdmin = sessionIsAdmin;
     const userMessages: Record<string, any[]> = {};
@@ -256,7 +268,7 @@ export async function GET(req: NextRequest) {
     // Hydrate & merge from Cloudflare D1 (never pauses, permanent chat database)
     if (isD1Configured() && effectiveUser) {
       try {
-        const d1Msgs = await getD1MessagesForUser(effectiveUser);
+        const d1Msgs = await d1MsgsPre;
         for (const [chatKey, msgs] of Object.entries(d1Msgs)) {
           if (!userMessages[chatKey]) userMessages[chatKey] = [];
           for (const m of msgs) {
@@ -276,13 +288,8 @@ export async function GET(req: NextRequest) {
     // Also auto-discover conversations from Supabase messages table for cross-device & fresh logins
     if (supabaseUrl && supabaseKey) {
       try {
-        const sb = createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false } });
-        const { data: dbRows, error: dbErr } = await sb
-          .from('messages')
-          .select('*')
-          .or(`sender_id.eq.${username},chat_id.ilike.%${username}%`)
-          .order('created_at', { ascending: true })
-          .limit(1000);
+        const { data: dbRows, error: dbErr } = await sbMsgsPre;
+        if (Array.isArray(dbRows)) dbRows.reverse(); // newest 1000, in time order
 
         if (!dbErr && Array.isArray(dbRows)) {
           for (const row of dbRows) {

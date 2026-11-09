@@ -196,25 +196,27 @@ export async function getD1MessagesForUser(username: string): Promise<Record<str
   const clean = username.toLowerCase().trim();
   if (!clean) return {};
 
-  // First fetch user's enrolled group IDs to safely allow group messages
-  const userGroupRows = await d1Query<{ group_id: string }>(
+  // Group memberships and messages are fetched at the same time.
+  const userGroupRowsPromise = d1Query<{ group_id: string }>(
     'SELECT group_id FROM group_members_registry WHERE username = ? COLLATE NOCASE;',
     [clean]
   );
-  const userGroupIds = new Set(userGroupRows.map((g) => g.group_id.toLowerCase().trim()));
 
   // Strict participant matching: sender, recipient, or exact user1__user2 boundary
-  const rows = await d1Query<any>(
+  const rowsPromise = d1Query<any>(
     `SELECT * FROM messages 
      WHERE sender_id = ? COLLATE NOCASE 
         OR recipient_id = ? COLLATE NOCASE
         OR chat_id = ?
         OR chat_id LIKE ?
         OR chat_id LIKE ?
-     ORDER BY created_at ASC 
+     ORDER BY created_at DESC 
      LIMIT 500;`,
     [clean, clean, clean, `${clean}__%`, `%__${clean}`]
   );
+  const [userGroupRows, rows] = await Promise.all([userGroupRowsPromise, rowsPromise]);
+  const userGroupIds = new Set(userGroupRows.map((g) => g.group_id.toLowerCase().trim()));
+  rows.reverse(); // newest 500, kept in time order
 
   const grouped: Record<string, any[]> = {};
   for (const r of rows) {

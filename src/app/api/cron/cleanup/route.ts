@@ -39,8 +39,10 @@ export async function POST(req: NextRequest) {
       oldPhotosArchived: 0,
     };
 
-    // 0. Nightly database backup (runs before any pruning)
-    if (!action || action === 'all' || action === 'backup') {
+    // 0. On-demand database backup
+    // Backups normally run in GitHub Actions (scripts/backup-d1.mjs); hosts like
+    // Netlify stop requests after ~10s. An admin can still ask for one here.
+    if (action === 'backup') {
       try {
         results.backup = await runDatabaseBackup();
       } catch (err) {

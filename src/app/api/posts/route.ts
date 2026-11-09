@@ -26,7 +26,15 @@ export async function GET(req: NextRequest) {
     const offsetParam = searchParams.get('offset');
     const cursor = searchParams.get('cursor');
 
-    const store = await getServerStore();
+    // Fetch all three sources at the same time (each is a network round trip).
+    const supabase = getSupabase();
+    const [store, d1PostsPre, sbPostsPre] = await Promise.all([
+      getServerStore(),
+      isD1Configured() ? d1Query<any>('SELECT * FROM posts ORDER BY created_at DESC LIMIT 100;') : Promise.resolve([]),
+      supabase
+        ? Promise.resolve(supabase.from('posts').select('*').order('created_at', { ascending: false }).limit(100))
+        : Promise.resolve({ data: null }),
+    ]);
     const postMap = new Map<string, any>();
 
     // 1. Seed from serverStore
@@ -37,7 +45,7 @@ export async function GET(req: NextRequest) {
     // 2. Merge from Cloudflare D1 posts table (never pauses)
     if (isD1Configured()) {
       try {
-        const d1Posts = await d1Query<any>('SELECT * FROM posts ORDER BY created_at DESC LIMIT 100;');
+        const d1Posts = d1PostsPre;
         for (const dp of d1Posts) {
           if (!postMap.has(dp.id)) {
             let mediaArr: string[] = [];
@@ -73,14 +81,9 @@ export async function GET(req: NextRequest) {
     }
 
     // 3. Merge from Supabase posts table
-    const supabase = getSupabase();
     if (supabase) {
       try {
-        const { data: dbPosts } = await supabase
-          .from('posts')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(100);
+        const dbPosts = (sbPostsPre as { data: any[] | null }).data;
 
         if (Array.isArray(dbPosts)) {
           for (const dp of dbPosts) {

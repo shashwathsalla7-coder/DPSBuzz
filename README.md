@@ -30,21 +30,11 @@ node tests/unit.test.mjs
 
 ---
 
-## 2. Database & Deployment Checklist
+## 2. Database
 
-Before deploying any new chat features or code changes that touch database models, ALWAYS follow this 3-step checklist:
-
-1. **Apply Database Migrations FIRST**:
-   - Go to your Supabase Project Dashboard -> **SQL Editor**.
-   - Run the additive migration script (`supabase/migrations/007_...` or latest).
-   - Verify table columns exist (`SELECT * FROM messages LIMIT 1;`) BEFORE code deployment.
-2. **Run Local Verification**:
-   - Run `node tests/test-ticks-and-typing.mjs` to confirm all 11 test flows pass.
-   - Run `npm run build` to verify 0 TypeScript and build errors across all routes.
-3. **Verify Deployment & Logs**:
-   - Push to `main` to trigger hosting deployment.
-   - Check real-time browser console & network tab for zero `403` or `PGRST204` errors.
-
+- **Cloudflare D1** is the only database. Tables the app creates itself: `auth_credentials` (hashed passwords, bans), `server_kv` (notices, notes, groups…), and `sb_*` (messages, likes, comments, follows, notifications, posts, profiles, stories, app settings; moved from Supabase).
+- **Cloudinary** stores photos, videos and the nightly private database backups.
+- Before pushing: `npx tsc --noEmit` and `npm run build` must pass.
 
 ---
 
@@ -79,12 +69,6 @@ To reset the application to a clean live launch state:
 
 ---
 
-## 5. Deployment Guide (Vercel)
+## 5. Deployment (Netlify)
 
-See **[DEPLOY.md](DEPLOY.md)** for the full production checklist (environment variables, first-start behavior, Supabase lock-down).
-
-
-1. Push this repository to GitHub or GitLab.
-2. In the Vercel dashboard, click **Add New Project** and select the repository.
-3. Configure the environment variables (see `.env.example`).
-4. Click **Deploy**. Next.js will build automatically with Turbopack support.
+See **[DEPLOY.md](DEPLOY.md)**: environment variables, first-start behavior, nightly backups (GitHub Actions) and the one-time Supabase → D1 copy.
